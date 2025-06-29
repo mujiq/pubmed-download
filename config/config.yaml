@@ -1,0 +1,50 @@
+ftp:
+  host: "ftp.ncbi.nlm.nih.gov"
+  base_path: "/pubchem/RDF/"
+  anonymous_login: true
+  timeout: 30
+  retries: 3
+  
+download:
+  local_data_dir: "data/pubchem_rdf"
+  temp_dir: "data/temp"
+  max_concurrent_downloads: 3
+  rate_limit_delay: 2.0  # seconds between downloads
+  chunk_size: 8192
+  resume_downloads: true
+  
+storage:
+  min_free_space_gb: 50  # Minimum free space required in GB
+  check_space_interval: 60  # seconds
+  cleanup_temp_files: true
+  compress_downloaded: false
+  
+logging:
+  level: "INFO"
+  log_file: "logs/pubchem_downloader.log"
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  max_log_size_mb: 100
+  backup_count: 5
+  
+progress:
+  save_interval: 10  # Save progress every N files
+  progress_file: "data/download_progress.json"
+  
+rdf:
+  parse_on_download: false
+  validate_files: true
+  supported_formats: ["ttl", "turtle", "rdf", "xml"]
+  
+triple_store:
+  type: "fuseki"  # fuseki, graphdb, blazegraph
+  endpoint: "http://localhost:3030/pubchem"
+  bulk_load: true
+  
+directories_to_download:
+  - "compound"
+  - "substance" 
+  - "bioassay"
+  - "protein"
+  - "gene"
+  - "taxonomy"
+  - "pathway" 
