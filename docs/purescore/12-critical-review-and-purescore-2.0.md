@@ -245,3 +245,21 @@ framed as personal failure.
 | `Rp*` | representativeness floor → suppress cohort blend | cohort-specific |
 
 All changes are model-version bumps requiring re-validation (Doc 03 §8, Doc 09, Doc 11).
+
+## 10. Implementation status (interactive calculator)
+The `purescore-architecture.html` calculator now **computes** (not just illustrates) the 2.0 layer,
+so the behaviour is inspectable against the edge-case personas:
+
+| Capability | Status in calculator | Notes |
+|---|---|---|
+| Context-aware: Managed / confounder down-weighting / age & special frames | **Live** | `MANAGES`/`CONFOUNDS` tables, confidence-weighted aggregation, per-persona band frames, eGFR exclusion |
+| Companion vector: Confidence, Data sufficiency, Criticality, Representativeness, Modifiability | **Live** | computed from coverage × quality × `rep`, present-data fraction, red-marker scan, modifiable-risk share |
+| Trajectory, Volatility, personal-baseline z, within-green drift, time-to-threshold | **Live (synthetic)** | from a **seeded synthetic 90-day history** per marker (decision **D9**); production uses real series |
+| Early-warning tiers (Watch/Advisory) | **Live** | band-ramp + filling-reservoir + polarity-aware personal-drift signals; Advisory on multivariate `D`/≥3 signals |
+| Multivariate anomaly `D` | **Live (diagonal-covariance approx.)** | `D≈√Σzᵢ²` (decision **D10**); production uses full Mahalanobis |
+| Dual framing: absolute + progress-to-attainable-best + competing-risk muting | **Live** | modifiable-optimum ceiling (decision **D11**); `crmute` per persona |
+| Syndromic detectors (metabolic syndrome, frailty, CKD-progression) | **Live** | decision **D12** |
+
+The synthetic-history items are **demonstrations of the method**, not evidence; production requires
+real longitudinal data and the validation gates of Doc 09. Every decision behind this design is
+recorded in [`decisions.md`](./decisions.md) (D1–D12).

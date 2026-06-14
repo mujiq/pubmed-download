@@ -50,6 +50,7 @@ Three properties make PureScore more than a weighted average of lab values:
 | # | Document | Owner-authored spine? | Contents |
 |---|----------|:--:|----------|
 | — | `README.md` | ✔ | This index, conventions, glossary |
+| — | `decisions.md` | ✔ | **Decision log** — every material design question, all options, and the selected one (maintained from 2026-06-14) |
 | 00 | `00-vision-principles-and-lessons.md` | ✔ | Vision, design principles, lessons from Babylon Health, Kaiser Permanente, Mayo Clinic |
 | 01 | `01-data-model-and-reference-ranges.md` | ✔ | Canonical data model (FHIR-aligned), tier definitions, literature reference-range strategy |
 | 02 | `02-pillars-and-marker-catalog.md` | ✔ | The 12 pillars; full marker catalogue with tiers and green/yellow/red bands |

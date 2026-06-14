@@ -96,6 +96,7 @@
   <div class="inputs" id="inputs"></div>
   <div class="stage">
     <div class="companion" id="companion"></div>
+    <div class="pnote" id="twozero"></div>
     <div class="pnote" id="pnote"></div>
     <div class="legend">
       <span class="chip"><span class="dot" style="background:var(--green)"></span>green (R&lt;0.30)</span>
@@ -187,14 +188,15 @@ const MANAGES={ betablocker:['sbp','rhr'], statin:['apob'], acei:['sbp','uacr'],
 /* ---- personas / edge cases ---- */
 const PERSONAS={
   healthy:    {age:40,meds:[],rep:0.90,wmult:{},marks:{},res:{},note:'Healthy adult cohort — well represented.'},
-  prediabetic:{age:52,meds:[],rep:0.85,wmult:{MET:1.6,CV:1.3,REN:1.1},marks:{a1c:6.0,glu:112,apob:95,waist:101},res:{GLY:55,ATH:40,INFL:35,CRF:55},note:'Pre-diabetes — MET/CV up-weighted; glycemic burden accumulating.'},
-  ckd:        {age:60,meds:['acei'],rep:0.80,wmult:{REN:2.0,CV:1.4,MET:1.2},marks:{egfr:48,uacr:90,k:5.0,sbp:138,apob:92},res:{GLY:42,ATH:52,INFL:46,CRF:55},note:'CKD-3 on ACE-i — BP/UACR MANAGED; mild K⁺ rise is drug-expected (Watch, not Alert).'},
-  athlete:    {age:30,meds:[],rep:0.40,wmult:{},marks:{rhr:42,vo2:58,glu:82,bmi:26.5,hgb:16.2,step:14000,mvpa:600},res:{CRF:96,MUS:92,SLD:10},note:'Endurance athlete — RHR 42 & low glucose are ADAPTIVE; out-of-cohort → cohort stats suppressed, confidence lowered.'},
+  prediabetic:{age:52,meds:[],rep:0.85,wmult:{MET:1.6,CV:1.3,REN:1.1},marks:{a1c:6.0,glu:112,apob:95,waist:101},res:{GLY:55,ATH:40,INFL:35,CRF:55},trend:{a1c:1.2,glu:1.0,waist:0.8},note:'Pre-diabetes — MET/CV up-weighted; glycemic burden accumulating; metabolic markers trending up.'},
+  ckd:        {age:60,meds:['acei'],rep:0.80,wmult:{REN:2.0,CV:1.4,MET:1.2},marks:{egfr:48,uacr:90,k:5.0,sbp:138,apob:92},res:{GLY:42,ATH:52,INFL:46,CRF:55},trend:{egfr:-1.0,uacr:1.2},note:'CKD-3 on ACE-i — BP/UACR MANAGED; mild K⁺ rise is drug-expected (Watch, not Alert); eGFR declining.'},
+  athlete:    {age:30,meds:[],rep:0.40,wmult:{},marks:{rhr:42,vo2:58,glu:82,bmi:26.5,hgb:16.2,step:14000,mvpa:600},res:{CRF:96,MUS:92,SLD:10},trend:{vo2:0.5},note:'Endurance athlete — RHR 42 & low glucose are ADAPTIVE; out-of-cohort → cohort stats suppressed, confidence lowered.'},
   betablocker:{age:58,meds:['betablocker'],rep:0.70,wmult:{CV:1.3},marks:{rhr:52,sbp:124,vo2:34},res:{},note:'On β-blocker — RHR & VO₂max CONFOUNDED (down-weighted, not scored as fitness); BP MANAGED.'},
   elderly:    {age:84,meds:['acei'],rep:0.60,wmult:{REN:1.2,BCM:1.3,FIT:1.1},marks:{egfr:66,bmi:26,sbp:134,grip:30,vo2:24,a1c:5.7},res:{MUS:45,CRF:40},
                bands:{bmi:{optLo:23,optHi:28,yLo:22,yHi:29,rLo:20,rHi:32},sbp:{optLo:120,optHi:139,yLo:118,yHi:142,rLo:112,rHi:160},egfr:{optLo:60,yLo:59,rLo:40},vo2:{optLo:22,yLo:21,rLo:15}},
-               note:'Age 84 — age-adjusted BMI/BP(J-curve)/eGFR/VO₂max frames; actionability modifier de-prioritizes low-yield flags.'},
-  dialysis:   {age:64,meds:[],rep:0.50,wmult:{REN:1.5,CV:1.4},marks:{egfr:8,uacr:600,k:5.3,sbp:138,hgb:10.8},exclude:['egfr'],res:{ATH:55},note:'ESRD on dialysis — eGFR EXCLUDED (adequacy frame); renal anemia (Hgb) expected.'},
+               trend:{grip:-0.8,vo2:-0.6},crmute:{NUT:0.6},
+               note:'Age 84 — age-adjusted BMI/BP(J-curve)/eGFR/VO₂max frames; actionability modifier de-prioritizes low-yield flags; sarcopenic drift; NUT competing-risk-muted.'},
+  dialysis:   {age:64,meds:[],rep:0.50,wmult:{REN:1.5,CV:1.4},marks:{egfr:8,uacr:600,k:5.3,sbp:138,hgb:10.8},exclude:['egfr'],fixed:['uacr','egfr'],crmute:{NUT:0.5,SLP:0.8},res:{ATH:55},note:'ESRD on dialysis — eGFR EXCLUDED (adequacy frame); structural renal damage fixed; renal anemia (Hgb) expected; NUT/SLP competing-risk-muted.'},
   pregnancy:  {sex:'f',age:31,meds:[],rep:0.50,wmult:{ENDO:1.3,HEM:1.2,CV:1.2},marks:{hgb:11.4,sbp:108,glu:84},exclude:['waist'],
                bands:{hgb:{optLo:10.5,optHi:14,yLo:10,yHi:14.5,rLo:9,rHi:15.5},egfr:{optLo:100,yLo:99,rLo:70}},
                note:'2nd-trimester frame — physiologic anemia & eGFR-rise expected; pre-eclampsia/GDM absolute anchors retained.'},
@@ -258,34 +260,91 @@ function pillarRisk(pid){ const ms=MARKERS[pid]; let num=0,den=0,anyCritRed=fals
   if(critical) R=Math.max(R,R_CRIT);
   return {R,critical,Rmark,Btil,contribs,cov:den}; }
 
-function compute(){ const pr={}; let anyCrit=false;
-  PILLARS.forEach(p=>{ pr[p.id]=pillarRisk(p.id); if(pr[p.id].critical) anyCrit=true; });
-  const wm=PERSONAS[PERSONA].wmult||{}; let W={},sumW=0;
-  PILLARS.forEach(p=>{ W[p.id]=p.base*(wm[p.id]||1); sumW+=W[p.id]; });
-  let num=0; PILLARS.forEach(p=>{ num+=W[p.id]*Math.pow(pr[p.id].R,DELTA); });
-  let Rtot=Math.pow(num/sumW,1/DELTA); let pure=100*(1-Rtot);
-  let status=anyCrit?'CRITICAL':(Rtot>=0.30?'AT RISK':'ON TRACK'); let binding=null;
-  if(anyCrit){ pure=Math.min(pure,PURE_CRIT_CAP); let best=-1; PILLARS.forEach(p=>{ if(pr[p.id].critical&&pr[p.id].R>best){best=pr[p.id].R;binding=p.id;} }); }
+/* ===== 2.0 time-series engine (Doc 12 §5; decisions D9/D10) — synthetic, seeded, illustrative ===== */
+const NSER=90;
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+function mcenter(m){const b=band(m); if(b.optLo!=null&&b.optHi!=null)return (b.optLo+b.optHi)/2; if(b.optHi!=null)return b.optHi*0.82; if(b.optLo!=null)return b.optLo*1.12; return m.val;}
+function mscale(m){const b=band(m); let s; if(b.optLo!=null&&b.optHi!=null)s=(b.optHi-b.optLo)/4; else if(b.optHi!=null)s=Math.max((b.yHi-b.optHi),Math.abs(b.optHi)*0.08); else if(b.optLo!=null)s=Math.max((b.optLo-b.yLo),Math.abs(b.optLo)*0.08); else s=Math.abs(m.val)*0.1; return Math.max(s,1e-6);}
+function badDir(m){const b=band(m); if(b.optLo!=null&&b.optHi!=null)return 0; if(b.optHi!=null)return 1; if(b.optLo!=null)return -1; return 0;} // +1 high=bad, -1 low=bad, 0 two-sided
+function worseningVsBaseline(m,mean){ const dev=m.val-mean, bd=badDir(m);
+  if(bd>0) return dev>0; if(bd<0) return dev<0; const c=mcenter(m); return Math.abs(m.val-c)>Math.abs(mean-c); }
+function seriesOf(m){ const sc=mscale(m), tr=(PERSONAS[PERSONA].trend||{})[m.id]||0, slope=tr*sc*0.02;
+  const rnd=mulberry32(hashStr(PERSONA+SEX+m.id)); const a=[];
+  for(let t=0;t<NSER;t++){ const back=NSER-1-t; a.push(m.val - slope*back + (rnd()*2-1)*sc*0.22); }
+  a[NSER-1]=m.val; return a; }
+function lin(arr){ const n=arr.length; let sx=0,sy=0,sxx=0,sxy=0; for(let i=0;i<n;i++){sx+=i;sy+=arr[i];sxx+=i*i;sxy+=i*arr[i];} const d=n*sxx-sx*sx; const slope=d?(n*sxy-sx*sy)/d:0; return {slope,inter:(sy-slope*sx)/n}; }
+function avg(a){return a.reduce((x,y)=>x+y,0)/a.length;}
+function sdev(a){const m=avg(a);return Math.sqrt(a.reduce((x,y)=>x+(y-m)*(y-m),0)/a.length);}
+function baseline(m){ const s=seriesOf(m), hist=s.slice(0,NSER-1);
+  // anomaly z vs the PERSONAL baseline; variance floored at a fraction of cohort scale to avoid tiny-σ false alarms.
+  // (Empirical-Bayes shrinkage toward the cohort prior, D6, matters only at cold-start; here n≈89 ⇒ effectively personal.)
+  const mean=avg(hist), sd0=mscale(m), sdB=Math.max(sdev(hist), sd0*0.3);
+  const win=s.slice(NSER-30), L=lin(win), resid=win.map((v,i)=>v-(L.inter+L.slope*i));
+  return {z:(m.val-mean)/sdB, mean, slope30:L.slope, vol:Math.min(1,sdev(resid)/sd0)}; }
+function timeToThreshold(m){ const b=band(m), sc=mscale(m), sl=baseline(m).slope30;
+  if(Math.abs(sl*30) < 0.25*sc) return null;        // require a genuine trend, not noise
+  let days=null;
+  if(sl>0 && b.yHi!=null && m.val<b.yHi) days=(b.yHi-m.val)/sl;
+  if(sl<0 && b.yLo!=null && m.val>b.yLo) days=(m.val-b.yLo)/(-sl);
+  return (days!=null && days>0 && days<3650)?days:null; }
 
+/* ===== core scoring (no companion) — re-usable for historical & counterfactual snapshots ===== */
+function scoreCore(){ const pr={}; let anyCrit=false;
+  PILLARS.forEach(p=>{ pr[p.id]=pillarRisk(p.id); if(pr[p.id].critical) anyCrit=true; });
+  const wm=PERSONAS[PERSONA].wmult||{}, cr=PERSONAS[PERSONA].crmute||{}; let W={},sumW=0;       // crmute = competing-risk muting (D5)
+  PILLARS.forEach(p=>{ W[p.id]=p.base*(wm[p.id]||1)*(cr[p.id]||1); sumW+=W[p.id]; });
+  let num=0; PILLARS.forEach(p=>{ num+=W[p.id]*Math.pow(pr[p.id].R,DELTA); });
+  let Rtot=Math.pow(num/sumW,1/DELTA), pure=100*(1-Rtot);
+  let status=anyCrit?'CRITICAL':(Rtot>=0.30?'AT RISK':'ON TRACK'), binding=null;
+  if(anyCrit){ pure=Math.min(pure,PURE_CRIT_CAP); let best=-1; PILLARS.forEach(p=>{ if(pr[p.id].critical&&pr[p.id].R>best){best=pr[p.id].R;binding=p.id;} }); }
+  return {pr,W,sumW,Rtot,pure,status,anyCrit,binding}; }
+function withVals(setter,fn){ const saved={}; for(const k in MARKERS) MARKERS[k].forEach(m=>{saved[m.id]=m.val;});
+  for(const k in MARKERS) MARKERS[k].forEach(m=>{ const v=setter(m); if(v!=null) m.val=v; });
+  const out=fn(); for(const k in MARKERS) MARKERS[k].forEach(m=>{ m.val=saved[m.id]; }); return out; }
+function pureAtDay(idx){ return withVals(m=>seriesOf(m)[idx], ()=>scoreCore().pure); }
+function uncapped(){ return 100*(1-scoreCore().Rtot); }                                          // ignores cascade cap → risk headroom
+function dualFraming(){ const cur=uncapped();                                                    // D11
+  const ceil=withVals(m=>isModifiable(m)?mcenter(m):null, uncapped);
+  const floor=withVals(m=>{ if(!isModifiable(m))return null; const b=band(m); return b.yHi!=null?b.yHi*1.05:(b.yLo!=null?b.yLo*0.95:mcenter(m)); }, uncapped);
+  const prog=(ceil-floor>1e-6)?Math.max(0,Math.min(1,(cur-floor)/(ceil-floor))):1;
+  return {ceil:Math.round(ceil),floor:Math.round(floor),progress:Math.round(100*prog)}; }
+function syndromes(){ const out=[], v=id=>{for(const k in MARKERS)for(const m of MARKERS[k])if(m.id===id)return m;}, r=id=>{const m=v(id);return m?markerRisk(m):0;};
+  let ms=0; if(r('waist')>=0.3)ms++; if(r('sbp')>=0.3)ms++; if(r('a1c')>=0.3||r('glu')>=0.3)ms++; if(r('apob')>=0.3)ms++;
+  if(ms>=2) out.push('Metabolic-syndrome pattern ('+ms+'/4)');
+  let fr=0; if(r('grip')>=0.3)fr++; if(r('vo2')>=0.3)fr++; const mus=RESERVOIRS.find(x=>x.id==='MUS'); if(mus&&mus.val<45)fr++;
+  if(fr>=2 && PERSONAS[PERSONA].age>=70) out.push('Frailty phenotype ('+fr+'/3)');
+  const egfrM=v('egfr'); if((r('egfr')>=0.3||(egfrM&&baseline(egfrM).slope30<0)) && r('uacr')>=0.2) out.push('CKD-progression pattern');
+  return out; }
+
+function compute(){ const core=scoreCore(); const {pr,W,pure,status,anyCrit,binding,Rtot}=core;
   /* ---- companion vector (Doc 12 §4) ---- */
-  let cW=0,cConf=0,cPres=0,totR=0,modR=0,reds=0,emergency=false,watchSources=0; const watchP=new Set();
+  let cW=0,cConf=0,cPres=0,totR=0,modR=0,reds=0,emergency=false,bandWatch=0,volAcc=0,volW=0,zsq=0,nz=0,zmax=0; const watchP=new Set();
   PILLARS.forEach(p=>{ pr[p.id].contribs.forEach(c=>{ const w=c.m.w*W[p.id];
     cW+=w; cConf+=w*c.ctx.conf; cPres+=w*(c.ctx.present?1:0);
     totR+=c.m.w*c.r; if(isModifiable(c.m)) modR+=c.m.w*c.r;
     if(c.r>=0.5){ reds++; if(['k','spo2','glu'].includes(c.m.id)) emergency=true; }
-    if(c.r>0&&c.r<0.15){ watchSources++; watchP.add(p.id); } }); });   // entering green→yellow ramp
-  RESERVOIRS.forEach(r=>{ if((r.type==='burden'&&r.val>45)||(r.type==='asset'&&r.val<40)) watchSources++; }); // filling burden / depleting asset
+    if(c.r>0&&c.r<0.15){ bandWatch++; watchP.add(p.id); }
+    if(c.ctx.conf>0.05){ const bl=baseline(c.m); volAcc+=w*bl.vol; volW+=w; zsq+=bl.z*bl.z; nz++; zmax=Math.max(zmax,Math.abs(bl.z));
+      if(Math.abs(bl.z)>1.5 && c.r<0.15 && worseningVsBaseline(c.m,bl.mean)) watchP.add(p.id); } }); });  // within-green drift TOWARD risk → Watch
+  RESERVOIRS.forEach(r=>{ if((r.type==='burden'&&r.val>45)||(r.type==='asset'&&r.val<40)) bandWatch++; });
   if(suicidality){ emergency=true; reds++; }
   const rep=PERSONAS[PERSONA].rep;
   const confidence=Math.round(100*(cW?cConf/cW:0)*rep);
   const sufficiency=Math.round(100*(cW?cPres/cW:0));
   const modifiability=Math.round(100*(totR>0?modR/totR:1));
+  const volatility=Math.round(100*(volW?volAcc/volW:0));
   const critTier=emergency?'emergency':(reds>0?'urgent':'none');
-  const ewTier=watchSources===0?'none':(watchSources>=3?'Advisory':'Watch');
-  let traj=null; if(prevPure!=null) traj=pure-prevPure;
-  const companion={confidence,sufficiency,modifiability,rep:Math.round(100*rep),critTier,reds,ewTier,watchM:watchSources,watchP:[...watchP],traj};
-
-  return {pr,W,Rtot,pure,status,anyCrit,binding,companion}; }
+  const Dmv=Math.sqrt(zsq), Dstar=Math.sqrt(Math.max(nz,1))*1.3;                                 // diagonal-covariance multivariate (D10)
+  const sources=bandWatch+watchP.size;
+  let ewTier=sources>0?'Watch':'none';
+  if(sources>=3 || Dmv>Dstar || zmax>3) ewTier='Advisory';
+  let traj=uncapped()-withVals(m=>seriesOf(m)[NSER-31],uncapped); if(prevPure!=null) traj=pure-prevPure;  // live 30-day delta (uncapped so cascade-capped scores still show trend)
+  let tnext=null,tmk=null; PILLARS.forEach(p=>pr[p.id].contribs.forEach(c=>{ if(c.ctx.conf>0.05){ const d=timeToThreshold(c.m); if(d!=null&&(tnext==null||d<tnext)){tnext=d;tmk=band(c.m).name;} }}));
+  const dual=dualFraming(), synd=syndromes();
+  const companion={confidence,sufficiency,modifiability,rep:Math.round(100*rep),critTier,reds,ewTier,
+    watchM:sources,watchP:[...watchP],traj,volatility,Dmv:+Dmv.toFixed(1),tnext:tnext==null?null:Math.round(tnext),tmk,dual,synd};
+  return {...core,companion}; }
 
 /* ---- colours ---- */
 function colR(R,crit){ if(crit)return 'var(--red)'; if(R<0.30)return 'var(--green)'; if(R<0.60)return 'var(--yellow)'; return 'var(--red)'; }
@@ -313,7 +372,7 @@ function buildInputs(){ const root=d3.select('#inputs'); root.html('');
   const rd=root.append('details').attr('class','sec res');
   rd.append('summary').html('<span class="dot" style="background:#7a86ff"></span> MONIAC reservoirs');
   const rb=rd.append('div').attr('class','body');
-  rb.append('div').attr('class','pnote').html('Burdens raise / depleted assets raise linked pillars. “Simulate days” drains/builds by λ and yields a Trajectory reading.');
+  rb.append('div').attr('class','pnote').html('Burdens raise / depleted assets raise linked pillars. Trajectory is live (synthetic 90-day history); “Simulate days” drains/builds reservoirs by λ to preview a reservoir-driven delta.');
   RESERVOIRS.forEach(r=>{ const row=rb.append('div').attr('class','mk');
     row.append('div').attr('class','nm').html(`${r.name} <small>${r.type} · λ=${r.lambda}</small>`);
     row.append('input').attr('type','range').attr('min',0).attr('max',100).attr('value',r.val).attr('id','res-'+r.id)
@@ -396,17 +455,25 @@ function render(){ const out=compute();
   const critCol=co.critTier==='emergency'?'var(--crit)':co.critTier==='urgent'?'var(--yellow)':'var(--green)';
   const ewCol=co.ewTier==='Advisory'?'var(--yellow)':co.ewTier==='Watch'?'#7fd1ff':'var(--green)';
   function badge(k,v,c){ return `<span class="badge"><span class="k">${k}</span><b style="color:${c}">${v}</b></span>`; }
+  const volCol=co.volatility<30?'var(--green)':co.volatility<60?'var(--yellow)':'var(--red)';
   d3.select('#companion').html(
     badge('PureScore',Math.round(out.pure)+' '+arrow,col)+
     badge('Confidence',co.confidence+'%',bcol(co.confidence))+
     badge('Data',co.sufficiency+'%'+(co.sufficiency<50?' ⚠ insufficient':''),bcol(co.sufficiency))+
     badge('Criticality',co.critTier+(co.reds?(' ('+co.reds+' red)'):''),critCol)+
-    badge('Trajectory',trajTxt,trajCol)+
-    badge('Early-warning',co.ewTier+(co.watchM?(' · '+co.watchM+' signals'):''),ewCol)+
+    badge('Trajectory',trajTxt+'/30d',trajCol)+
+    badge('Volatility',co.volatility+'%',volCol)+
+    badge('Early-warning',co.ewTier+(co.watchM?(' · '+co.watchM+' sig'):'')+' · D='+co.Dmv,ewCol)+
     badge('Representativeness',co.rep+'%'+(co.rep<60?' (OOD→cohort suppressed)':''),bcol(co.rep))+
     badge('Modifiability',co.modifiability+'%',bcol(co.modifiability)) );
+  const d=co.dual;
+  d3.select('#twozero').html(
+    '<b style="color:'+bcol(d.progress)+'">Attainable-best '+d.progress+'%</b> of your ceiling (modifiable headroom '+d.floor+'→'+d.ceil+')'+
+    ' &nbsp;·&nbsp; Soonest threshold: '+(co.tnext==null?'<span style="color:var(--muted)">none projected</span>':'<b style="color:var(--yellow)">~'+co.tnext+'d → '+co.tmk+' yellow</b>')+
+    ' &nbsp;·&nbsp; Multivariate anomaly D='+co.Dmv+
+    ' &nbsp;·&nbsp; Syndromic: '+(co.synd.length?'<span style="color:var(--yellow)">'+co.synd.join('; ')+'</span>':'<span style="color:var(--muted)">none</span>'));
   d3.select('#pnote').html('<b>'+PERSONA+'</b> · age '+PERSONAS[PERSONA].age+(activeMeds().length?(' · meds: '+activeMeds().join(', ')):'')+' — '+PERSONAS[PERSONA].note+
-    ' &nbsp; <i>Skew, volatility & personal-baseline anomaly need time-series (Doc 12 §5).</i>');
+    ' &nbsp; <i>Trajectory/volatility/anomaly computed from a seeded synthetic 90-day history (Doc 12 §5; decisions D9/D10) — illustrative.</i>');
 
   if(selected){ const r=out.pr[selected],p=PILLARS.find(x=>x.id===selected);
     let html=`<h3>${selected} · ${p.name} &nbsp; <span style="color:${colR(r.R,r.critical)}">S ${Math.round(100*(1-r.R))}${r.critical?' · CRITICAL':''}</span></h3>`;
