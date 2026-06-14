@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>PureScore — Uber Architecture & Live Calculator</title>
+<title>PureScore 2.0 — Architecture, Live Calculator & Companion Vector</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <style>
   :root{
@@ -30,49 +30,62 @@
   .sec>summary::-webkit-details-marker{display:none}
   .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 2px rgba(255,255,255,.06)}
   .sec .body{padding:4px 12px 12px}
-  .mk{display:grid;grid-template-columns:1fr 84px 46px;gap:8px;align-items:center;padding:4px 0;border-top:1px dashed var(--line)}
+  .mk{display:grid;grid-template-columns:1fr 84px 64px;gap:8px;align-items:center;padding:4px 0;border-top:1px dashed var(--line)}
   .mk:first-child{border-top:0}
   .mk .nm{font-size:12.5px}
   .mk .nm small{color:var(--muted)}
-  .mk .rv{font-size:11px;text-align:right;font-variant-numeric:tabular-nums}
+  .mk .rv{font-size:10.5px;text-align:right;font-variant-numeric:tabular-nums}
   .pill-score{margin-left:auto;font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted)}
   .res .mk{grid-template-columns:1fr 120px 40px}
   .res input[type=range]{width:120px}
+  .companion{display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px 2px}
+  .badge{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12px;display:flex;gap:6px;align-items:center}
+  .badge b{font-variant-numeric:tabular-nums}
+  .badge .k{color:var(--muted)}
+  .pnote{color:var(--muted);font-size:11.5px;padding:2px 10px 6px}
   .legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12px;padding:6px 10px}
   .chip{display:inline-flex;align-items:center;gap:6px}
-  .note{color:var(--muted);font-size:11.5px;margin:6px 2px 10px}
-  .crit-tag{color:var(--crit);font-weight:700}
-  #tip{position:fixed;pointer-events:none;background:#0b1020;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;max-width:280px;opacity:0;transition:opacity .12s;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  #tip{position:fixed;pointer-events:none;background:#0b1020;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;max-width:300px;opacity:0;transition:opacity .12s;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.5)}
   .break{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
   .break h3{margin:0 0 6px;font-size:13px}
-  .bk-row{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--muted)}
+  .bk-row{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--muted);gap:8px}
   .bk-row b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .tag{font-size:9.5px;padding:1px 5px;border-radius:5px;margin-left:4px;border:1px solid}
+  .tag.mng{color:#7fd1ff;border-color:#37618a}
+  .tag.cnf{color:#c9a0ff;border-color:#5a4a8a}
+  .tag.exc{color:#8f9bbd;border-color:#3a4668}
   svg text{font-family:inherit}
   .foot{color:var(--muted);font-size:11px;padding:8px 12px;border-top:1px solid var(--line)}
-  a{color:var(--accent)}
+  a,code{color:var(--accent)}
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>PureScore — Uber Architecture & Live Calculator</h1>
-    <div class="sub">Live implementation of the scoring spine (Docs 03 & 04). Wellness-grade · clinician-in-the-loop · illustrative bands, re-verify before any real use.</div>
+    <h1>PureScore 2.0 — Architecture, Live Calculator & Companion Vector</h1>
+    <div class="sub">Context-aware scoring (Docs 03/04/12). Managed-state · confounder down-weighting · age/dialysis/pregnancy frames · companion meta-dimensions. Illustrative bands — re-verify before real use.</div>
   </div>
   <div class="controls">
     <label>Sex (at birth)
       <select id="sex"><option value="m">Male</option><option value="f">Female</option></select>
     </label>
-    <label>Persona / cohort
+    <label>Persona / edge case
       <select id="persona">
         <option value="healthy">Healthy adult</option>
         <option value="prediabetic">Pre-diabetic</option>
-        <option value="ckd">CKD (stage 3)</option>
+        <option value="ckd">CKD (stage 3, on ACE-i)</option>
+        <option value="athlete">Endurance athlete</option>
+        <option value="betablocker">On β-blocker</option>
+        <option value="elderly">Elderly 84 (age frames)</option>
+        <option value="dialysis">ESRD on dialysis</option>
+        <option value="pregnancy">Pregnant (2nd tri)</option>
+        <option value="fh">Familial hypercholesterolemia</option>
       </select>
     </label>
     <label>Simulate adherence
       <span style="display:flex;gap:6px;align-items:center">
-        <input id="days" type="number" value="30" min="1" max="365" style="width:64px"/>
-        <button id="simulate" title="Drain burden reservoirs & build asset reservoirs by their decay rates λ over N days of good behaviour">▶ days</button>
+        <input id="days" type="number" value="30" min="1" max="365" style="width:60px"/>
+        <button id="simulate" title="Drain burden reservoirs & build asset reservoirs over N days — produces a trajectory reading">▶ days</button>
       </span>
     </label>
     <button class="ghost" id="reset">Reset</button>
@@ -80,429 +93,343 @@
 </header>
 
 <div class="wrap">
-  <!-- LEFT: inputs -->
   <div class="inputs" id="inputs"></div>
-
-  <!-- RIGHT: diagram -->
   <div class="stage">
+    <div class="companion" id="companion"></div>
+    <div class="pnote" id="pnote"></div>
     <div class="legend">
-      <span class="chip"><span class="dot" style="background:var(--green)"></span>green · on track (R&lt;0.30)</span>
-      <span class="chip"><span class="dot" style="background:var(--yellow)"></span>yellow · caution (0.30–0.60)</span>
-      <span class="chip"><span class="dot" style="background:var(--red)"></span>red / critical (≥0.60 or critical-marker red)</span>
-      <span class="chip">→ flow into PureScore hub &nbsp; ⋯ reservoir interference</span>
+      <span class="chip"><span class="dot" style="background:var(--green)"></span>green (R&lt;0.30)</span>
+      <span class="chip"><span class="dot" style="background:var(--yellow)"></span>yellow (0.30–0.60)</span>
+      <span class="chip"><span class="dot" style="background:var(--red)"></span>red / critical</span>
+      <span class="chip"><span class="tag mng">MNG</span>managed</span>
+      <span class="chip"><span class="tag cnf">CNF</span>confounded (down-weighted)</span>
+      <span class="chip">→ flow &nbsp; ⋯ reservoir interference</span>
     </div>
     <svg id="svg" width="100%" viewBox="0 0 980 760" preserveAspectRatio="xMidYMid meet"></svg>
-    <div class="foot">Pieces = the 12 pillars. Centre hub = PureScore (worst-sensitive δ-power-mean of pillars, with critical cascade cap at 40). Faint dashed lines = MONIAC reservoir interference (Doc 04). Click a pillar to see its breakdown.</div>
+    <div class="foot">Pieces = 12 pillars · centre = PureScore (worst-sensitive δ-mean + critical cascade cap 40). Companion vector above carries the score's direction & error bars (Doc 12). Click a pillar for its breakdown.</div>
   </div>
 </div>
 <div id="tip"></div>
 
 <script>
 /* ============================================================
-   PureScore live calculator — implements Docs 03 (scoring) & 04 (reservoirs)
-   Bands are ILLUSTRATIVE and guideline-anchored; re-verify before real use.
+   PureScore 2.0 live calculator — Docs 03 (scoring), 04 (reservoirs), 12 (2.0 layer)
+   Illustrative bands; re-verify before real use.
    ============================================================ */
+const GAMMA=3, DELTA=2, RHO=0.20, R_CRIT=0.60, PURE_CRIT_CAP=40;
 
-// ---- constants (Doc 03 §8) ----
-const GAMMA = 3;          // pillar power-mean exponent (worst-sensitive)
-const DELTA = 2;          // PureScore power-mean exponent
-const RHO = 0.20;         // reservoir contribution cap to a pillar
-const R_CRIT = 0.60;      // critical pillar risk floor
-const PURE_CRIT_CAP = 40; // PureScore cap when any pillar critical
-const PHI = 0.0;          // cohort-percentile blend disabled in this demo (clinical anchor only)
+const PILLARS=[
+  {id:'CV',name:'Cardiovascular',base:1.3},{id:'MET',name:'Metabolic',base:1.2},
+  {id:'REN',name:'Renal',base:1.0},{id:'HEP',name:'Hepatic',base:0.9},
+  {id:'INF',name:'Inflammation',base:1.0},{id:'HEM',name:'Hematologic',base:0.9},
+  {id:'ENDO',name:'Endocrine',base:0.9},{id:'BCM',name:'Body Comp/MSK',base:1.0},
+  {id:'NUT',name:'Nutrition',base:0.8},{id:'SLP',name:'Sleep',base:1.1},
+  {id:'FIT',name:'Fitness',base:1.2},{id:'MCS',name:'Mental/Cog',base:1.2}];
 
-// ---- pillar definitions ----
-const PILLARS = [
-  {id:'CV',  name:'Cardiovascular', base:1.3},
-  {id:'MET', name:'Metabolic',      base:1.2},
-  {id:'REN', name:'Renal',          base:1.0},
-  {id:'HEP', name:'Hepatic',        base:0.9},
-  {id:'INF', name:'Inflammation',   base:1.0},
-  {id:'HEM', name:'Hematologic',    base:0.9},
-  {id:'ENDO',name:'Endocrine',      base:0.9},
-  {id:'BCM', name:'Body Comp/MSK',  base:1.0},
-  {id:'NUT', name:'Nutrition',      base:0.8},
-  {id:'SLP', name:'Sleep',          base:1.1},
-  {id:'FIT', name:'Fitness',        base:1.2},
-  {id:'MCS', name:'Mental/Cog',     base:1.2},
+function M(o){return Object.assign({w:1,critical:false,optLo:null,optHi:null,yLo:null,yHi:null,rLo:null,rHi:null},o);}
+const MARKERS={
+  CV:[ M({id:'sbp',name:'Systolic BP',unit:'mmHg',val:115,w:.30,critical:true,optLo:90,optHi:119,yLo:89,yHi:120,rLo:85,rHi:140}),
+       M({id:'apob',name:'ApoB',unit:'mg/dL',val:70,w:.40,critical:true,optHi:79,yHi:80,rHi:100}),
+       M({id:'rhr',name:'Resting HR',unit:'bpm',val:60,w:.30,optLo:50,optHi:69,yLo:49,yHi:70,rLo:40,rHi:85}) ],
+  MET:[ M({id:'a1c',name:'HbA1c',unit:'%',val:5.1,w:.45,critical:true,optHi:5.3,yHi:5.4,rHi:6.5}),
+        M({id:'glu',name:'Fasting glucose',unit:'mg/dL',val:88,w:.30,critical:true,optLo:70,optHi:99,yLo:65,yHi:100,rLo:55,rHi:126}),
+        M({id:'waist',name:'Waist',unit:'cm',val:88,w:.25,optHi:94,yHi:95,rHi:102,bySex:{f:{optHi:80,yHi:81,rHi:88,val:78}}}) ],
+  REN:[ M({id:'egfr',name:'eGFR',unit:'mL/min',val:100,w:.40,critical:true,optLo:90,yLo:89,rLo:60}),
+        M({id:'uacr',name:'UACR',unit:'mg/g',val:8,w:.30,critical:true,optHi:29,yHi:30,rHi:300}),
+        M({id:'k',name:'Potassium',unit:'mmol/L',val:4.2,w:.30,critical:true,optLo:3.6,optHi:5.0,yLo:3.5,yHi:5.1,rLo:3.2,rHi:5.6}) ],
+  HEP:[ M({id:'alt',name:'ALT',unit:'U/L',val:22,w:.45,optHi:29,yHi:30,rHi:50}),
+        M({id:'fib4',name:'FIB-4',unit:'',val:0.9,w:.35,critical:true,optHi:1.29,yHi:1.3,rHi:2.67}),
+        M({id:'bili',name:'Bilirubin',unit:'mg/dL',val:0.7,w:.20,optHi:1.19,yHi:1.2,rHi:2.0}) ],
+  INF:[ M({id:'crp',name:'hsCRP',unit:'mg/L',val:0.6,w:.50,critical:true,optHi:0.99,yHi:1.0,rHi:3.0}),
+        M({id:'wbc',name:'WBC',unit:'×10⁹/L',val:6,w:.30,optLo:4,optHi:9,yLo:3.9,yHi:9.1,rLo:3.5,rHi:11}),
+        M({id:'alb',name:'Albumin',unit:'g/dL',val:4.4,w:.20,optLo:4.0,yLo:3.9,rLo:3.5}) ],
+  HEM:[ M({id:'hgb',name:'Hemoglobin',unit:'g/dL',val:15,w:.40,critical:true,optLo:13.5,optHi:17,yLo:13.4,yHi:17.1,rLo:11,rHi:18,
+          bySex:{f:{optLo:12,optHi:15.5,yLo:11.9,yHi:15.6,rLo:10.5,rHi:16.5,val:13.5}}}),
+        M({id:'spo2',name:'SpO₂',unit:'%',val:98,w:.35,critical:true,optLo:96,yLo:95,rLo:92}),
+        M({id:'plt',name:'Platelets',unit:'×10⁹/L',val:260,w:.25,optLo:150,optHi:400,yLo:149,yHi:401,rLo:100,rHi:500}) ],
+  ENDO:[ M({id:'tsh',name:'TSH',unit:'mIU/L',val:1.8,w:.40,optLo:0.5,optHi:2.5,yLo:0.49,yHi:2.6,rLo:0.3,rHi:4.5}),
+         M({id:'cort',name:'Cortisol (AM)',unit:'µg/dL',val:11,w:.30,optLo:5,optHi:15,yLo:4.9,yHi:15.1,rLo:3,rHi:22}),
+         M({id:'sex_h',name:'Testosterone',unit:'ng/dL',val:550,w:.30,optLo:400,yLo:399,rLo:264,
+            bySex:{f:{name:'Estradiol',unit:'pg/mL',val:120,optLo:30,optHi:350,yLo:29,yHi:360,rLo:15,rHi:500}}}) ],
+  BCM:[ M({id:'bmi',name:'BMI',unit:'kg/m²',val:23,w:.30,optLo:18.5,optHi:24.9,yLo:17,yHi:25,rLo:16,rHi:30}),
+        M({id:'grip',name:'Grip strength',unit:'kg',val:45,w:.30,optLo:40,yLo:39,rLo:27,bySex:{f:{optLo:27,yLo:26,rLo:18,val:30}}}),
+        M({id:'tsc',name:'BMD T-score',unit:'',val:-0.3,w:.30,optLo:-1.0,yLo:-1.01,rLo:-2.5}) ],
+  NUT:[ M({id:'vitd',name:'Vitamin D',unit:'ng/mL',val:42,w:.35,optLo:30,optHi:60,yLo:29,yHi:61,rLo:20,rHi:100}),
+        M({id:'o3',name:'Omega-3 index',unit:'%',val:9,w:.30,optLo:8,yLo:7.9,rLo:4}),
+        M({id:'b12',name:'Vitamin B12',unit:'pg/mL',val:550,w:.25,optLo:400,optHi:900,yLo:399,yHi:901,rLo:200,rHi:1100}) ],
+  SLP:[ M({id:'sdur',name:'Sleep duration',unit:'h',val:7.6,w:.40,optLo:7,optHi:9,yLo:6.9,yHi:9.1,rLo:6,rHi:10}),
+        M({id:'seff',name:'Sleep efficiency',unit:'%',val:93,w:.30,optLo:90,yLo:89,rLo:85}),
+        M({id:'sreg',name:'Sleep regularity',unit:'idx',val:88,w:.30,optLo:85,yLo:84,rLo:60}) ],
+  FIT:[ M({id:'vo2',name:'VO₂max',unit:'mL/kg/min',val:45,w:.40,optLo:42,yLo:41,rLo:30,bySex:{f:{optLo:35,yLo:34,rLo:25,val:38}}}),
+        M({id:'mvpa',name:'MVPA',unit:'min/wk',val:180,w:.30,optLo:150,yLo:149,rLo:75}),
+        M({id:'step',name:'Steps',unit:'/day',val:9000,w:.30,optLo:8000,yLo:7999,rLo:5000}) ],
+  MCS:[ M({id:'phq',name:'PHQ-9',unit:'0–27',val:2,w:.40,critical:true,optHi:4,yHi:5,rHi:15}),
+        M({id:'gad',name:'GAD-7',unit:'0–21',val:2,w:.30,optHi:4,yHi:5,rHi:15}),
+        M({id:'lone',name:'Loneliness',unit:'UCLA-3',val:3,w:.30,optHi:3,yHi:4,rHi:7}) ],
+};
+let suicidality=false;
+for(const k in MARKERS) MARKERS[k].forEach(m=>{ m._val0=m.val; });   // pristine defaults for reset
+
+const RESERVOIRS=[
+  {id:'SLD',name:'Sleep debt',type:'burden',lambda:0.30,val:18,feeds:{SLP:1.0,MCS:0.5,MET:0.4,CV:0.3,INF:0.4}},
+  {id:'ATH',name:'Atherogenic burden',type:'burden',lambda:0.005,val:18,feeds:{CV:1.0}},
+  {id:'INFL',name:'Inflammatory load',type:'burden',lambda:0.10,val:18,feeds:{INF:1.0,CV:0.5,MET:0.4,HEP:0.4,MCS:0.3}},
+  {id:'GLY',name:'Glycemic burden',type:'burden',lambda:0.05,val:18,feeds:{MET:1.0,CV:0.5,REN:0.4,HEP:0.4}},
+  {id:'ALLO',name:'Allostatic/stress',type:'burden',lambda:0.15,val:18,feeds:{MCS:1.0,ENDO:0.5,CV:0.3,SLP:0.5}},
+  {id:'CRF',name:'Cardioresp reserve',type:'asset',lambda:0.05,val:72,feeds:{FIT:1.0,CV:0.5,MET:0.4}},
+  {id:'MUS',name:'Muscle reserve',type:'asset',lambda:0.03,val:72,feeds:{BCM:1.0,FIT:0.5,MET:0.3}},
 ];
 
-/* Marker bands. For each side, three boundaries:
-   optimal edge (r=0) → yellow onset (r=0.15) → red onset (r=0.5).
-   Use null to disable a side. bySex overrides band fields per sex. */
-function M(o){ return Object.assign({w:1, critical:false, optLo:null,optHi:null,yLo:null,yHi:null,rLo:null,rHi:null}, o); }
-const MARKERS = {
-  CV:[
-    M({id:'sbp', name:'Systolic BP', unit:'mmHg', val:115, w:.30, critical:true, optLo:90,optHi:119, yLo:89,yHi:120, rLo:85,rHi:140}),
-    M({id:'apob',name:'ApoB',        unit:'mg/dL',val:70,  w:.40, critical:true, optHi:79, yHi:80, rHi:100}),
-    M({id:'rhr', name:'Resting HR',  unit:'bpm',  val:60,  w:.30, optLo:50,optHi:69, yLo:49,yHi:70, rLo:40,rHi:85}),
-  ],
-  MET:[
-    M({id:'a1c', name:'HbA1c',       unit:'%',    val:5.1, w:.45, critical:true, optHi:5.3, yHi:5.4, rHi:6.5}),
-    M({id:'glu', name:'Fasting glucose',unit:'mg/dL',val:88,w:.30, critical:true, optLo:70,optHi:99, yLo:65,yHi:100, rLo:55,rHi:126}),
-    M({id:'waist',name:'Waist',      unit:'cm',   val:88,  w:.25, optHi:94, yHi:95, rHi:102, bySex:{f:{optHi:80,yHi:81,rHi:88}}}),
-  ],
-  REN:[
-    M({id:'egfr',name:'eGFR',        unit:'mL/min',val:100,w:.40, critical:true, optLo:90, yLo:89, rLo:60}),
-    M({id:'uacr',name:'UACR',        unit:'mg/g', val:8,   w:.30, critical:true, optHi:29, yHi:30, rHi:300}),
-    M({id:'k',   name:'Potassium',   unit:'mmol/L',val:4.2,w:.30, critical:true, optLo:3.6,optHi:5.0, yLo:3.5,yHi:5.1, rLo:3.2,rHi:5.6}),
-  ],
-  HEP:[
-    M({id:'alt', name:'ALT',         unit:'U/L',  val:22,  w:.45, optHi:29, yHi:30, rHi:50}),
-    M({id:'fib4',name:'FIB-4',       unit:'',     val:0.9, w:.35, critical:true, optHi:1.29, yHi:1.3, rHi:2.67}),
-    M({id:'bili',name:'Bilirubin',   unit:'mg/dL',val:0.7, w:.20, optHi:1.19, yHi:1.2, rHi:2.0}),
-  ],
-  INF:[
-    M({id:'crp', name:'hsCRP',       unit:'mg/L', val:0.6, w:.50, critical:true, optHi:0.99, yHi:1.0, rHi:3.0}),
-    M({id:'wbc', name:'WBC',         unit:'×10⁹/L',val:6,  w:.30, optLo:4,optHi:9, yLo:3.9,yHi:9.1, rLo:3.5,rHi:11}),
-    M({id:'alb', name:'Albumin',     unit:'g/dL', val:4.4, w:.20, optLo:4.0, yLo:3.9, rLo:3.5}),
-  ],
-  HEM:[
-    M({id:'hgb', name:'Hemoglobin',  unit:'g/dL', val:15,  w:.40, critical:true, optLo:13.5,optHi:17, yLo:13.4,yHi:17.1, rLo:11,rHi:18,
-       bySex:{f:{optLo:12,optHi:15.5,yLo:11.9,yHi:15.6,rLo:10.5,rHi:16.5,val:13.5}}}),
-    M({id:'spo2',name:'SpO₂',        unit:'%',    val:98,  w:.35, critical:true, optLo:96, yLo:95, rLo:92}),
-    M({id:'plt', name:'Platelets',   unit:'×10⁹/L',val:260,w:.25, optLo:150,optHi:400, yLo:149,yHi:401, rLo:100,rHi:500}),
-  ],
-  ENDO:[
-    M({id:'tsh', name:'TSH',         unit:'mIU/L',val:1.8, w:.40, optLo:0.5,optHi:2.5, yLo:0.49,yHi:2.6, rLo:0.3,rHi:4.5}),
-    M({id:'cort',name:'Cortisol (AM)',unit:'µg/dL',val:11, w:.30, optLo:5,optHi:15, yLo:4.9,yHi:15.1, rLo:3,rHi:22}),
-    M({id:'sex_h',name:'Testosterone',unit:'ng/dL',val:550,w:.30, optLo:400, yLo:399, rLo:264,
-       bySex:{f:{name:'Estradiol',unit:'pg/mL',val:120,optLo:30,optHi:350,yLo:29,yHi:360,rLo:15,rHi:500}}}),
-  ],
-  BCM:[
-    M({id:'bmi', name:'BMI',         unit:'kg/m²',val:23,  w:.30, optLo:18.5,optHi:24.9, yLo:17,yHi:25, rLo:16,rHi:30}),
-    M({id:'grip',name:'Grip strength',unit:'kg',  val:45,  w:.30, optLo:40, yLo:39, rLo:27, bySex:{f:{optLo:27,yLo:26,rLo:18,val:30}}}),
-    M({id:'tsc', name:'BMD T-score', unit:'',     val:-0.3,w:.30, optLo:-1.0, yLo:-1.01, rLo:-2.5}),
-  ],
-  NUT:[
-    M({id:'vitd',name:'Vitamin D',   unit:'ng/mL',val:42,  w:.35, optLo:30,optHi:60, yLo:29,yHi:61, rLo:20,rHi:100}),
-    M({id:'o3',  name:'Omega-3 index',unit:'%',   val:9,   w:.30, optLo:8, yLo:7.9, rLo:4}),
-    M({id:'b12', name:'Vitamin B12', unit:'pg/mL',val:550, w:.25, optLo:400,optHi:900, yLo:399,yHi:901, rLo:200,rHi:1100}),
-  ],
-  SLP:[
-    M({id:'sdur',name:'Sleep duration',unit:'h',  val:7.6, w:.40, critical:false, optLo:7,optHi:9, yLo:6.9,yHi:9.1, rLo:6,rHi:10}),
-    M({id:'seff',name:'Sleep efficiency',unit:'%',val:93,  w:.30, optLo:90, yLo:89, rLo:85}),
-    M({id:'sreg',name:'Sleep regularity',unit:'idx',val:88,w:.30, optLo:85, yLo:84, rLo:60}),
-  ],
-  FIT:[
-    M({id:'vo2', name:'VO₂max',      unit:'mL/kg/min',val:45,w:.40, optLo:42, yLo:41, rLo:30, bySex:{f:{optLo:35,yLo:34,rLo:25,val:38}}}),
-    M({id:'mvpa',name:'MVPA',        unit:'min/wk',val:180, w:.30, optLo:150, yLo:149, rLo:75}),
-    M({id:'step',name:'Steps',       unit:'/day', val:9000, w:.30, optLo:8000, yLo:7999, rLo:5000}),
-  ],
-  MCS:[
-    M({id:'phq', name:'PHQ-9',       unit:'0–27', val:2,   w:.40, critical:true, optHi:4, yHi:5, rHi:15}),
-    M({id:'gad', name:'GAD-7',       unit:'0–21', val:2,   w:.30, optHi:4, yHi:5, rHi:15}),
-    M({id:'lone',name:'Loneliness',  unit:'UCLA-3', val:3, w:.30, optHi:3, yHi:4, rHi:7}),
-  ],
+/* ---- 2.0 context tables (Doc 12 §3) ---- */
+const CONFOUNDS={ betablocker:{rhr:0.7, vo2:0.6} };                 // drug → {marker: c_conf}
+const MANAGES={ betablocker:['sbp','rhr'], statin:['apob'], acei:['sbp','uacr'], metformin:['a1c','glu'], diuretic:['sbp'] };
+
+/* ---- personas / edge cases ---- */
+const PERSONAS={
+  healthy:    {age:40,meds:[],rep:0.90,wmult:{},marks:{},res:{},note:'Healthy adult cohort — well represented.'},
+  prediabetic:{age:52,meds:[],rep:0.85,wmult:{MET:1.6,CV:1.3,REN:1.1},marks:{a1c:6.0,glu:112,apob:95,waist:101},res:{GLY:55,ATH:40,INFL:35,CRF:55},note:'Pre-diabetes — MET/CV up-weighted; glycemic burden accumulating.'},
+  ckd:        {age:60,meds:['acei'],rep:0.80,wmult:{REN:2.0,CV:1.4,MET:1.2},marks:{egfr:48,uacr:90,k:5.0,sbp:138,apob:92},res:{GLY:42,ATH:52,INFL:46,CRF:55},note:'CKD-3 on ACE-i — BP/UACR MANAGED; mild K⁺ rise is drug-expected (Watch, not Alert).'},
+  athlete:    {age:30,meds:[],rep:0.40,wmult:{},marks:{rhr:42,vo2:58,glu:82,bmi:26.5,hgb:16.2,step:14000,mvpa:600},res:{CRF:96,MUS:92,SLD:10},note:'Endurance athlete — RHR 42 & low glucose are ADAPTIVE; out-of-cohort → cohort stats suppressed, confidence lowered.'},
+  betablocker:{age:58,meds:['betablocker'],rep:0.70,wmult:{CV:1.3},marks:{rhr:52,sbp:124,vo2:34},res:{},note:'On β-blocker — RHR & VO₂max CONFOUNDED (down-weighted, not scored as fitness); BP MANAGED.'},
+  elderly:    {age:84,meds:['acei'],rep:0.60,wmult:{REN:1.2,BCM:1.3,FIT:1.1},marks:{egfr:66,bmi:26,sbp:134,grip:30,vo2:24,a1c:5.7},res:{MUS:45,CRF:40},
+               bands:{bmi:{optLo:23,optHi:28,yLo:22,yHi:29,rLo:20,rHi:32},sbp:{optLo:120,optHi:139,yLo:118,yHi:142,rLo:112,rHi:160},egfr:{optLo:60,yLo:59,rLo:40},vo2:{optLo:22,yLo:21,rLo:15}},
+               note:'Age 84 — age-adjusted BMI/BP(J-curve)/eGFR/VO₂max frames; actionability modifier de-prioritizes low-yield flags.'},
+  dialysis:   {age:64,meds:[],rep:0.50,wmult:{REN:1.5,CV:1.4},marks:{egfr:8,uacr:600,k:5.3,sbp:138,hgb:10.8},exclude:['egfr'],res:{ATH:55},note:'ESRD on dialysis — eGFR EXCLUDED (adequacy frame); renal anemia (Hgb) expected.'},
+  pregnancy:  {sex:'f',age:31,meds:[],rep:0.50,wmult:{ENDO:1.3,HEM:1.2,CV:1.2},marks:{hgb:11.4,sbp:108,glu:84},exclude:['waist'],
+               bands:{hgb:{optLo:10.5,optHi:14,yLo:10,yHi:14.5,rLo:9,rHi:15.5},egfr:{optLo:100,yLo:99,rLo:70}},
+               note:'2nd-trimester frame — physiologic anemia & eGFR-rise expected; pre-eclampsia/GDM absolute anchors retained.'},
+  fh:         {age:38,meds:[],rep:0.75,wmult:{CV:1.5},marks:{apob:140,sbp:118},fixed:['apob'],res:{ATH:70},note:'Familial hypercholesterolemia — ApoB genetic, NOT lifestyle-modifiable (needs medication); modifiability low.'},
 };
 
-// suicidality hard rule (Doc 02 MCS) handled separately
-let suicidality = false;
+let SEX='m', PERSONA='healthy', prevPure=null;
 
-// ---- reservoirs (Doc 04) ----
-const RESERVOIRS = [
-  {id:'SLD', name:'Sleep debt',          type:'burden', lambda:0.30, val:18, feeds:{SLP:1.0,MCS:0.5,MET:0.4,CV:0.3,INF:0.4}},
-  {id:'ATH', name:'Atherogenic burden',  type:'burden', lambda:0.005,val:18, feeds:{CV:1.0}},
-  {id:'INFL',name:'Inflammatory load',   type:'burden', lambda:0.10, val:18, feeds:{INF:1.0,CV:0.5,MET:0.4,HEP:0.4,MCS:0.3}},
-  {id:'GLY', name:'Glycemic burden',     type:'burden', lambda:0.05, val:18, feeds:{MET:1.0,CV:0.5,REN:0.4,HEP:0.4}},
-  {id:'ALLO',name:'Allostatic/stress',   type:'burden', lambda:0.15, val:18, feeds:{MCS:1.0,ENDO:0.5,CV:0.3,SLP:0.5}},
-  {id:'CRF', name:'Cardioresp reserve',  type:'asset',  lambda:0.05, val:72, feeds:{FIT:1.0,CV:0.5,MET:0.4}},
-  {id:'MUS', name:'Muscle reserve',      type:'asset',  lambda:0.03, val:72, feeds:{BCM:1.0,FIT:0.5,MET:0.3}},
-];
+function band(m){ const o=Object.assign({},m);
+  if(m.bySex&&m.bySex[SEX]) Object.assign(o,m.bySex[SEX]);
+  const pb=PERSONAS[PERSONA].bands; if(pb&&pb[m.id]) Object.assign(o,pb[m.id]);
+  return o; }
+function defaultVal(m){ let v=m._val0;
+  if(m.bySex&&m.bySex[SEX]&&m.bySex[SEX].val!=null) v=m.bySex[SEX].val;
+  const pb=PERSONAS[PERSONA].bands; if(pb&&pb[m.id]&&pb[m.id].val!=null) v=pb[m.id].val;
+  return v; }
+function activeMeds(){ return PERSONAS[PERSONA].meds||[]; }
+function isModifiable(m){ return !((PERSONAS[PERSONA].fixed||[]).includes(m.id)); }
 
-// ---- personas ----
-const PERSONAS = {
-  healthy:    {wmult:{}, marks:{}, res:{}},
-  prediabetic:{wmult:{MET:1.6,CV:1.3,REN:1.1},
-               marks:{a1c:6.0,glu:112,apob:95,waist:101},
-               res:{GLY:55,ATH:40,INFL:35,CRF:55}},
-  ckd:        {wmult:{REN:2.0,CV:1.4,MET:1.2},
-               marks:{egfr:48,uacr:90,k:5.0,sbp:142,apob:92},
-               res:{GLY:42,ATH:52,INFL:46,CRF:55}},
-};
+function ctxOf(m){ const p=PERSONAS[PERSONA]; let conf=1,managed=false,confounded=false,present=true,excluded=false;
+  if((p.missing||[]).includes(m.id)){ present=false; conf=0.30; }
+  if((p.exclude||[]).includes(m.id)){ conf=0; excluded=true; }
+  activeMeds().forEach(md=>{
+    if(CONFOUNDS[md]&&CONFOUNDS[md][m.id]!==undefined){ confounded=true; conf*=(1-CONFOUNDS[md][m.id]); }
+    if((MANAGES[md]||[]).includes(m.id)) managed=true; });
+  return {conf,managed,confounded,present,excluded}; }
 
-// ======== state init ========
-let SEX='m', PERSONA='healthy';
-function band(m){ // resolve sex-specific band override
-  const o=Object.assign({},m);
-  if(m.bySex && m.bySex[SEX]) Object.assign(o,m.bySex[SEX]);
-  return o;
-}
-function applyPersona(resetVals){
-  const p=PERSONAS[PERSONA];
-  if(resetVals){
-    // reset all markers to their default (sex-resolved), then persona overrides
-    for(const k in MARKERS) MARKERS[k].forEach(m=>{ const b=band(m); m.val=b.val; });
-    for(const id in p.marks){ outer: for(const k in MARKERS) for(const m of MARKERS[k]) if(m.id===id){ m.val=p.marks[id]; break outer; } }
-    RESERVOIRS.forEach(r=>{ r.val = (p.res[r.id]!==undefined)? p.res[r.id] : (r.type==='asset'?72:18); });
-  }
-}
+function applyPersona(reset){ const p=PERSONAS[PERSONA];
+  if(reset){
+    for(const k in MARKERS) MARKERS[k].forEach(m=>{ m.val=defaultVal(m); });
+    for(const id in (p.marks||{})){ outer: for(const k in MARKERS) for(const m of MARKERS[k]) if(m.id===id){ m.val=p.marks[id]; break outer; } }
+    RESERVOIRS.forEach(r=>{ r.val=(p.res&&p.res[r.id]!==undefined)?p.res[r.id]:(r.type==='asset'?72:18); });
+  } }
 
-// ======== scoring math ========
-function sideRisk(x, opt, yel, red){ // outward boundaries opt(0)->yel(.15)->red(.5)
-  const sgn = (red>=opt)?1:-1; // high side if red>opt else low side
-  const X=sgn*x, O=sgn*opt, Y=sgn*yel, R=sgn*red; // normalize to "increasing = worse"
-  if(X<=O) return 0;
-  if(X<=Y) return (Y>O)? 0.15*(X-O)/(Y-O) : 0.5;
-  if(X<=R) return 0.15 + 0.35*(X-Y)/Math.max(R-Y,1e-6);
-  const scale=Math.max(R-Y,1e-6);
-  return Math.min(1, 0.5 + 0.5*(1-Math.exp(-(X-R)/scale)));
-}
-function markerRisk(m){
-  const b=band(m); let r=0;
-  if(b.optHi!==null && b.optHi!==undefined && m.val>b.optHi) r=Math.max(r, sideRisk(m.val,b.optHi,b.yHi,b.rHi));
-  if(b.optLo!==null && b.optLo!==undefined && m.val<b.optLo) r=Math.max(r, sideRisk(m.val,b.optLo,b.yLo,b.rLo));
-  return Math.max(0,Math.min(1,r));
-}
-function reservoirLoad(pid){ // B~_k in [0,1]
-  let num=0, den=0;
-  RESERVOIRS.forEach(r=>{ const w=r.feeds[pid]; if(!w) return;
-    den+=w; num += w*(r.type==='burden'? r.val/100 : (1 - r.val/100)); });
-  return den? Math.max(0,Math.min(1,num/den)) : 0;
-}
-function pillarRisk(pid){
-  const ms=MARKERS[pid];
-  let num=0, den=0, anyCritRed=false, contribs=[];
-  ms.forEach(m=>{ const r=markerRisk(m); contribs.push({m,r});
-    num += m.w*Math.pow(r,GAMMA); den+=m.w;
-    if(m.critical && r>=0.5) anyCritRed=true; });
-  let Rmark = den? Math.pow(num/den, 1/GAMMA) : 0;
-  const Btil = reservoirLoad(pid);
-  let R = Math.min(1, Rmark + RHO*Btil);
-  let critical = anyCritRed || R>=R_CRIT;
-  if(pid==='MCS' && suicidality) critical=true;
+/* ---- scoring math (Doc 03) ---- */
+function sideRisk(x,opt,yel,red){ const sgn=(red>=opt)?1:-1; const X=sgn*x,O=sgn*opt,Y=sgn*yel,R=sgn*red;
+  if(X<=O)return 0; if(X<=Y)return (Y>O)?0.15*(X-O)/(Y-O):0.5;
+  if(X<=R)return 0.15+0.35*(X-Y)/Math.max(R-Y,1e-6);
+  const s=Math.max(R-Y,1e-6); return Math.min(1,0.5+0.5*(1-Math.exp(-(X-R)/s))); }
+function markerRisk(m){ const b=band(m); let r=0;
+  if(b.optHi!=null&&m.val>b.optHi) r=Math.max(r,sideRisk(m.val,b.optHi,b.yHi,b.rHi));
+  if(b.optLo!=null&&m.val<b.optLo) r=Math.max(r,sideRisk(m.val,b.optLo,b.yLo,b.rLo));
+  return Math.max(0,Math.min(1,r)); }
+/* within-green drift (Doc 12 §5.2) — early-warning before threshold */
+function driftScore(m){ const b=band(m); if(markerRisk(m)>0) return 0; let pos=0;
+  if(b.optLo!=null&&b.optHi!=null){ const c=(b.optLo+b.optHi)/2,h=(b.optHi-b.optLo)/2||1; pos=Math.abs(m.val-c)/h; }
+  else if(b.optHi!=null){ const Wd=Math.max((b.yHi-b.optHi)*4,1e-6); pos=Math.min(1,Math.max(0,(m.val-(b.optHi-Wd))/Wd)); }
+  else if(b.optLo!=null){ const Wd=Math.max((b.optLo-b.yLo)*4,1e-6); pos=Math.min(1,Math.max(0,((b.optLo+Wd)-m.val)/Wd)); }
+  return Math.min(0.1,0.1*pos); }
+function reservoirLoad(pid){ let num=0,den=0;
+  RESERVOIRS.forEach(r=>{ const w=r.feeds[pid]; if(!w)return; den+=w; num+=w*(r.type==='burden'?r.val/100:(1-r.val/100)); });
+  return den?Math.max(0,Math.min(1,num/den)):0; }
+function pillarRisk(pid){ const ms=MARKERS[pid]; let num=0,den=0,anyCritRed=false,contribs=[];
+  ms.forEach(m=>{ const ctx=ctxOf(m); const r=markerRisk(m); const wi=m.w*ctx.conf;
+    num+=wi*Math.pow(r,GAMMA); den+=wi;
+    if(m.critical&&r>=0.5&&ctx.conf>0.05) anyCritRed=true;
+    contribs.push({m,r,ctx,drift:driftScore(m)}); });
+  let Rmark=den>0?Math.pow(num/den,1/GAMMA):0;
+  const Btil=reservoirLoad(pid); let R=Math.min(1,Rmark+RHO*Btil);
+  let critical=anyCritRed||R>=R_CRIT; if(pid==='MCS'&&suicidality) critical=true;
   if(critical) R=Math.max(R,R_CRIT);
-  return {R, critical, Rmark, Btil, contribs};
-}
-function compute(){
-  const pr={}; let anyCrit=false;
+  return {R,critical,Rmark,Btil,contribs,cov:den}; }
+
+function compute(){ const pr={}; let anyCrit=false;
   PILLARS.forEach(p=>{ pr[p.id]=pillarRisk(p.id); if(pr[p.id].critical) anyCrit=true; });
-  // personalized weights
-  const wm=PERSONAS[PERSONA].wmult; let W={}, sumW=0;
+  const wm=PERSONAS[PERSONA].wmult||{}; let W={},sumW=0;
   PILLARS.forEach(p=>{ W[p.id]=p.base*(wm[p.id]||1); sumW+=W[p.id]; });
-  // PureScore power-mean
-  let num=0;
-  PILLARS.forEach(p=>{ num += W[p.id]*Math.pow(pr[p.id].R,DELTA); });
-  let Rtot=Math.pow(num/sumW, 1/DELTA);
-  let pure=100*(1-Rtot);
-  let status = anyCrit?'CRITICAL':(Rtot>=0.30?'AT RISK':'ON TRACK');
-  let binding=null;
-  if(anyCrit){ pure=Math.min(pure,PURE_CRIT_CAP);
-    // binding = highest-risk critical pillar
-    let best=-1; PILLARS.forEach(p=>{ if(pr[p.id].critical && pr[p.id].R>best){best=pr[p.id].R;binding=p.id;} }); }
-  return {pr,W,Rtot,pure,status,anyCrit,binding};
-}
+  let num=0; PILLARS.forEach(p=>{ num+=W[p.id]*Math.pow(pr[p.id].R,DELTA); });
+  let Rtot=Math.pow(num/sumW,1/DELTA); let pure=100*(1-Rtot);
+  let status=anyCrit?'CRITICAL':(Rtot>=0.30?'AT RISK':'ON TRACK'); let binding=null;
+  if(anyCrit){ pure=Math.min(pure,PURE_CRIT_CAP); let best=-1; PILLARS.forEach(p=>{ if(pr[p.id].critical&&pr[p.id].R>best){best=pr[p.id].R;binding=p.id;} }); }
 
-// ======== status colour ========
-function colR(R,crit){ if(crit) return 'var(--red)'; if(R<0.30) return 'var(--green)'; if(R<0.60) return 'var(--yellow)'; return 'var(--red)'; }
-function colPure(s,status){ if(status==='CRITICAL') return 'var(--crit)'; if(s>=70) return 'var(--green)'; if(s>=50) return 'var(--yellow)'; return 'var(--red)'; }
+  /* ---- companion vector (Doc 12 §4) ---- */
+  let cW=0,cConf=0,cPres=0,totR=0,modR=0,reds=0,emergency=false,watchSources=0; const watchP=new Set();
+  PILLARS.forEach(p=>{ pr[p.id].contribs.forEach(c=>{ const w=c.m.w*W[p.id];
+    cW+=w; cConf+=w*c.ctx.conf; cPres+=w*(c.ctx.present?1:0);
+    totR+=c.m.w*c.r; if(isModifiable(c.m)) modR+=c.m.w*c.r;
+    if(c.r>=0.5){ reds++; if(['k','spo2','glu'].includes(c.m.id)) emergency=true; }
+    if(c.r>0&&c.r<0.15){ watchSources++; watchP.add(p.id); } }); });   // entering green→yellow ramp
+  RESERVOIRS.forEach(r=>{ if((r.type==='burden'&&r.val>45)||(r.type==='asset'&&r.val<40)) watchSources++; }); // filling burden / depleting asset
+  if(suicidality){ emergency=true; reds++; }
+  const rep=PERSONAS[PERSONA].rep;
+  const confidence=Math.round(100*(cW?cConf/cW:0)*rep);
+  const sufficiency=Math.round(100*(cW?cPres/cW:0));
+  const modifiability=Math.round(100*(totR>0?modR/totR:1));
+  const critTier=emergency?'emergency':(reds>0?'urgent':'none');
+  const ewTier=watchSources===0?'none':(watchSources>=3?'Advisory':'Watch');
+  let traj=null; if(prevPure!=null) traj=pure-prevPure;
+  const companion={confidence,sufficiency,modifiability,rep:Math.round(100*rep),critTier,reds,ewTier,watchM:watchSources,watchP:[...watchP],traj};
 
-// ======== left input panel ========
-function buildInputs(){
-  const root=d3.select('#inputs'); root.html('');
-  root.append('div').attr('class','note').html('Adjust any marker or reservoir — the puzzle and PureScore update live. <b>Critical</b> markers (★) can force their pillar — and the whole score — into the critical band (Doc 03 §4–5).');
-  // suicidality
+  return {pr,W,Rtot,pure,status,anyCrit,binding,companion}; }
+
+/* ---- colours ---- */
+function colR(R,crit){ if(crit)return 'var(--red)'; if(R<0.30)return 'var(--green)'; if(R<0.60)return 'var(--yellow)'; return 'var(--red)'; }
+function colPure(s,status){ if(status==='CRITICAL')return 'var(--crit)'; if(s>=70)return 'var(--green)'; if(s>=50)return 'var(--yellow)'; return 'var(--red)'; }
+function bcol(v){ return v>=70?'var(--green)':v>=40?'var(--yellow)':'var(--red)'; }
+
+/* ---- inputs ---- */
+function buildInputs(){ const root=d3.select('#inputs'); root.html('');
+  root.append('div').attr('class','pnote').html('Adjust any marker / reservoir, or pick an edge-case persona — the puzzle, PureScore <b>and the companion vector</b> update live. ★ = critical marker.');
   const sui=root.append('details').attr('class','sec').attr('open',true);
   sui.append('summary').html('<span class="dot" style="background:var(--crit)"></span> Mental-health safety flag');
   const sb=sui.append('div').attr('class','body');
   const lab=sb.append('label').style('display','flex').style('gap','8px').style('align-items','center').style('font-size','12.5px');
-  lab.append('input').attr('type','checkbox').attr('id','sui').on('change',function(){suicidality=this.checked;render();});
-  lab.append('span').html('PHQ-9 item 9 &gt; 0 (any suicidality) — <span class="crit-tag">forces MCS critical regardless of total</span>');
-
-  PILLARS.forEach(p=>{
-    const d=root.append('details').attr('class','sec').attr('data-pid',p.id);
-    const sum=d.append('summary');
-    sum.append('span').attr('class','dot').attr('id','dot-'+p.id);
-    sum.append('span').html(`<b>${p.id}</b> · ${p.name}`);
-    sum.append('span').attr('class','pill-score').attr('id','ps-'+p.id);
+  lab.append('input').attr('type','checkbox').attr('id','sui').property('checked',suicidality).on('change',function(){suicidality=this.checked;prevPure=null;render();});
+  lab.append('span').html('PHQ-9 item 9 &gt; 0 — <span style="color:var(--crit);font-weight:700">forces MCS critical + emergency</span>');
+  PILLARS.forEach(p=>{ const d=root.append('details').attr('class','sec').attr('data-pid',p.id);
+    const sum=d.append('summary'); sum.append('span').attr('class','dot').attr('id','dot-'+p.id);
+    sum.append('span').html(`<b>${p.id}</b> · ${p.name}`); sum.append('span').attr('class','pill-score').attr('id','ps-'+p.id);
     const body=d.append('div').attr('class','body');
-    MARKERS[p.id].forEach(m=>{
-      const b=band(m);
-      const row=body.append('div').attr('class','mk');
+    MARKERS[p.id].forEach(m=>{ const b=band(m); const row=body.append('div').attr('class','mk');
       row.append('div').attr('class','nm').html(`${m.critical?'★ ':''}${b.name} <small>${b.unit||''}</small>`);
       row.append('input').attr('type','number').attr('step','any').attr('value',m.val).attr('id','in-'+m.id)
-        .on('input',function(){ m.val=parseFloat(this.value); render(); });
-      row.append('div').attr('class','rv').attr('id','rv-'+m.id);
-    });
-  });
-
-  // reservoirs
-  const rd=root.append('details').attr('class','sec res').attr('open',false);
-  rd.append('summary').html('<span class="dot" style="background:#7a86ff"></span> MONIAC reservoirs (burdens & assets)');
+        .on('input',function(){ m.val=parseFloat(this.value); prevPure=null; render(); });
+      row.append('div').attr('class','rv').attr('id','rv-'+m.id); }); });
+  const rd=root.append('details').attr('class','sec res');
+  rd.append('summary').html('<span class="dot" style="background:#7a86ff"></span> MONIAC reservoirs');
   const rb=rd.append('div').attr('class','body');
-  rb.append('div').attr('class','note').html('Accumulated burdens raise linked pillars; depleted assets do too (Doc 04). “Simulate days” drains burdens & builds assets by their decay rate λ.');
-  RESERVOIRS.forEach(r=>{
-    const row=rb.append('div').attr('class','mk');
+  rb.append('div').attr('class','pnote').html('Burdens raise / depleted assets raise linked pillars. “Simulate days” drains/builds by λ and yields a Trajectory reading.');
+  RESERVOIRS.forEach(r=>{ const row=rb.append('div').attr('class','mk');
     row.append('div').attr('class','nm').html(`${r.name} <small>${r.type} · λ=${r.lambda}</small>`);
     row.append('input').attr('type','range').attr('min',0).attr('max',100).attr('value',r.val).attr('id','res-'+r.id)
-      .on('input',function(){ r.val=+this.value; d3.select('#resv-'+r.id).text(r.val); render(); });
-    row.append('div').attr('class','rv').attr('id','resv-'+r.id).text(r.val);
-  });
+      .on('input',function(){ r.val=+this.value; prevPure=null; render(); });
+    row.append('div').attr('class','rv').attr('id','resv-'+r.id).text(r.val); });
+  root.append('div').attr('class','break').attr('id','break').html('<h3>Click a pillar piece →</h3><div class="bk-row">Select a pillar to see its marker-by-marker breakdown.</div>');
+  root.append('div').attr('class','pnote').style('margin-top','10px').html('Methodology: <code>docs/purescore/03</code>, <code>04</code> & <code>12</code>.'); }
 
-  // breakdown placeholder
-  root.append('div').attr('class','break').attr('id','break').html('<h3>Click a pillar piece →</h3><div class="bk-row">Select a pillar in the diagram to see its marker-by-marker breakdown.</div>');
-  root.append('div').attr('class','note').style('margin-top','10px').html('Full methodology: <code>docs/purescore/03-scoring-formula.md</code> & <code>04-moniac-reservoir-dynamics.md</code>.');
-}
-
-// ======== diagram (D3) ========
-const svg=d3.select('#svg');
-const W=980,H=760, cx=W/2, cy=H/2+10, ring=255;
-let selected=null;
-
-// jigsaw piece path generator
-function lerp(a,b,t){return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];}
-function jigsaw(w,h,tabs){ // tabs=[top,right,bottom,left] in {1 out,-1 in,0 flat}
-  const c=[[0,0],[w,0],[w,h],[0,h]];
-  const k=Math.min(w,h)*0.16;
-  let d=`M${c[0][0]},${c[0][1]}`;
-  for(let e=0;e<4;e++){
-    const p0=c[e], p1=c[(e+1)%4], s=tabs[e];
-    if(s===0){ d+=` L${p1[0]},${p1[1]}`; continue; }
-    const dir=[p1[0]-p0[0],p1[1]-p0[1]];
-    const nrm=[dir[1],-dir[0]]; const nl=Math.hypot(nrm[0],nrm[1]); nrm[0]/=nl;nrm[1]/=nl;
-    const a=lerp(p0,p1,0.36), cc=lerp(p0,p1,0.64);
-    const peak=lerp(p0,p1,0.5); peak[0]+=nrm[0]*s*k; peak[1]+=nrm[1]*s*k;
-    const m1=lerp(p0,p1,0.42); m1[0]+=nrm[0]*s*k*1.5; m1[1]+=nrm[1]*s*k*1.5;
-    const m2=lerp(p0,p1,0.58); m2[0]+=nrm[0]*s*k*1.5; m2[1]+=nrm[1]*s*k*1.5;
-    d+=` L${a[0]},${a[1]} Q${m1[0]},${m1[1]} ${peak[0]},${peak[1]} Q${m2[0]},${m2[1]} ${cc[0]},${cc[1]} L${p1[0]},${p1[1]}`;
-  }
-  return d+' Z';
-}
-
-function layout(){
-  const pos={};
-  PILLARS.forEach((p,i)=>{ const ang=-Math.PI/2 + i*2*Math.PI/PILLARS.length;
-    pos[p.id]={x:cx+ring*Math.cos(ang), y:cy+ring*Math.sin(ang), ang}; });
-  return pos;
-}
-const POS=layout();
-const PW=118, PH=70;
-
-function drawStatic(){
-  svg.selectAll('*').remove();
-  const defs=svg.append('defs');
-  defs.append('marker').attr('id','arrow').attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5)
-    .attr('markerWidth',7).attr('markerHeight',7).attr('orient','auto-start-reverse')
-    .append('path').attr('d','M0,0 L10,5 L0,10 z').attr('fill','#7f8cb0');
-
-  // reservoir interference edges (faint dashed) pillar<-reservoir, place reservoir nodes outer
-  const resLayer=svg.append('g');
-  const RPOS={};
-  RESERVOIRS.forEach((r,i)=>{ const ang=-Math.PI/2 + (i+0.5)*2*Math.PI/RESERVOIRS.length;
-    RPOS[r.id]={x:cx+(ring+150)*Math.cos(ang), y:cy+(ring+118)*Math.sin(ang)}; });
-  RESERVOIRS.forEach(r=>{ for(const pid in r.feeds){
-    const a=RPOS[r.id], b=POS[pid];
-    resLayer.append('path').attr('class','resedge resedge-'+r.id)
-      .attr('d',`M${a.x},${a.y} Q${(a.x+b.x)/2},${(a.y+b.y)/2} ${b.x},${b.y}`)
-      .attr('fill','none').attr('stroke', r.type==='asset'?'#3b7':'#7a86ff')
-      .attr('stroke-opacity',.13).attr('stroke-width',1).attr('stroke-dasharray','3 4'); } });
-  RESERVOIRS.forEach(r=>{ const a=RPOS[r.id];
-    const g=resLayer.append('g').attr('transform',`translate(${a.x},${a.y})`).style('cursor','default')
-      .on('mouseover',()=>{ d3.selectAll('.resedge-'+r.id).attr('stroke-opacity',.6).attr('stroke-width',1.6);
-        tip(`<b>${r.name}</b><br>${r.type} · λ=${r.lambda}/day<br>load ${r.val}/100<br>feeds: ${Object.keys(r.feeds).join(', ')}`); })
-      .on('mousemove',moveTip).on('mouseout',()=>{ d3.selectAll('.resedge-'+r.id).attr('stroke-opacity',.13).attr('stroke-width',1); hideTip(); });
-    g.append('rect').attr('x',-30).attr('y',-15).attr('width',60).attr('height',30).attr('rx',8)
-      .attr('fill','#10162a').attr('stroke', r.type==='asset'?'#3b7':'#7a86ff').attr('stroke-opacity',.5);
+/* ---- diagram ---- */
+const svg=d3.select('#svg'); const W=980,H=760,cx=W/2,cy=H/2+10,ring=255; let selected=null;
+function lerp(a,b,t){return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];}
+function jigsaw(x,y,w,h,tabs){ const c=[[0,0],[w,0],[w,h],[0,h]],k=Math.min(w,h)*0.16; let d=`M${x+c[0][0]},${y+c[0][1]}`;
+  for(let e=0;e<4;e++){ const p0=c[e],p1=c[(e+1)%4],sg=tabs[e]; if(sg===0){d+=` L${x+p1[0]},${y+p1[1]}`;continue;}
+    const dv=[p1[0]-p0[0],p1[1]-p0[1]]; let nr=[dv[1],-dv[0]]; const nl=Math.hypot(nr[0],nr[1]); nr=[nr[0]/nl,nr[1]/nl];
+    const a=lerp(p0,p1,0.36),cc=lerp(p0,p1,0.64); let pk=lerp(p0,p1,0.5); pk=[pk[0]+nr[0]*sg*k,pk[1]+nr[1]*sg*k];
+    let m1=lerp(p0,p1,0.42); m1=[m1[0]+nr[0]*sg*k*1.5,m1[1]+nr[1]*sg*k*1.5];
+    let m2=lerp(p0,p1,0.58); m2=[m2[0]+nr[0]*sg*k*1.5,m2[1]+nr[1]*sg*k*1.5];
+    d+=` L${x+a[0]},${y+a[1]} Q${x+m1[0]},${y+m1[1]} ${x+pk[0]},${y+pk[1]} Q${x+m2[0]},${y+m2[1]} ${x+cc[0]},${y+cc[1]} L${x+p1[0]},${y+p1[1]}`; }
+  return d+' Z'; }
+const POS={}; PILLARS.forEach((p,i)=>{ const a=-Math.PI/2+i*2*Math.PI/12; POS[p.id]=[cx+ring*Math.cos(a),cy+ring*Math.sin(a)]; });
+const PW=118,PH=70;
+function drawStatic(){ svg.selectAll('*').remove();
+  svg.append('defs').html('<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7f8cb0"/></marker>');
+  const rl=svg.append('g'); const RP={};
+  RESERVOIRS.forEach((r,i)=>{ const a=-Math.PI/2+(i+0.5)*2*Math.PI/7; RP[r.id]=[cx+(ring+150)*Math.cos(a),cy+(ring+118)*Math.sin(a)]; });
+  RESERVOIRS.forEach(r=>{ for(const pid in r.feeds){ const a=RP[r.id],b=POS[pid];
+    rl.append('path').attr('class','re re-'+r.id).attr('d',`M${a[0]},${a[1]} Q${(a[0]+b[0])/2},${(a[1]+b[1])/2} ${b[0]},${b[1]}`)
+      .attr('fill','none').attr('stroke',r.type==='asset'?'#3b7':'#7a86ff').attr('stroke-opacity',.13).attr('stroke-width',1).attr('stroke-dasharray','3 4'); } });
+  RESERVOIRS.forEach(r=>{ const a=RP[r.id]; const g=rl.append('g').attr('transform',`translate(${a[0]},${a[1]})`)
+      .on('mouseover',()=>{d3.selectAll('.re-'+r.id).attr('stroke-opacity',.6).attr('stroke-width',1.6);})
+      .on('mouseout',()=>{d3.selectAll('.re-'+r.id).attr('stroke-opacity',.13).attr('stroke-width',1);});
+    g.append('rect').attr('x',-30).attr('y',-15).attr('width',60).attr('height',30).attr('rx',8).attr('fill','#10162a').attr('stroke',r.type==='asset'?'#3b7':'#7a86ff').attr('stroke-opacity',.5);
     g.append('text').attr('text-anchor','middle').attr('dy',-2).attr('font-size',9).attr('fill','#aeb8d6').text(r.id);
-    g.append('text').attr('class','restxt').attr('id','rt-'+r.id).attr('text-anchor','middle').attr('dy',9).attr('font-size',9).attr('fill','#7f8cb0').text(r.val); });
-
-  // flow arrows pillar -> hub
-  const flow=svg.append('g');
-  PILLARS.forEach(p=>{ const a=POS[p.id];
-    const dx=cx-a.x, dy=cy-a.y, len=Math.hypot(dx,dy);
-    const sx=a.x+dx/len*46, sy=a.y+dy/len*30, ex=cx-dx/len*92, ey=cy-dy/len*92;
-    flow.append('line').attr('class','flow-'+p.id).attr('x1',sx).attr('y1',sy).attr('x2',ex).attr('y2',ey)
-      .attr('stroke','#46527a').attr('stroke-width',2).attr('marker-end','url(#arrow)'); });
-
-  // pillar pieces
-  const pg=svg.append('g');
-  PILLARS.forEach((p,i)=>{ const a=POS[p.id];
-    const g=pg.append('g').attr('transform',`translate(${a.x-PW/2},${a.y-PH/2})`).style('cursor','pointer')
-      .on('click',()=>{ selected=p.id; openPillar(p.id); render(); })
-      .on('mouseover',()=>showPillarTip(p.id)).on('mousemove',moveTip).on('mouseout',hideTip);
-    g.append('path').attr('class','piece piece-'+p.id)
-      .attr('d',jigsaw(PW,PH,[(i%2?1:-1),(i%2?-1:1),(i%2?1:-1),(i%2?-1:1)]))
-      .attr('fill','#1b2440').attr('stroke','#39456b').attr('stroke-width',2);
+    g.append('text').attr('id','rt-'+r.id).attr('text-anchor','middle').attr('dy',9).attr('font-size',9).attr('fill','#7f8cb0').text(r.val); });
+  const fl=svg.append('g'); PILLARS.forEach(p=>{ const a=POS[p.id],dx=cx-a[0],dy=cy-a[1],L=Math.hypot(dx,dy);
+    fl.append('line').attr('class','flow-'+p.id).attr('x1',a[0]+dx/L*46).attr('y1',a[1]+dy/L*30).attr('x2',cx-dx/L*92).attr('y2',cy-dy/L*92).attr('stroke','#46527a').attr('stroke-width',2).attr('marker-end','url(#arr)'); });
+  const pg=svg.append('g'); PILLARS.forEach((p,i)=>{ const a=POS[p.id];
+    const g=pg.append('g').attr('transform',`translate(${a[0]-PW/2},${a[1]-PH/2})`).style('cursor','pointer')
+      .on('click',()=>{selected=p.id;openPillar(p.id);render();}).on('mouseover',()=>pillarTip(p.id)).on('mousemove',moveTip).on('mouseout',hideTip);
+    g.append('path').attr('class','piece-'+p.id).attr('d',jigsaw(0,0,PW,PH,[(i%2?1:-1),(i%2?-1:1),(i%2?1:-1),(i%2?-1:1)])).attr('fill','#1b2440').attr('stroke','#39456b').attr('stroke-width',2);
     g.append('text').attr('x',PW/2).attr('y',PH/2-6).attr('text-anchor','middle').attr('font-size',13).attr('font-weight',700).attr('fill','#fff').text(p.id);
-    g.append('text').attr('class','pscore').attr('id','svg-ps-'+p.id).attr('x',PW/2).attr('y',PH/2+13).attr('text-anchor','middle').attr('font-size',12).attr('fill','#cdd6ee').text('');
-  });
-
-  // central hub jigsaw
-  const hg=svg.append('g').attr('transform',`translate(${cx-95},${cy-95})`);
-  hg.append('path').attr('id','hub').attr('d',jigsaw(190,190,[-1,1,-1,1])).attr('fill','#10203a').attr('stroke','#5b8cff').attr('stroke-width',3);
-  svg.append('text').attr('id','hub-label').attr('x',cx).attr('y',cy-44).attr('text-anchor','middle').attr('font-size',13).attr('fill','#9fb0d8').text('PureScore');
+    g.append('text').attr('id','svg-ps-'+p.id).attr('x',PW/2).attr('y',PH/2+13).attr('text-anchor','middle').attr('font-size',12).attr('fill','#cdd6ee').text(''); });
+  svg.append('path').attr('id','hub').attr('d',jigsaw(cx-95,cy-95,190,190,[-1,1,-1,1])).attr('fill','#10203a').attr('stroke','var(--accent)').attr('stroke-width',3);
+  svg.append('text').attr('x',cx).attr('y',cy-44).attr('text-anchor','middle').attr('font-size',13).attr('fill','#9fb0d8').text('PureScore');
   svg.append('text').attr('id','hub-num').attr('x',cx).attr('y',cy+12).attr('text-anchor','middle').attr('font-size',54).attr('font-weight',800).attr('fill','#fff').text('—');
   svg.append('text').attr('id','hub-status').attr('x',cx).attr('y',cy+44).attr('text-anchor','middle').attr('font-size',13).attr('font-weight',700).text('');
-  svg.append('text').attr('id','hub-bind').attr('x',cx).attr('y',cy+66).attr('text-anchor','middle').attr('font-size',10.5).attr('fill','#9fb0d8').text('');
-}
-
-function openPillar(pid){
-  document.querySelectorAll('#inputs details[data-pid]').forEach(d=>{ d.open = (d.getAttribute('data-pid')===pid); });
-  const el=document.querySelector(`#inputs details[data-pid="${pid}"]`); if(el) el.scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-
-// tooltips
+  svg.append('text').attr('id','hub-bind').attr('x',cx).attr('y',cy+66).attr('text-anchor','middle').attr('font-size',10.5).attr('fill','#9fb0d8').text(''); }
+function openPillar(pid){ document.querySelectorAll('#inputs details[data-pid]').forEach(d=>{d.open=(d.getAttribute('data-pid')===pid);});
+  const el=document.querySelector(`#inputs details[data-pid="${pid}"]`); if(el) el.scrollIntoView({behavior:'smooth',block:'nearest'}); }
 const tipEl=document.getElementById('tip');
-function tip(html){ tipEl.innerHTML=html; tipEl.style.opacity=1; }
-function moveTip(ev){ tipEl.style.left=(ev.clientX+14)+'px'; tipEl.style.top=(ev.clientY+14)+'px'; }
-function hideTip(){ tipEl.style.opacity=0; }
-function showPillarTip(pid){ const r=pillarRisk(pid);
-  let rows=r.contribs.map(c=>`${band(c.m).name}: r=${c.r.toFixed(2)}`).join('<br>');
-  tip(`<b>${pid}</b> — R=${r.R.toFixed(2)} ${r.critical?'<span class="crit-tag">CRITICAL</span>':''}<br>${rows}<br><i>reservoir load +${(RHO*r.Btil).toFixed(2)}</i><br>click for full breakdown`); }
+function moveTip(ev){tipEl.style.left=(ev.clientX+14)+'px';tipEl.style.top=(ev.clientY+14)+'px';}
+function hideTip(){tipEl.style.opacity=0;}
+function pillarTip(pid){ const r=pillarRisk(pid);
+  const rows=r.contribs.map(c=>`${band(c.m).name}: r=${c.r.toFixed(2)}${c.ctx.managed?' MNG':''}${c.ctx.confounded?' CNF':''}${c.ctx.excluded?' EXC':''}`).join('<br>');
+  tipEl.innerHTML=`<b>${pid}</b> — R=${r.R.toFixed(2)} ${r.critical?'<span style="color:var(--crit)">CRITICAL</span>':''}<br>${rows}<br><i>reservoir +${(RHO*r.Btil).toFixed(2)}</i>`; tipEl.style.opacity=1; }
 
-// ======== render ========
-function render(){
-  const out=compute();
-  // pillar pieces + dots + scores
+/* ---- render ---- */
+function render(){ const out=compute();
   PILLARS.forEach(p=>{ const r=out.pr[p.id]; const col=colR(r.R,r.critical);
-    svg.select('.piece-'+p.id).attr('fill', col).attr('fill-opacity',.22)
-      .attr('stroke', col).attr('stroke-width', selected===p.id?4:2.4);
+    svg.select('.piece-'+p.id).attr('fill',col).attr('fill-opacity',.22).attr('stroke',col).attr('stroke-width',selected===p.id?4:2.4);
     svg.select('#svg-ps-'+p.id).text(Math.round(100*(1-r.R))).attr('fill',col);
-    svg.select('.flow-'+p.id).attr('stroke', col).attr('stroke-opacity', r.critical?.95:.55).attr('stroke-width', r.critical?3:2);
+    svg.select('.flow-'+p.id).attr('stroke',col).attr('stroke-opacity',r.critical?.95:.55).attr('stroke-width',r.critical?3:2);
     d3.select('#dot-'+p.id).style('background',col);
-    d3.select('#ps-'+p.id).text('S '+Math.round(100*(1-r.R))+(r.critical?' ⚠':''));
-  });
-  // marker risk read-outs
-  for(const pid in MARKERS) MARKERS[pid].forEach(m=>{ const r=markerRisk(m);
-    const c = r<0.15?'var(--green)':r<0.5?'var(--yellow)':'var(--red)';
-    d3.select('#rv-'+m.id).text('r '+r.toFixed(2)).style('color',c); });
-  // reservoir read-outs
+    d3.select('#ps-'+p.id).text('S '+Math.round(100*(1-r.R))+(r.critical?' ⚠':'')); });
+  for(const pid in MARKERS) MARKERS[pid].forEach(m=>{ const r=markerRisk(m); const ctx=ctxOf(m);
+    const c=r<0.15?'var(--green)':r<0.5?'var(--yellow)':'var(--red)'; let t='r '+r.toFixed(2);
+    if(ctx.excluded)t+=' EXC'; else if(ctx.managed)t+=' MNG'; if(ctx.confounded)t+=' CNF';
+    d3.select('#rv-'+m.id).text(t).style('color',ctx.excluded?'var(--muted)':c); });
   RESERVOIRS.forEach(r=>{ d3.select('#rt-'+r.id).text(r.val); d3.select('#resv-'+r.id).text(r.val); d3.select('#res-'+r.id).property('value',r.val); });
-  // hub
   const col=colPure(out.pure,out.status);
   svg.select('#hub-num').text(Math.round(out.pure)).attr('fill',col);
-  svg.select('#hub').attr('stroke',col).attr('fill', out.status==='CRITICAL'?'#2a0e18':'#10203a');
+  svg.select('#hub').attr('stroke',col).attr('fill',out.status==='CRITICAL'?'#2a0e18':'#10203a');
   svg.select('#hub-status').text(out.status).attr('fill',col);
-  svg.select('#hub-bind').text(out.anyCrit? ('capped by '+out.binding+' (critical cascade)') : ('R_total='+out.Rtot.toFixed(2)));
-  // breakdown panel
-  if(selected){ const r=out.pr[selected]; const p=PILLARS.find(x=>x.id===selected);
+  svg.select('#hub-bind').text(out.anyCrit?('capped by '+out.binding+' (cascade)'):('R_total='+out.Rtot.toFixed(2)));
+
+  /* companion vector strip */
+  const co=out.companion; const arrow=co.traj==null?'—':(co.traj>0.3?'↑':co.traj<-0.3?'↓':'→');
+  const trajTxt=co.traj==null?'— (simulate days)':`${arrow} ${co.traj>=0?'+':''}${co.traj.toFixed(1)}`;
+  const trajCol=co.traj==null?'var(--muted)':(co.traj>0.3?'var(--green)':co.traj<-0.3?'var(--red)':'var(--yellow)');
+  const critCol=co.critTier==='emergency'?'var(--crit)':co.critTier==='urgent'?'var(--yellow)':'var(--green)';
+  const ewCol=co.ewTier==='Advisory'?'var(--yellow)':co.ewTier==='Watch'?'#7fd1ff':'var(--green)';
+  function badge(k,v,c){ return `<span class="badge"><span class="k">${k}</span><b style="color:${c}">${v}</b></span>`; }
+  d3.select('#companion').html(
+    badge('PureScore',Math.round(out.pure)+' '+arrow,col)+
+    badge('Confidence',co.confidence+'%',bcol(co.confidence))+
+    badge('Data',co.sufficiency+'%'+(co.sufficiency<50?' ⚠ insufficient':''),bcol(co.sufficiency))+
+    badge('Criticality',co.critTier+(co.reds?(' ('+co.reds+' red)'):''),critCol)+
+    badge('Trajectory',trajTxt,trajCol)+
+    badge('Early-warning',co.ewTier+(co.watchM?(' · '+co.watchM+' signals'):''),ewCol)+
+    badge('Representativeness',co.rep+'%'+(co.rep<60?' (OOD→cohort suppressed)':''),bcol(co.rep))+
+    badge('Modifiability',co.modifiability+'%',bcol(co.modifiability)) );
+  d3.select('#pnote').html('<b>'+PERSONA+'</b> · age '+PERSONAS[PERSONA].age+(activeMeds().length?(' · meds: '+activeMeds().join(', ')):'')+' — '+PERSONAS[PERSONA].note+
+    ' &nbsp; <i>Skew, volatility & personal-baseline anomaly need time-series (Doc 12 §5).</i>');
+
+  if(selected){ const r=out.pr[selected],p=PILLARS.find(x=>x.id===selected);
     let html=`<h3>${selected} · ${p.name} &nbsp; <span style="color:${colR(r.R,r.critical)}">S ${Math.round(100*(1-r.R))}${r.critical?' · CRITICAL':''}</span></h3>`;
-    r.contribs.forEach(c=>{ html+=`<div class="bk-row"><span>${band(c.m).name} = ${c.m.val} ${band(c.m).unit||''} ${c.m.critical?'★':''}</span><b style="color:${c.r<0.15?'var(--green)':c.r<0.5?'var(--yellow)':'var(--red)'}">r ${c.r.toFixed(2)}</b></div>`; });
-    html+=`<div class="bk-row"><span>marker power-mean (γ=3)</span><b>${r.Rmark.toFixed(2)}</b></div>`;
+    r.contribs.forEach(c=>{ const tags=(c.ctx.managed?'<span class="tag mng">MNG</span>':'')+(c.ctx.confounded?'<span class="tag cnf">CNF</span>':'')+(c.ctx.excluded?'<span class="tag exc">EXC</span>':'');
+      html+=`<div class="bk-row"><span>${band(c.m).name} = ${c.m.val} ${band(c.m).unit||''} ${c.m.critical?'★':''}${tags}</span><b style="color:${c.r<0.15?'var(--green)':c.r<0.5?'var(--yellow)':'var(--red)'}">r ${c.r.toFixed(2)}</b></div>`; });
+    html+=`<div class="bk-row"><span>marker power-mean (γ=3, conf-weighted)</span><b>${r.Rmark.toFixed(2)}</b></div>`;
     html+=`<div class="bk-row"><span>+ reservoir load (ρ·B̃)</span><b>+${(RHO*r.Btil).toFixed(2)}</b></div>`;
-    html+=`<div class="bk-row"><span>pillar weight W</span><b>${out.W[selected].toFixed(2)}</b></div>`;
     html+=`<div class="bk-row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:6px"><span><b>pillar risk R</b></span><b style="color:${colR(r.R,r.critical)}">${r.R.toFixed(2)}</b></div>`;
-    d3.select('#break').html(html);
-  }
-}
+    d3.select('#break').html(html); } }
 
-// ======== simulate time decay (Doc 04 §3) ========
+/* ---- controls ---- */
 d3.select('#simulate').on('click',()=>{ const n=Math.max(1,+d3.select('#days').property('value')||30);
-  RESERVOIRS.forEach(r=>{ if(r.type==='burden') r.val=Math.round(r.val*Math.exp(-r.lambda*n));
-    else r.val=Math.round(r.val + (100-r.val)*(1-Math.exp(-r.lambda*n))); });
+  prevPure=compute().pure;
+  RESERVOIRS.forEach(r=>{ if(r.type==='burden') r.val=Math.round(r.val*Math.exp(-r.lambda*n)); else r.val=Math.round(r.val+(100-r.val)*(1-Math.exp(-r.lambda*n))); });
   render(); });
-
-// ======== controls ========
-d3.select('#sex').on('change',function(){ SEX=this.value; applyPersona(true); buildInputs(); reflectToggles(); render(); });
-d3.select('#persona').on('change',function(){ PERSONA=this.value; applyPersona(true); buildInputs(); reflectToggles(); render(); });
-d3.select('#reset').on('click',()=>{ suicidality=false; applyPersona(true); buildInputs(); reflectToggles(); render(); });
+function onPersonaOrSex(){ const p=PERSONAS[PERSONA]; if(p.sex){SEX=p.sex; d3.select('#sex').property('value',SEX);} applyPersona(true); buildInputs(); reflectToggles(); prevPure=null; render(); }
+d3.select('#sex').on('change',function(){ SEX=this.value; applyPersona(true); buildInputs(); reflectToggles(); prevPure=null; render(); });
+d3.select('#persona').on('change',function(){ PERSONA=this.value; onPersonaOrSex(); });
+d3.select('#reset').on('click',()=>{ suicidality=false; onPersonaOrSex(); });
 function reflectToggles(){ const s=document.getElementById('sui'); if(s) s.checked=suicidality; }
 
-// ======== boot ========
-applyPersona(true);
-drawStatic();
-buildInputs();
-render();
+/* ---- boot ---- */
+applyPersona(true); drawStatic(); buildInputs(); render();
 </script>
 </body>
 </html>

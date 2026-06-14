@@ -62,6 +62,7 @@ Three properties make PureScore more than a weighted average of lab values:
 | 09 | `09-cohort-percentiles-and-validation.md` |  | Cohort construction, empirical-Bayes shrinkage, calibration, fairness, drift |
 | 10 | `10-actuarial-pricing-and-insurance.md` |  | Full pricing engine **with heavy regulatory/fairness risk flags** |
 | 11 | `11-safety-governance-and-regulatory.md` |  | Clinician-in-loop, escalation, equity, privacy, model governance |
+| 12 | `12-critical-review-and-purescore-2.0.md` | ✔ | Edge-case critique + PureScore 2.0: context-aware interpretation, companion meta-vector, personal-baseline early-warning, dual framing, bias handling |
 
 Read 00 → 04 first; they define everything the later documents depend on.
 

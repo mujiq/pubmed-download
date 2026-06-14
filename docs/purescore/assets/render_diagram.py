@@ -60,8 +60,8 @@ add(f'<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="
     f'<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{BG1}"/>'
     f'<stop offset="1" stop-color="{BG2}"/></linearGradient></defs>')
 rect(0,0,W,H,rx=0,fill="url(#bg)",stroke="none")
-text(50,62,"PureScore — Overall Architecture & Scoring Formula",34,INK,weight="bold")
-text(50,96,"Wellness-grade · clinician-in-the-loop · 12 pillars · MONIAC reservoir dynamics · illustrative bands (re-verify before real use)",17,MUT)
+text(50,62,"PureScore 2.0 — Architecture, Scoring Formula & Companion Vector",34,INK,weight="bold")
+text(50,96,"Context-aware (Managed state · confounder down-weighting · age/dialysis/pregnancy frames) · 12 pillars · MONIAC reservoirs · illustrative bands (re-verify)",17,MUT)
 line(50,116,W-50,116,col=LINE,sw=1.5,arrow=False)
 
 # ============================================================
@@ -170,8 +170,20 @@ for t,col,rows in outs:
 line(PCX+104,PCY,ox-10,oy-118-118-118-2-140+0+60,col="#46527a",sw=2,arrow=True)
 line(PCX+150,PCY-40,ox-10,360,col="#46527a",sw=2,arrow=True)
 
+# companion meta-vector band (Doc 12)
+cyb=898
+text(50,cyb,"Companion meta-vector (Doc 12) — the score shipped with direction & error bars:",15,TEAL,weight="bold")
+comp=[("Confidence","72%",YEL),("Data sufficiency","84%",GREEN),("Criticality","none",GREEN),
+      ("Trajectory","↑ improving",GREEN),("Early-warning","Watch",TEAL),("Representativeness","61%",YEL),
+      ("Skew","flagged: CRP",MUT),("Volatility","low",GREEN),("Modifiability","80%",GREEN)]
+for i,(t,v,c) in enumerate(comp):
+    x=50+i*(168+4)
+    rect(x,cyb+10,168,42,rx=8,fill="#121a2e",stroke=c,sw=1.4)
+    text(x+11,cyb+27,t,11,MUT)
+    text(x+11,cyb+45,v,13.5,c,weight="bold")
+
 # legend
-ly=980
+ly=988
 text(50,ly,"Legend:",15,MUT,weight="bold")
 for i,(c,t) in enumerate([(GREEN,"green · on track (R<0.30)"),(YEL,"yellow · caution (0.30–0.60)"),
                           (RED,"red / critical (≥0.60 or critical-marker red)"),(PURP,"burden reservoir"),(ASSET,"asset reservoir")]):
