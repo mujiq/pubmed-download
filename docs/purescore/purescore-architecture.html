@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>PureScore — Uber Architecture & Live Calculator</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+  :root{
+    --bg:#0e1320; --panel:#161d2e; --panel2:#1d2740; --ink:#e8edf7; --muted:#93a0bd;
+    --green:#2e9e5b; --yellow:#e0a82e; --red:#d1495b; --crit:#ff3b5c;
+    --line:#2a3654; --accent:#5b8cff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  header{padding:14px 20px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#141b2c,#0e1320);display:flex;flex-wrap:wrap;align-items:center;gap:16px}
+  header h1{font-size:18px;margin:0;letter-spacing:.3px}
+  header .sub{color:var(--muted);font-size:12px}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;margin-left:auto;align-items:center}
+  .controls label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+  select,input[type=number]{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer}
+  button.ghost{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+  button:hover{filter:brightness(1.08)}
+  .wrap{display:grid;grid-template-columns:380px 1fr;gap:0;height:calc(100vh - 64px)}
+  .inputs{overflow:auto;border-right:1px solid var(--line);padding:14px}
+  .stage{overflow:auto;padding:10px}
+  .sec{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:10px}
+  .sec>summary{cursor:pointer;padding:9px 12px;font-weight:600;display:flex;align-items:center;gap:8px;list-style:none}
+  .sec>summary::-webkit-details-marker{display:none}
+  .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 2px rgba(255,255,255,.06)}
+  .sec .body{padding:4px 12px 12px}
+  .mk{display:grid;grid-template-columns:1fr 84px 46px;gap:8px;align-items:center;padding:4px 0;border-top:1px dashed var(--line)}
+  .mk:first-child{border-top:0}
+  .mk .nm{font-size:12.5px}
+  .mk .nm small{color:var(--muted)}
+  .mk .rv{font-size:11px;text-align:right;font-variant-numeric:tabular-nums}
+  .pill-score{margin-left:auto;font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted)}
+  .res .mk{grid-template-columns:1fr 120px 40px}
+  .res input[type=range]{width:120px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12px;padding:6px 10px}
+  .chip{display:inline-flex;align-items:center;gap:6px}
+  .note{color:var(--muted);font-size:11.5px;margin:6px 2px 10px}
+  .crit-tag{color:var(--crit);font-weight:700}
+  #tip{position:fixed;pointer-events:none;background:#0b1020;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;max-width:280px;opacity:0;transition:opacity .12s;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  .break{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
+  .break h3{margin:0 0 6px;font-size:13px}
+  .bk-row{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--muted)}
+  .bk-row b{color:var(--ink);font-variant-numeric:tabular-nums}
+  svg text{font-family:inherit}
+  .foot{color:var(--muted);font-size:11px;padding:8px 12px;border-top:1px solid var(--line)}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>PureScore — Uber Architecture & Live Calculator</h1>
+    <div class="sub">Live implementation of the scoring spine (Docs 03 & 04). Wellness-grade · clinician-in-the-loop · illustrative bands, re-verify before any real use.</div>
+  </div>
+  <div class="controls">
+    <label>Sex (at birth)
+      <select id="sex"><option value="m">Male</option><option value="f">Female</option></select>
+    </label>
+    <label>Persona / cohort
+      <select id="persona">
+        <option value="healthy">Healthy adult</option>
+        <option value="prediabetic">Pre-diabetic</option>
+        <option value="ckd">CKD (stage 3)</option>
+      </select>
+    </label>
+    <label>Simulate adherence
+      <span style="display:flex;gap:6px;align-items:center">
+        <input id="days" type="number" value="30" min="1" max="365" style="width:64px"/>
+        <button id="simulate" title="Drain burden reservoirs & build asset reservoirs by their decay rates λ over N days of good behaviour">▶ days</button>
+      </span>
+    </label>
+    <button class="ghost" id="reset">Reset</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: inputs -->
+  <div class="inputs" id="inputs"></div>
+
+  <!-- RIGHT: diagram -->
+  <div class="stage">
+    <div class="legend">
+      <span class="chip"><span class="dot" style="background:var(--green)"></span>green · on track (R&lt;0.30)</span>
+      <span class="chip"><span class="dot" style="background:var(--yellow)"></span>yellow · caution (0.30–0.60)</span>
+      <span class="chip"><span class="dot" style="background:var(--red)"></span>red / critical (≥0.60 or critical-marker red)</span>
+      <span class="chip">→ flow into PureScore hub &nbsp; ⋯ reservoir interference</span>
+    </div>
+    <svg id="svg" width="100%" viewBox="0 0 980 760" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="foot">Pieces = the 12 pillars. Centre hub = PureScore (worst-sensitive δ-power-mean of pillars, with critical cascade cap at 40). Faint dashed lines = MONIAC reservoir interference (Doc 04). Click a pillar to see its breakdown.</div>
+  </div>
+</div>
+<div id="tip"></div>
+
+<script>
+/* ============================================================
+   PureScore live calculator — implements Docs 03 (scoring) & 04 (reservoirs)
+   Bands are ILLUSTRATIVE and guideline-anchored; re-verify before real use.
+   ============================================================ */
+
+// ---- constants (Doc 03 §8) ----
+const GAMMA = 3;          // pillar power-mean exponent (worst-sensitive)
+const DELTA = 2;          // PureScore power-mean exponent
+const RHO = 0.20;         // reservoir contribution cap to a pillar
+const R_CRIT = 0.60;      // critical pillar risk floor
+const PURE_CRIT_CAP = 40; // PureScore cap when any pillar critical
+const PHI = 0.0;          // cohort-percentile blend disabled in this demo (clinical anchor only)
+
+// ---- pillar definitions ----
+const PILLARS = [
+  {id:'CV',  name:'Cardiovascular', base:1.3},
+  {id:'MET', name:'Metabolic',      base:1.2},
+  {id:'REN', name:'Renal',          base:1.0},
+  {id:'HEP', name:'Hepatic',        base:0.9},
+  {id:'INF', name:'Inflammation',   base:1.0},
+  {id:'HEM', name:'Hematologic',    base:0.9},
+  {id:'ENDO',name:'Endocrine',      base:0.9},
+  {id:'BCM', name:'Body Comp/MSK',  base:1.0},
+  {id:'NUT', name:'Nutrition',      base:0.8},
+  {id:'SLP', name:'Sleep',          base:1.1},
+  {id:'FIT', name:'Fitness',        base:1.2},
+  {id:'MCS', name:'Mental/Cog',     base:1.2},
+];
+
+/* Marker bands. For each side, three boundaries:
+   optimal edge (r=0) → yellow onset (r=0.15) → red onset (r=0.5).
+   Use null to disable a side. bySex overrides band fields per sex. */
+function M(o){ return Object.assign({w:1, critical:false, optLo:null,optHi:null,yLo:null,yHi:null,rLo:null,rHi:null}, o); }
+const MARKERS = {
+  CV:[
+    M({id:'sbp', name:'Systolic BP', unit:'mmHg', val:115, w:.30, critical:true, optLo:90,optHi:119, yLo:89,yHi:120, rLo:85,rHi:140}),
+    M({id:'apob',name:'ApoB',        unit:'mg/dL',val:70,  w:.40, critical:true, optHi:79, yHi:80, rHi:100}),
+    M({id:'rhr', name:'Resting HR',  unit:'bpm',  val:60,  w:.30, optLo:50,optHi:69, yLo:49,yHi:70, rLo:40,rHi:85}),
+  ],
+  MET:[
+    M({id:'a1c', name:'HbA1c',       unit:'%',    val:5.1, w:.45, critical:true, optHi:5.3, yHi:5.4, rHi:6.5}),
+    M({id:'glu', name:'Fasting glucose',unit:'mg/dL',val:88,w:.30, critical:true, optLo:70,optHi:99, yLo:65,yHi:100, rLo:55,rHi:126}),
+    M({id:'waist',name:'Waist',      unit:'cm',   val:88,  w:.25, optHi:94, yHi:95, rHi:102, bySex:{f:{optHi:80,yHi:81,rHi:88}}}),
+  ],
+  REN:[
+    M({id:'egfr',name:'eGFR',        unit:'mL/min',val:100,w:.40, critical:true, optLo:90, yLo:89, rLo:60}),
+    M({id:'uacr',name:'UACR',        unit:'mg/g', val:8,   w:.30, critical:true, optHi:29, yHi:30, rHi:300}),
+    M({id:'k',   name:'Potassium',   unit:'mmol/L',val:4.2,w:.30, critical:true, optLo:3.6,optHi:5.0, yLo:3.5,yHi:5.1, rLo:3.2,rHi:5.6}),
+  ],
+  HEP:[
+    M({id:'alt', name:'ALT',         unit:'U/L',  val:22,  w:.45, optHi:29, yHi:30, rHi:50}),
+    M({id:'fib4',name:'FIB-4',       unit:'',     val:0.9, w:.35, critical:true, optHi:1.29, yHi:1.3, rHi:2.67}),
+    M({id:'bili',name:'Bilirubin',   unit:'mg/dL',val:0.7, w:.20, optHi:1.19, yHi:1.2, rHi:2.0}),
+  ],
+  INF:[
+    M({id:'crp', name:'hsCRP',       unit:'mg/L', val:0.6, w:.50, critical:true, optHi:0.99, yHi:1.0, rHi:3.0}),
+    M({id:'wbc', name:'WBC',         unit:'×10⁹/L',val:6,  w:.30, optLo:4,optHi:9, yLo:3.9,yHi:9.1, rLo:3.5,rHi:11}),
+    M({id:'alb', name:'Albumin',     unit:'g/dL', val:4.4, w:.20, optLo:4.0, yLo:3.9, rLo:3.5}),
+  ],
+  HEM:[
+    M({id:'hgb', name:'Hemoglobin',  unit:'g/dL', val:15,  w:.40, critical:true, optLo:13.5,optHi:17, yLo:13.4,yHi:17.1, rLo:11,rHi:18,
+       bySex:{f:{optLo:12,optHi:15.5,yLo:11.9,yHi:15.6,rLo:10.5,rHi:16.5,val:13.5}}}),
+    M({id:'spo2',name:'SpO₂',        unit:'%',    val:98,  w:.35, critical:true, optLo:96, yLo:95, rLo:92}),
+    M({id:'plt', name:'Platelets',   unit:'×10⁹/L',val:260,w:.25, optLo:150,optHi:400, yLo:149,yHi:401, rLo:100,rHi:500}),
+  ],
+  ENDO:[
+    M({id:'tsh', name:'TSH',         unit:'mIU/L',val:1.8, w:.40, optLo:0.5,optHi:2.5, yLo:0.49,yHi:2.6, rLo:0.3,rHi:4.5}),
+    M({id:'cort',name:'Cortisol (AM)',unit:'µg/dL',val:11, w:.30, optLo:5,optHi:15, yLo:4.9,yHi:15.1, rLo:3,rHi:22}),
+    M({id:'sex_h',name:'Testosterone',unit:'ng/dL',val:550,w:.30, optLo:400, yLo:399, rLo:264,
+       bySex:{f:{name:'Estradiol',unit:'pg/mL',val:120,optLo:30,optHi:350,yLo:29,yHi:360,rLo:15,rHi:500}}}),
+  ],
+  BCM:[
+    M({id:'bmi', name:'BMI',         unit:'kg/m²',val:23,  w:.30, optLo:18.5,optHi:24.9, yLo:17,yHi:25, rLo:16,rHi:30}),
+    M({id:'grip',name:'Grip strength',unit:'kg',  val:45,  w:.30, optLo:40, yLo:39, rLo:27, bySex:{f:{optLo:27,yLo:26,rLo:18,val:30}}}),
+    M({id:'tsc', name:'BMD T-score', unit:'',     val:-0.3,w:.30, optLo:-1.0, yLo:-1.01, rLo:-2.5}),
+  ],
+  NUT:[
+    M({id:'vitd',name:'Vitamin D',   unit:'ng/mL',val:42,  w:.35, optLo:30,optHi:60, yLo:29,yHi:61, rLo:20,rHi:100}),
+    M({id:'o3',  name:'Omega-3 index',unit:'%',   val:9,   w:.30, optLo:8, yLo:7.9, rLo:4}),
+    M({id:'b12', name:'Vitamin B12', unit:'pg/mL',val:550, w:.25, optLo:400,optHi:900, yLo:399,yHi:901, rLo:200,rHi:1100}),
+  ],
+  SLP:[
+    M({id:'sdur',name:'Sleep duration',unit:'h',  val:7.6, w:.40, critical:false, optLo:7,optHi:9, yLo:6.9,yHi:9.1, rLo:6,rHi:10}),
+    M({id:'seff',name:'Sleep efficiency',unit:'%',val:93,  w:.30, optLo:90, yLo:89, rLo:85}),
+    M({id:'sreg',name:'Sleep regularity',unit:'idx',val:88,w:.30, optLo:85, yLo:84, rLo:60}),
+  ],
+  FIT:[
+    M({id:'vo2', name:'VO₂max',      unit:'mL/kg/min',val:45,w:.40, optLo:42, yLo:41, rLo:30, bySex:{f:{optLo:35,yLo:34,rLo:25,val:38}}}),
+    M({id:'mvpa',name:'MVPA',        unit:'min/wk',val:180, w:.30, optLo:150, yLo:149, rLo:75}),
+    M({id:'step',name:'Steps',       unit:'/day', val:9000, w:.30, optLo:8000, yLo:7999, rLo:5000}),
+  ],
+  MCS:[
+    M({id:'phq', name:'PHQ-9',       unit:'0–27', val:2,   w:.40, critical:true, optHi:4, yHi:5, rHi:15}),
+    M({id:'gad', name:'GAD-7',       unit:'0–21', val:2,   w:.30, optHi:4, yHi:5, rHi:15}),
+    M({id:'lone',name:'Loneliness',  unit:'UCLA-3', val:3, w:.30, optHi:3, yHi:4, rHi:7}),
+  ],
+};
+
+// suicidality hard rule (Doc 02 MCS) handled separately
+let suicidality = false;
+
+// ---- reservoirs (Doc 04) ----
+const RESERVOIRS = [
+  {id:'SLD', name:'Sleep debt',          type:'burden', lambda:0.30, val:18, feeds:{SLP:1.0,MCS:0.5,MET:0.4,CV:0.3,INF:0.4}},
+  {id:'ATH', name:'Atherogenic burden',  type:'burden', lambda:0.005,val:18, feeds:{CV:1.0}},
+  {id:'INFL',name:'Inflammatory load',   type:'burden', lambda:0.10, val:18, feeds:{INF:1.0,CV:0.5,MET:0.4,HEP:0.4,MCS:0.3}},
+  {id:'GLY', name:'Glycemic burden',     type:'burden', lambda:0.05, val:18, feeds:{MET:1.0,CV:0.5,REN:0.4,HEP:0.4}},
+  {id:'ALLO',name:'Allostatic/stress',   type:'burden', lambda:0.15, val:18, feeds:{MCS:1.0,ENDO:0.5,CV:0.3,SLP:0.5}},
+  {id:'CRF', name:'Cardioresp reserve',  type:'asset',  lambda:0.05, val:72, feeds:{FIT:1.0,CV:0.5,MET:0.4}},
+  {id:'MUS', name:'Muscle reserve',      type:'asset',  lambda:0.03, val:72, feeds:{BCM:1.0,FIT:0.5,MET:0.3}},
+];
+
+// ---- personas ----
+const PERSONAS = {
+  healthy:    {wmult:{}, marks:{}, res:{}},
+  prediabetic:{wmult:{MET:1.6,CV:1.3,REN:1.1},
+               marks:{a1c:6.0,glu:112,apob:95,waist:101},
+               res:{GLY:55,ATH:40,INFL:35,CRF:55}},
+  ckd:        {wmult:{REN:2.0,CV:1.4,MET:1.2},
+               marks:{egfr:48,uacr:90,k:5.0,sbp:142,apob:92},
+               res:{GLY:42,ATH:52,INFL:46,CRF:55}},
+};
+
+// ======== state init ========
+let SEX='m', PERSONA='healthy';
+function band(m){ // resolve sex-specific band override
+  const o=Object.assign({},m);
+  if(m.bySex && m.bySex[SEX]) Object.assign(o,m.bySex[SEX]);
+  return o;
+}
+function applyPersona(resetVals){
+  const p=PERSONAS[PERSONA];
+  if(resetVals){
+    // reset all markers to their default (sex-resolved), then persona overrides
+    for(const k in MARKERS) MARKERS[k].forEach(m=>{ const b=band(m); m.val=b.val; });
+    for(const id in p.marks){ outer: for(const k in MARKERS) for(const m of MARKERS[k]) if(m.id===id){ m.val=p.marks[id]; break outer; } }
+    RESERVOIRS.forEach(r=>{ r.val = (p.res[r.id]!==undefined)? p.res[r.id] : (r.type==='asset'?72:18); });
+  }
+}
+
+// ======== scoring math ========
+function sideRisk(x, opt, yel, red){ // outward boundaries opt(0)->yel(.15)->red(.5)
+  const sgn = (red>=opt)?1:-1; // high side if red>opt else low side
+  const X=sgn*x, O=sgn*opt, Y=sgn*yel, R=sgn*red; // normalize to "increasing = worse"
+  if(X<=O) return 0;
+  if(X<=Y) return (Y>O)? 0.15*(X-O)/(Y-O) : 0.5;
+  if(X<=R) return 0.15 + 0.35*(X-Y)/Math.max(R-Y,1e-6);
+  const scale=Math.max(R-Y,1e-6);
+  return Math.min(1, 0.5 + 0.5*(1-Math.exp(-(X-R)/scale)));
+}
+function markerRisk(m){
+  const b=band(m); let r=0;
+  if(b.optHi!==null && b.optHi!==undefined && m.val>b.optHi) r=Math.max(r, sideRisk(m.val,b.optHi,b.yHi,b.rHi));
+  if(b.optLo!==null && b.optLo!==undefined && m.val<b.optLo) r=Math.max(r, sideRisk(m.val,b.optLo,b.yLo,b.rLo));
+  return Math.max(0,Math.min(1,r));
+}
+function reservoirLoad(pid){ // B~_k in [0,1]
+  let num=0, den=0;
+  RESERVOIRS.forEach(r=>{ const w=r.feeds[pid]; if(!w) return;
+    den+=w; num += w*(r.type==='burden'? r.val/100 : (1 - r.val/100)); });
+  return den? Math.max(0,Math.min(1,num/den)) : 0;
+}
+function pillarRisk(pid){
+  const ms=MARKERS[pid];
+  let num=0, den=0, anyCritRed=false, contribs=[];
+  ms.forEach(m=>{ const r=markerRisk(m); contribs.push({m,r});
+    num += m.w*Math.pow(r,GAMMA); den+=m.w;
+    if(m.critical && r>=0.5) anyCritRed=true; });
+  let Rmark = den? Math.pow(num/den, 1/GAMMA) : 0;
+  const Btil = reservoirLoad(pid);
+  let R = Math.min(1, Rmark + RHO*Btil);
+  let critical = anyCritRed || R>=R_CRIT;
+  if(pid==='MCS' && suicidality) critical=true;
+  if(critical) R=Math.max(R,R_CRIT);
+  return {R, critical, Rmark, Btil, contribs};
+}
+function compute(){
+  const pr={}; let anyCrit=false;
+  PILLARS.forEach(p=>{ pr[p.id]=pillarRisk(p.id); if(pr[p.id].critical) anyCrit=true; });
+  // personalized weights
+  const wm=PERSONAS[PERSONA].wmult; let W={}, sumW=0;
+  PILLARS.forEach(p=>{ W[p.id]=p.base*(wm[p.id]||1); sumW+=W[p.id]; });
+  // PureScore power-mean
+  let num=0;
+  PILLARS.forEach(p=>{ num += W[p.id]*Math.pow(pr[p.id].R,DELTA); });
+  let Rtot=Math.pow(num/sumW, 1/DELTA);
+  let pure=100*(1-Rtot);
+  let status = anyCrit?'CRITICAL':(Rtot>=0.30?'AT RISK':'ON TRACK');
+  let binding=null;
+  if(anyCrit){ pure=Math.min(pure,PURE_CRIT_CAP);
+    // binding = highest-risk critical pillar
+    let best=-1; PILLARS.forEach(p=>{ if(pr[p.id].critical && pr[p.id].R>best){best=pr[p.id].R;binding=p.id;} }); }
+  return {pr,W,Rtot,pure,status,anyCrit,binding};
+}
+
+// ======== status colour ========
+function colR(R,crit){ if(crit) return 'var(--red)'; if(R<0.30) return 'var(--green)'; if(R<0.60) return 'var(--yellow)'; return 'var(--red)'; }
+function colPure(s,status){ if(status==='CRITICAL') return 'var(--crit)'; if(s>=70) return 'var(--green)'; if(s>=50) return 'var(--yellow)'; return 'var(--red)'; }
+
+// ======== left input panel ========
+function buildInputs(){
+  const root=d3.select('#inputs'); root.html('');
+  root.append('div').attr('class','note').html('Adjust any marker or reservoir — the puzzle and PureScore update live. <b>Critical</b> markers (★) can force their pillar — and the whole score — into the critical band (Doc 03 §4–5).');
+  // suicidality
+  const sui=root.append('details').attr('class','sec').attr('open',true);
+  sui.append('summary').html('<span class="dot" style="background:var(--crit)"></span> Mental-health safety flag');
+  const sb=sui.append('div').attr('class','body');
+  const lab=sb.append('label').style('display','flex').style('gap','8px').style('align-items','center').style('font-size','12.5px');
+  lab.append('input').attr('type','checkbox').attr('id','sui').on('change',function(){suicidality=this.checked;render();});
+  lab.append('span').html('PHQ-9 item 9 &gt; 0 (any suicidality) — <span class="crit-tag">forces MCS critical regardless of total</span>');
+
+  PILLARS.forEach(p=>{
+    const d=root.append('details').attr('class','sec').attr('data-pid',p.id);
+    const sum=d.append('summary');
+    sum.append('span').attr('class','dot').attr('id','dot-'+p.id);
+    sum.append('span').html(`<b>${p.id}</b> · ${p.name}`);
+    sum.append('span').attr('class','pill-score').attr('id','ps-'+p.id);
+    const body=d.append('div').attr('class','body');
+    MARKERS[p.id].forEach(m=>{
+      const b=band(m);
+      const row=body.append('div').attr('class','mk');
+      row.append('div').attr('class','nm').html(`${m.critical?'★ ':''}${b.name} <small>${b.unit||''}</small>`);
+      row.append('input').attr('type','number').attr('step','any').attr('value',m.val).attr('id','in-'+m.id)
+        .on('input',function(){ m.val=parseFloat(this.value); render(); });
+      row.append('div').attr('class','rv').attr('id','rv-'+m.id);
+    });
+  });
+
+  // reservoirs
+  const rd=root.append('details').attr('class','sec res').attr('open',false);
+  rd.append('summary').html('<span class="dot" style="background:#7a86ff"></span> MONIAC reservoirs (burdens & assets)');
+  const rb=rd.append('div').attr('class','body');
+  rb.append('div').attr('class','note').html('Accumulated burdens raise linked pillars; depleted assets do too (Doc 04). “Simulate days” drains burdens & builds assets by their decay rate λ.');
+  RESERVOIRS.forEach(r=>{
+    const row=rb.append('div').attr('class','mk');
+    row.append('div').attr('class','nm').html(`${r.name} <small>${r.type} · λ=${r.lambda}</small>`);
+    row.append('input').attr('type','range').attr('min',0).attr('max',100).attr('value',r.val).attr('id','res-'+r.id)
+      .on('input',function(){ r.val=+this.value; d3.select('#resv-'+r.id).text(r.val); render(); });
+    row.append('div').attr('class','rv').attr('id','resv-'+r.id).text(r.val);
+  });
+
+  // breakdown placeholder
+  root.append('div').attr('class','break').attr('id','break').html('<h3>Click a pillar piece →</h3><div class="bk-row">Select a pillar in the diagram to see its marker-by-marker breakdown.</div>');
+  root.append('div').attr('class','note').style('margin-top','10px').html('Full methodology: <code>docs/purescore/03-scoring-formula.md</code> & <code>04-moniac-reservoir-dynamics.md</code>.');
+}
+
+// ======== diagram (D3) ========
+const svg=d3.select('#svg');
+const W=980,H=760, cx=W/2, cy=H/2+10, ring=255;
+let selected=null;
+
+// jigsaw piece path generator
+function lerp(a,b,t){return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];}
+function jigsaw(w,h,tabs){ // tabs=[top,right,bottom,left] in {1 out,-1 in,0 flat}
+  const c=[[0,0],[w,0],[w,h],[0,h]];
+  const k=Math.min(w,h)*0.16;
+  let d=`M${c[0][0]},${c[0][1]}`;
+  for(let e=0;e<4;e++){
+    const p0=c[e], p1=c[(e+1)%4], s=tabs[e];
+    if(s===0){ d+=` L${p1[0]},${p1[1]}`; continue; }
+    const dir=[p1[0]-p0[0],p1[1]-p0[1]];
+    const nrm=[dir[1],-dir[0]]; const nl=Math.hypot(nrm[0],nrm[1]); nrm[0]/=nl;nrm[1]/=nl;
+    const a=lerp(p0,p1,0.36), cc=lerp(p0,p1,0.64);
+    const peak=lerp(p0,p1,0.5); peak[0]+=nrm[0]*s*k; peak[1]+=nrm[1]*s*k;
+    const m1=lerp(p0,p1,0.42); m1[0]+=nrm[0]*s*k*1.5; m1[1]+=nrm[1]*s*k*1.5;
+    const m2=lerp(p0,p1,0.58); m2[0]+=nrm[0]*s*k*1.5; m2[1]+=nrm[1]*s*k*1.5;
+    d+=` L${a[0]},${a[1]} Q${m1[0]},${m1[1]} ${peak[0]},${peak[1]} Q${m2[0]},${m2[1]} ${cc[0]},${cc[1]} L${p1[0]},${p1[1]}`;
+  }
+  return d+' Z';
+}
+
+function layout(){
+  const pos={};
+  PILLARS.forEach((p,i)=>{ const ang=-Math.PI/2 + i*2*Math.PI/PILLARS.length;
+    pos[p.id]={x:cx+ring*Math.cos(ang), y:cy+ring*Math.sin(ang), ang}; });
+  return pos;
+}
+const POS=layout();
+const PW=118, PH=70;
+
+function drawStatic(){
+  svg.selectAll('*').remove();
+  const defs=svg.append('defs');
+  defs.append('marker').attr('id','arrow').attr('viewBox','0 0 10 10').attr('refX',9).attr('refY',5)
+    .attr('markerWidth',7).attr('markerHeight',7).attr('orient','auto-start-reverse')
+    .append('path').attr('d','M0,0 L10,5 L0,10 z').attr('fill','#7f8cb0');
+
+  // reservoir interference edges (faint dashed) pillar<-reservoir, place reservoir nodes outer
+  const resLayer=svg.append('g');
+  const RPOS={};
+  RESERVOIRS.forEach((r,i)=>{ const ang=-Math.PI/2 + (i+0.5)*2*Math.PI/RESERVOIRS.length;
+    RPOS[r.id]={x:cx+(ring+150)*Math.cos(ang), y:cy+(ring+118)*Math.sin(ang)}; });
+  RESERVOIRS.forEach(r=>{ for(const pid in r.feeds){
+    const a=RPOS[r.id], b=POS[pid];
+    resLayer.append('path').attr('class','resedge resedge-'+r.id)
+      .attr('d',`M${a.x},${a.y} Q${(a.x+b.x)/2},${(a.y+b.y)/2} ${b.x},${b.y}`)
+      .attr('fill','none').attr('stroke', r.type==='asset'?'#3b7':'#7a86ff')
+      .attr('stroke-opacity',.13).attr('stroke-width',1).attr('stroke-dasharray','3 4'); } });
+  RESERVOIRS.forEach(r=>{ const a=RPOS[r.id];
+    const g=resLayer.append('g').attr('transform',`translate(${a.x},${a.y})`).style('cursor','default')
+      .on('mouseover',()=>{ d3.selectAll('.resedge-'+r.id).attr('stroke-opacity',.6).attr('stroke-width',1.6);
+        tip(`<b>${r.name}</b><br>${r.type} · λ=${r.lambda}/day<br>load ${r.val}/100<br>feeds: ${Object.keys(r.feeds).join(', ')}`); })
+      .on('mousemove',moveTip).on('mouseout',()=>{ d3.selectAll('.resedge-'+r.id).attr('stroke-opacity',.13).attr('stroke-width',1); hideTip(); });
+    g.append('rect').attr('x',-30).attr('y',-15).attr('width',60).attr('height',30).attr('rx',8)
+      .attr('fill','#10162a').attr('stroke', r.type==='asset'?'#3b7':'#7a86ff').attr('stroke-opacity',.5);
+    g.append('text').attr('text-anchor','middle').attr('dy',-2).attr('font-size',9).attr('fill','#aeb8d6').text(r.id);
+    g.append('text').attr('class','restxt').attr('id','rt-'+r.id).attr('text-anchor','middle').attr('dy',9).attr('font-size',9).attr('fill','#7f8cb0').text(r.val); });
+
+  // flow arrows pillar -> hub
+  const flow=svg.append('g');
+  PILLARS.forEach(p=>{ const a=POS[p.id];
+    const dx=cx-a.x, dy=cy-a.y, len=Math.hypot(dx,dy);
+    const sx=a.x+dx/len*46, sy=a.y+dy/len*30, ex=cx-dx/len*92, ey=cy-dy/len*92;
+    flow.append('line').attr('class','flow-'+p.id).attr('x1',sx).attr('y1',sy).attr('x2',ex).attr('y2',ey)
+      .attr('stroke','#46527a').attr('stroke-width',2).attr('marker-end','url(#arrow)'); });
+
+  // pillar pieces
+  const pg=svg.append('g');
+  PILLARS.forEach((p,i)=>{ const a=POS[p.id];
+    const g=pg.append('g').attr('transform',`translate(${a.x-PW/2},${a.y-PH/2})`).style('cursor','pointer')
+      .on('click',()=>{ selected=p.id; openPillar(p.id); render(); })
+      .on('mouseover',()=>showPillarTip(p.id)).on('mousemove',moveTip).on('mouseout',hideTip);
+    g.append('path').attr('class','piece piece-'+p.id)
+      .attr('d',jigsaw(PW,PH,[(i%2?1:-1),(i%2?-1:1),(i%2?1:-1),(i%2?-1:1)]))
+      .attr('fill','#1b2440').attr('stroke','#39456b').attr('stroke-width',2);
+    g.append('text').attr('x',PW/2).attr('y',PH/2-6).attr('text-anchor','middle').attr('font-size',13).attr('font-weight',700).attr('fill','#fff').text(p.id);
+    g.append('text').attr('class','pscore').attr('id','svg-ps-'+p.id).attr('x',PW/2).attr('y',PH/2+13).attr('text-anchor','middle').attr('font-size',12).attr('fill','#cdd6ee').text('');
+  });
+
+  // central hub jigsaw
+  const hg=svg.append('g').attr('transform',`translate(${cx-95},${cy-95})`);
+  hg.append('path').attr('id','hub').attr('d',jigsaw(190,190,[-1,1,-1,1])).attr('fill','#10203a').attr('stroke','#5b8cff').attr('stroke-width',3);
+  svg.append('text').attr('id','hub-label').attr('x',cx).attr('y',cy-44).attr('text-anchor','middle').attr('font-size',13).attr('fill','#9fb0d8').text('PureScore');
+  svg.append('text').attr('id','hub-num').attr('x',cx).attr('y',cy+12).attr('text-anchor','middle').attr('font-size',54).attr('font-weight',800).attr('fill','#fff').text('—');
+  svg.append('text').attr('id','hub-status').attr('x',cx).attr('y',cy+44).attr('text-anchor','middle').attr('font-size',13).attr('font-weight',700).text('');
+  svg.append('text').attr('id','hub-bind').attr('x',cx).attr('y',cy+66).attr('text-anchor','middle').attr('font-size',10.5).attr('fill','#9fb0d8').text('');
+}
+
+function openPillar(pid){
+  document.querySelectorAll('#inputs details[data-pid]').forEach(d=>{ d.open = (d.getAttribute('data-pid')===pid); });
+  const el=document.querySelector(`#inputs details[data-pid="${pid}"]`); if(el) el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// tooltips
+const tipEl=document.getElementById('tip');
+function tip(html){ tipEl.innerHTML=html; tipEl.style.opacity=1; }
+function moveTip(ev){ tipEl.style.left=(ev.clientX+14)+'px'; tipEl.style.top=(ev.clientY+14)+'px'; }
+function hideTip(){ tipEl.style.opacity=0; }
+function showPillarTip(pid){ const r=pillarRisk(pid);
+  let rows=r.contribs.map(c=>`${band(c.m).name}: r=${c.r.toFixed(2)}`).join('<br>');
+  tip(`<b>${pid}</b> — R=${r.R.toFixed(2)} ${r.critical?'<span class="crit-tag">CRITICAL</span>':''}<br>${rows}<br><i>reservoir load +${(RHO*r.Btil).toFixed(2)}</i><br>click for full breakdown`); }
+
+// ======== render ========
+function render(){
+  const out=compute();
+  // pillar pieces + dots + scores
+  PILLARS.forEach(p=>{ const r=out.pr[p.id]; const col=colR(r.R,r.critical);
+    svg.select('.piece-'+p.id).attr('fill', col).attr('fill-opacity',.22)
+      .attr('stroke', col).attr('stroke-width', selected===p.id?4:2.4);
+    svg.select('#svg-ps-'+p.id).text(Math.round(100*(1-r.R))).attr('fill',col);
+    svg.select('.flow-'+p.id).attr('stroke', col).attr('stroke-opacity', r.critical?.95:.55).attr('stroke-width', r.critical?3:2);
+    d3.select('#dot-'+p.id).style('background',col);
+    d3.select('#ps-'+p.id).text('S '+Math.round(100*(1-r.R))+(r.critical?' ⚠':''));
+  });
+  // marker risk read-outs
+  for(const pid in MARKERS) MARKERS[pid].forEach(m=>{ const r=markerRisk(m);
+    const c = r<0.15?'var(--green)':r<0.5?'var(--yellow)':'var(--red)';
+    d3.select('#rv-'+m.id).text('r '+r.toFixed(2)).style('color',c); });
+  // reservoir read-outs
+  RESERVOIRS.forEach(r=>{ d3.select('#rt-'+r.id).text(r.val); d3.select('#resv-'+r.id).text(r.val); d3.select('#res-'+r.id).property('value',r.val); });
+  // hub
+  const col=colPure(out.pure,out.status);
+  svg.select('#hub-num').text(Math.round(out.pure)).attr('fill',col);
+  svg.select('#hub').attr('stroke',col).attr('fill', out.status==='CRITICAL'?'#2a0e18':'#10203a');
+  svg.select('#hub-status').text(out.status).attr('fill',col);
+  svg.select('#hub-bind').text(out.anyCrit? ('capped by '+out.binding+' (critical cascade)') : ('R_total='+out.Rtot.toFixed(2)));
+  // breakdown panel
+  if(selected){ const r=out.pr[selected]; const p=PILLARS.find(x=>x.id===selected);
+    let html=`<h3>${selected} · ${p.name} &nbsp; <span style="color:${colR(r.R,r.critical)}">S ${Math.round(100*(1-r.R))}${r.critical?' · CRITICAL':''}</span></h3>`;
+    r.contribs.forEach(c=>{ html+=`<div class="bk-row"><span>${band(c.m).name} = ${c.m.val} ${band(c.m).unit||''} ${c.m.critical?'★':''}</span><b style="color:${c.r<0.15?'var(--green)':c.r<0.5?'var(--yellow)':'var(--red)'}">r ${c.r.toFixed(2)}</b></div>`; });
+    html+=`<div class="bk-row"><span>marker power-mean (γ=3)</span><b>${r.Rmark.toFixed(2)}</b></div>`;
+    html+=`<div class="bk-row"><span>+ reservoir load (ρ·B̃)</span><b>+${(RHO*r.Btil).toFixed(2)}</b></div>`;
+    html+=`<div class="bk-row"><span>pillar weight W</span><b>${out.W[selected].toFixed(2)}</b></div>`;
+    html+=`<div class="bk-row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:6px"><span><b>pillar risk R</b></span><b style="color:${colR(r.R,r.critical)}">${r.R.toFixed(2)}</b></div>`;
+    d3.select('#break').html(html);
+  }
+}
+
+// ======== simulate time decay (Doc 04 §3) ========
+d3.select('#simulate').on('click',()=>{ const n=Math.max(1,+d3.select('#days').property('value')||30);
+  RESERVOIRS.forEach(r=>{ if(r.type==='burden') r.val=Math.round(r.val*Math.exp(-r.lambda*n));
+    else r.val=Math.round(r.val + (100-r.val)*(1-Math.exp(-r.lambda*n))); });
+  render(); });
+
+// ======== controls ========
+d3.select('#sex').on('change',function(){ SEX=this.value; applyPersona(true); buildInputs(); reflectToggles(); render(); });
+d3.select('#persona').on('change',function(){ PERSONA=this.value; applyPersona(true); buildInputs(); reflectToggles(); render(); });
+d3.select('#reset').on('click',()=>{ suicidality=false; applyPersona(true); buildInputs(); reflectToggles(); render(); });
+function reflectToggles(){ const s=document.getElementById('sui'); if(s) s.checked=suicidality; }
+
+// ======== boot ========
+applyPersona(true);
+drawStatic();
+buildInputs();
+render();
+</script>
+</body>
+</html>
