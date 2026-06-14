@@ -11,6 +11,11 @@ clinicians and payers and are *gated* behind separate access and governance.
 
 ## 1. What PureScore is
 
+![PureScore architecture and scoring formula](assets/purescore-architecture.png)
+
+*Overall architecture + formula at a glance (source: `assets/render_diagram.py`; interactive
+version: `purescore-architecture.html`).*
+
 PureScore is a single 0–100 number, decomposed into **12 health pillars**, each built from a
 tiered catalogue of **biomarkers, wearable signals, and lifestyle/persona inputs**. It is
 personalized to a patient's **cohort** (age band × sex × disease flags × medication flags) and
