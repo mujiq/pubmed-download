@@ -457,9 +457,9 @@ function render(){ const out=compute();
   svg.select('#hub-bind').text(out.anyCrit?('capped by '+out.binding+' (cascade)'):('R_total='+out.Rtot.toFixed(2)));
 
   /* companion vector strip */
-  const co=out.companion; const arrow=co.traj==null?'—':(co.traj>0.3?'↑':co.traj<-0.3?'↓':'→');
+  const co=out.companion; const arrow=co.traj==null?'—':(co.traj>0.5?'↑':co.traj<-0.5?'↓':'→');
   const trajTxt=co.traj==null?'— (simulate days)':`${arrow} ${co.traj>=0?'+':''}${co.traj.toFixed(1)}`;
-  const trajCol=co.traj==null?'var(--muted)':(co.traj>0.3?'var(--green)':co.traj<-0.3?'var(--red)':'var(--yellow)');
+  const trajCol=co.traj==null?'var(--muted)':(co.traj>0.5?'var(--green)':co.traj<-0.5?'var(--red)':'var(--muted)');
   const critCol=co.critTier==='emergency'?'var(--crit)':co.critTier==='urgent'?'var(--yellow)':'var(--green)';
   const ewCol=co.ewTier==='Advisory'?'var(--yellow)':co.ewTier==='Watch'?'#7fd1ff':'var(--green)';
   function badge(k,v,c){ return `<span class="badge"><span class="k">${k}</span><b style="color:${c}">${v}</b></span>`; }
