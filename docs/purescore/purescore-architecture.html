@@ -80,6 +80,7 @@
         <option value="dialysis">ESRD on dialysis</option>
         <option value="pregnancy">Pregnant (2nd tri)</option>
         <option value="fh">Familial hypercholesterolemia</option>
+        <option value="labartifact">Lab artifact (hemolyzed K⁺)</option>
       </select>
     </label>
     <label>Simulate adherence
@@ -136,12 +137,12 @@ const MARKERS={
         M({id:'glu',name:'Fasting glucose',unit:'mg/dL',val:88,w:.30,critical:true,optLo:70,optHi:99,yLo:65,yHi:100,rLo:55,rHi:126}),
         M({id:'waist',name:'Waist',unit:'cm',val:88,w:.25,optHi:94,yHi:95,rHi:102,bySex:{f:{optHi:80,yHi:81,rHi:88,val:78}}}) ],
   REN:[ M({id:'egfr',name:'eGFR',unit:'mL/min',val:100,w:.40,critical:true,optLo:90,yLo:89,rLo:60}),
-        M({id:'uacr',name:'UACR',unit:'mg/g',val:8,w:.30,critical:true,optHi:29,yHi:30,rHi:300}),
+        M({id:'uacr',name:'UACR',unit:'mg/g',val:8,w:.30,critical:true,skew:true,optHi:29,yHi:30,rHi:300}),
         M({id:'k',name:'Potassium',unit:'mmol/L',val:4.2,w:.30,critical:true,optLo:3.6,optHi:5.0,yLo:3.5,yHi:5.1,rLo:3.2,rHi:5.6}) ],
-  HEP:[ M({id:'alt',name:'ALT',unit:'U/L',val:22,w:.45,optHi:29,yHi:30,rHi:50}),
-        M({id:'fib4',name:'FIB-4',unit:'',val:0.9,w:.35,critical:true,optHi:1.29,yHi:1.3,rHi:2.67}),
-        M({id:'bili',name:'Bilirubin',unit:'mg/dL',val:0.7,w:.20,optHi:1.19,yHi:1.2,rHi:2.0}) ],
-  INF:[ M({id:'crp',name:'hsCRP',unit:'mg/L',val:0.6,w:.50,critical:true,optHi:0.99,yHi:1.0,rHi:3.0}),
+  HEP:[ M({id:'alt',name:'ALT',unit:'U/L',val:22,w:.45,skew:true,optHi:29,yHi:30,rHi:50}),
+        M({id:'fib4',name:'FIB-4',unit:'',val:0.9,w:.35,critical:true,skew:true,optHi:1.29,yHi:1.3,rHi:2.67}),
+        M({id:'bili',name:'Bilirubin',unit:'mg/dL',val:0.7,w:.20,skew:true,optHi:1.19,yHi:1.2,rHi:2.0}) ],
+  INF:[ M({id:'crp',name:'hsCRP',unit:'mg/L',val:0.6,w:.50,critical:true,skew:true,optHi:0.99,yHi:1.0,rHi:3.0}),
         M({id:'wbc',name:'WBC',unit:'×10⁹/L',val:6,w:.30,optLo:4,optHi:9,yLo:3.9,yHi:9.1,rLo:3.5,rHi:11}),
         M({id:'alb',name:'Albumin',unit:'g/dL',val:4.4,w:.20,optLo:4.0,yLo:3.9,rLo:3.5}) ],
   HEM:[ M({id:'hgb',name:'Hemoglobin',unit:'g/dL',val:15,w:.40,critical:true,optLo:13.5,optHi:17,yLo:13.4,yHi:17.1,rLo:11,rHi:18,
@@ -201,6 +202,7 @@ const PERSONAS={
                bands:{hgb:{optLo:10.5,optHi:14,yLo:10,yHi:14.5,rLo:9,rHi:15.5},egfr:{optLo:100,yLo:99,rLo:70}},
                note:'2nd-trimester frame — physiologic anemia & eGFR-rise expected; pre-eclampsia/GDM absolute anchors retained.'},
   fh:         {age:38,meds:[],rep:0.75,wmult:{CV:1.5},marks:{apob:140,sbp:118},fixed:['apob'],res:{ATH:70},note:'Familial hypercholesterolemia — ApoB genetic, NOT lifestyle-modifiable (needs medication); modifiability low.'},
+  labartifact:{age:55,meds:[],rep:0.85,wmult:{},marks:{k:6.6},artifacts:['k'],res:{},note:'Isolated implausible K⁺ 6.6 (hemolysis suspected, no corroboration) → held for RECONFIRM, NOT an emergency cascade (Doc 12 §3.4). Corroboration (ECG/symptom/second draw) would escalate immediately.'},
 };
 
 let SEX='m', PERSONA='healthy', prevPure=null;
@@ -216,13 +218,14 @@ function defaultVal(m){ let v=m._val0;
 function activeMeds(){ return PERSONAS[PERSONA].meds||[]; }
 function isModifiable(m){ return !((PERSONAS[PERSONA].fixed||[]).includes(m.id)); }
 
-function ctxOf(m){ const p=PERSONAS[PERSONA]; let conf=1,managed=false,confounded=false,present=true,excluded=false;
+function ctxOf(m){ const p=PERSONAS[PERSONA]; let conf=1,managed=false,confounded=false,present=true,excluded=false,artifact=false;
   if((p.missing||[]).includes(m.id)){ present=false; conf=0.30; }
   if((p.exclude||[]).includes(m.id)){ conf=0; excluded=true; }
+  if((p.artifacts||[]).includes(m.id)){ conf=Math.min(conf,0.05); artifact=true; }  // implausible/low-quality → held for reconfirm (§3.4)
   activeMeds().forEach(md=>{
     if(CONFOUNDS[md]&&CONFOUNDS[md][m.id]!==undefined){ confounded=true; conf*=(1-CONFOUNDS[md][m.id]); }
     if((MANAGES[md]||[]).includes(m.id)) managed=true; });
-  return {conf,managed,confounded,present,excluded}; }
+  return {conf,managed,confounded,present,excluded,artifact}; }
 
 function applyPersona(reset){ const p=PERSONAS[PERSONA];
   if(reset){
@@ -276,12 +279,13 @@ function seriesOf(m){ const sc=mscale(m), tr=(PERSONAS[PERSONA].trend||{})[m.id]
 function lin(arr){ const n=arr.length; let sx=0,sy=0,sxx=0,sxy=0; for(let i=0;i<n;i++){sx+=i;sy+=arr[i];sxx+=i*i;sxy+=i*arr[i];} const d=n*sxx-sx*sx; const slope=d?(n*sxy-sx*sy)/d:0; return {slope,inter:(sy-slope*sx)/n}; }
 function avg(a){return a.reduce((x,y)=>x+y,0)/a.length;}
 function sdev(a){const m=avg(a);return Math.sqrt(a.reduce((x,y)=>x+(y-m)*(y-m),0)/a.length);}
-function baseline(m){ const s=seriesOf(m), hist=s.slice(0,NSER-1);
-  // anomaly z vs the PERSONAL baseline; variance floored at a fraction of cohort scale to avoid tiny-σ false alarms.
-  // (Empirical-Bayes shrinkage toward the cohort prior, D6, matters only at cold-start; here n≈89 ⇒ effectively personal.)
-  const mean=avg(hist), sd0=mscale(m), sdB=Math.max(sdev(hist), sd0*0.3);
-  const win=s.slice(NSER-30), L=lin(win), resid=win.map((v,i)=>v-(L.inter+L.slope*i));
-  return {z:(m.val-mean)/sdB, mean, slope30:L.slope, vol:Math.min(1,sdev(resid)/sd0)}; }
+function baseline(m){ const s0=seriesOf(m), hist0=s0.slice(0,NSER-1), lg=!!m.skew, tx=v=>lg?Math.log(Math.max(v,1e-3)):v;
+  // anomaly z vs the PERSONAL baseline; heavy-tailed markers use a log transform (robust to right-skew spikes).
+  // variance floored to avoid tiny-σ false alarms. (EB shrinkage toward cohort, D6, matters only at cold-start; here n≈89 ⇒ personal.)
+  const hist=hist0.map(tx), sd0=lg?0.4:mscale(m), sdB=Math.max(sdev(hist), sd0*0.3);
+  const z=(tx(m.val)-avg(hist))/sdB;
+  const win=s0.slice(NSER-30), L=lin(win), resid=win.map((v,i)=>v-(L.inter+L.slope*i));  // slope/vol kept on RAW scale (consistent with bands)
+  return {z, mean:avg(hist0), slope30:L.slope, vol:Math.min(1,sdev(resid)/mscale(m))}; }
 function timeToThreshold(m){ const b=band(m), sc=mscale(m), sl=baseline(m).slope30;
   if(Math.abs(sl*30) < 0.25*sc) return null;        // require a genuine trend, not noise
   let days=null;
@@ -319,11 +323,13 @@ function syndromes(){ const out=[], v=id=>{for(const k in MARKERS)for(const m of
 
 function compute(){ const core=scoreCore(); const {pr,W,pure,status,anyCrit,binding,Rtot}=core;
   /* ---- companion vector (Doc 12 §4) ---- */
-  let cW=0,cConf=0,cPres=0,totR=0,modR=0,reds=0,emergency=false,bandWatch=0,volAcc=0,volW=0,zsq=0,nz=0,zmax=0; const watchP=new Set();
+  let cW=0,cConf=0,cPres=0,totR=0,modR=0,reds=0,emergency=false,bandWatch=0,volAcc=0,volW=0,zsq=0,nz=0,zmax=0; const watchP=new Set(),reconfirm=[],robust=[];
   PILLARS.forEach(p=>{ pr[p.id].contribs.forEach(c=>{ const w=c.m.w*W[p.id];
     cW+=w; cConf+=w*c.ctx.conf; cPres+=w*(c.ctx.present?1:0);
     totR+=c.m.w*c.r; if(isModifiable(c.m)) modR+=c.m.w*c.r;
-    if(c.r>=0.5){ reds++; if(['k','spo2','glu'].includes(c.m.id)) emergency=true; }
+    if(c.r>=0.5){ if(c.ctx.conf>0.05){ reds++; if(['k','spo2','glu'].includes(c.m.id)) emergency=true; }
+                  else if(c.ctx.artifact) reconfirm.push(band(c.m).name); }   // implausible/low-quality critical → reconfirm, not Alert
+    if(c.m.skew && c.r>0.1) robust.push(band(c.m).name);
     if(c.r>0&&c.r<0.15){ bandWatch++; watchP.add(p.id); }
     if(c.ctx.conf>0.05){ const bl=baseline(c.m); volAcc+=w*bl.vol; volW+=w; zsq+=bl.z*bl.z; nz++; zmax=Math.max(zmax,Math.abs(bl.z));
       if(Math.abs(bl.z)>1.5 && c.r<0.15 && worseningVsBaseline(c.m,bl.mean)) watchP.add(p.id); } }); });  // within-green drift TOWARD risk → Watch
@@ -339,11 +345,13 @@ function compute(){ const core=scoreCore(); const {pr,W,pure,status,anyCrit,bind
   const sources=bandWatch+watchP.size;
   let ewTier=sources>0?'Watch':'none';
   if(sources>=3 || Dmv>Dstar || zmax>3) ewTier='Advisory';
+  if(reconfirm.length && ewTier==='none') ewTier='Watch';
   let traj=uncapped()-withVals(m=>seriesOf(m)[NSER-31],uncapped); if(prevPure!=null) traj=pure-prevPure;  // live 30-day delta (uncapped so cascade-capped scores still show trend)
   let tnext=null,tmk=null; PILLARS.forEach(p=>pr[p.id].contribs.forEach(c=>{ if(c.ctx.conf>0.05){ const d=timeToThreshold(c.m); if(d!=null&&(tnext==null||d<tnext)){tnext=d;tmk=band(c.m).name;} }}));
   const dual=dualFraming(), synd=syndromes();
   const companion={confidence,sufficiency,modifiability,rep:Math.round(100*rep),critTier,reds,ewTier,
-    watchM:sources,watchP:[...watchP],traj,volatility,Dmv:+Dmv.toFixed(1),tnext:tnext==null?null:Math.round(tnext),tmk,dual,synd};
+    watchM:sources,watchP:[...watchP],traj,volatility,Dmv:+Dmv.toFixed(1),tnext:tnext==null?null:Math.round(tnext),tmk,dual,synd,
+    reconfirm:[...new Set(reconfirm)],robust:[...new Set(robust)]};
   return {...core,companion}; }
 
 /* ---- colours ---- */
@@ -471,7 +479,9 @@ function render(){ const out=compute();
     '<b style="color:'+bcol(d.progress)+'">Attainable-best '+d.progress+'%</b> of your ceiling (modifiable headroom '+d.floor+'→'+d.ceil+')'+
     ' &nbsp;·&nbsp; Soonest threshold: '+(co.tnext==null?'<span style="color:var(--muted)">none projected</span>':'<b style="color:var(--yellow)">~'+co.tnext+'d → '+co.tmk+' yellow</b>')+
     ' &nbsp;·&nbsp; Multivariate anomaly D='+co.Dmv+
-    ' &nbsp;·&nbsp; Syndromic: '+(co.synd.length?'<span style="color:var(--yellow)">'+co.synd.join('; ')+'</span>':'<span style="color:var(--muted)">none</span>'));
+    ' &nbsp;·&nbsp; Syndromic: '+(co.synd.length?'<span style="color:var(--yellow)">'+co.synd.join('; ')+'</span>':'<span style="color:var(--muted)">none</span>')+
+    (co.reconfirm.length?' &nbsp;·&nbsp; <span style="color:#7fd1ff">Reconfirm pending: '+co.reconfirm.join(', ')+' (implausible/low-quality → Watch, not Alert)</span>':'')+
+    (co.robust.length?' &nbsp;·&nbsp; <span style="color:var(--muted)">Robust(log) handling: '+co.robust.join(', ')+'</span>':''));
   d3.select('#pnote').html('<b>'+PERSONA+'</b> · age '+PERSONAS[PERSONA].age+(activeMeds().length?(' · meds: '+activeMeds().join(', ')):'')+' — '+PERSONAS[PERSONA].note+
     ' &nbsp; <i>Trajectory/volatility/anomaly computed from a seeded synthetic 90-day history (Doc 12 §5; decisions D9/D10) — illustrative.</i>');
 

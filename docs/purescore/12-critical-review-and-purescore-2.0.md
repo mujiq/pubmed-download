@@ -259,6 +259,8 @@ so the behaviour is inspectable against the edge-case personas:
 | Multivariate anomaly `D` | **Live (diagonal-covariance approx.)** | `D≈√Σzᵢ²` (decision **D10**); production uses full Mahalanobis |
 | Dual framing: absolute + progress-to-attainable-best + competing-risk muting | **Live** | modifiable-optimum ceiling (decision **D11**); `crmute` per persona |
 | Syndromic detectors (metabolic syndrome, frailty, CKD-progression) | **Live** | decision **D12** |
+| Skew/robustness: log-scale baseline for heavy-tailed markers | **Live** | CRP/UACR/ALT/FIB-4/bilirubin (decision **D13**) |
+| Critical-value confirmation: isolated implausible → reconfirm, not Alert | **Live** | data-quality flag, never auto-suppresses a confirmed critical (decision **D14**) |
 
 The synthetic-history items are **demonstrations of the method**, not evidence; production requires
 real longitudinal data and the validation gates of Doc 09. Every decision behind this design is

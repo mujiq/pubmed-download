@@ -25,6 +25,8 @@
 | D10 | Multivariate anomaly approximation in the demo | LOCKED | auto | 2026-06-14 |
 | D11 | Dual-framing math (attainable-best ceiling) | LOCKED | auto | 2026-06-14 |
 | D12 | Syndromic detector set | LOCKED | auto | 2026-06-14 |
+| D13 | Heavy-tailed markers → log-scale personal baseline | LOCKED | auto | 2026-06-14 |
+| D14 | Critical-value confirmation mechanism in the demo | LOCKED | auto | 2026-06-14 |
 
 ---
 
@@ -184,9 +186,40 @@ calculator dual-framing readout.
 recognised clinical construct. Extensible later. **Affects.** Doc 12 §5.3; calculator syndromic
 detectors.
 
+## D13 — Heavy-tailed markers → log-scale personal baseline *(auto)*
+**Question.** Right-skewed markers (hsCRP, UACR, ALT, FIB-4, bilirubin) make a naive personal-
+baseline z misleading (a spike dominates). How should the anomaly z handle them?
+**Options.**
+- A ★ **Log-transform the personal baseline for skew-tagged markers** — compute z on `log(value)`
+  for markers flagged `skew`, keeping slope/volatility on the raw scale (consistent with the bands);
+  surface a `Robust(log) handling` readout when such a marker is elevated.
+- B — Raw-scale z everywhere (simple; lets skew spikes produce false anomalies).
+- C — Winsorize/clip the tail (loses real extreme signal).
+**Decision.** A. **Rationale.** Matches Doc 12 §7 robust-transform mandate; the log scale is the
+standard robust handling for these biomarkers; raw slope/band logic is preserved for consistency.
+**Affects.** Doc 12 §4/§7; calculator `skew` tags + `baseline()` log branch + `robust` readout.
+
+## D14 — Critical-value confirmation mechanism in the demo *(auto)*
+**Question.** Doc 12 §3.4 routes an *isolated implausible* critical (hemolyzed K⁺, bad-contact
+SpO₂) to Watch+reconfirm rather than an emergency cascade. How to model this safely in the demo
+without ever auto-suppressing a genuine emergency?
+**Options.**
+- A ★ **Explicit data-quality flag drives the downgrade** — a marker marked `artifacts`
+  (implausible / low device quality, *as determined by the data-quality layer*) has its confidence
+  forced ≈0, so it cannot fire the cascade; it surfaces as `Reconfirm pending` + Watch. A
+  *confirmed* critical (full confidence) still cascades. Corroboration would re-raise confidence.
+- B — **Auto-downgrade any extreme value** beyond a plausibility band — **rejected: unsafe**, it
+  would silently suppress real emergencies (true K⁺ 7.0 happens).
+- C — Always cascade (current v0.1) — alarm fatigue from lab/device artifacts.
+**Decision.** A. **Rationale.** Safety-first: the system never auto-suppresses a *confirmed*
+critical; only data the quality layer has flagged as low-confidence is held, and only pending
+reconfirmation. Mirrors the `exclude`/confidence mechanism already used for dialysis eGFR.
+**Affects.** Doc 12 §3.4; calculator `ctxOf` artifact handling, `reconfirm` readout, `labartifact`
+persona.
+
 ---
 
 ### Maintenance notes
-- New decisions append as `D13+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
+- New decisions append as `D15+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
   add the replacement; never edit history in place.
 - Each entry must name the artifacts it **Affects** so downstream code/docs stay traceable.
