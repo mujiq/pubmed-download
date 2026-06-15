@@ -404,3 +404,27 @@ Doc 02 Pillar 7.
    (§1.3).
 6. **All thresholds re-verified on cadence** before production (README §5.6); reproductive guidance
    changes (e.g. ACOG/ADA updates) trigger a model-version bump (Doc 09/11).
+
+---
+
+## 7. Implementation status (interactive calculator) — decision D15
+
+This document is the **authoritative production reference**; the calculator
+(`purescore-architecture.html`) implements the resolution *mechanism* live on a marker subset so the
+behaviour is inspectable. Mapping to the spec above:
+
+| Spec concept (this doc) | Calculator realization |
+|---|---|
+| `sex_at_birth` × `gender_identity` × `hormone_therapy` × stage (§1) | `CTX = {natal, hrt, stage}` + header selectors (Natal sex · Hormones · Life stage) |
+| Hormone-therapy-aware ranges (§1.2); affirmed-milieu resolution | `gsex()` (governing milieu) drives `bySex` band selection; established-HRT assumed for the demo |
+| Trimester / menopause / andropause modifiers (§2.3, §2.5, §3) | `STAGE_MODS` (preg T1/T2/T3, postpartum, peri/postmenopause, andropause) applied in `band()` |
+| Per-marker axis {none, gonadal, natal} (§1) | `bySex` presence marks gonadal markers (Hgb, waist, grip, VO₂max, sex hormones in the subset) |
+| Pre-eclampsia/GDM **absolute anchors** (§2.3.4) | acute-danger anchors enforced in `pillarRisk` regardless of stage |
+| Confidence reduction for under-represented cohorts (§1.2, §6) | `rep` lowers Confidence for trans/intersex/pregnancy personas (D7) |
+
+**Demonstration personas:** `pregnancy` (T2 frame), `transfem` (feminizing HRT → female gonadal
+ranges; Hgb 12.8 reads normal-female but a binary-male toggle would false-flag it anemic),
+`transmasc` (masculinizing HRT → male ranges; erythrocytosis watch), `menopause` (postmenopausal
+CV/bone up-weight, BMD red sooner). The full production system applies the §3 classification and
+§4–5 tables across the entire Doc 02 catalogue. Every numeric band remains **illustrative pending
+clinical sign-off and Doc 13 validation** — the Babylon lesson (Doc 00).

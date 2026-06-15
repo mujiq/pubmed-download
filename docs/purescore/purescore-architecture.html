@@ -66,8 +66,23 @@
     <div class="sub">Context-aware scoring (Docs 03/04/12). Managed-state · confounder down-weighting · age/dialysis/pregnancy frames · companion meta-dimensions. Illustrative bands — re-verify before real use.</div>
   </div>
   <div class="controls">
-    <label>Sex (at birth)
+    <label>Natal sex
       <select id="sex"><option value="m">Male</option><option value="f">Female</option></select>
+    </label>
+    <label>Hormones
+      <select id="hrt"><option value="none">None</option><option value="feminizing">Feminizing HRT</option><option value="masculinizing">Masculinizing HRT</option></select>
+    </label>
+    <label>Life stage
+      <select id="stage">
+        <option value="reproductive">Reproductive</option>
+        <option value="preg_t1">Pregnant · T1</option>
+        <option value="preg_t2">Pregnant · T2</option>
+        <option value="preg_t3">Pregnant · T3</option>
+        <option value="postpartum">Postpartum / lactating</option>
+        <option value="perimenopause">Perimenopause</option>
+        <option value="postmenopause">Postmenopause</option>
+        <option value="andropause">Andropause</option>
+      </select>
     </label>
     <label>Persona / edge case
       <select id="persona">
@@ -79,6 +94,9 @@
         <option value="elderly">Elderly 84 (age frames)</option>
         <option value="dialysis">ESRD on dialysis</option>
         <option value="pregnancy">Pregnant (2nd tri)</option>
+        <option value="transfem">Trans woman (estrogen)</option>
+        <option value="transmasc">Trans man (testosterone)</option>
+        <option value="menopause">Postmenopausal</option>
         <option value="fh">Familial hypercholesterolemia</option>
         <option value="labartifact">Lab artifact (hemolyzed K⁺)</option>
       </select>
@@ -198,21 +216,41 @@ const PERSONAS={
                trend:{grip:-0.8,vo2:-0.6},crmute:{NUT:0.6},
                note:'Age 84 — age-adjusted BMI/BP(J-curve)/eGFR/VO₂max frames; actionability modifier de-prioritizes low-yield flags; sarcopenic drift; NUT competing-risk-muted.'},
   dialysis:   {age:64,meds:[],rep:0.50,wmult:{REN:1.5,CV:1.4},marks:{egfr:8,uacr:600,k:5.3,sbp:138,hgb:10.8},exclude:['egfr'],fixed:['uacr','egfr'],crmute:{NUT:0.5,SLP:0.8},res:{ATH:55},note:'ESRD on dialysis — eGFR EXCLUDED (adequacy frame); structural renal damage fixed; renal anemia (Hgb) expected; NUT/SLP competing-risk-muted.'},
-  pregnancy:  {sex:'f',age:31,meds:[],rep:0.50,wmult:{ENDO:1.3,HEM:1.2,CV:1.2},marks:{hgb:11.4,sbp:108,glu:84},exclude:['waist'],
-               bands:{hgb:{optLo:10.5,optHi:14,yLo:10,yHi:14.5,rLo:9,rHi:15.5},egfr:{optLo:100,yLo:99,rLo:70}},
-               note:'2nd-trimester frame — physiologic anemia & eGFR-rise expected; pre-eclampsia/GDM absolute anchors retained.'},
+  pregnancy:  {natal:'f',stage:'preg_t2',age:31,meds:[],rep:0.50,wmult:{ENDO:1.3,HEM:1.2,CV:1.2},marks:{hgb:11.4,sbp:108,glu:84},exclude:['waist'],
+               note:'2nd-trimester frame — physiologic anemia & eGFR-rise expected (Hgb/eGFR/glucose bands shifted); pre-eclampsia/GDM absolute anchors retained.'},
+  transfem:   {natal:'m',hrt:'feminizing',age:34,meds:[],rep:0.55,wmult:{},marks:{hgb:12.8},
+               note:'Trans woman on established estrogen — Hgb/hematocrit, lipids, urate & estradiol read against the FEMALE (gonadal) reference; Hgb 12.8 is normal-female but a binary male toggle would falsely flag it anemic. Natal-sex organ baseline retained; confidence lowered (less cohort data).'},
+  transmasc:  {natal:'f',hrt:'masculinizing',age:29,meds:[],rep:0.55,wmult:{},marks:{hgb:16.0,sex_h:520},
+               note:'Trans man on established testosterone — Hgb, creatinine/eGFR, urate & testosterone read against the MALE (gonadal) reference; under a female toggle Hgb 16.0 would falsely read high.'},
+  menopause:  {natal:'f',stage:'postmenopause',age:56,meds:[],rep:0.82,wmult:{CV:1.2,BCM:1.3},marks:{apob:96,tsc:-1.7,sbp:134},
+               note:'Postmenopausal — estrogen-loss CV & bone-loss risk (CV/BCM up-weighted; BMD red sooner); ApoB drift; vasomotor sleep impact.'},
   fh:         {age:38,meds:[],rep:0.75,wmult:{CV:1.5},marks:{apob:140,sbp:118},fixed:['apob'],res:{ATH:70},note:'Familial hypercholesterolemia — ApoB genetic, NOT lifestyle-modifiable (needs medication); modifiability low.'},
   labartifact:{age:55,meds:[],rep:0.85,wmult:{},marks:{k:6.6},artifacts:['k'],res:{},note:'Isolated implausible K⁺ 6.6 (hemolysis suspected, no corroboration) → held for RECONFIRM, NOT an emergency cascade (Doc 12 §3.4). Corroboration (ECG/symptom/second draw) would escalate immediately.'},
 };
 
 let SEX='m', PERSONA='healthy', prevPure=null;
-
+/* hormonal-milieu model (Doc 05; decision D15): natal sex baseline; hormone-sensitive markers
+   follow the CURRENT gonadal milieu (established HRT flips it); life-stage modifiers adjust bands;
+   acute-danger anchors stay absolute. */
+let CTX={natal:'m', hrt:'none', stage:'reproductive'};
+function gsex(){ return CTX.hrt==='feminizing'?'f':CTX.hrt==='masculinizing'?'m':CTX.natal; }  // governing milieu for gonadal-axis bands
+function syncSex(){ SEX=gsex(); }
+const STAGE_MODS={      // life-stage band overrides (physiologic); acute anchors never set here
+  preg_t1:{hgb:{optLo:11,optHi:14,yLo:10.5,yHi:14.5,rLo:9.5,rHi:15.5}, egfr:{optLo:100,yLo:99,rLo:70}, glu:{optLo:65,optHi:92,yLo:60,yHi:95,rLo:55,rHi:126}},
+  preg_t2:{hgb:{optLo:10.5,optHi:14,yLo:10,yHi:14.5,rLo:9,rHi:15.5}, egfr:{optLo:105,yLo:104,rLo:75}, glu:{optLo:65,optHi:90,yLo:60,yHi:95,rLo:55,rHi:126}},
+  preg_t3:{hgb:{optLo:11,optHi:14,yLo:10.5,yHi:14.5,rLo:9.5,rHi:15.5}, egfr:{optLo:100,yLo:99,rLo:70}, sbp:{optLo:90,optHi:129,yLo:89,yHi:130,rLo:85,rHi:140}},
+  postpartum:{hgb:{optLo:11.5,optHi:15,yLo:11,yHi:15.5,rLo:9.5,rHi:16.5}},
+  perimenopause:{},
+  postmenopause:{tsc:{optLo:-1.0,yLo:-1.01,rLo:-2.0}},   // post-menopausal bone-loss risk → red sooner
+  andropause:{sex_h:{optLo:300,yLo:264,rLo:230}},          // age-adjusted male testosterone reference
+};
 function band(m){ const o=Object.assign({},m);
-  if(m.bySex&&m.bySex[SEX]) Object.assign(o,m.bySex[SEX]);
-  const pb=PERSONAS[PERSONA].bands; if(pb&&pb[m.id]) Object.assign(o,pb[m.id]);
+  if(m.bySex&&m.bySex[gsex()]) Object.assign(o,m.bySex[gsex()]);                 // gonadal-milieu range
+  const sm=STAGE_MODS[CTX.stage]; if(sm&&sm[m.id]) Object.assign(o,sm[m.id]);    // life-stage modifier
+  const pb=PERSONAS[PERSONA].bands; if(pb&&pb[m.id]) Object.assign(o,pb[m.id]);  // explicit persona override
   return o; }
 function defaultVal(m){ let v=m._val0;
-  if(m.bySex&&m.bySex[SEX]&&m.bySex[SEX].val!=null) v=m.bySex[SEX].val;
+  if(m.bySex&&m.bySex[gsex()]&&m.bySex[gsex()].val!=null) v=m.bySex[gsex()].val;
   const pb=PERSONAS[PERSONA].bands; if(pb&&pb[m.id]&&pb[m.id].val!=null) v=pb[m.id].val;
   return v; }
 function activeMeds(){ return PERSONAS[PERSONA].meds||[]; }
@@ -482,8 +520,9 @@ function render(){ const out=compute();
     ' &nbsp;·&nbsp; Syndromic: '+(co.synd.length?'<span style="color:var(--yellow)">'+co.synd.join('; ')+'</span>':'<span style="color:var(--muted)">none</span>')+
     (co.reconfirm.length?' &nbsp;·&nbsp; <span style="color:#7fd1ff">Reconfirm pending: '+co.reconfirm.join(', ')+' (implausible/low-quality → Watch, not Alert)</span>':'')+
     (co.robust.length?' &nbsp;·&nbsp; <span style="color:var(--muted)">Robust(log) handling: '+co.robust.join(', ')+'</span>':''));
-  d3.select('#pnote').html('<b>'+PERSONA+'</b> · age '+PERSONAS[PERSONA].age+(activeMeds().length?(' · meds: '+activeMeds().join(', ')):'')+' — '+PERSONAS[PERSONA].note+
-    ' &nbsp; <i>Trajectory/volatility/anomaly computed from a seeded synthetic 90-day history (Doc 12 §5; decisions D9/D10) — illustrative.</i>');
+  const ctxTxt='natal '+(CTX.natal==='m'?'♂':'♀')+(CTX.hrt!=='none'?' · '+CTX.hrt+' HRT → ranges read '+(gsex()==='f'?'♀':'♂'):'')+(CTX.stage!=='reproductive'?' · '+CTX.stage:'');
+  d3.select('#pnote').html('<b>'+PERSONA+'</b> · age '+PERSONAS[PERSONA].age+' · '+ctxTxt+(activeMeds().length?(' · meds: '+activeMeds().join(', ')):'')+' — '+PERSONAS[PERSONA].note+
+    ' &nbsp; <i>Hormone-sensitive bands follow the governing milieu (Doc 05; D15). Trajectory/anomaly from a seeded synthetic 90-day history (D9/D10) — illustrative.</i>');
 
   if(selected){ const r=out.pr[selected],p=PILLARS.find(x=>x.id===selected);
     let html=`<h3>${selected} · ${p.name} &nbsp; <span style="color:${colR(r.R,r.critical)}">S ${Math.round(100*(1-r.R))}${r.critical?' · CRITICAL':''}</span></h3>`;
@@ -499,8 +538,13 @@ d3.select('#simulate').on('click',()=>{ const n=Math.max(1,+d3.select('#days').p
   prevPure=compute().pure;
   RESERVOIRS.forEach(r=>{ if(r.type==='burden') r.val=Math.round(r.val*Math.exp(-r.lambda*n)); else r.val=Math.round(r.val+(100-r.val)*(1-Math.exp(-r.lambda*n))); });
   render(); });
-function onPersonaOrSex(){ const p=PERSONAS[PERSONA]; if(p.sex){SEX=p.sex; d3.select('#sex').property('value',SEX);} applyPersona(true); buildInputs(); reflectToggles(); prevPure=null; render(); }
-d3.select('#sex').on('change',function(){ SEX=this.value; applyPersona(true); buildInputs(); reflectToggles(); prevPure=null; render(); });
+function onPersonaOrSex(){ const p=PERSONAS[PERSONA];
+  if(p.natal) CTX.natal=p.natal; CTX.hrt=p.hrt||'none'; CTX.stage=p.stage||'reproductive'; syncSex();
+  d3.select('#sex').property('value',CTX.natal); d3.select('#hrt').property('value',CTX.hrt); d3.select('#stage').property('value',CTX.stage);
+  applyPersona(true); buildInputs(); reflectToggles(); prevPure=null; render(); }
+d3.select('#sex').on('change',function(){ CTX.natal=this.value; syncSex(); applyPersona(true); buildInputs(); reflectToggles(); prevPure=null; render(); });
+d3.select('#hrt').on('change',function(){ CTX.hrt=this.value; syncSex(); applyPersona(true); buildInputs(); prevPure=null; render(); });
+d3.select('#stage').on('change',function(){ CTX.stage=this.value; applyPersona(true); buildInputs(); prevPure=null; render(); });
 d3.select('#persona').on('change',function(){ PERSONA=this.value; onPersonaOrSex(); });
 d3.select('#reset').on('click',()=>{ suicidality=false; onPersonaOrSex(); });
 function reflectToggles(){ const s=document.getElementById('sui'); if(s) s.checked=suicidality; }

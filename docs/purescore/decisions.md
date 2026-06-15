@@ -27,6 +27,7 @@
 | D12 | Syndromic detector set | LOCKED | auto | 2026-06-14 |
 | D13 | Heavy-tailed markers → log-scale personal baseline | LOCKED | auto | 2026-06-14 |
 | D14 | Critical-value confirmation mechanism in the demo | LOCKED | auto | 2026-06-14 |
+| D15 | Sex/gender reference model (production) | LOCKED | user | 2026-06-15 |
 
 ---
 
@@ -217,9 +218,32 @@ reconfirmation. Mirrors the `exclude`/confidence mechanism already used for dial
 **Affects.** Doc 12 §3.4; calculator `ctxOf` artifact handling, `reconfirm` readout, `labartifact`
 persona.
 
+## D15 — Sex/gender reference model (production) *(user)*
+**Question.** For production, how should PureScore select sex-specific reference ranges across the
+whole marker catalogue (so male AND female handling is airtight, including trans/HRT, pregnancy,
+menopause, intersex)?
+**Options.**
+- A ★ **Hormonal-milieu aware** — keep NATAL SEX as the genetic/organ baseline, but collect gender
+  identity + active HRT + pregnancy/menopause status, and override hormone-sensitive markers
+  (Hgb/hematocrit, ferritin, lipids/ApoB, sex hormones, BMD, creatinine-based eGFR, urate, ALT) by
+  the CURRENT hormonal milieu. Moderate data model; inclusive; production-standard.
+- B — Binary natal-sex toggle only (mis-scores trans/HRT, pregnancy, intersex).
+- C — Full biological-context model (organ inventory + measured hormone levels per marker) — most
+  rigorous but heaviest data model and most fields missing in practice.
+**Decision.** A. **Rationale.** Correct biology drives ranges (Hgb tracks the androgen milieu, not
+the birth certificate), inclusive and equitable, while remaining collectable; natal sex is retained
+where it is genuinely the governing axis (organ/genetic). Consistent with Doc 12 §2's
+"hormone-therapy-aware ranges." **Affects.** Doc 05 (authoritative production reference tables);
+calculator hormonal-context selector (natal sex + HRT + life stage) and `band()` resolution;
+new trans-HRT / menopause personas; fairness slices in Doc 13 (D17).
+**Implementation note.** Per-marker `axis` ∈ {none (sex-invariant), gonadal (current hormonal
+milieu), natal (immutable)}. Established-HRT threshold (≈6–12 mo) flips the gonadal axis; life-stage
+modifier tables (cycle/pregnancy-trimester/postpartum/peri-&post-menopause/andropause) adjust bands;
+acute-danger anchors (K⁺, SpO₂, glucose extremes) stay absolute regardless of context.
+
 ---
 
 ### Maintenance notes
-- New decisions append as `D15+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
+- New decisions append as `D16+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
   add the replacement; never edit history in place.
 - Each entry must name the artifacts it **Affects** so downstream code/docs stay traceable.
