@@ -65,6 +65,8 @@ Three properties make PureScore more than a weighted average of lab values:
 | 11 | `11-safety-governance-and-regulatory.md` |  | Clinician-in-loop, escalation, equity, privacy, model governance |
 | 12 | `12-critical-review-and-purescore-2.0.md` | ✔ | Edge-case critique + PureScore 2.0: context-aware interpretation, companion meta-vector, personal-baseline early-warning, dual framing, bias handling |
 | 13 | `13-validation-and-calibration-harness.md` | ✔ | Validation/calibration **gates** for 2.0 (score + companion vector + early-warning): discrimination, calibration/recalibration, early-warning PPV/lead-time, fairness slices, drift, release gates. Executable: `assets/validation_harness.js` |
+| 14 | `14-evidence-registry-and-provenance.md` | ✔ | Machine-readable evidence registry, per-band provenance, the cold-start **"ignition" model** (guideline→cohort→personal baseline), external-crawler change-control. Registry: `assets/evidence-registry.json` |
+| 16 | `16-recommended-actions-catalogue.md` | ✔ | **Exhaustive UAE-prioritized** action/nudge catalogue by condition (diabetes, CVD, CKD, NAFLD, vit-D, hemoglobinopathy/G6PD, mental health, respiratory, bone, Ramadan…), medication-adherence & screening, evidence-tagged |
 
 Read 00 → 04 first; they define everything the later documents depend on.
 

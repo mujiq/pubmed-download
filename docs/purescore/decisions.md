@@ -30,6 +30,9 @@
 | D15 | Sex/gender reference model (production) | LOCKED | user | 2026-06-15 |
 | D16 | Nudge-engine ranking & Modifiability gate | LOCKED | auto | 2026-06-15 |
 | D17 | Validation-harness scope, recalibration & gates | LOCKED | auto | 2026-06-15 |
+| D18 | Race/ethnicity handling (UAE) | LOCKED | user | 2026-06-15 |
+| D19 | Evidence registry, provenance & cold-start ignition | LOCKED | auto | 2026-06-15 |
+| D20 | Evidence-crawler change-control gate | LOCKED | auto | 2026-06-15 |
 
 ---
 
@@ -280,9 +283,64 @@ at the gate boundary); scope honestly bounded to what a cross-sectional cohort c
 encodes the Babylon discipline (synthetic ≠ evidence). **Affects.** `assets/validation_harness.js`;
 Doc 13 executable-harness section.
 
+## D18 — Race/ethnicity handling (UAE) *(user)*
+**Question.** How should the engine use race/ethnicity for the UAE population mix (Emirati/Gulf
+Arab, South-Asian majority, other Arab, Filipino/SE-Asian, Western, African)?
+**Options.**
+- A ★ **Context & screening, never penalty** — ethnicity adjusts the *reference frame & screening*:
+  (i) guideline-validated biology-based cutoffs (WHO South-Asian BMI ≥23/27.5, lower waist
+  thresholds); (ii) select/recalibrate risk equations validated for the group (ASCVD under-predicts
+  South Asians); (iii) raise screening for high-prevalence heritable conditions (G6PD,
+  thalassemia/hemoglobinopathy, consanguinity-linked, FH); (iv) **race-free eGFR (CKD-EPI 2021)**;
+  (v) self-reported & optional — absence lowers Confidence, never penalizes.
+- B — Strictly ethnicity-blind (misses validated differences; a real blind spot for the South-Asian
+  majority).
+- C — Direct ethnicity risk multiplier — **rejected**: penalizes a protected class; the retracted
+  eGFR race-coefficient mistake.
+**Decision.** A. **Rationale.** Equitable *and* clinically complete: uses ethnicity only where a
+guideline validates a biology-based difference or a screening priority; never as a penalty; race-free
+eGFR; consistent with D7 (absence → confidence, not penalty) and the Doc 10/11 no-protected-class
+rule. **Affects.** Doc 15 (UAE localization); calculator ethnicity selector → waist/BMI cutoffs +
+screening flags + risk-equation note; evidence registry; Doc 13 ethnicity fairness slice.
+
+## D19 — Evidence registry, provenance & cold-start "ignition" *(auto)*
+**Question.** How should every band/threshold/rule/action carry its evidence, and how should the
+effective range evolve from guideline → real-world cohort → personal baseline over time?
+**Options.**
+- A ★ **Machine-readable evidence registry + three-stage ignition provenance** — a versioned
+  `evidence-registry.json` of stable-ID citations (body, title, year, version, jurisdiction, URL/DOI,
+  `last_verified`, `applies_to[]`); every engine band/rule/action references one or more evidence IDs.
+  Each effective band's value is a **provenance blend** `θ_clinical·anchor + θ_cohort·cohortRange +
+  θ_personal·personalBaseline` whose weights shift over time (empirical-Bayes, D6/D9): **crank** on the
+  clinical guideline (cold start), **warm up** with the real-world cohort percentile, then **run** on
+  the personal-baseline z-score as data accrues — the "diesel ignition" model.
+- B — Hard-coded citations in prose only (not machine-maintainable; crawler can't update).
+- C — Personal-baseline only once available (discards guideline anchor; unsafe cold start, drift).
+**Decision.** A. **Rationale.** Separates *evidence* (registry, crawler-maintained) from *engine*
+(references IDs); the ignition model makes the cold-start→personalized transition explicit and
+auditable and prevents both unsafe cold starts and over-fitting to a noisy personal baseline.
+**Affects.** Doc 14; `assets/evidence-registry.json`; calculator provenance fields + readout; Doc 09
+(shrinkage) cross-link.
+
+## D20 — Evidence-crawler change-control gate *(auto)*
+**Question.** When the external crawler detects a guideline change to a cited band/threshold, may it
+update the engine automatically?
+**Options.**
+- A ★ **Detect-and-stage, human-in-loop gate** — the crawler flags drift (new version, changed
+  value, dead URL, superseded guideline), writes a staged proposal with diff + evidence, and a
+  clinician/governance reviewer **must approve** before any band changes; a band change is a
+  model-version bump that re-triggers validation (Doc 13) and governance (Doc 11). `last_verified`
+  refreshes automatically; *values* never do.
+- B — Auto-apply guideline changes (fast, but an unreviewed/incorrect crawl could silently move a
+  safety threshold — unacceptable).
+- C — Manual-only (no crawler) — stale guidelines, the maintenance burden this task exists to solve.
+**Decision.** A. **Rationale.** Safety-first currency: machines surface change, humans approve
+clinical impact; nothing safety-relevant moves without sign-off + re-validation. **Affects.** Doc 14
+crawler contract; registry `review_status`/`last_verified` fields.
+
 ---
 
 ### Maintenance notes
-- New decisions append as `D18+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
+- New decisions append as `D21+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
   add the replacement; never edit history in place.
 - Each entry must name the artifacts it **Affects** so downstream code/docs stay traceable.

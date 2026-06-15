@@ -444,6 +444,9 @@ function nudgeRank(worst){ const list=[];
   const out=[],cc={}; for(const it of list){ cc[it.n.cls]=cc[it.n.cls]||0; if(cc[it.n.cls]>=2) continue; cc[it.n.cls]++; out.push(it); if(out.length>=5) break; }
   return out; }
 
+/* evidence map — primary citation per marker (full registry: assets/evidence-registry.json — Doc 14/D19) */
+const EVDMAP={sbp:'EVD-CVD-BP-001 · ACC/AHA·ESH',apob:'EVD-CVD-APOB-001 · ACC/AHA·ESC',rhr:'EVD-MED-BB-CONFOUND-002',a1c:'EVD-MET-A1C-001 · ADA 2024',glu:'EVD-MET-A1C-001 · ADA 2024',waist:'EVD-BCM-BMI-WAIST-001 · WHO/IDF',egfr:'EVD-REN-EGFR-001 · KDIGO 2024',uacr:'EVD-REN-EGFR-001 · KDIGO 2024',k:'EVD-REN-K-003',alt:'EVD-HEP-FIB4-001 · AASLD',fib4:'EVD-HEP-FIB4-001 · AASLD 2023',bili:'EVD-HEP-LFT-003',crp:'EVD-INFL-CRP-001 · AHA/CDC',wbc:'EVD-HEM-CBC-002',alb:'EVD-NUT-ALB-004',hgb:'EVD-HEM-HGB-001 · WHO',spo2:'EVD-HEM-SPO2-001 · WHO',plt:'EVD-HEM-CBC-002',tsh:'EVD-ENDO-TSH-001 · ATA',cort:'EVD-ENDO-CORT-004',sex_h:'EVD-ENDO-TESTO-002 · Endo Soc',bmi:'EVD-BCM-BMI-WAIST-001 · WHO Asian',grip:'EVD-BCM-GRIP-005 · EWGSOP2',tsc:'EVD-BCM-BMD-002 · WHO/FRAX',vitd:'EVD-NUT-VITD-001 · Endo Soc',o3:'EVD-NUT-O3-002 · AHA',b12:'EVD-NUT-B12-006',sdur:'EVD-SLP-001 · AASM',seff:'EVD-SLP-001 · AASM',sreg:'EVD-SLP-001 · AASM',vo2:'EVD-FIT-VO2-001 · ACSM',mvpa:'EVD-FIT-PA-001 · WHO',step:'EVD-FIT-PA-001 · WHO',phq:'EVD-MCS-PHQ-001',gad:'EVD-MCS-PHQ-001',lone:'EVD-MCS-LONE-007'};
+
 /* ---- colours ---- */
 function colR(R,crit){ if(crit)return 'var(--red)'; if(R<0.30)return 'var(--green)'; if(R<0.60)return 'var(--yellow)'; return 'var(--red)'; }
 function colPure(s,status){ if(status==='CRITICAL')return 'var(--crit)'; if(s>=70)return 'var(--green)'; if(s>=50)return 'var(--yellow)'; return 'var(--red)'; }
@@ -590,10 +593,14 @@ function render(){ const out=compute();
   if(selected){ const r=out.pr[selected],p=PILLARS.find(x=>x.id===selected);
     let html=`<h3>${selected} · ${p.name} &nbsp; <span style="color:${colR(r.R,r.critical)}">S ${Math.round(100*(1-r.R))}${r.critical?' · CRITICAL':''}</span></h3>`;
     r.contribs.forEach(c=>{ const tags=(c.ctx.managed?'<span class="tag mng">MNG</span>':'')+(c.ctx.confounded?'<span class="tag cnf">CNF</span>':'')+(c.ctx.excluded?'<span class="tag exc">EXC</span>':'');
-      html+=`<div class="bk-row"><span>${band(c.m).name} = ${c.m.val} ${band(c.m).unit||''} ${c.m.critical?'★':''}${tags}</span><b style="color:${c.r<0.15?'var(--green)':c.r<0.5?'var(--yellow)':'var(--red)'}">r ${c.r.toFixed(2)}</b></div>`; });
+      const cite=EVDMAP[c.m.id]?`<br><span style="color:var(--muted);font-size:10px">📎 ${EVDMAP[c.m.id]}</span>`:'';
+      html+=`<div class="bk-row"><span>${band(c.m).name} = ${c.m.val} ${band(c.m).unit||''} ${c.m.critical?'★':''}${tags}${cite}</span><b style="color:${c.r<0.15?'var(--green)':c.r<0.5?'var(--yellow)':'var(--red)'}">r ${c.r.toFixed(2)}</b></div>`; });
     html+=`<div class="bk-row"><span>marker power-mean (γ=3, conf-weighted)</span><b>${r.Rmark.toFixed(2)}</b></div>`;
     html+=`<div class="bk-row"><span>+ reservoir load (ρ·B̃)</span><b>+${(RHO*r.Btil).toFixed(2)}</b></div>`;
     html+=`<div class="bk-row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:6px"><span><b>pillar risk R</b></span><b style="color:${colR(r.R,r.critical)}">${r.R.toFixed(2)}</b></div>`;
+    const nP=89,kP=120, thPers=(nP/(nP+kP))*(1-co.volatility/100), thCoh=(1-thPers)*(co.rep/100), thClin=Math.max(0,1-thPers-thCoh);
+    const stg=thPers>0.5?'running · personal':thCoh>thClin?'warm-up · cohort':'crank · guideline';
+    html+=`<div class="bk-row" style="border-top:1px dashed var(--line);margin-top:4px;padding-top:4px"><span>Evidence ignition (Doc 14): <b>${stg}</b> · θ clin/coh/pers = ${thClin.toFixed(2)} / ${thCoh.toFixed(2)} / ${thPers.toFixed(2)}</span><b style="color:var(--muted)">📎 registry</b></div>`;
     d3.select('#break').html(html); } }
 
 /* ---- controls ---- */
