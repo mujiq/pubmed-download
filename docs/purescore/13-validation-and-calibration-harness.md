@@ -317,7 +317,8 @@ ground-truth risk model (non-circular), and reports on a held-out test split:
 - **Calibration:** adaptive (equal-frequency) ECE for the **raw** score-as-risk vs the
   **isotonic-recalibrated** score (gate ECE ≤ 0.05), Brier skill (gate ≥ 0.05) — demonstrating §4's
   point that *the raw PureScore is a wellness index, not a probability, and must be recalibrated*.
-- **Fairness (D7/D15):** AUROC/ECE parity by natal-sex subgroup, max–min ratio gate ≥ 0.80.
+- **Fairness (D7/D15/D18):** AUROC/ECE parity by **natal-sex** and by **ethnicity cut-point tier**
+  (asian vs standard, ~UAE mix), max–min ratio gate ≥ 0.80.
 - A hard-coded **`PRODUCTION VERDICT: NO-SHIP`** — synthetic self-consistency is necessary, never
   sufficient. Early-warning lead-time / per-tier PPV are explicitly **deferred** to the longitudinal
   generator (§2a, §5), not claimed by the cross-sectional harness.

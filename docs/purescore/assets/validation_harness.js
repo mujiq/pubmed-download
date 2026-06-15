@@ -22,7 +22,7 @@ const HTML = fs.readFileSync(path.join(__dirname, '..', 'purescore-architecture.
 const start = HTML.indexOf('const GAMMA=3'), end = HTML.indexOf('/* ---- colours ---- */');
 if (start < 0 || end < 0) { console.error('Could not locate engine block in HTML'); process.exit(1); }
 let engine = HTML.slice(start, end);
-engine += '\n; globalThis.__E = { set:(p)=>{PERSONA=p}, setNatal:(s)=>{CTX.natal=s; CTX.hrt="none"; CTX.stage="reproductive"; syncSex();}, applyPersona, compute, MARKERS };';
+engine += '\n; globalThis.__E = { set:(p)=>{PERSONA=p}, setNatal:(s)=>{CTX.natal=s; CTX.hrt="none"; CTX.stage="reproductive"; syncSex();}, setEthn:(e)=>{CTX.ethnicity=e;}, applyPersona, compute, MARKERS };';
 (0, eval)(engine);
 const E = globalThis.__E;
 
@@ -52,9 +52,13 @@ function pTrue(d) {
 /* ---- run the cohort ---- */
 E.set('healthy');
 const rows = [];
+const ETHN = [['south_asian', 0.55], ['gulf_arab', 0.20], ['sea_filipino', 0.10], ['western', 0.15]];  // ~UAE mix
+function pickEthn() { let r = rnd(), a = 0; for (const [e, p] of ETHN) { a += p; if (r < a) return e; } return 'western'; }
+const ASIAN_TIER = new Set(['south_asian', 'gulf_arab', 'sea_filipino', 'other_arab']);
 for (let i = 0; i < N; i++) {
   const natal = rnd() < 0.5 ? 'm' : 'f';
-  E.setNatal(natal); E.applyPersona(true);
+  const eth = pickEthn();
+  E.setNatal(natal); E.setEthn(eth); E.applyPersona(true);
   const d = {
     a1c: clamp(5.0 + Math.abs(randn()) * 0.85, 4.5, 9.5),
     sbp: clamp(112 + randn() * 16, 90, 185),
@@ -71,7 +75,7 @@ for (let i = 0; i < N; i++) {
   const risk = 1 - out.pure / 100;                 // PureScore-derived risk
   const p = pTrue(d);
   const y = rnd() < p ? 1 : 0;                       // synthetic outcome
-  rows.push({ risk, y, natal, ew: out.companion.ewTier });
+  rows.push({ risk, y, natal, ethTier: ASIAN_TIER.has(eth) ? 'asian' : 'standard', ew: out.companion.ewTier });
 }
 
 /* ---- metrics (field selectable: raw `risk` or recalibrated `cal`) ---- */
@@ -141,10 +145,17 @@ subs.forEach(g => console.log('  natal ' + (g.sx === 'm' ? '♂' : '♀') + '  n
 const aurocs = subs.map(g => g.auroc), ratio = Math.min(...aurocs) / Math.max(...aurocs);
 console.log('  AUROC max–min ratio = ' + ratio.toFixed(3) + '   [gate ≥ ' + TH.fairRatio + ']  ' + pass(ratio >= TH.fairRatio) + '\n');
 
+/* fairness slice: ethnicity cut-point tier (D18/D21) — recalibrated test scores */
+console.log('Fairness — parity by ethnicity cut-point tier (D18/D21, O7):');
+const esubs = ['asian', 'standard'].map(t => { const g = test.filter(x => x.ethTier === t); return { t, n: g.length, auroc: auroc(g, 'cal'), ece: ece(g, 'cal') }; });
+esubs.forEach(g => console.log('  ' + g.t.padEnd(9) + ' n=' + g.n + '  AUROC=' + g.auroc.toFixed(3) + '  ECE=' + g.ece.toFixed(4)));
+const eaur = esubs.map(g => g.auroc), eratio = Math.min(...eaur) / Math.max(...eaur);
+console.log('  AUROC max–min ratio = ' + eratio.toFixed(3) + '   [gate ≥ ' + TH.fairRatio + ']  ' + pass(eratio >= TH.fairRatio) + '\n');
+
 const ewRate = test.filter(x => x.ew !== 'none').length / test.length;
 console.log('Early-warning (O6): cross-sectional alarm rate=' + (ewRate * 100).toFixed(1) + '%');
 console.log('  NOTE: lead-time / per-tier PPV @ realistic prevalence require the LONGITUDINAL generator (Doc 13 §2a,§5) — NOT validated here.\n');
 
-const gates = [aurocV >= TH.auroc, eceCal <= TH.ece, skill >= TH.brierSkillMin, ratio >= TH.fairRatio];
+const gates = [aurocV >= TH.auroc, eceCal <= TH.ece, skill >= TH.brierSkillMin, ratio >= TH.fairRatio, eratio >= TH.fairRatio];
 console.log('GATE SUMMARY (synthetic): ' + gates.filter(Boolean).length + '/' + gates.length + ' pass → ' + (gates.every(Boolean) ? 'method self-consistent' : 'NEEDS WORK'));
 console.log('PRODUCTION VERDICT: NO-SHIP — synthetic ≠ evidence; prospective real-data validation + Doc 11 governance required (Babylon lesson).');

@@ -68,6 +68,7 @@ Three properties make PureScore more than a weighted average of lab values:
 | 14 | `14-evidence-registry-and-provenance.md` | ✔ | Machine-readable evidence registry, per-band provenance, the cold-start **"ignition" model** (guideline→cohort→personal baseline), external-crawler change-control. Registry: `assets/evidence-registry.json` |
 | 15 | `15-uae-localization.md` | ✔ | **UAE localization**: ethnicity-aware cut-points & screening (context, never penalty; D18), regional epidemiology, heritable-condition screening (G6PD/thalassemia/FH), vitamin-D, **Ramadan (IDF-DAR)** safety |
 | 16 | `16-recommended-actions-catalogue.md` | ✔ | **Exhaustive UAE-prioritized** action/nudge catalogue by condition (diabetes, CVD, CKD, NAFLD, vit-D, hemoglobinopathy/G6PD, mental health, respiratory, bone, Ramadan…), medication-adherence & screening, evidence-tagged |
+| 17 | `17-clinician-red-team-and-blind-spots.md` | ✔ | **Adversarial self-review**: every clinician/statistician/ethicist/regulator objection → how handled → honest residual; consolidated blind-spot register |
 
 Read 00 → 04 first; they define everything the later documents depend on.
 
