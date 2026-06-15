@@ -33,6 +33,7 @@
 | D18 | Race/ethnicity handling (UAE) | LOCKED | user | 2026-06-15 |
 | D19 | Evidence registry, provenance & cold-start ignition | LOCKED | auto | 2026-06-15 |
 | D20 | Evidence-crawler change-control gate | LOCKED | auto | 2026-06-15 |
+| D21 | UAE-localization scope & Ramadan handling | LOCKED | auto | 2026-06-15 |
 
 ---
 
@@ -338,9 +339,27 @@ update the engine automatically?
 clinical impact; nothing safety-relevant moves without sign-off + re-validation. **Affects.** Doc 14
 crawler contract; registry `review_status`/`last_verified` fields.
 
+## D21 — UAE-localization scope & Ramadan handling *(auto)*
+**Question.** How should UAE localization be scoped — which ethnicity cut-point tiers, and how to
+handle Ramadan fasting?
+**Options.**
+- A ★ **Tiered cut-points + race-free eGFR + raised heritable screening + IDF-DAR Ramadan safety** —
+  WHO-Asian BMI / IDF waist for the UAE-prevalent higher-risk groups (South-Asian, SE-Asian/Filipino,
+  Gulf/other-Arab), standard for Western/African; eGFR race-free; raise G6PD/thalassemia/FH/vitamin-D
+  screening; Ramadan applies IDF-DAR med-timing + hydration + an **absolute break-the-fast safety
+  rule** (glucose <70 / symptoms); ethnicity adjusts **Confidence only**, never penalty (D18).
+- B — Single universal cut-point (ignore ethnicity) — under-calls the South-Asian-majority population.
+- C — Per-nationality bespoke tables — over-fit, sparse data, brittle; little added validity over the
+  tiered model.
+**Decision.** A. **Rationale.** Uses only guideline-validated, biology-based group differences; tiers
+keep it robust and maintainable; Ramadan safety is a hard rule, not a nudge; fully consistent with
+D18 (context-not-penalty) and the Doc 10/11 equity firewall. **Affects.** Doc 15; calculator
+ethnicity/Ramadan selectors, `ethTier()`/`band()` cut-points, localization readout, `southasian` &
+`ramadan_dm` personas; Doc 16 actions; registry UAE entries.
+
 ---
 
 ### Maintenance notes
-- New decisions append as `D21+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
+- New decisions append as `D22+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
   add the replacement; never edit history in place.
 - Each entry must name the artifacts it **Affects** so downstream code/docs stay traceable.

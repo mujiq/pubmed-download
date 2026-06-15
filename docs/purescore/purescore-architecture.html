@@ -84,6 +84,20 @@
         <option value="andropause">Andropause</option>
       </select>
     </label>
+    <label>Ethnicity (UAE)
+      <select id="ethnicity">
+        <option value="unspecified">Unspecified</option>
+        <option value="south_asian">South Asian</option>
+        <option value="gulf_arab">Gulf Arab / Emirati</option>
+        <option value="other_arab">Other Arab</option>
+        <option value="sea_filipino">SE Asian / Filipino</option>
+        <option value="western">Western / European</option>
+        <option value="african">African</option>
+      </select>
+    </label>
+    <label>Ramadan
+      <select id="ramadan"><option value="no">Not fasting</option><option value="yes">Fasting</option></select>
+    </label>
     <label>Persona / edge case
       <select id="persona">
         <option value="healthy">Healthy adult</option>
@@ -97,6 +111,8 @@
         <option value="transfem">Trans woman (estrogen)</option>
         <option value="transmasc">Trans man (testosterone)</option>
         <option value="menopause">Postmenopausal</option>
+        <option value="southasian">South-Asian cardiometabolic</option>
+        <option value="ramadan_dm">Gulf-Arab T2D · Ramadan</option>
         <option value="fh">Familial hypercholesterolemia</option>
         <option value="labartifact">Lab artifact (hemolyzed K⁺)</option>
       </select>
@@ -116,6 +132,7 @@
   <div class="stage">
     <div class="companion" id="companion"></div>
     <div class="pnote" id="twozero"></div>
+    <div class="pnote" id="localization"></div>
     <div class="pnote" id="pnote"></div>
     <div class="legend">
       <span class="chip"><span class="dot" style="background:var(--green)"></span>green (R&lt;0.30)</span>
@@ -225,6 +242,10 @@ const PERSONAS={
                note:'Trans man on established testosterone — Hgb, creatinine/eGFR, urate & testosterone read against the MALE (gonadal) reference; under a female toggle Hgb 16.0 would falsely read high.'},
   menopause:  {natal:'f',stage:'postmenopause',age:56,meds:[],rep:0.82,wmult:{CV:1.2,BCM:1.3},marks:{apob:96,tsc:-1.7,sbp:134},
                note:'Postmenopausal — estrogen-loss CV & bone-loss risk (CV/BCM up-weighted; BMD red sooner); ApoB drift; vasomotor sleep impact.'},
+  southasian: {natal:'m',ethnicity:'south_asian',age:45,meds:[],rep:1.0,wmult:{MET:1.4,CV:1.3},marks:{bmi:24.5,waist:93,a1c:5.9,apob:98,vitd:16},trend:{a1c:0.8,waist:0.6},
+               note:'South-Asian male — WHO Asian BMI/waist cut-points flag cardiometabolic risk a normal-range BMI would miss; ASCVD under-predicts → ethnicity-aware equation; G6PD/hemoglobinopathy/FH & vitamin-D screening raised (D18).'},
+  ramadan_dm: {natal:'m',ethnicity:'gulf_arab',ramadan:true,age:52,meds:['metformin','sglt2'],rep:1.0,wmult:{MET:1.5},marks:{a1c:7.2,glu:140,egfr:72,bmi:23.5,waist:96},
+               note:'Gulf-Arab with T2D fasting Ramadan — med-timing & hypoglycemia/dehydration safety (IDF-DAR); SGLT2i held if dehydration/euglycemic-DKA risk; clinician-set fast-breaking rule.'},
   fh:         {age:38,meds:[],rep:0.75,wmult:{CV:1.5},marks:{apob:140,sbp:118},fixed:['apob'],res:{ATH:70},note:'Familial hypercholesterolemia — ApoB genetic, NOT lifestyle-modifiable (needs medication); modifiability low.'},
   labartifact:{age:55,meds:[],rep:0.85,wmult:{},marks:{k:6.6},artifacts:['k'],res:{},note:'Isolated implausible K⁺ 6.6 (hemolysis suspected, no corroboration) → held for RECONFIRM, NOT an emergency cascade (Doc 12 §3.4). Corroboration (ECG/symptom/second draw) would escalate immediately.'},
 };
@@ -233,9 +254,21 @@ let SEX='m', PERSONA='healthy', prevPure=null;
 /* hormonal-milieu model (Doc 05; decision D15): natal sex baseline; hormone-sensitive markers
    follow the CURRENT gonadal milieu (established HRT flips it); life-stage modifiers adjust bands;
    acute-danger anchors stay absolute. */
-let CTX={natal:'m', hrt:'none', stage:'reproductive'};
+let CTX={natal:'m', hrt:'none', stage:'reproductive', ethnicity:'unspecified', ramadan:false};
 function gsex(){ return CTX.hrt==='feminizing'?'f':CTX.hrt==='masculinizing'?'m':CTX.natal; }  // governing milieu for gonadal-axis bands
 function syncSex(){ SEX=gsex(); }
+/* ethnicity = CONTEXT & SCREENING, never penalty (D18; Doc 15). UAE-prevalent higher-cardiometabolic-risk
+   groups use WHO Asian / IDF ethnic-specific BMI & waist cut-points; eGFR stays race-free (CKD-EPI 2021). */
+function ethTier(){ return ['south_asian','sea_filipino','gulf_arab','other_arab'].includes(CTX.ethnicity)?'asian':'standard'; }
+function ethRep(){ return CTX.ethnicity==='unspecified'?0.90:(['south_asian','gulf_arab'].includes(CTX.ethnicity)?1.0:0.97); } // representativeness, NOT penalty
+function screeningFor(){ const e=CTX.ethnicity, s=['Vitamin D (UAE near-universal deficiency)'];
+  if(['south_asian','gulf_arab','other_arab','sea_filipino'].includes(e)){ s.unshift('Early cardiometabolic (lower BMI/waist cut-points)'); s.push('G6PD before oxidant drugs','Hemoglobinopathy/thalassemia (premarital)','FH cascade (consanguinity)'); }
+  if(e==='gulf_arab') s.push('Consanguinity-linked recessive conditions');
+  if(e==='african') s.push('Sickle-cell / hemoglobinopathy');
+  return s; }
+function riskEqNote(){ return ethTier()==='asian'
+  ? 'CV risk: pooled-cohort/ASCVD UNDER-predicts in South-Asian/Gulf ancestry → use ethnicity-aware equation (QRISK3); consider earlier statin & screening (EVD-ETHN-ASCVD-001).'
+  : 'CV risk: standard equation; ethnicity not specified does not penalize the score (D18).'; }
 const STAGE_MODS={      // life-stage band overrides (physiologic); acute anchors never set here
   preg_t1:{hgb:{optLo:11,optHi:14,yLo:10.5,yHi:14.5,rLo:9.5,rHi:15.5}, egfr:{optLo:100,yLo:99,rLo:70}, glu:{optLo:65,optHi:92,yLo:60,yHi:95,rLo:55,rHi:126}},
   preg_t2:{hgb:{optLo:10.5,optHi:14,yLo:10,yHi:14.5,rLo:9,rHi:15.5}, egfr:{optLo:105,yLo:104,rLo:75}, glu:{optLo:65,optHi:90,yLo:60,yHi:95,rLo:55,rHi:126}},
@@ -248,6 +281,10 @@ const STAGE_MODS={      // life-stage band overrides (physiologic); acute anchor
 function band(m){ const o=Object.assign({},m);
   if(m.bySex&&m.bySex[gsex()]) Object.assign(o,m.bySex[gsex()]);                 // gonadal-milieu range
   const sm=STAGE_MODS[CTX.stage]; if(sm&&sm[m.id]) Object.assign(o,sm[m.id]);    // life-stage modifier
+  if(ethTier()==='asian'){                                                       // ethnicity cut-points (WHO Asian / IDF) — context, not penalty
+    if(m.id==='bmi') Object.assign(o,{optLo:18.5,optHi:22.9,yLo:17,yHi:23,rLo:16,rHi:27.5});
+    if(m.id==='waist') Object.assign(o, gsex()==='f'?{optHi:79,yHi:80,rHi:88}:{optHi:89,yHi:90,rHi:100});
+  }
   const pb=PERSONAS[PERSONA].bands; if(pb&&pb[m.id]) Object.assign(o,pb[m.id]);  // explicit persona override
   return o; }
 function defaultVal(m){ let v=m._val0;
@@ -375,7 +412,7 @@ function compute(){ const core=scoreCore(); const {pr,W,pure,status,anyCrit,bind
   RESERVOIRS.forEach(r=>{ if((r.type==='burden'&&r.val>45)||(r.type==='asset'&&r.val<40)) bandWatch++; });
   if(suicidality){ emergency=true; reds++; }
   const rep=PERSONAS[PERSONA].rep;
-  const confidence=Math.round(100*(cW?cConf/cW:0)*rep);
+  const confidence=Math.round(100*(cW?cConf/cW:0)*rep*ethRep());   // ethnicity adjusts representativeness/confidence, never penalty (D18)
   const sufficiency=Math.round(100*(cW?cPres/cW:0));
   const modifiability=Math.round(100*(totR>0?modR/totR:1));
   const volatility=Math.round(100*(volW?volAcc/volW:0));
@@ -575,6 +612,13 @@ function render(){ const out=compute();
     ' &nbsp;·&nbsp; Syndromic: '+(co.synd.length?'<span style="color:var(--yellow)">'+co.synd.join('; ')+'</span>':'<span style="color:var(--muted)">none</span>')+
     (co.reconfirm.length?' &nbsp;·&nbsp; <span style="color:#7fd1ff">Reconfirm pending: '+co.reconfirm.join(', ')+' (implausible/low-quality → Watch, not Alert)</span>':'')+
     (co.robust.length?' &nbsp;·&nbsp; <span style="color:var(--muted)">Robust(log) handling: '+co.robust.join(', ')+'</span>':''));
+  /* UAE localization readout (Doc 15; D18) */
+  const ethName={unspecified:'unspecified',south_asian:'South Asian',gulf_arab:'Gulf Arab/Emirati',other_arab:'Other Arab',sea_filipino:'SE Asian/Filipino',western:'Western',african:'African'}[CTX.ethnicity];
+  let locTxt='<b>Localization:</b> ethnicity '+ethName+(ethTier()==='asian'?' → <b style="color:#7fd1ff">WHO Asian BMI/waist cut-points applied</b>':' → standard cut-points')+
+    ' · eGFR race-free (CKD-EPI 2021) · '+riskEqNote()+
+    ' <br>Screening raised: '+screeningFor().join(', ')+'.';
+  if(CTX.ramadan) locTxt+=' <br><b style="color:var(--yellow)">Ramadan (IDF-DAR):</b> shift glucose-lowering meds to Iftar/Suhoor (clinician-set); front-load hydration Iftar→Suhoor; <b>break the fast if glucose &lt;70 mg/dL or hypo/dehydration symptoms</b> (medically permitted); SGLT2i caution (euglycemic-DKA/dehydration).';
+  d3.select('#localization').html(locTxt);
   const ctxTxt='natal '+(CTX.natal==='m'?'♂':'♀')+(CTX.hrt!=='none'?' · '+CTX.hrt+' HRT → ranges read '+(gsex()==='f'?'♀':'♂'):'')+(CTX.stage!=='reproductive'?' · '+CTX.stage:'');
   d3.select('#pnote').html('<b>'+PERSONA+'</b> · age '+PERSONAS[PERSONA].age+' · '+ctxTxt+(activeMeds().length?(' · meds: '+activeMeds().join(', ')):'')+' — '+PERSONAS[PERSONA].note+
     ' &nbsp; <i>Hormone-sensitive bands follow the governing milieu (Doc 05; D15). Trajectory/anomaly from a seeded synthetic 90-day history (D9/D10) — illustrative.</i>');
@@ -609,12 +653,16 @@ d3.select('#simulate').on('click',()=>{ const n=Math.max(1,+d3.select('#days').p
   RESERVOIRS.forEach(r=>{ if(r.type==='burden') r.val=Math.round(r.val*Math.exp(-r.lambda*n)); else r.val=Math.round(r.val+(100-r.val)*(1-Math.exp(-r.lambda*n))); });
   render(); });
 function onPersonaOrSex(){ const p=PERSONAS[PERSONA];
-  if(p.natal) CTX.natal=p.natal; CTX.hrt=p.hrt||'none'; CTX.stage=p.stage||'reproductive'; syncSex();
+  if(p.natal) CTX.natal=p.natal; CTX.hrt=p.hrt||'none'; CTX.stage=p.stage||'reproductive';
+  if(p.ethnicity) CTX.ethnicity=p.ethnicity; CTX.ramadan=p.ramadan||false; syncSex();
   d3.select('#sex').property('value',CTX.natal); d3.select('#hrt').property('value',CTX.hrt); d3.select('#stage').property('value',CTX.stage);
+  d3.select('#ethnicity').property('value',CTX.ethnicity); d3.select('#ramadan').property('value',CTX.ramadan?'yes':'no');
   applyPersona(true); buildInputs(); reflectToggles(); prevPure=null; render(); }
 d3.select('#sex').on('change',function(){ CTX.natal=this.value; syncSex(); applyPersona(true); buildInputs(); reflectToggles(); prevPure=null; render(); });
 d3.select('#hrt').on('change',function(){ CTX.hrt=this.value; syncSex(); applyPersona(true); buildInputs(); prevPure=null; render(); });
 d3.select('#stage').on('change',function(){ CTX.stage=this.value; applyPersona(true); buildInputs(); prevPure=null; render(); });
+d3.select('#ethnicity').on('change',function(){ CTX.ethnicity=this.value; prevPure=null; render(); });   // bands reinterpret; values unchanged
+d3.select('#ramadan').on('change',function(){ CTX.ramadan=this.value==='yes'; render(); });
 d3.select('#persona').on('change',function(){ PERSONA=this.value; onPersonaOrSex(); });
 d3.select('#reset').on('click',()=>{ suicidality=false; onPersonaOrSex(); });
 function reflectToggles(){ const s=document.getElementById('sui'); if(s) s.checked=suicidality; }
