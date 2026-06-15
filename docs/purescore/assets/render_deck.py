@@ -109,6 +109,14 @@ def bullet(x,y,h,sub=None,dot=ACC,size=29):
     add(f'<circle cx="{x+9}" cy="{y-10}" r="8" fill="{dot}"/>')
     text(x+34,y,h,size,INK,weight="bold")
     if sub: text(x+34,y+33,sub,20,MUT)
+def wrap(t,width):
+    out=[]; cur=""
+    for w in t.split():
+        if len(cur)+len(w)+1<=width: cur=(cur+" "+w).strip()
+        else: out.append(cur); cur=w
+    if cur: out.append(cur)
+    return out
+PCOL={"CV":RED,"MET":GOLD,"REN":ACC,"HEP":GREEN,"INF":"#e0673e","HEM":"#c0506b","ENDO":PURP,"BCM":TEAL,"NUT":"#7bbf5a","SLP":"#6a7bd6","FIT":"#3fb6a8","MCS":"#d98ec0"}
 def end(n):
     footer(n); add("</svg>")
     p=os.path.join(SD,f"slide{n:02d}.png")
@@ -367,6 +375,112 @@ def s15(n):
     text(W/2,800,"The deliverable today is a defensible design — its value is unlocked by the data + reinforcement loop over time.",24,INK,anchor="middle",ital=True)
     end(n)
 
+# ============================================================ DATA & EXPERIENCE
+@slide
+def d01(n):
+    start(); head("15 · DATA STREAMS","Four kinds of signal — four levels of trust","Every input is flagged by type and reliability, and used where it is strongest.",TEAL)
+    streams=[("LAB","Lab biomarker","clinical-grade",GREEN,["HbA1c · ApoB · eGFR","TSH · hsCRP · ferritin"],"Anchors the score's clinical bands"),
+             ("WEAR","Wearable metric","tiered by device",ACC,["Resting HR · HRV · SpO₂","Sleep · steps · CGM glucose"],"Trajectory + early-warning; device-weighted into score (D22)"),
+             ("GOAL","User goal","declared intent",GOLD,["‘Lower my HbA1c’","‘Sleep better’ · ‘Fertility’"],"Steers pillar weights & nudge ranking"),
+             ("LIFE","Lifestyle / PRO","self-report",PURP,["Diet · alcohol · shisha","Stress · PHQ-9 · GAD-7"],"Fills pillars without labs (lower confidence)")]
+    for i,(tag,t,tier,c,ex,use) in enumerate(streams):
+        x=80+i*448; rect(x,290,420,560,rx=18,fill="#10182a",stroke=c,sw=2)
+        chip(x+28,318,tag,c); text(x+28,430,t,29,INK,weight="bold")
+        rect(x+28,452,230,36,rx=18,fill="#0a0e18",stroke=c,sw=1); text(x+42,477,tier,17,c,weight="bold")
+        text(x+28,540,"Examples (most used)",17,MUT,weight="bold")
+        for j,e in enumerate(ex): text(x+28,578+j*32,e,19,INK)
+        line(x+28,668,x+392,668,col=LINE,sw=1); text(x+28,700,"Used for",17,MUT,weight="bold")
+        for j,ln in enumerate(wrap(use,30)): text(x+28,732+j*30,ln,19,c)
+    end(n)
+
+@slide
+def d02(n):
+    start(); head("16 · WEARABLES","Individual → aggregated → derived","Raw signals become trends become inferences — each trusted differently (D22).",ACC)
+    cols=[("INDIVIDUAL (raw)","instantaneous signals",GREEN,["Heart rate, beat-to-beat","SpO₂, skin temperature","Accelerometer / steps","CGM glucose (every 5 min)"],"clinical-grade where the sensor is (CGM, ECG)"),
+          ("AGGREGATED (summary)","daily / weekly rollups",ACC,["Resting HR, HR zones","Sleep duration & efficiency","Time-in-range (CGM)","Weekly MVPA, daily steps"],"consumer-validated — feeds score, discounted"),
+          ("DERIVED (inferred)","model estimates",GOLD,["‘Readiness’ / recovery","‘Stress’ score","Sleep stages (REM/deep)","VO₂max est., resp. rate"],"informational only — never drives a critical")]
+    for i,(t,sub,c,items,tier) in enumerate(cols):
+        x=80+i*600; rect(x,290,560,470,rx=18,fill="#10182a",stroke=c,sw=2)
+        text(x+28,344,t,26,c,weight="bold"); text(x+28,376,sub,18,MUT)
+        for j,it in enumerate(items): add(f'<circle cx="{x+36}" cy="{420+j*46-7}" r="5" fill="{c}"/>'); text(x+54,420+j*46,it,20,INK)
+        rect(x+28,648,504,86,rx=12,fill="#0a0e18",stroke=c,sw=1)
+        text(x+44,682,"Trust tier",15,MUT,weight="bold")
+        for j,ln in enumerate(wrap(tier,40)): text(x+44,710+j*26,ln,17,c)
+        if i<2: text(x+575,520,"→",40,MUT,anchor="middle")
+    text(80,810,"Devices: Apple Watch · Samsung · Oura ring · Whoop · CGM (Libre/Dexcom) · Omron BP cuff · smart scale · in-home passive sensors.",21,CY,ital=True)
+    end(n)
+
+@slide
+def d03(n):
+    start(); head("17 · WEARABLES × PILLARS","Where each metric lands","One wearable feeds many pillars — the engine routes it to the right reference.",ACC)
+    mets=[("Resting HR",["CV","FIT","MCS"]),("HRV",["CV","MCS","SLP","ENDO"]),("SpO₂",["HEM"]),("Steps / MVPA",["FIT","MET","CV"]),
+          ("VO₂max (est.)",["FIT","CV"]),("Sleep dur/eff/reg",["SLP","MCS"]),("CGM glucose / TIR",["MET"]),("Skin temp",["ENDO","INF"]),
+          ("BP (cuff)",["CV","REN"]),("Weight / body-comp",["BCM","MET"]),("ECG / rhythm",["CV"])]
+    pcols=["CV","MET","REN","INF","HEM","ENDO","BCM","SLP","FIT","MCS"]
+    x0,y0,cw,rh=470,300,134,42
+    for k,p in enumerate(pcols): text(x0+k*cw+cw/2,y0,p,18,PCOL[p],anchor="middle",weight="bold")
+    for r,(m,ps) in enumerate(mets):
+        y=y0+34+r*rh; text(90,y+6,m,20,INK)
+        for k,p in enumerate(pcols):
+            cx=x0+k*cw+cw/2
+            if p in ps: add(f'<circle cx="{cx}" cy="{y}" r="12" fill="{PCOL[p]}" fill-opacity="0.85"/>')
+            else: add(f'<circle cx="{cx}" cy="{y}" r="6" fill="none" stroke="{LINE}" stroke-width="1.5"/>')
+    text(90,820,"Most frequent: resting HR, HRV, sleep, steps, CGM time-in-range — the daily backbone of Trajectory & Early-warning.",21,CY,ital=True)
+    end(n)
+
+@slide
+def d04(n):
+    start(); head("18 · EFFORTLESS EXPERIENCE","Less admin, less anxiety","Every surface removes a step the patient used to do themselves.",GREEN)
+    surf=[("AI SCRIBE","Ambient visit notes → structured data; the score updates itself. No forms, no typing.",TEAL),
+          ("AI CHAT AGENT","24/7 conversational coach — explains your score, answers questions, books actions; escalates on hard safety rules (never diagnoses).",ACC),
+          ("FRICTIONLESS SCHEDULING","Books the exact lab / clinician / scan the engine flags, at the right interval, with reminders.",GOLD),
+          ("IN-HOME TRACKING","Passive scale, BP cuff, sleep mat & fall detection — care between visits, zero patient effort.",PURP),
+          ("INSURANCE AUTH","Auto-prepares pre-authorization & e-claims (UAE: DHA / Shafafiya) — fewer denials, no paperwork.",GREEN)]
+    for i,(t,sub,c) in enumerate(surf):
+        y=300+i*108; rect(80,y,1760,96,rx=14,fill="#10182a",stroke=c,sw=1.8)
+        text(112,y+42,t,25,c,weight="bold")
+        lns=wrap(sub,108)
+        for j,ln in enumerate(lns): text(112,(y+74 if len(lns)==1 else y+60+j*28),ln,19,MUT)
+    end(n)
+
+@slide
+def d05(n):
+    start(); head("19 · HOUSEHOLD","One household, one shared view","Individual scores for every member — managed together, stress-free.",PURP)
+    fam=[("Rashid, 54",RED,"Emirati · father","T2D · cardiometabolic · fasts Ramadan","CGM · Watch · BP cuff","Lower HbA1c, avoid insulin"),
+         ("Mariam, 48",GOLD,"mother","Perimenopause · hypothyroid · low vit-D","Oura ring · smart scale","Sleep, energy, manage menopause"),
+         ("Grandmother, 76",ACC,"elder","CKD-3 · frailty · polypharmacy","In-home: scale·BP·sleep-mat·fall","Stay independent, avoid hospital"),
+         ("Priya, 26",TEAL,"South-Asian · daughter","PCOS · anxiety · building fitness","Watch · Whoop · cycle app","Fertility/PCOS, calm, get fit"),
+         ("Tom, 34",GREEN,"Western expat · optimizer","Healthy — longevity focus","Whoop · Oura · CGM","Performance & healthspan")]
+    for i,(nm,c,prof,cond,dev,goal) in enumerate(fam):
+        x=80+i*364; rect(x,290,340,560,rx=18,fill="#10182a",stroke=c,sw=2)
+        text(x+24,344,nm,27,c,weight="bold"); text(x+24,378,prof,17,MUT)
+        line(x+24,398,x+316,398,col=LINE,sw=1)
+        text(x+24,432,"Profile",15,DIM,weight="bold")
+        for j,ln in enumerate(wrap(cond,24)): text(x+24,462+j*28,ln,18,INK)
+        text(x+24,560,"Devices",15,DIM,weight="bold")
+        for j,ln in enumerate(wrap(dev,24)): text(x+24,590+j*28,ln,17,ACC)
+        rect(x+24,700,292,128,rx=12,fill="#0a0e18",stroke=c,sw=1)
+        text(x+40,732,"Goal",15,DIM,weight="bold")
+        for j,ln in enumerate(wrap(goal,22)): text(x+40,762+j*28,ln,19,c,weight="bold")
+    end(n)
+
+@slide
+def d06(n):
+    start(); head("20 · GOALS → ACTIONS","Your goal, the engine's next moves","PureScore matches each person's goal to a ranked, personalized plan.",GOLD)
+    rows=[("Rashid",RED,"Lower HbA1c, avoid insulin","Ramadan-safe med timing (IDF-DAR) · cut refined carbs (+5.7) · CGM time-in-range target · book HbA1c + UACR · SGLT2i adherence"),
+          ("Mariam",GOLD,"Sleep & energy","Vitamin-D repletion · sleep window + wind-down · recheck TSH · 2× resistance/wk · perimenopause clinician review"),
+          ("Grandmother",ACC,"Stay independent","Fall-risk plan · protein 1.2 g/kg + resistance (sarcopenia) · polypharmacy/renal med review · home BP · nephrology follow-up"),
+          ("Priya",TEAL,"Fertility / PCOS, calmer","Fiber + steps (insulin sensitivity) · GAD-7 + daily breathing · preconception folate & vit-D · cycle-aware tracking · PCOS clinic"),
+          ("Tom",GREEN,"Performance & longevity","Zone-2 + VO₂max target · measure ApoB (close gap) · Lp(a) once · sleep regularity · protein + resistance")]
+    y0=300
+    text(96,y0,"WHO",18,MUT,weight="bold"); text(330,y0,"GOAL",18,MUT,weight="bold"); text(720,y0,"PURESCORE RECOMMENDED NEXT ACTIONS",18,MUT,weight="bold")
+    for i,(nm,c,goal,acts) in enumerate(rows):
+        y=y0+30+i*108; rect(80,y,1760,94,rx=12,fill="#10182a",stroke=c,sw=1.6)
+        text(104,y+54,nm,24,c,weight="bold")
+        for j,ln in enumerate(wrap(goal,16)): text(326,y+ (42 if len(wrap(goal,16))>1 else 54)+j*28,ln,19,INK)
+        for j,ln in enumerate(wrap(acts,72)): text(716,y+ (40 if len(wrap(acts,72))>1 else 54)+j*30,ln,19,MUT)
+    end(n)
+
 # ---------------- 12-pillar drill-down ----------------
 PILLARS=[
  ("CV","Cardiovascular",RED,(-1,1,-1,1),"Heart & arteries — the world's leading cause of death.",
@@ -408,6 +522,58 @@ def make_pillar(idx):
         end(n)
     return fn
 for i in range(12): slide(make_pillar(i))
+
+# ---------------- day in the life ----------------
+def dayinlife(n,title,sub,color,rows):
+    start(); head("21 · DAY IN THE LIFE",title,sub,color)
+    text(248,300,"DEVICE / DATA / INPUT",15,MUT,weight="bold"); text(1078,300,"PURESCORE RESPONSE",15,MUT,weight="bold")
+    for i,(tm,flag,fc,data,resp) in enumerate(rows):
+        y=326+i*120
+        text(108,y+44,tm,19,color,weight="bold")
+        rect(228,y,768,100,rx=12,fill="#10182a",stroke=fc,sw=1.6); chip(250,y+13,flag,fc,size=15)
+        dl=wrap(data,52)
+        for j,ln in enumerate(dl): text(360,y+(40 if len(dl)>1 else 40)+j*30,ln,18,INK)
+        line(1004,y+50,1058,y+50,col=MUT,sw=2,arrow=True)
+        rect(1066,y,774,100,rx=12,fill="#0d1322",stroke=color,sw=1.4)
+        rl=wrap(resp,62)
+        for j,ln in enumerate(rl): text(1090,y+(58 if len(rl)==1 else 44)+j*28,ln,18,MUT)
+    end(n)
+
+@slide
+def dil1(n):
+    dayinlife(n,"Rashid, 54 — type-2 diabetes, fasting Ramadan","CGM + watch + cuff carry the day; the engine stays fasting-aware and safe.",RED,[
+        ("04:30","WEAR",ACC,"Suhoor: CGM + logged meal; metformin taken","Sets fasting-day glucose target; confirms Ramadan med timing (IDF-DAR)"),
+        ("11:00","WEAR",ACC,"Apple Watch: low daytime activity (fasting)","Activity nudge MUTED — fasting-aware; CGM watched for hypoglycemia"),
+        ("14:20","SAFETY",RED,"CGM dips to 68 mg/dL","Hard safety rule fires: ‘glucose <70 — breaking the fast is permitted’"),
+        ("18:50","WEAR",ACC,"Iftar: CGM spike; Omron BP 134/86","Gentle post-meal walk nudge; BP → CV trajectory updated"),
+        ("22:30","CHAT",TEAL,"Asks AI agent: ‘is my sugar OK this Ramadan?’","Explains time-in-range trend; books HbA1c + UACR — no clinic trip")])
+
+@slide
+def dil2(n):
+    dayinlife(n,"Mariam, 48 — perimenopause, hypothyroid","An Oura ring + a chat agent turn a rough night into a plan.",GOLD,[
+        ("06:40","WEAR",ACC,"Oura: low REM, resting HR +5, temp shift","SLP + ENDO trajectory dip flagged; ‘energy-protect’ day suggested"),
+        ("08:00","CHAT",TEAL,"Asks agent about hot flashes & poor sleep","Explains perimenopause pattern; vitamin-D reminder; reassurance"),
+        ("13:00","LIFE",PURP,"Logs high stress, skipped lunch","MCS + NUT nudge: 5-min breathing; protein-forward meal"),
+        ("19:00","WEAR",ACC,"Smart scale + weekly body-comp trend","BCM stable; reinforces 2× resistance/week"),
+        ("21:00","GOAL",GOLD,"Goal: better sleep & energy","Books TSH recheck; suggests a perimenopause clinician review")])
+
+@slide
+def dil3(n):
+    dayinlife(n,"Grandmother, 76 — CKD, frailty (in-home)","Passive sensors and auto-admin keep her safe at home — zero effort.",ACC,[
+        ("07:10","WEAR",ACC,"In-home scale: +2 kg over 3 days","Fluid-retention EARLY-WARNING → Advisory to caregiver + nephrology"),
+        ("07:12","WEAR",ACC,"Home BP 158/88; sleep mat: restless night","REN + CV trajectory; flags possible decompensation"),
+        ("09:00","LAB",GREEN,"Scheduled eGFR / UACR result synced","Confirms CKD-3 stable vs progression; updates the renal frame"),
+        ("12:00","LIFE",PURP,"Polypharmacy reminder (renal-dosed)","Adherence loop; flags an NSAID to avoid"),
+        ("12:05","AUTH",CY,"Goal: stay independent, avoid hospital","Auto-prepares nephrology insurance auth (DHA); caregiver notified")])
+
+@slide
+def dil4(n):
+    dayinlife(n,"Priya, 26 — PCOS, anxiety, building fitness","Cycle-aware, context-smart coaching across watch + ring.",TEAL,[
+        ("06:30","WEAR",ACC,"Whoop: low recovery; cycle app: luteal phase","HRV dip read as EXPECTED (cycle-aware) — not penalized as risk"),
+        ("12:30","LIFE",PURP,"GAD-7 check-in: anxiety elevated","MCS nudge: daily breathing; offers a support chat with the agent"),
+        ("18:00","WEAR",ACC,"Apple Watch: strength workout logged","FIT + BCM credited; insulin-sensitivity reservoir improves"),
+        ("20:00","CHAT",TEAL,"Asks agent about PCOS & fertility","Explains; preconception folate + vit-D; books a PCOS clinic visit"),
+        ("21:30","GOAL",GOLD,"Goal: fertility, calmer, fitter","Plan: fiber + steps, cycle-aware tracking, anxiety pathway")])
 
 @slide
 def sLast(n):

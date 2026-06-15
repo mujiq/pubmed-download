@@ -69,6 +69,7 @@ Three properties make PureScore more than a weighted average of lab values:
 | 15 | `15-uae-localization.md` | ✔ | **UAE localization**: ethnicity-aware cut-points & screening (context, never penalty; D18), regional epidemiology, heritable-condition screening (G6PD/thalassemia/FH), vitamin-D, **Ramadan (IDF-DAR)** safety |
 | 16 | `16-recommended-actions-catalogue.md` | ✔ | **Exhaustive UAE-prioritized** action/nudge catalogue by condition (diabetes, CVD, CKD, NAFLD, vit-D, hemoglobinopathy/G6PD, mental health, respiratory, bone, Ramadan…), medication-adherence & screening, evidence-tagged |
 | 17 | `17-clinician-red-team-and-blind-spots.md` | ✔ | **Adversarial self-review**: every clinician/statistician/ethicist/regulator objection → how handled → honest residual; consolidated blind-spot register |
+| 18 | `18-data-streams-and-experience.md` | ✔ | **Input taxonomy** (lab/wearable/goal/lifestyle, flagged), **wearable trust-tiering** (D22), wearables×pillars, product surfaces (AI scribe/chat/scheduling/in-home/insurance-auth), household accounts, goals→actions |
 
 Read 00 → 04 first; they define everything the later documents depend on.
 

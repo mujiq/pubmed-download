@@ -34,6 +34,7 @@
 | D19 | Evidence registry, provenance & cold-start ignition | LOCKED | auto | 2026-06-15 |
 | D20 | Evidence-crawler change-control gate | LOCKED | auto | 2026-06-15 |
 | D21 | UAE-localization scope & Ramadan handling | LOCKED | auto | 2026-06-15 |
+| D22 | Wearable-metric trust tiering | LOCKED | user | 2026-06-15 |
 
 ---
 
@@ -357,9 +358,28 @@ D18 (context-not-penalty) and the Doc 10/11 equity firewall. **Affects.** Doc 15
 ethnicity/Ramadan selectors, `ethTier()`/`band()` cut-points, localization readout, `southasian` &
 `ramadan_dm` personas; Doc 16 actions; registry UAE entries.
 
+## D22 — Wearable-metric trust tiering *(user)*
+**Question.** Consumer wearables are rich but not medical-grade. How should their metrics feed
+PureScore?
+**Options.**
+- A ★ **Tiered trust** — wearables fully power **trajectory, early-warning, and nudges**, and feed
+  the **score weighted by device grade**: *clinical-grade* (CGM, validated BP cuff, single-lead
+  ECG/AFib) ≈ lab weight; *consumer-validated* (resting HR, steps, sleep duration) discounted;
+  *inferential/derived* (readiness, stress, sleep-stages) = **informational only**, never a band.
+  A wearable-only anomaly may raise **Watch/Advisory**, but a **clinical-grade confirmation is
+  required before it drives a red/critical**.
+- B — Companion-only: wearables touch trajectory/early-warning + nudges but never move the headline
+  score (under-uses the continuous data).
+- C — Equal weight to labs (over-trusts consumer sensors — the Babylon risk).
+**Decision.** A. **Rationale.** Uses the rich continuous signal where it is strongest (motion,
+early-warning) while keeping the headline clinical score anchored and refusing to let an inferred
+metric trigger a critical — Babylon-safe, and honest via the companion **Confidence**/data-quality
+flags. **Affects.** Doc 18 (data streams & devices); the input-type taxonomy & reliability flags;
+companion-vector confidence weighting; deck Data-&-Experience + Day-in-the-Life sections.
+
 ---
 
 ### Maintenance notes
-- New decisions append as `D22+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
+- New decisions append as `D23+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
   add the replacement; never edit history in place.
 - Each entry must name the artifacts it **Affects** so downstream code/docs stay traceable.
