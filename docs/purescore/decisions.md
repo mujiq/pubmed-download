@@ -28,6 +28,7 @@
 | D13 | Heavy-tailed markers → log-scale personal baseline | LOCKED | auto | 2026-06-14 |
 | D14 | Critical-value confirmation mechanism in the demo | LOCKED | auto | 2026-06-14 |
 | D15 | Sex/gender reference model (production) | LOCKED | user | 2026-06-15 |
+| D16 | Nudge-engine ranking & Modifiability gate | LOCKED | auto | 2026-06-15 |
 
 ---
 
@@ -241,9 +242,27 @@ milieu), natal (immutable)}. Established-HRT threshold (≈6–12 mo) flips the 
 modifier tables (cycle/pregnancy-trimester/postpartum/peri-&post-menopause/andropause) adjust bands;
 acute-danger anchors (K⁺, SpO₂, glucose extremes) stay absolute regardless of context.
 
+## D16 — Nudge-engine ranking & Modifiability gate *(auto)*
+**Question.** How should the live nudge engine rank daily actions, and how should it use the new
+Modifiability and Trajectory companion signals?
+**Options.**
+- A ★ **Ease-weighted utility (Doc 07 §3.1) with an exact impact + Modifiability gate** —
+  `U = [ΔPureScore·ε]^α · p̂^β · (1−E)^η · ν`; impact is the **exact finite-difference ΔPureScore@30d**
+  (recompute through the engine, not a lookup — preserves diminishing returns in green and refuses
+  false hope on near-permanent burdens); **lifestyle actions are Modifiability-gated** (cannot move a
+  fixed/genetic marker — e.g. FH ApoB), while **medication/clinical** actions can; the binding/worst
+  pillar gets the `ν` bonus (Trajectory-aware); per-class diversity cap; safety/cohort caveats
+  (CKD protein cap, pregnancy/lactation no-deficit, anticoagulant ω-3).
+- B — Pure impact ranking (ignore effort) — surfaces high-impact actions patients won't do.
+- C — Effort-only "easiest" (ignore impact) — trivial, low-yield actions.
+**Decision.** A. **Rationale.** Faithful to the Doc 07 spec; honest (no credit for moving an
+already-green or a genetically-fixed marker); when lifestyle is gated out on a fixed red, the engine
+**routes to a clinician** rather than fabricating a lifestyle fix. **Affects.** Doc 07 §10 (impl
+status); calculator `NUDGES` library + `nudgeImpact`/`nudgeRank` + daily-nudge panel.
+
 ---
 
 ### Maintenance notes
-- New decisions append as `D16+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
+- New decisions append as `D17+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
   add the replacement; never edit history in place.
 - Each entry must name the artifacts it **Affects** so downstream code/docs stay traceable.

@@ -438,3 +438,23 @@ Headline: *"Do these 5 — about +3.5 PureScore over 90 days. Most of it is slee
 Nothing here is urgent; your numbers are not in the danger zone, and the one number we're guessing
 (ApoB) is easy to measure."* — diverse (SLEEP/ACT/MEASURE/NUTR/STRESS), ease-weighted, attributed,
 honest about horizon and uncertainty, no overpromise.
+
+---
+
+## 8. Implementation status (interactive calculator) — decision D16
+
+The calculator implements the daily-nudge pipeline live:
+
+| Spec concept | Calculator realization |
+|---|---|
+| Action library §1 (typed records: class, valve/marker targets, effort `E_a`, evidence `ε_a`, safety) | `NUDGES[]` (SLEEP/NUTR/ACT/STRESS/ADHERE/CLINICAL) |
+| Impact §2 — exact recompute, not lookup (§2.5 honesty bound) | `nudgeImpact()` = finite-difference `uncapped()` after applying the action's marker moves + reservoir deltas (30-day horizon) |
+| Diminishing returns in green; no false hope on fixed burdens | `improveToward()` yields 0 for an already-optimal marker; **Modifiability gate** zeroes lifestyle effect on a fixed/genetic marker (D5/D11) |
+| Ranking §3.1 — `U=[ΔPure·ε]^α·p̂^β·(1−E)^η·ν` | `nudgeRank()` (α=β=1, η=1.5; `p̂` cold-start cohort proxy from effort; `ν` bonus for the binding/worst pillar — Trajectory-aware) |
+| Safety/contraindication §5; diversity | CKD protein cap, pregnancy/lactation no-deficit caveat, anticoagulant ω-3 caveat; per-class cap of 2 |
+| Adherence-only / clinical-gap nudges first-class | `MED-*` shown only when prescribed (`rx`); **fixed/medication-responsive red routes to a clinician referral** instead of a fabricated lifestyle fix |
+
+Demonstrated: prediabetic → "cut refined carbs +5.7" on the binding MET pillar; elderly → resistance +
+protein (sarcopenia); CKD → BP-adherence + sodium (protein gated out); **FH → lifestyle cannot move
+genetic ApoB (gated to ~0) → clinician referral surfaces.** All ΔPureScore values are illustrative
+(synthetic engine), pending Doc 13 validation of realized-vs-predicted impact (the §6 feedback loop).

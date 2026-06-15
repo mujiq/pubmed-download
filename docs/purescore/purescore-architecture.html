@@ -127,6 +127,7 @@
     </div>
     <svg id="svg" width="100%" viewBox="0 0 980 760" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="foot">Pieces = 12 pillars · centre = PureScore (worst-sensitive δ-mean + critical cascade cap 40). Companion vector above carries the score's direction & error bars (Doc 12). Click a pillar for its breakdown.</div>
+    <div class="break" id="nudges" style="margin:8px 0"></div>
   </div>
 </div>
 <div id="tip"></div>
@@ -392,6 +393,57 @@ function compute(){ const core=scoreCore(); const {pr,W,pure,status,anyCrit,bind
     reconfirm:[...new Set(reconfirm)],robust:[...new Set(robust)]};
   return {...core,companion}; }
 
+/* ===== Daily nudge engine (Doc 07; decision D16) — ease-weighted utility, exact ΔPureScore@30d ===== */
+const NUDGES=[
+  {id:'SLP-WIND',cls:'SLEEP',label:'Wind-down routine + lights-out 30 min earlier',E:0.25,ev:0.7,marks:['sdur','seff'],res:{SLD:-22},pillar:'SLP'},
+  {id:'SLP-REG',cls:'SLEEP',label:'Constant sleep/wake time (±30 min)',E:0.35,ev:0.6,marks:['sreg'],res:{SLD:-15,ALLO:-8},pillar:'SLP'},
+  {id:'ACT-STEPS',cls:'ACT',label:'+1,500 steps/day',E:0.20,ev:0.8,marks:['step'],res:{CRF:10,GLY:-8},pillar:'FIT'},
+  {id:'ACT-Z2',cls:'ACT',label:'2× zone-2 cardio 30 min/wk',E:0.55,ev:0.8,marks:['vo2','mvpa','rhr'],res:{CRF:18,GLY:-6},pillar:'FIT',safe:['acute-cardiac']},
+  {id:'ACT-RES',cls:'ACT',label:'2× resistance training 20 min/wk',E:0.55,ev:0.7,marks:['grip'],res:{MUS:15},pillar:'BCM'},
+  {id:'NUT-FIBER',cls:'NUTR',label:'+10 g fiber/day',E:0.30,ev:0.7,marks:['glu','a1c'],res:{GLY:-10,INFL:-4},pillar:'MET'},
+  {id:'NUT-O3',cls:'NUTR',label:'Omega-3 to index ≥8',E:0.20,ev:0.6,marks:['o3','crp'],res:{INFL:-8},pillar:'NUT',caveatKey:'anticoag'},
+  {id:'NUT-NAK',cls:'NUTR',label:'Cut added sugar / refined carbs',E:0.40,ev:0.7,marks:['glu','a1c','waist','alt'],res:{GLY:-12},pillar:'MET',caveatKey:'deficit'},
+  {id:'NUT-SOD',cls:'NUTR',label:'Reduce sodium / DASH pattern',E:0.30,ev:0.7,marks:['sbp'],res:{},pillar:'CV'},
+  {id:'NUT-PROT',cls:'NUTR',label:'Protein to 1.2 g/kg',E:0.35,ev:0.6,marks:['grip'],res:{MUS:8},pillar:'BCM',safe:['ckd-advanced']},
+  {id:'STR-BREATH',cls:'STRESS',label:'5-min daily breathing / mindfulness',E:0.15,ev:0.5,marks:['phq','gad'],res:{ALLO:-12},pillar:'MCS'},
+  {id:'NUT-VITD',cls:'NUTR',label:'Vitamin D repletion',E:0.10,ev:0.6,marks:['vitd'],res:{},pillar:'NUT'},
+  {id:'NUT-ALC',cls:'NUTR',label:'Reduce alcohol intake',E:0.40,ev:0.6,marks:['alt','seff'],res:{INFL:-4},pillar:'HEP'},
+  {id:'MED-STATIN',cls:'ADHERE',label:'Take prescribed statin daily',E:0.10,ev:0.9,marks:['apob'],res:{ATH:-6},pillar:'CV',rx:['statin']},
+  {id:'MED-BP',cls:'ADHERE',label:'Take prescribed antihypertensive',E:0.10,ev:0.9,marks:['sbp'],res:{},pillar:'CV',rx:['acei','diuretic','betablocker']},
+  {id:'CLN-FU',cls:'CLINICAL',label:'Book clinician review (genetic/medication-responsive risk)',E:0.45,ev:0.9,marks:[],res:{},pillar:null,clinical:true},
+];
+const LIFESTYLE=new Set(['SLEEP','NUTR','ACT','STRESS']);
+function improveToward(m,frac){ const c=mcenter(m),bd=badDir(m),cur=m.val; let t;
+  if(bd>0) t=Math.min(cur,c); else if(bd<0) t=Math.max(cur,c); else t=c;
+  return cur+(t-cur)*frac; }
+function nudgeApplicable(n){
+  if(n.rx) return n.rx.some(x=>activeMeds().includes(x));                 // adherence nudges: prescribed only
+  if(n.measure) return (PERSONAS[PERSONA].missing||[]).includes(n.measure);
+  if(n.safe&&n.safe.includes('ckd-advanced')&&(PERSONA==='ckd'||PERSONA==='dialysis')) return false; // protein cap in advanced CKD
+  if(n.clinical) return false;   // surfaced separately when a fixed/med-responsive red exists
+  return true; }
+function nudgeCaveat(n){
+  if(n.caveatKey==='deficit'&&(CTX.stage.startsWith('preg')||CTX.stage==='postpartum')) return 'no caloric deficit while pregnant/lactating';
+  return null; }
+function nudgeImpact(n){ const cur=uncapped();
+  const after=withVals(m=>{ if(!n.marks.includes(m.id)) return null;
+      if(LIFESTYLE.has(n.cls)&&!isModifiable(m)) return null;             // Modifiability gate: lifestyle can't move a fixed/genetic marker
+      return improveToward(m,0.35); },
+    ()=>{ const sv=RESERVOIRS.map(r=>r.val);
+      for(const id in (n.res||{})){ const r=RESERVOIRS.find(x=>x.id===id); if(r) r.val=Math.max(0,Math.min(100,r.val+n.res[id])); }
+      const p=uncapped(); RESERVOIRS.forEach((r,i)=>r.val=sv[i]); return p; });
+  return after-cur; }
+function nudgeRank(worst){ const list=[];
+  NUDGES.forEach(n=>{ if(!nudgeApplicable(n)) return;
+    const dP=Math.max(0,nudgeImpact(n)); if(dP<0.05) return;
+    const padh=Math.max(0.12,0.9-0.7*n.E), ease=Math.pow(1-n.E,1.5);
+    let nu=1.0; if(n.pillar===worst) nu+=0.25;                            // bind-the-constraint bonus (Trajectory/worst pillar)
+    const U=Math.pow(dP*n.ev,1.0)*Math.pow(padh,1.0)*ease*nu;             // U = [ΔPure·ε]^α · p̂^β · (1−E)^η · ν  (Doc 07 §3.1)
+    list.push({n,dP,U,caveat:nudgeCaveat(n)}); });
+  list.sort((a,b)=>b.U-a.U);
+  const out=[],cc={}; for(const it of list){ cc[it.n.cls]=cc[it.n.cls]||0; if(cc[it.n.cls]>=2) continue; cc[it.n.cls]++; out.push(it); if(out.length>=5) break; }
+  return out; }
+
 /* ---- colours ---- */
 function colR(R,crit){ if(crit)return 'var(--red)'; if(R<0.30)return 'var(--green)'; if(R<0.60)return 'var(--yellow)'; return 'var(--red)'; }
 function colPure(s,status){ if(status==='CRITICAL')return 'var(--crit)'; if(s>=70)return 'var(--green)'; if(s>=50)return 'var(--yellow)'; return 'var(--red)'; }
@@ -523,6 +575,17 @@ function render(){ const out=compute();
   const ctxTxt='natal '+(CTX.natal==='m'?'♂':'♀')+(CTX.hrt!=='none'?' · '+CTX.hrt+' HRT → ranges read '+(gsex()==='f'?'♀':'♂'):'')+(CTX.stage!=='reproductive'?' · '+CTX.stage:'');
   d3.select('#pnote').html('<b>'+PERSONA+'</b> · age '+PERSONAS[PERSONA].age+' · '+ctxTxt+(activeMeds().length?(' · meds: '+activeMeds().join(', ')):'')+' — '+PERSONAS[PERSONA].note+
     ' &nbsp; <i>Hormone-sensitive bands follow the governing milieu (Doc 05; D15). Trajectory/anomaly from a seeded synthetic 90-day history (D9/D10) — illustrative.</i>');
+
+  /* daily nudges (Doc 07; D16) */
+  let worst=out.binding; if(!worst){ let b=-1; PILLARS.forEach(p=>{ if(out.pr[p.id].R>b){b=out.pr[p.id].R; worst=p.id;} }); }
+  const nudges=nudgeRank(worst);
+  let nh='<h3>Daily nudges — top '+nudges.length+' easiest, impact-attributed <span style="color:var(--muted);font-weight:400">(+ΔPureScore @30d · ease-weighted · Modifiability-gated)</span></h3>';
+  if(!nudges.length) nh+='<div class="bk-row"><span>No high-yield modifiable actions right now.</span></div>';
+  nudges.forEach(it=>{ const d=Math.max(1,Math.round(it.n.E*5)); const dots='●'.repeat(d)+'○'.repeat(5-d);
+    nh+='<div class="bk-row"><span>'+it.n.label+' <span style="color:var(--muted)">· '+it.n.cls+' · effort '+dots+'</span>'+(it.caveat?' <span style="color:var(--yellow)">⚠ '+it.caveat+'</span>':'')+'</span><b style="color:var(--green)">+'+it.dP.toFixed(1)+'</b></div>'; });
+  const fixedRed=PILLARS.some(p=>out.pr[p.id].contribs.some(c=>c.r>=0.5 && !isModifiable(c.m)));
+  if(fixedRed) nh+='<div class="bk-row"><span>Book clinician review — genetic / medication-responsive risk (lifestyle-gated out) <span style="color:var(--muted)">· CLINICAL</span></span><b style="color:#7fd1ff">refer</b></div>';
+  d3.select('#nudges').html(nh);
 
   if(selected){ const r=out.pr[selected],p=PILLARS.find(x=>x.id===selected);
     let html=`<h3>${selected} · ${p.name} &nbsp; <span style="color:${colR(r.R,r.critical)}">S ${Math.round(100*(1-r.R))}${r.critical?' · CRITICAL':''}</span></h3>`;
