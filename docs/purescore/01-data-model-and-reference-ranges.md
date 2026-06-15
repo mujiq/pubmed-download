@@ -16,6 +16,12 @@ PureScore consumes four input domains, all keyed by `patient`, `effectiveTime`, 
 | **Clinical context** | `Condition`, `MedicationStatement`, `Procedure`, `Immunization` | disease flags `D`, medication classes `Mx`, CAC scan, DEXA |
 | **Lifestyle / persona / PRO** | `QuestionnaireResponse`, `Observation` (survey) | diet pattern, alcohol, smoking, stress, PHQ-9/GAD-7, life stage, goals |
 
+**Input taxonomy & trust flags.** These four domains map to the four flagged data streams
+(🧪 LAB · ⌚ WEAR · 🎯 GOAL · 📝 LIFE) defined in **Doc 18 §1**; wearable inputs are further
+**trust-tiered** there (D22) and that tiering is what sets `q_source` in §2 below. Doc 18 also
+specifies how each stream is *used* (labs anchor bands; wearables drive trajectory/early-warning;
+goals steer weighting; lifestyle fills gaps at lower confidence).
+
 ### 1.1 Core entities (logical schema)
 
 ```
@@ -48,8 +54,10 @@ A measurement's usable confidence combines **source quality** and **recency deca
 confidence_i(t) = q_source(source_i) · exp( -(t - effectiveTime_i) / τ_i )
 ```
 
-- `q_source`: lab venous = 1.0; validated wearable = 0.7–0.9; consumer survey = 0.5–0.7;
-  literature fallback = 0.2–0.4.
+- `q_source`: lab venous = 1.0; **wearable — tiered (D22, Doc 18 §2):** clinical-grade
+  (CGM, validated cuff, single-lead ECG) = 0.85–1.0, consumer-validated (resting HR, steps,
+  sleep duration) = 0.6–0.8, inferential/derived (readiness, stress, sleep-stages) = informational
+  only (excluded from band-setting); consumer survey = 0.5–0.7; literature fallback = 0.2–0.4.
 - `τ_i` (recency half-life-ish): differs by marker volatility — glucose/HRV/sleep are short
   (hours–days), ApoB/HbA1c medium (weeks–months), Lp(a)/genetics effectively permanent.
 - When `confidence_i` drops below a per-marker floor, the marker is treated as **stale** and the

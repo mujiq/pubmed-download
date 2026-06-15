@@ -116,6 +116,13 @@ True emergencies with corroboration are **never delayed**; isolated implausible 
 reconfirm instead of a false alarm. (Hemolyzed K⁺ → Watch+reconfirm; K⁺ 6.5 *with* peaked-T-wave
 symptom report → immediate.)
 
+**Wearable-tiered critical gate (D22, Doc 18 §2).** `device_low_quality` above is set by the
+wearable trust tier: a **consumer-validated or inferential** wearable anomaly maps to
+`Watch / Advisory` and **cannot reach red/critical without a clinical-grade confirmation**
+(CGM / validated cuff / single-lead ECG, or a lab). Clinical-grade wearables *can* corroborate and
+fire the cascade like any other marker. This keeps continuous monitoring sensitive for
+early-warning without letting a consumer sensor trigger an emergency alone.
+
 ## 4. The companion meta-dimension vector
 
 PureScore 2.0 ships the number as **"a score with direction and error bars."** Each dimension is
@@ -123,7 +130,7 @@ computed per-pillar and rolled up.
 
 | Dim | Symbol | Definition (per pillar k, rolled up by `W_k`) | Range |
 |---|---|---|---|
-| **Confidence** | `Cf_k` | `cov_k · meanConf_k · stability_k` (coverage × source/recency quality × inverse volatility) | 0–100 |
+| **Confidence** | `Cf_k` | `cov_k · meanConf_k · stability_k` (coverage × source/recency quality × inverse volatility); `meanConf_k` carries the per-input trust flags & wearable tier (Doc 01 §2, Doc 18 §1–2) | 0–100 |
 | **Data sufficiency** | `Su_k` | weighted fraction of pillar backed by **fresh patient** data; `Su_k < τ_su` ⇒ **INSUFFICIENT** flag (score provisional) | 0–100 |
 | **Criticality** | `Cr` | independent badge: `(max escalation tier, count of red/critical markers)` — *not* derivable from the number | tier+count |
 | **Trajectory / momentum** | `Tr_k` | robust slope of `S_k` over a window → ↑improving / →stable / ↓worsening + rate | signed |

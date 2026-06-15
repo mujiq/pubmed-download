@@ -36,6 +36,13 @@ The product promise is modest by design and large in aggregate:
    prospectively validated for the population in front of us.
 8. **Equity by construction.** Cohorting must reduce, not encode, disparity. No protected-class
    proxy may worsen access, price, or care (Doc 09 fairness, Doc 11 governance).
+9. **Effortless by construction.** Every surface should remove a step the patient used to do
+   themselves — ambient AI scribe, a 24/7 chat agent, frictionless scheduling, passive in-home
+   tracking, and automated insurance pre-authorization — so adherence comes from *less* friction,
+   not more willpower. The household is the unit of care: one shared view, individual scores, with
+   role-based access for caregivers. All of this lives **inside** the safety firewalls (Doc 18;
+   Doc 11 §4.2). Inputs are honestly flagged by type and trust — labs anchor, wearables are
+   trust-tiered, goals steer, self-report fills gaps (Doc 18 §1–2; D22).
 
 ## 3. Lessons we are explicitly engineering around
 

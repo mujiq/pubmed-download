@@ -15,6 +15,11 @@
 > still escalates to a human clinician (README §5.1; Doc 07 §5.2; Doc 11). PureScore makes **no
 > autonomous diagnosis** (Doc 00 §3.1; Doc 11).
 >
+> **Goal-driven surfacing.** A member's declared **GOAL stream** (Doc 18 §1) lifts the goal-relevant
+> rows here via the ranking's goal-alignment bonus (Doc 07 §3.1) — this is the engine behind the
+> **goals → recommended next actions** mapping (Doc 18 §7). These rows are the same library the
+> **AI chat agent** explains and the **scheduling** surface books (Doc 18 §5).
+>
 > **Honesty mandate.** Every dose, threshold, and target below is **illustrative,
 > literature/guideline-anchored as of the cited body and year, and MUST be re-verified on the fixed
 > cadence (README §5.6) before any production use.** Medication actions are surfaced **only when

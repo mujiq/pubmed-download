@@ -227,7 +227,10 @@ For each safety-passing action (§5), define the daily utility
   low-effort actions, satisfying the brief literally.
 - `α, β` default `1.0`; raising `β` and `η` over `α` is the *ease-first* posture. All versioned (§7).
 - `ν_a` — novelty/timing factor: small bonus for an action that closes the binding constraint or a
-  care-gap, small penalty for one shown-and-ignored many times (anti-nag; §4.4).
+  care-gap, small penalty for one shown-and-ignored many times (anti-nag; §4.4). It **also carries a
+  goal-alignment bonus**: the patient's declared **GOAL stream** (Doc 18 §1, §7) sets `h*` and lifts
+  actions that advance the goal (e.g. "lower HbA1c" → glycemic actions rank up), within the safety
+  rails — the goal steers ranking but never overrides a critical or a contraindication (§1).
 
 **Why multiplicative:** if either expected impact or adherence is ~0, `U_a→0`. We never surface a
 high-impact action nobody will do, nor a trivially-easy action that does nothing.
