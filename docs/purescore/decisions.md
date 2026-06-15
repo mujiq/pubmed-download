@@ -29,6 +29,7 @@
 | D14 | Critical-value confirmation mechanism in the demo | LOCKED | auto | 2026-06-14 |
 | D15 | Sex/gender reference model (production) | LOCKED | user | 2026-06-15 |
 | D16 | Nudge-engine ranking & Modifiability gate | LOCKED | auto | 2026-06-15 |
+| D17 | Validation-harness scope, recalibration & gates | LOCKED | auto | 2026-06-15 |
 
 ---
 
@@ -260,9 +261,28 @@ already-green or a genetically-fixed marker); when lifestyle is gated out on a f
 **routes to a clinician** rather than fabricating a lifestyle fix. **Affects.** Doc 07 §10 (impl
 status); calculator `NUDGES` library + `nudgeImpact`/`nudgeRank` + daily-nudge panel.
 
+## D17 — Validation-harness scope, recalibration & gates *(auto)*
+**Question.** What should the **executable** validation harness compute, how should it recalibrate,
+and how honest must its scope be?
+**Options.**
+- A ★ **Calibration-first, isotonic-recalibrated, fairness-sliced, cross-sectional, NO-SHIP-verdict** —
+  on a seeded synthetic cohort with an *independent* ground-truth model (non-circular), held-out
+  train/test: AUROC, adaptive ECE (raw **and** isotonic-recalibrated), Brier skill, natal-sex
+  subgroup parity; early-warning lead-time/PPV explicitly **deferred** to the longitudinal generator;
+  production verdict hard-coded **NO-SHIP**.
+- B — Score-as-probability without recalibration — **misleading**: PureScore is a wellness index, not
+  a calibrated probability; raw ECE is large by construction.
+- C — Full longitudinal lead-time/PPV simulation now — large build, premature without the cohort
+  generator; risks over-claiming the early-warning evidence.
+**Decision.** A. **Rationale.** Faithful to Doc 13 §4 (recalibration mandatory before reading the
+score as risk); **isotonic** chosen over Platt for robustness (1-param Platt left finite-sample ECE
+at the gate boundary); scope honestly bounded to what a cross-sectional cohort can support; verdict
+encodes the Babylon discipline (synthetic ≠ evidence). **Affects.** `assets/validation_harness.js`;
+Doc 13 executable-harness section.
+
 ---
 
 ### Maintenance notes
-- New decisions append as `D17+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
+- New decisions append as `D18+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
   add the replacement; never edit history in place.
 - Each entry must name the artifacts it **Affects** so downstream code/docs stay traceable.

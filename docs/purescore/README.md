@@ -64,6 +64,7 @@ Three properties make PureScore more than a weighted average of lab values:
 | 10 | `10-actuarial-pricing-and-insurance.md` |  | Full pricing engine **with heavy regulatory/fairness risk flags** |
 | 11 | `11-safety-governance-and-regulatory.md` |  | Clinician-in-loop, escalation, equity, privacy, model governance |
 | 12 | `12-critical-review-and-purescore-2.0.md` | ✔ | Edge-case critique + PureScore 2.0: context-aware interpretation, companion meta-vector, personal-baseline early-warning, dual framing, bias handling |
+| 13 | `13-validation-and-calibration-harness.md` | ✔ | Validation/calibration **gates** for 2.0 (score + companion vector + early-warning): discrimination, calibration/recalibration, early-warning PPV/lead-time, fairness slices, drift, release gates. Executable: `assets/validation_harness.js` |
 
 Read 00 → 04 first; they define everything the later documents depend on.
 
