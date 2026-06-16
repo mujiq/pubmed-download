@@ -274,6 +274,21 @@ greedy submodular pick (a small facility-location / determinantal flavour):
 - **Constraint-aware override:** if a pillar is *binding/critical-adjacent* (large `(a)·(b)` gradient,
   §2.1), one slot is reserved for the highest-leverage **safe** action on it, even at higher effort,
   flagged as "biggest lever" — so ease-first never buries the one thing that matters most.
+- **Positive-`Δ` guarantee.** Every action admitted to the top-5 must have a **strictly positive
+  expected `ΔPureScore@h`** on the continuous score (Doc 03 §2b/§6.1) — selection filters out
+  zero-impact actions (e.g. an already-optimal managed marker, D16). So *acting on the list always
+  moves the number up*; the patient gets immediate, honest feedback. If no positive-`Δ` modifiable
+  action exists (everything green/at-optimum, or all remaining risk is fixed), the engine says so
+  rather than inventing a nudge (Doc 12 Modifiability; D5).
+
+### 3.4 Negative feedback (the other direction)
+The loop is symmetric. Regression — a missed-sleep streak, a sedentary week, rising stress, a
+worsening wearable trend — pushes the personal z-score adverse (Doc 03 §2b), so PureScore **trends
+down** and the affected pillars show **↓ Trajectory**, escalating to an **Early-warning** flag if it
+accelerates (Doc 12 §4–§5). The engine surfaces this as a *gentle, non-alarming* "slipping" signal
+with the single easiest recovery action — never a scold, never a discrete cliff, and never masking a
+real clinical change behind "you're improving vs your own bad week" (safety dominates, Doc 03 §2b
+`band_clamp`).
 
 ---
 

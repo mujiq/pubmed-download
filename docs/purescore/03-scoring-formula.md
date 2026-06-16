@@ -7,7 +7,8 @@
 The pipeline has five stages:
 
 ```
- raw value x_i ─▶ (1) marker risk r_i ─▶ (2) cohort blend ─▶ (3) pillar risk R_k
+ raw value x_i ─▶ (1) marker risk r_i^clin ─▶ (2) cohort blend ─▶ (2b) personal-baseline z
+                                                              ─▶ (3) pillar risk R_k
                                                               ─▶ (4) critical cascade
                                                               ─▶ (5) PureScore
 ```
@@ -37,10 +38,19 @@ exactly at the red boundary; saturates toward `1` deep in the red so a single ex
 dominates but cannot make `r>1`. The colour zones in README §3.5 fall out directly
 (`<0.15` green, `<0.5` yellow, `≥0.5` red).
 
-A small **optimum-centering** refinement places the true best value at the band centre `m_i`
-(e.g., HDL keeps improving above the lower edge), so within-green we set
-`r_i^clin = 0` only within a tolerance of `m_i` and allow a tiny gradient toward band edges; this
-lets the nudge engine still reward moving toward the centre of green. (Tunable; off by default.)
+**Continuity is a hard requirement, not a side-effect.** Every map in Stage 1 is `C⁰`-continuous
+(and `C¹` except at the designed critical step, §6): an arbitrarily small change in `x_i` yields an
+arbitrarily small change in `r_i`. There are **no discrete band jumps in the number** — the
+green/yellow/red bands are *labels read off the continuous curve* (`r<0.15`/`<0.5`/`≥0.5`), never
+the generator of the score. This is what lets a single day's action register as a real, visible
+score change (§6.1; Doc 07; Doc 12).
+
+**Within-band optimum-centering is ON by default.** The true best value sits at the band centre
+`m_i` (e.g., HDL keeps improving above the lower edge), so even *inside green* there is a gentle
+continuous gradient `r_i^green ∈ [0, 0.15)` toward `m_i`. A patient already in the green band still
+sees the score rise as they move toward their optimum and dip if they drift toward the edge — the
+score is never "flat until you cross a line." Magnitude is small and capped below the yellow cut so
+it can never, by itself, change a band or a status.
 
 ---
 
@@ -63,6 +73,39 @@ only **raise** concern, never lower it below the clinical anchor:
 
 **Stack-ranking (for display and the actuarial layer)** uses `q_i` and pillar percentiles
 directly; it is presentation/analytics, not a relaxation of `r_i`.
+
+---
+
+## 2b. Stage 2b — Personal-baseline responsiveness (the feedback term)
+
+Stage 2 personalizes *across people*; Stage 2b personalizes *across time for one person*, so the
+score visibly tracks short-term action. Each marker carries a robust **personal baseline**
+`μ_i^p, σ_i^p` (empirical-Bayes, log-scaled for heavy-tailed markers; cold-start shrinks to cohort
+— Doc 12 §5.1, Doc 14 ignition), giving a **personal z-score** oriented so *adverse = positive*:
+
+```
+ z_i = sign_adverse · (x_i − μ_i^p) / σ_i^p
+```
+
+A bounded, smooth gradient turns recent personal movement into a small score change:
+
+```
+ r_i^pers = κ · tanh( z_i / 2 )                       # κ = 0.10 cap; continuous, monotone
+ r_i      = band_clamp(  max(r_i^clin, φ·r_i^cohort) + r_i^pers · 𝟙[non-critical]  )
+```
+
+- **`band_clamp`** keeps the personalized term *within the current non-critical band*: Stage 2b can
+  move the number continuously, but it can never relax a red, clear a critical, or by itself flip a
+  band. Safety (clinical anchor + cohort `max`) always dominates (README §5.2).
+- **Direction = feedback.** Better-than-your-baseline (`z_i<0`) lowers `r_i` a little → PureScore
+  ticks **up**; worse-than-baseline (`z_i>0`) raises it → PureScore ticks **down**. A good night's
+  sleep, a 9 000-step day, an in-range glucose curve, a calmer week all move the number *today*,
+  before any band is crossed.
+- **Cadence.** `μ_i^p, σ_i^p` and `z_i` update on each new reading: daily for wearables/behaviours
+  (sleep, steps, HRV, resting HR, CGM, stress check-ins), per-measurement for labs. The fast
+  channels are exactly the modifiable ones the nudge engine acts on (Doc 07), closing the loop.
+- Stage 2b is also the substrate for the **Trajectory/momentum** and **Early-warning** companion
+  dimensions (Doc 12 §4–§5): the same `z_i` stream that nudges the number drives the arrows.
 
 ---
 
@@ -182,6 +225,24 @@ A 58-y-old man, otherwise green pillars, presents K⁺ = 6.3 mmol/L (REN critica
   a confirming measurement or sustained reservoir drainage (Doc 04 λ), so the headline doesn't
   oscillate on noise. Acute-mode entry/exit hysteresis is in Doc 06.
 
+### 6.1 Responsiveness & the patient feedback loop
+The score is engineered to **move with behaviour** so the patient gets feedback, while staying
+clinically honest:
+1. **Every modifiable action has a non-zero, continuous `ΔPureScore`.** Because Stages 1–2b are
+   smooth, the exact finite-difference recompute the nudge engine uses (Doc 07 §2.5) returns a real
+   gradient — not a lookup, not zero-until-a-threshold. The **top-5 actions are selected to each
+   carry a strictly positive expected `ΔPureScore@h`** (Doc 07 §3): doing them moves the number up.
+2. **Negative behaviour trends down.** A missed-sleep streak, a sedentary week, rising stress, or a
+   regressing wearable metric pushes `z_i` adverse → `r_i` up → PureScore down, and shows as
+   **↓ Trajectory** on the affected pillars and, if it accelerates, an **Early-warning** flag
+   (Doc 12 §4–§5) — before any band is crossed.
+3. **Honest ceiling.** Responsiveness is bounded by `κ` and `band_clamp`: fixed/irreversible burden
+   (genetics, age, established disease) does **not** fake-improve from short-term effort — it shows
+   as low **Modifiability** (Doc 12 §4) so the engine never sells false hope (D5/D16).
+4. **The loop:** measure → personal-baseline `z` (2b) → continuous score + companion trends →
+   top-5 easiest positive-`Δ` actions (Doc 07) → patient acts → next measurement moves `z` → score
+   and arrows update. The interactive demonstration of this loop is the `tech/` feedback-loop page.
+
 ## 7. Explainability output (every score ships with this)
 For any score the engine emits:
 1. PureScore, overall_status, and the **binding constraint** (which pillar/marker capped it).
@@ -196,6 +257,8 @@ This object is the substrate for the nudge engine (Doc 07) and the clinician vie
 | Symbol | Meaning | Default |
 |--------|---------|---------|
 | `φ` | cohort-blend weight (Stage 2) | 0.60 |
+| `κ` | personal-baseline responsiveness cap (Stage 2b) | 0.10 |
+| `r_i^green` | within-green optimum-centering gradient cap | <0.15 |
 | `γ` | pillar power-mean exponent | 3 |
 | `δ` | PureScore power-mean exponent | 2 |
 | `ρ_k` | reservoir contribution cap to pillar | 0.20 |

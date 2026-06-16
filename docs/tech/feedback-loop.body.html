@@ -1,0 +1,222 @@
+<div class="crumbs"><a href="index.html">Home</a> › Interactive › Live feedback-loop demo</div>
+<h1>Live Feedback Loop — Continuous, Personalized Scoring</h1>
+<p class="lead">A working illustration of <b>D23 / <a class="xref" href="03-scoring-formula.html">Doc 03</a> §2b</b>:
+PureScore moves <i>continuously</i> with short-term behaviour. Tap a top-5 action and the number ticks
+<b>up</b>; log a setback and it trends <b>down</b> — and the companion dimensions (Trajectory, Early-warning,
+Modifiability) respond with it. Nothing here is discrete: every change is a smooth, personal-baseline-relative
+nudge. Bands stay as safety labels only.</p>
+<div class="callout note"><div class="ct">Illustrative</div>A small synthetic engine (6 pillars, 11 markers) running
+the real Stage-2b math (<code>r = clamp(r_clin + κ·tanh(z/2))</code>, γ-mean pillars, δ-mean overall). Numbers
+are for demonstration, not a validated model.</div>
+
+<style>
+  .fb-top{display:grid;grid-template-columns:300px 1fr;gap:16px;margin:16px 0}
+  .score-card{background:linear-gradient(160deg,#13233e,#0d1322);border:1px solid var(--line);border-radius:16px;padding:18px;text-align:center}
+  .score-num{font-size:64px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums}
+  .score-delta{font-size:15px;font-weight:700;height:20px}
+  .score-status{margin-top:8px}
+  .spark{margin-top:10px}
+  .comp{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .cb{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+  .cb .l{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+  .cb .v{font-size:19px;font-weight:700;color:#fff;margin-top:2px}
+  .pillars{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:8px 0 16px}
+  .pl{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px}
+  .pl .id{font-weight:800;color:#fff;font-size:13px}
+  .pl .sc{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+  .pl .bar{margin:6px 0 4px;width:100%}
+  .fb-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .act{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:9px}
+  .act:hover{border-color:var(--acc)}
+  .act .meta{flex:1}.act .meta b{color:#fff}.act .meta .s{font-size:12px;color:var(--mut)}
+  .act .dlt{font-weight:800;font-variant-numeric:tabular-nums;min-width:48px;text-align:right}
+  .act button{cursor:pointer;background:#16335e;border:1px solid #2b4a86;color:#fff;border-radius:8px;padding:6px 12px;font-weight:600;font-size:13px}
+  .act.neg button{background:#2a1118;border-color:#7a3344;color:#ffb9c6}
+  .ctrls{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .ctrls button{cursor:pointer;border-radius:9px;padding:9px 16px;font-weight:700;font-size:14px;border:1px solid var(--line);background:#0e1626;color:var(--ink)}
+  .ctrls .day{background:#10301f;border-color:#2f6b48;color:#bff0d0}
+  .traj{font-weight:800;font-size:13px}
+  .up{color:var(--green)}.down{color:var(--red)}.flat{color:var(--mut)}
+  .ew{font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;border:1px solid}
+  .ew-none{display:none}.ew-watch{color:var(--gold);border-color:#7a5f24}.ew-adv{color:var(--red);border-color:#7a3344}
+  @media(max-width:820px){.fb-top{grid-template-columns:1fr}.pillars{grid-template-columns:repeat(2,1fr)}.fb-cols{grid-template-columns:1fr}}
+</style>
+
+<div class="fb-top">
+  <div class="score-card">
+    <div class="l small muted" style="letter-spacing:.1em">PURESCORE · day <span id="day">1</span></div>
+    <div class="score-num" id="pure">–</div>
+    <div class="score-delta" id="delta">&nbsp;</div>
+    <div class="score-status" id="status"></div>
+    <svg class="spark" id="spark" width="260" height="46" viewBox="0 0 260 46" preserveAspectRatio="none"></svg>
+    <div class="small muted">today vs yesterday · last 14 days</div>
+  </div>
+  <div>
+    <div class="comp" style="margin-bottom:10px">
+      <div class="cb"><div class="l">Trajectory</div><div class="v" id="c-traj">–</div></div>
+      <div class="cb"><div class="l">Early-warning</div><div class="v" id="c-ew">–</div></div>
+      <div class="cb"><div class="l">Modifiability</div><div class="v" id="c-mod">–</div></div>
+      <div class="cb"><div class="l">Confidence</div><div class="v" id="c-conf">–</div></div>
+      <div class="cb"><div class="l">Criticality</div><div class="v" id="c-crit">none</div></div>
+      <div class="cb"><div class="l">Engagement</div><div class="v" id="c-eng">0 actions</div></div>
+    </div>
+    <div class="pillars" id="pillars"></div>
+  </div>
+</div>
+
+<div class="fb-cols">
+  <div class="panel"><h3>Today’s top-5 actions <span class="muted small">· each a positive ΔPureScore</span></h3>
+    <div id="actions"></div>
+    <div class="ctrls"><button class="day" id="next">Advance to next day →</button>
+      <button id="reset">Reset</button></div>
+    <p class="small muted" style="margin-top:8px">Each card shows its live finite-difference ΔPureScore
+      (<a class="xref" href="07-daily-nudge-engine.html">Doc 07</a> §2.5). Acting commits to your personal
+      baseline overnight; doing nothing lets metrics drift gently adverse.</p>
+  </div>
+  <div class="panel"><h3>Log a setback <span class="muted small">· the loop runs both ways</span></h3>
+    <div id="setbacks"></div>
+    <div class="callout safety" style="margin-top:10px"><div class="ct">Safety preserved</div>
+      Personalization is bounded (<code>κ=0.10</code>, <code>band_clamp</code>): it can move the number but never
+      relax a clinical anchor or clear a critical. Genetic burden (Lp(a) here) does not improve from lifestyle —
+      it shows as <b>low Modifiability</b>, not false hope (<a class="xref" href="12-critical-review-and-purescore-2.0.html">Doc 12</a>).</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var PW={SLP:.20,FIT:.18,MET:.20,CV:.22,MCS:.20};
+  var PN={SLP:"Sleep",FIT:"Fitness",MET:"Metabolic",CV:"Cardio",MCS:"Mental"};
+  function mk(pillar,label,unit,val,opt,lo,hi,hib,sig,w,fixed){
+    return {pillar:pillar,label:label,unit:unit,val:val,base:val,opt:opt,lo:lo,hi:hi,hib:hib,sig:sig,w:w,fixed:!!fixed};
+  }
+  var M0=function(){return {
+    sleep:  mk('SLP','Sleep duration','h',6.4,8.0,4,9,true,0.9,.5,0),
+    sreg:   mk('SLP','Sleep regularity','',62,90,30,100,true,10,.5,0),
+    steps:  mk('FIT','Steps','/d',5200,10000,1000,16000,true,1800,.5,0),
+    mvpa:   mk('FIT','MVPA','min/wk',90,200,0,400,true,50,.5,0),
+    glucose:mk('MET','Fasting glucose','mg/dL',108,88,70,180,false,9,.6,0),
+    fiber:  mk('MET','Fiber intake','g/d',16,32,5,45,true,6,.4,0),
+    rhr:    mk('CV','Resting HR','bpm',68,55,40,95,false,5,.34,0),
+    apob:   mk('CV','ApoB (med-responsive)','mg/dL',104,70,50,160,false,12,.33,0),
+    lpa:    mk('CV','Lp(a) — genetic','nmol/L',135,50,10,300,false,30,.33,1),
+    stress: mk('MCS','Perceived stress','PSS',9,3,0,16,false,2.2,.6,0),
+    mood:   mk('MCS','Mood (PHQ-9)','',7,1,0,27,false,2.5,.4,0)
+  };};
+  var M, hist, day, eng, dayStartPure, acted;
+  function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+  function badness(m){var d=m.hib?(m.opt-m.val):(m.val-m.opt); return Math.max(0,d)/((m.hi-m.lo)*0.5);}
+  function riskOf(m){var rc=1-Math.exp(-2.2*badness(m)); var adv=m.hib?-1:1;
+    var z=adv*(m.val-m.base)/m.sig; var rp=m.fixed?0:0.10*Math.tanh(z/2); return clamp(rc+rp,0,1);}
+  function pillarRisk(pid){var num=0,den=0,g=3; for(var k in M){var m=M[k]; if(m.pillar!==pid)continue;
+    num+=m.w*Math.pow(riskOf(m),g); den+=m.w;} return Math.pow(num/den,1/g);}
+  function compute(){var R=0,W=0,pil={}; for(var pid in PW){var Rk=pillarRisk(pid); pil[pid]=100*(1-Rk);
+    R+=PW[pid]*Rk*Rk; W+=PW[pid];} return {pure:100*(1-Math.sqrt(R/W)),pil:pil};}
+  function modif(){var mod=0,tot=0; for(var k in M){var m=M[k],r=riskOf(m); tot+=m.w*r; if(!m.fixed)mod+=m.w*r;}
+    return tot>0?Math.round(100*mod/tot):100;}
+  function applyEff(eff){for(var k in eff){if(M[k]){M[k].val=clamp(M[k].val+eff[k],M[k].lo,M[k].hi); acted[k]=1;}}}
+  function previewDelta(eff){var cur=compute().pure, saved={}; for(var k in eff)saved[k]=M[k].val;
+    for(var k2 in eff)M[k2].val=clamp(M[k2].val+eff[k2],M[k2].lo,M[k2].hi);
+    var d=compute().pure-cur; for(var k3 in saved)M[k3].val=saved[k3]; return d;}
+
+  var ACTIONS=[
+    {id:'walk',label:'Walk 2,000 more steps',sub:'~15-min walk · ACT',eff:{steps:2200,glucose:-2,rhr:-0.4}},
+    {id:'sleep',label:'Protect 45 min more sleep',sub:'wind-down + fixed wake · SLEEP',eff:{sleep:0.7,sreg:4,rhr:-1.2,stress:-1.5}},
+    {id:'breathe',label:'10-min breathing',sub:'down-regulate stress · STRESS',eff:{stress:-4.5,mood:-0.8}},
+    {id:'carbs',label:'Swap refined carbs for fibre',sub:'one meal · NUTR',eff:{glucose:-6,fiber:7}},
+    {id:'statin',label:'Take prescribed statin',sub:'adherence · medication',eff:{apob:-16}}
+  ];
+  var SETBACKS=[
+    {id:'badnight',label:'Rough night — 4 h sleep',eff:{sleep:-2.2,sreg:-8,rhr:3,stress:3}},
+    {id:'sedentary',label:'Sedentary, skipped workouts',eff:{steps:-3200,mvpa:-35,glucose:5}},
+    {id:'stressday',label:'High-stress day',eff:{stress:7,mood:2,sreg:-5}},
+    {id:'binge',label:'Big takeaway + drinks',eff:{glucose:13,fiber:-5}}
+  ];
+
+  function init(){M=M0(); hist=[]; day=1; eng=0; acted={}; var c=compute(); dayStartPure=c.pure;
+    hist.push({pure:c.pure,pil:c.pil}); buildActions(); render();}
+
+  function buildActions(){
+    var a=document.getElementById('actions'); a.innerHTML='';
+    ACTIONS.forEach(function(x){var d=document.createElement('div'); d.className='act';
+      d.innerHTML='<div class="meta"><b>'+x.label+'</b><div class="s">'+x.sub+'</div></div>'+
+        '<div class="dlt up" id="d-'+x.id+'">+0.0</div><button>Apply</button>';
+      d.querySelector('button').onclick=function(){applyEff(x.eff); eng++; flash(); render();};
+      a.appendChild(d);});
+    var s=document.getElementById('setbacks'); s.innerHTML='';
+    SETBACKS.forEach(function(x){var d=document.createElement('div'); d.className='act neg';
+      d.innerHTML='<div class="meta"><b>'+x.label+'</b><div class="s">unplanned</div></div>'+
+        '<div class="dlt down" id="d-'+x.id+'">0.0</div><button>Log</button>';
+      d.querySelector('button').onclick=function(){applyEff(x.eff); flash(); render();};
+      s.appendChild(d);});
+  }
+
+  var pulse=0; function flash(){pulse=1;}
+  function fmt(x){return (x>=0?'+':'')+x.toFixed(1);}
+  function arrow(d){return d>0.4?'▲':d<-0.4?'▼':'▶';}
+  function cls(d){return d>0.4?'up':d<-0.4?'down':'flat';}
+
+  function render(){
+    var c=compute(); var pure=c.pure;
+    document.getElementById('pure').textContent=pure.toFixed(1);
+    document.getElementById('day').textContent=day;
+    var dToday=pure-dayStartPure;
+    var de=document.getElementById('delta');
+    de.innerHTML='<span class="'+cls(dToday)+'">'+arrow(dToday)+' '+fmt(dToday)+' today</span>';
+    var st=document.getElementById('status');
+    st.innerHTML = pure>=80?'<span class="status st-ok">ON TRACK</span>':
+                   pure>=60?'<span class="status st-due">BUILDING</span>':
+                            '<span class="status st-chg">AT RISK</span>';
+    // companion
+    var yPure=hist.length?hist[hist.length-1].pure:pure;
+    var tdelta=pure-yPure;
+    document.getElementById('c-traj').innerHTML='<span class="'+cls(tdelta)+'">'+arrow(tdelta)+' '+fmt(tdelta)+'/day</span>';
+    document.getElementById('c-mod').textContent=modif()+'%';
+    document.getElementById('c-conf').textContent=clamp(64+hist.length*2+eng,50,92)+'%';
+    document.getElementById('c-eng').textContent=eng+' action'+(eng===1?'':'s');
+    // worst pillar early-warning
+    var worstEw='none', worstName='';
+    for(var pid in PW){var pd=c.pil[pid]-(hist.length?hist[hist.length-1].pil[pid]:c.pil[pid]);
+      if(pd<=-5){worstEw='Advisory';worstName=PN[pid];} else if(pd<=-2.5&&worstEw==='none'){worstEw='Watch';worstName=PN[pid];}}
+    document.getElementById('c-ew').innerHTML = worstEw==='none'?'<span class="muted">none</span>':
+      '<span class="'+(worstEw==='Advisory'?'down':'flat')+'" style="color:'+(worstEw==='Advisory'?'var(--red)':'var(--gold)')+'">'+worstEw+' · '+worstName+'</span>';
+    document.getElementById('c-crit').textContent='none';
+    // pillars
+    var ph=''; for(var pid in PW){var sc=c.pil[pid];
+      var pd=sc-(hist.length?hist[hist.length-1].pil[pid]:sc);
+      var col=sc>=80?'var(--green)':sc>=60?'var(--gold)':'var(--red)';
+      var ewc = pd<=-5?'<span class="ew ew-adv">Advisory</span>':pd<=-2.5?'<span class="ew ew-watch">Watch</span>':'';
+      ph+='<div class="pl"><div class="id">'+pid+' <span class="muted small">'+PN[pid]+'</span></div>'+
+          '<div class="sc" style="color:'+col+'">'+sc.toFixed(0)+'</div>'+
+          '<div class="bar"><i style="width:'+sc.toFixed(0)+'%"></i></div>'+
+          '<span class="traj '+cls(pd)+'">'+arrow(pd)+' '+fmt(pd)+'</span> '+ewc+'</div>';}
+    document.getElementById('pillars').innerHTML=ph;
+    // action previews
+    ACTIONS.forEach(function(x){var el=document.getElementById('d-'+x.id); if(el){var dd=previewDelta(x.eff);
+      el.textContent=fmt(dd); el.className='dlt '+cls(dd);}});
+    SETBACKS.forEach(function(x){var el=document.getElementById('d-'+x.id); if(el){var dd=previewDelta(x.eff);
+      el.textContent=fmt(dd); el.className='dlt '+cls(dd);}});
+    drawSpark();
+  }
+
+  function drawSpark(){
+    var pts=hist.map(function(h){return h.pure;}); pts.push(compute().pure);
+    var w=260,h=46,n=pts.length,mn=Math.min.apply(null,pts)-1,mx=Math.max.apply(null,pts)+1;
+    var sx=function(i){return n<2?w/2:i/(n-1)*w;}, sy=function(v){return h-((v-mn)/(mx-mn||1))*(h-6)-3;};
+    var d=''; for(var i=0;i<n;i++){d+=(i?'L':'M')+sx(i).toFixed(1)+' '+sy(pts[i]).toFixed(1)+' ';}
+    var last=pts[n-1], first=pts[0], up=last>=first;
+    document.getElementById('spark').innerHTML=
+      '<path d="'+d+'" fill="none" stroke="'+(up?'#46b977':'#e0556b')+'" stroke-width="2"/>'+
+      '<circle cx="'+sx(n-1).toFixed(1)+'" cy="'+sy(last).toFixed(1)+'" r="3" fill="'+(up?'#46b977':'#e0556b')+'"/>';
+  }
+
+  document.getElementById('next').onclick=function(){
+    var c=compute(); hist.push({pure:c.pure,pil:c.pil}); if(hist.length>14)hist.shift();
+    for(var k in M){var m=M[k]; if(m.fixed)continue;
+      m.base=0.8*m.base+0.2*m.val;                                   // baseline tracks you
+      if(!acted[k]){var adv=m.hib?-1:1; m.val=clamp(m.val - adv*0.06*m.sig, m.lo, m.hi);} } // gentle drift if idle
+    acted={}; day++; var c2=compute(); dayStartPure=c2.pure; render();
+  };
+  document.getElementById('reset').onclick=init;
+  init();
+})();
+</script>

@@ -35,6 +35,7 @@
 | D20 | Evidence-crawler change-control gate | LOCKED | auto | 2026-06-15 |
 | D21 | UAE-localization scope & Ramadan handling | LOCKED | auto | 2026-06-15 |
 | D22 | Wearable-metric trust tiering | LOCKED | user | 2026-06-15 |
+| D23 | Continuous personalized scoring & feedback loop | LOCKED | user | 2026-06-16 |
 
 ---
 
@@ -377,9 +378,28 @@ metric trigger a critical — Babylon-safe, and honest via the companion **Confi
 flags. **Affects.** Doc 18 (data streams & devices); the input-type taxonomy & reliability flags;
 companion-vector confidence weighting; deck Data-&-Experience + Day-in-the-Life sections.
 
+## D23 — Continuous personalized scoring & feedback loop *(user)*
+**Question.** Should PureScore move with short-term behaviour so the patient gets feedback, and how
+do biomarkers/wearables/baselines feed that without becoming clinically dishonest?
+**Decision.** Make the score **continuous and personally responsive**, not discrete:
+- **No band jumps in the number.** Stage 1 is already `C⁰`/`C¹`-continuous; green/yellow/red are
+  *labels read off the curve*, never the generator (Doc 03 §1).
+- **Within-green optimum-centering ON by default** — a small gradient toward each marker's optimum
+  so the score moves even inside green (Doc 03 §1; Doc 12 §5.2).
+- **New Stage 2b — personal-baseline z-score** (`r_i^pers = κ·tanh(z_i/2)`, `κ=0.10`,
+  `band_clamp`): better-than-your-baseline nudges PureScore **up**, worse trends it **down**,
+  updated daily for wearables/behaviour and per-measurement for labs (Doc 03 §2b).
+- **Positive-`Δ` guarantee on the top-5** — every recommended action carries a strictly positive
+  expected `ΔPureScore`; negative behaviour trends the number and the companion **Trajectory /
+  Early-warning** dimensions down (Doc 07 §3.3–§3.4; Doc 12 §5).
+**Guardrails.** Safety always dominates: `band_clamp` and the clinical/cohort `max` mean
+personalization can never relax a red, clear a critical, or flip a band; fixed/irreversible burden
+shows as low **Modifiability** so there is no false hope (D5/D16). **Affects.** Doc 03 (§1, new §2b,
+§6.1, constants), Doc 07 (§3.3–§3.4), Doc 12 (§5.1); the `tech/` interactive feedback-loop page.
+
 ---
 
 ### Maintenance notes
-- New decisions append as `D23+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
+- New decisions append as `D24+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and
   add the replacement; never edit history in place.
 - Each entry must name the artifacts it **Affects** so downstream code/docs stay traceable.

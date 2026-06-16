@@ -169,6 +169,12 @@ accumulates:
 Sensitivity grows with `n`; cold-start leans on population, so no hard switch. (Consistent with
 Doc 09 shrinkage.) This catches "your RHR 52→60, still green" before any band is crossed.
 
+**This `z_i` is the engine's feedback term.** The same personal z drives **Stage 2b** of the core
+score (Doc 03 §2b): better-than-baseline nudges PureScore up, worse-than-baseline trends it down —
+continuously, bounded by `κ` and `band_clamp` so it never relaxes a clinical anchor or clears a
+critical. One signal, three surfaces: it moves **the number**, the **Trajectory** arrow (§5.2), and
+the **Early-warning** ladder (§5.3) — the substrate of the patient feedback loop (Doc 07 §3.4).
+
 ### 5.2 Motion & within-green gradient
 - **Trajectory**: robust slope + acceleration of each marker, pillar, and PureScore.
 - **Within-green gradient** (the optimum-centering left off in Doc 03 §1, now **on**): a small
