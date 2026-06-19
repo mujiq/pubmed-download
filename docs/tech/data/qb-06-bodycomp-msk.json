@@ -1,0 +1,1316 @@
+{
+  "domain": "BODYCOMP_MSK",
+  "questions": [
+    {
+      "id": "Q_MSK_RESISTANCE_TRAINING",
+      "text": "How often do you do resistance or strength training (weights, resistance bands, bodyweight exercises)?",
+      "category": "Physical Activity — Strength",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["sarcopenia", "osteoporosis", "frailty", "falls_risk", "fracture_risk", "low_bone_density"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Never / less than once a month",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.25, "FIT": 0.12, "ENDO": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.20, "bone_reserve": -0.15, "adiposity": 0.08 } },
+        { "label": "1–2 × per month",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "FIT": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.10, "bone_reserve": -0.08 } },
+        { "label": "1 × per week",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.06 },
+          "reservoirs": { "muscle_reserve": -0.05, "bone_reserve": -0.05 } },
+        { "label": "2–3 × per week",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "4+ × per week",
+          "direction": "decrease_risk", "magnitude": "moderate",
+          "pillars": { "BCM": -0.15, "FIT": -0.10, "MET": -0.06 },
+          "reservoirs": { "muscle_reserve": 0.20, "bone_reserve": 0.15, "adiposity": -0.08 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["activity"],
+        "personas": ["elderly", "athlete", "menopause"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Never / less than once a month", "ask": "Q_MSK_SEDENTARY_TIME" }
+        ],
+        "validated_by": "IPAQ-SF"
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.MVPA"] },
+      "source": "OMICS Introductory Report; Wolff's law (bone loading); ACSM resistance training guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_SEDENTARY_TIME",
+      "text": "On a typical weekday, how many hours do you spend sitting or lying down (excluding sleep)?",
+      "category": "Physical Activity — Sedentary",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["sarcopenia", "frailty", "falls_risk", "osteoarthritis", "back_pain"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Less than 4 hours",
+          "direction": "decrease_risk", "magnitude": "weak",
+          "pillars": { "BCM": -0.06, "MET": -0.05 },
+          "reservoirs": { "muscle_reserve": 0.05, "glycemic_burden": -0.05 } },
+        { "label": "4–6 hours",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "7–9 hours",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.10, "MET": 0.08, "FIT": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.08, "glycemic_burden": 0.08, "adiposity": 0.06 } },
+        { "label": "10+ hours",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.20, "MET": 0.14, "FIT": 0.14, "CV": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.15, "glycemic_burden": 0.12, "adiposity": 0.10, "cardiorespiratory_reserve": -0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["activity", "occupation"],
+        "personas": ["elderly", "all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "IPAQ-SF"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sedentary_time"] },
+      "source": "Biswas et al. 2015 (Ann Intern Med); OMICS back-pain assessment",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_PROTEIN_INTAKE",
+      "text": "How would you describe your daily protein intake (meat, fish, eggs, legumes, dairy, protein shakes)?",
+      "category": "Diet & Nutrition",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["sarcopenia", "frailty", "low_bone_density", "fracture_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Very low — mostly plant carbs, little protein",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.22, "NUT": 0.14 },
+          "reservoirs": { "muscle_reserve": -0.20, "micronutrient_reserve": -0.10 } },
+        { "label": "Low — some protein daily but less than 0.8 g/kg",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.12, "NUT": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.10, "micronutrient_reserve": -0.06 } },
+        { "label": "Moderate — ~0.8–1.2 g/kg/day",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "High — 1.2–1.6 g/kg/day (athlete or deliberate)",
+          "direction": "decrease_risk", "magnitude": "moderate",
+          "pillars": { "BCM": -0.14, "NUT": -0.08 },
+          "reservoirs": { "muscle_reserve": 0.15, "micronutrient_reserve": 0.06 } },
+        { "label": "Very high — 1.6+ g/kg/day (bodybuilder / clinical)",
+          "direction": "decrease_risk", "magnitude": "strong",
+          "pillars": { "BCM": -0.20, "NUT": -0.10 },
+          "reservoirs": { "muscle_reserve": 0.20, "micronutrient_reserve": 0.08 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["elderly", "athlete", "menopause"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.albumin", "lab.prealbumin"] },
+      "source": "Bauer et al. 2013 (ESPEN protein guidelines for elderly); OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_CALCIUM_DAIRY",
+      "text": "How much calcium-rich food do you eat (dairy, fortified plant milks, tinned fish with bones, leafy greens)?",
+      "category": "Diet & Nutrition",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoporosis", "low_bone_density", "fracture_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely / none — no dairy or calcium-fortified foods",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.24, "NUT": 0.16 },
+          "reservoirs": { "bone_reserve": -0.20, "micronutrient_reserve": -0.12 } },
+        { "label": "Low — 1 serving per day or less",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "NUT": 0.10 },
+          "reservoirs": { "bone_reserve": -0.12, "micronutrient_reserve": -0.08 } },
+        { "label": "Moderate — 2 servings per day",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "High — 3+ servings per day",
+          "direction": "decrease_risk", "magnitude": "moderate",
+          "pillars": { "BCM": -0.14, "NUT": -0.10 },
+          "reservoirs": { "bone_reserve": 0.15, "micronutrient_reserve": 0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["elderly", "menopause"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.calcium_serum", "lab.PTH"] },
+      "source": "IOF calcium intake guidelines; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_VITAMIN_D_SUN",
+      "text": "How much outdoor sun exposure do you typically get, and do you take a vitamin D supplement?",
+      "category": "Diet & Nutrition",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoporosis", "low_bone_density", "fracture_risk", "frailty", "falls_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Little sun and no supplement",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.22, "NUT": 0.14, "ENDO": 0.08 },
+          "reservoirs": { "bone_reserve": -0.18, "micronutrient_reserve": -0.14 } },
+        { "label": "Little sun but take vitamin D supplement",
+          "direction": "decrease_risk", "magnitude": "weak",
+          "pillars": { "BCM": -0.05 },
+          "reservoirs": { "bone_reserve": 0.05, "micronutrient_reserve": 0.08 } },
+        { "label": "Moderate sun (20–30 min/day most days)",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Plenty of sun and/or supplement daily",
+          "direction": "decrease_risk", "magnitude": "moderate",
+          "pillars": { "BCM": -0.12, "NUT": -0.08, "ENDO": -0.06 },
+          "reservoirs": { "bone_reserve": 0.14, "micronutrient_reserve": 0.12 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "environment", "lifestage"],
+        "personas": ["elderly", "menopause"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.vitaminD_25OH"] },
+      "source": "NICE NG187 vitamin D; Holick 2007 (NEJM); OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_PRIOR_FRACTURE",
+      "text": "Have you ever had a bone fracture as an adult (age 18+), including stress fractures?",
+      "category": "Medical History",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoporosis", "low_bone_density", "fracture_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Yes — single fracture (non-traumatic / fragility)",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.26, "ENDO": 0.08 },
+          "reservoirs": { "bone_reserve": -0.20 } },
+        { "label": "Yes — single fracture (trauma / accident)",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.12 },
+          "reservoirs": { "bone_reserve": -0.10 } },
+        { "label": "Yes — multiple fractures",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.30, "ENDO": 0.10 },
+          "reservoirs": { "bone_reserve": -0.25 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "lifestage"],
+        "personas": ["elderly", "menopause"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes — single fracture (non-traumatic / fragility)", "ask": "Q_MSK_FRACTURE_SITE" },
+          { "if_response": "Yes — multiple fractures", "ask": "Q_MSK_FRACTURE_SITE" }
+        ]
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.DEXA"] },
+      "source": "FRAX tool (WHO fracture risk); OMICS back-pain assessment",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_FRACTURE_SITE",
+      "text": "Which bone(s) were fractured? (select all that apply)",
+      "category": "Medical History",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoporosis", "fracture_risk", "low_bone_density"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "Hip / femur",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.28, "ENDO": 0.10 },
+          "reservoirs": { "bone_reserve": -0.22 } },
+        { "label": "Spine / vertebral",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.26, "ENDO": 0.08 },
+          "reservoirs": { "bone_reserve": -0.20 } },
+        { "label": "Wrist / forearm",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.16 },
+          "reservoirs": { "bone_reserve": -0.14 } },
+        { "label": "Shoulder / humerus",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14 },
+          "reservoirs": { "bone_reserve": -0.12 } },
+        { "label": "Other",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.08 },
+          "reservoirs": { "bone_reserve": -0.06 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "lifestage"],
+        "personas": ["elderly", "menopause"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_MSK_PRIOR_FRACTURE", "in": ["Yes — single fracture (non-traumatic / fragility)", "Yes — multiple fractures"] }
+        ],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.DEXA"] },
+      "source": "FRAX tool fracture site risk weighting; NOF guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_DIAGNOSED_OSTEOPOROSIS",
+      "text": "Have you ever been diagnosed with osteoporosis or osteopenia (low bone density), confirmed by DEXA scan or doctor?",
+      "category": "Medical History",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoporosis", "low_bone_density", "fracture_risk", "falls_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Osteopenia (low-normal bone density)",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.16, "ENDO": 0.06 },
+          "reservoirs": { "bone_reserve": -0.15 } },
+        { "label": "Osteoporosis (diagnosed)",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.28, "ENDO": 0.10 },
+          "reservoirs": { "bone_reserve": -0.25 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "lifestage"],
+        "personas": ["elderly", "menopause"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.DEXA", "lab.vitaminD_25OH", "lab.PTH"] },
+      "source": "WHO osteoporosis T-score criteria; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_EARLY_MENOPAUSE",
+      "text": "Did you experience menopause before age 45 (natural or surgical), or are you currently perimenopausal or postmenopausal?",
+      "category": "Reproductive / Lifestage",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoporosis", "low_bone_density", "fracture_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Not applicable / premenopausal",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Perimenopausal (periods irregular)",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.08, "ENDO": 0.10 },
+          "reservoirs": { "bone_reserve": -0.08 } },
+        { "label": "Postmenopausal — age 45–55 (normal timing)",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "ENDO": 0.14 },
+          "reservoirs": { "bone_reserve": -0.14 } },
+        { "label": "Early menopause — before age 45",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.24, "ENDO": 0.20 },
+          "reservoirs": { "bone_reserve": -0.22 } },
+        { "label": "Surgical menopause (ovaries removed)",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.26, "ENDO": 0.22 },
+          "reservoirs": { "bone_reserve": -0.24 } }
+      ],
+      "dimensions": {
+        "age": { "min": 35, "max": 120 },
+        "sex": ["female"],
+        "axis_tags": ["lifestage", "reproductive"],
+        "personas": ["menopause", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_SEX", "in": ["Female"] }
+        ],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.E2", "lab.FSH"] },
+      "source": "IOF SCOPE (premature ovarian insufficiency and bone loss); Stevenson 1990",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_STEROID_USE",
+      "text": "Have you used oral or injectable corticosteroids (prednisone, hydrocortisone, dexamethasone) for more than 3 months?",
+      "category": "Medical History",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoporosis", "low_bone_density", "fracture_risk", "sarcopenia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Yes — short course only (<3 months cumulative)",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.06, "ENDO": 0.05 },
+          "reservoirs": { "bone_reserve": -0.05 } },
+        { "label": "Yes — 3–12 months",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.16, "ENDO": 0.10, "MET": 0.08 },
+          "reservoirs": { "bone_reserve": -0.14, "muscle_reserve": -0.10, "glycemic_burden": 0.08 } },
+        { "label": "Yes — more than 12 months or currently taking",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.26, "ENDO": 0.16, "MET": 0.12 },
+          "reservoirs": { "bone_reserve": -0.22, "muscle_reserve": -0.16, "glycemic_burden": 0.12, "adiposity": 0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "lifestage"],
+        "personas": ["elderly", "all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.DEXA", "lab.glucose"] },
+      "source": "ACR glucocorticoid-induced osteoporosis guidelines; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_LOW_BODY_WEIGHT",
+      "text": "Have you ever had a significantly low body weight (BMI below 18.5) for 6 months or more, or a history of restrictive eating?",
+      "category": "Medical History",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoporosis", "low_bone_density", "fracture_risk", "sarcopenia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Yes — briefly in the past",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.08, "NUT": 0.08 },
+          "reservoirs": { "bone_reserve": -0.08, "muscle_reserve": -0.06 } },
+        { "label": "Yes — prolonged or with eating disorder history",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.24, "NUT": 0.18, "ENDO": 0.10 },
+          "reservoirs": { "bone_reserve": -0.20, "muscle_reserve": -0.14, "micronutrient_reserve": -0.12 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "lifestage", "condition_load"],
+        "personas": ["menopause", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["bcm.bmi", "lab.albumin"] },
+      "source": "FRAX low BMI risk; Golden 2003 (anorexia and bone density)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_DIAGNOSED_ARTHRITIS",
+      "text": "Have you been diagnosed with any form of arthritis (osteoarthritis, rheumatoid arthritis, gout, or other)?",
+      "category": "Medical History",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoarthritis", "falls_risk", "fracture_risk", "poor_posture"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "No arthritis diagnosis",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Osteoarthritis (wear-and-tear)",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.24, "INF": 0.10, "FIT": 0.12 },
+          "reservoirs": { "muscle_reserve": -0.12, "inflammatory_load": 0.10 } },
+        { "label": "Rheumatoid arthritis (autoimmune)",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.20, "INF": 0.18 },
+          "reservoirs": { "inflammatory_load": 0.16, "bone_reserve": -0.10, "muscle_reserve": -0.10 } },
+        { "label": "Gout / pseudogout",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.10, "MET": 0.10, "INF": 0.08 },
+          "reservoirs": { "inflammatory_load": 0.08 } },
+        { "label": "Other arthritis (psoriatic, ankylosing, etc.)",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "INF": 0.14 },
+          "reservoirs": { "inflammatory_load": 0.12 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "pain"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.CRP", "lab.uric_acid"] },
+      "source": "OMICS Introductory Report; ACR osteoarthritis guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_JOINT_PAIN_LOCATION",
+      "text": "Do you have persistent joint pain or stiffness? If yes, which area(s) are affected? (select all)",
+      "category": "Pain & Symptoms",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoarthritis", "back_pain", "poor_posture", "falls_risk", "achilles_tendon_injury"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "No joint pain",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Lower back",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.20, "FIT": 0.10 },
+          "reservoirs": { "muscle_reserve": -0.10 } },
+        { "label": "Neck / upper back",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14 },
+          "reservoirs": { "muscle_reserve": -0.08 } },
+        { "label": "Hip",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "FIT": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.08, "bone_reserve": -0.06 } },
+        { "label": "Knee",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "FIT": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.08 } },
+        { "label": "Ankle / heel / Achilles",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.12, "FIT": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.06 } },
+        { "label": "Shoulder",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.08, "FIT": 0.05 },
+          "reservoirs": { "muscle_reserve": -0.05 } },
+        { "label": "Multiple joints",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.22, "INF": 0.12, "FIT": 0.12 },
+          "reservoirs": { "muscle_reserve": -0.12, "inflammatory_load": 0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["pain", "condition_load"],
+        "personas": ["elderly", "athlete"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Lower back", "ask": "Q_MSK_BACK_PAIN_DURATION" },
+          { "if_response": "Ankle / heel / Achilles", "ask": "Q_MSK_ACHILLES_DETAILS" }
+        ]
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS back-pain assessment; Woolf and Pfleger 2003 (global burden musculoskeletal)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_BACK_PAIN_DURATION",
+      "text": "How long have you had lower back pain?",
+      "category": "Pain & Symptoms",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["back_pain", "poor_posture"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Less than 6 weeks (acute)",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.06 },
+          "reservoirs": { "muscle_reserve": -0.05 } },
+        { "label": "6 weeks to 3 months (subacute)",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.12 },
+          "reservoirs": { "muscle_reserve": -0.08 } },
+        { "label": "3 months or more (chronic)",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.22, "MCS": 0.10, "FIT": 0.10 },
+          "reservoirs": { "muscle_reserve": -0.14, "allostatic_load": 0.08 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["pain", "condition_load"],
+        "personas": ["elderly", "all"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_MSK_JOINT_PAIN_LOCATION", "in": ["Lower back"] }
+        ],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "NICE NG59 low back pain; OMICS back-pain assessment",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_DESK_ERGONOMICS",
+      "text": "If you work at a desk, how would you describe your workstation ergonomics?",
+      "category": "Occupation & Ergonomics",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["back_pain", "poor_posture", "osteoarthritis"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Not a desk worker",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Ergonomic setup — monitor at eye level, supportive chair",
+          "direction": "decrease_risk", "magnitude": "weak",
+          "pillars": { "BCM": -0.05 },
+          "reservoirs": { "muscle_reserve": 0.05 } },
+        { "label": "Mixed — some adjustments but not optimal",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.06 },
+          "reservoirs": { "muscle_reserve": -0.05 } },
+        { "label": "Unadjusted / poor setup — slouched, screen too low",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.16, "FIT": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.12 } },
+        { "label": "Laptop on sofa / bed / floor regularly",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.22, "FIT": 0.10 },
+          "reservoirs": { "muscle_reserve": -0.16 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["occupation", "pain"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_OCCUPATION", "in": ["Mostly seated / desk"] }
+        ],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS back-pain assessment; Hartvigsen et al. 2018 (Lancet back pain series)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_MANUAL_LABOUR_LOAD",
+      "text": "Does your work involve heavy lifting, repetitive bending, or sustained awkward postures?",
+      "category": "Occupation & Ergonomics",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["back_pain", "osteoarthritis", "achilles_tendon_injury", "poor_posture"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No / office / sedentary work",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Light — occasional lifting under 10 kg",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.06 },
+          "reservoirs": { "muscle_reserve": -0.05 } },
+        { "label": "Moderate — regular lifting 10–25 kg or repetitive bending",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "INF": 0.06 },
+          "reservoirs": { "muscle_reserve": -0.10, "inflammatory_load": 0.06 } },
+        { "label": "Heavy — frequent lifting >25 kg or sustained awkward posture",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.24, "INF": 0.10 },
+          "reservoirs": { "muscle_reserve": -0.14, "inflammatory_load": 0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["occupation", "pain"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_OCCUPATION", "in": ["Manual labour", "Sustained single posture"] }
+        ],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS back-pain assessment; Punnett & Wegman 2004 (Scand J Work Environ Health)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_COLD_WORK",
+      "text": "Do you work or spend extended time in cold environments (outdoors in winter, cold storage, refrigeration)?",
+      "category": "Occupation & Ergonomics",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["back_pain", "osteoarthritis", "poor_posture"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No — mostly temperature-controlled",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Occasionally (a few hours per week)",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.05, "INF": 0.05 },
+          "reservoirs": { "inflammatory_load": 0.05 } },
+        { "label": "Regularly (most working days)",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.12, "INF": 0.10 },
+          "reservoirs": { "inflammatory_load": 0.08, "muscle_reserve": -0.06 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["occupation", "environment", "pain"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_OCCUPATION", "in": ["Manual labour", "Outdoor / high sun exposure"] }
+        ],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 4,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS back-pain assessment; Ljungberg et al. 1999 (Scand J Work Environ Health)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_FALLS_PAST_YEAR",
+      "text": "How many times have you fallen (lost your balance and hit the ground) in the past 12 months?",
+      "category": "Falls & Balance",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["falls_risk", "fracture_risk", "frailty", "osteoporosis"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "None",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "1 fall",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "FIT": 0.10 },
+          "reservoirs": { "muscle_reserve": -0.08, "bone_reserve": -0.06 } },
+        { "label": "2 or more falls",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.26, "FIT": 0.18, "ENDO": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.16, "bone_reserve": -0.12 } }
+      ],
+      "dimensions": {
+        "age": { "min": 50, "max": 120 },
+        "sex": ["all"],
+        "axis_tags": ["activity", "condition_load", "lifestage"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_AGE", "in": ["60–74", "75+"] }
+        ],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "2 or more falls", "ask": "Q_MSK_GRIP_STAIRS" }
+        ]
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["wearable.fall_event"] },
+      "source": "AGS/BGS falls prevention guidelines; FRAX falls input",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_GRIP_STAIRS",
+      "text": "Do you have difficulty with either of the following: (a) opening jars or gripping objects firmly, (b) climbing a flight of stairs without resting?",
+      "category": "Functional Capacity",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["sarcopenia", "frailty", "falls_risk", "fracture_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No difficulty with either",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Difficulty with one (grip or stairs)",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.16, "FIT": 0.12 },
+          "reservoirs": { "muscle_reserve": -0.14, "cardiorespiratory_reserve": -0.08 } },
+        { "label": "Difficulty with both (grip and stairs)",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.28, "FIT": 0.20 },
+          "reservoirs": { "muscle_reserve": -0.22, "cardiorespiratory_reserve": -0.14 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["activity", "condition_load"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_AGE", "in": ["60–74", "75+"] }
+        ],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "IPAQ-SF"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.MVPA"] },
+      "source": "EWGSOP2 sarcopenia criteria (grip strength proxy); Fried frailty phenotype",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_PRIOR_INJURY",
+      "text": "Have you had a significant musculoskeletal injury (joint dislocation, ligament tear, tendon rupture, disc prolapse) in the past?",
+      "category": "Medical History",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["back_pain", "osteoarthritis", "achilles_tendon_injury", "poor_posture", "falls_risk"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "No significant injury",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Spinal disc injury / prolapse",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.24, "FIT": 0.12 },
+          "reservoirs": { "muscle_reserve": -0.14 } },
+        { "label": "Knee ligament / meniscus injury",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "FIT": 0.10 },
+          "reservoirs": { "muscle_reserve": -0.10 } },
+        { "label": "Achilles tendon injury / rupture",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.16, "FIT": 0.10 },
+          "reservoirs": { "muscle_reserve": -0.10 } },
+        { "label": "Hip or shoulder joint injury",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.12, "FIT": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.08 } },
+        { "label": "Other significant joint / soft-tissue injury",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.05 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "pain"],
+        "personas": ["athlete", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": [] },
+      "source": "OMICS back-pain assessment; Magnusson & Kjaer 2003 (Achilles tendon review)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_ACHILLES_DETAILS",
+      "text": "Regarding your Achilles / heel pain: when does the pain occur?",
+      "category": "Pain & Symptoms",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["achilles_tendon_injury"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Only after intense activity",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.06 },
+          "reservoirs": { "muscle_reserve": -0.05 } },
+        { "label": "During normal daily activity",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "FIT": 0.10 },
+          "reservoirs": { "muscle_reserve": -0.10 } },
+        { "label": "At rest and walking — constant",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.22, "FIT": 0.16 },
+          "reservoirs": { "muscle_reserve": -0.14 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["pain", "condition_load"],
+        "personas": ["athlete", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_MSK_JOINT_PAIN_LOCATION", "in": ["Ankle / heel / Achilles"] }
+        ],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "VISA-A questionnaire (Achilles tendinopathy); OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_POSTURE_SYMPTOMS",
+      "text": "Do you experience neck stiffness, headaches at the base of the skull, or rounded-shoulder discomfort at the end of the workday?",
+      "category": "Pain & Symptoms",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["poor_posture", "back_pain"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Never",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Occasionally (once or twice a week)",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.06, "MCS": 0.05 },
+          "reservoirs": { "muscle_reserve": -0.05, "allostatic_load": 0.05 } },
+        { "label": "Frequently (most days)",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "MCS": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.10, "allostatic_load": 0.08 } },
+        { "label": "Daily and persistent into the evening",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.22, "MCS": 0.10, "FIT": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.14, "allostatic_load": 0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["occupation", "pain", "activity"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_OCCUPATION", "in": ["Mostly seated / desk", "Sustained single posture"] }
+        ],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS back-pain assessment; Szeto et al. 2002 (neck/shoulder in VDT workers)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_FRAILTY_FATIGUE",
+      "text": "How often do you feel physically exhausted after activities that would not have tired you a year ago?",
+      "category": "Functional Capacity",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["frailty", "sarcopenia", "falls_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely or never",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Occasionally (1–2 ×/week)",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.06, "FIT": 0.06 },
+          "reservoirs": { "muscle_reserve": -0.05 } },
+        { "label": "Often (3–4 ×/week)",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "FIT": 0.12, "MCS": 0.06 },
+          "reservoirs": { "muscle_reserve": -0.12, "cardiorespiratory_reserve": -0.08 } },
+        { "label": "Most days / nearly always",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.24, "FIT": 0.20, "MCS": 0.10 },
+          "reservoirs": { "muscle_reserve": -0.18, "cardiorespiratory_reserve": -0.14 } }
+      ],
+      "dimensions": {
+        "age": { "min": 50, "max": 120 },
+        "sex": ["all"],
+        "axis_tags": ["activity", "condition_load", "lifestage"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_AGE", "in": ["60–74", "75+"] }
+        ],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "IPAQ-SF"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.MVPA", "wearable.step_count"] },
+      "source": "Fried frailty phenotype (exhaustion criterion); EWGSOP2 sarcopenia staging",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_UNINTENTIONAL_WEIGHT_LOSS",
+      "text": "Have you unintentionally lost more than 5% of your body weight in the past 6 months?",
+      "category": "Functional Capacity",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["frailty", "sarcopenia", "fracture_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Yes — mild (5–10%)",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.16, "NUT": 0.12 },
+          "reservoirs": { "muscle_reserve": -0.12, "bone_reserve": -0.08 } },
+        { "label": "Yes — significant (more than 10%)",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.26, "NUT": 0.20, "ENDO": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.20, "bone_reserve": -0.14, "micronutrient_reserve": -0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "diet", "lifestage"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["bcm.bmi", "wearable.weight"] },
+      "source": "Fried frailty phenotype (weight loss criterion); MNA screening tool",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_WALKING_SPEED",
+      "text": "Compared to peers your age, how would you rate your walking speed over a short distance (e.g., crossing a road)?",
+      "category": "Functional Capacity",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["frailty", "sarcopenia", "falls_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Faster than most peers",
+          "direction": "decrease_risk", "magnitude": "moderate",
+          "pillars": { "BCM": -0.12, "FIT": -0.10 },
+          "reservoirs": { "muscle_reserve": 0.10, "cardiorespiratory_reserve": 0.08 } },
+        { "label": "About the same as most peers",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Slower than most peers",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.16, "FIT": 0.14 },
+          "reservoirs": { "muscle_reserve": -0.14, "cardiorespiratory_reserve": -0.10 } },
+        { "label": "Much slower / need aid to walk",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.26, "FIT": 0.22 },
+          "reservoirs": { "muscle_reserve": -0.20, "cardiorespiratory_reserve": -0.16 } }
+      ],
+      "dimensions": {
+        "age": { "min": 50, "max": 120 },
+        "sex": ["all"],
+        "axis_tags": ["activity", "condition_load", "lifestage"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_AGE", "in": ["60–74", "75+"] }
+        ],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "IPAQ-SF"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.step_count", "wearable.MVPA"] },
+      "source": "EWGSOP2 gait speed criterion; Fried frailty phenotype",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_BODY_FAT_DISTRIBUTION",
+      "text": "Where do you notice most of your excess body fat?",
+      "category": "Body Composition",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoarthritis", "sarcopenia", "back_pain", "fracture_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Not applicable — lean build",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Hips, thighs, buttocks (pear-shape / peripheral)",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.05, "MET": 0.05 },
+          "reservoirs": { "adiposity": 0.05 } },
+        { "label": "Belly / abdomen (apple-shape / central)",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.20, "MET": 0.18, "CV": 0.12, "INF": 0.10 },
+          "reservoirs": { "adiposity": 0.18, "glycemic_burden": 0.12, "inflammatory_load": 0.10 } },
+        { "label": "Evenly distributed",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.10, "MET": 0.08 },
+          "reservoirs": { "adiposity": 0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["anthropometric", "metabolic"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["bcm.waist", "bcm.body_fat_pct"] },
+      "source": "OMICS Introductory Report; Visser et al. (sarcopenic obesity and bone); Diabetes UK waist guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_BALANCE_TRAINING",
+      "text": "Do you specifically practise balance or proprioception exercises (yoga, tai chi, single-leg stands, balance boards)?",
+      "category": "Physical Activity — Balance",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["falls_risk", "frailty", "osteoarthritis", "poor_posture"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.12, "FIT": 0.10 },
+          "reservoirs": { "muscle_reserve": -0.08 } },
+        { "label": "Occasionally (a few times per month)",
+          "direction": "increase_risk", "magnitude": "weak",
+          "pillars": { "BCM": 0.05 },
+          "reservoirs": { "muscle_reserve": -0.03 } },
+        { "label": "Weekly or more",
+          "direction": "decrease_risk", "magnitude": "moderate",
+          "pillars": { "BCM": -0.12, "FIT": -0.10 },
+          "reservoirs": { "muscle_reserve": 0.10 } }
+      ],
+      "dimensions": {
+        "age": { "min": 50, "max": 120 },
+        "sex": ["all"],
+        "axis_tags": ["activity", "lifestage"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_AGE", "in": ["60–74", "75+"] }
+        ],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "IPAQ-SF"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.MVPA"] },
+      "source": "Cochrane review (Sherrington 2017 — exercise for falls prevention)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_HRT_USE",
+      "text": "Are you currently taking or have you taken hormone replacement therapy (HRT / MHT — estrogen ± progesterone)?",
+      "category": "Reproductive / Lifestage",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoporosis", "low_bone_density", "fracture_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Not applicable",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Currently taking HRT",
+          "direction": "decrease_risk", "magnitude": "moderate",
+          "pillars": { "BCM": -0.14, "ENDO": -0.12 },
+          "reservoirs": { "bone_reserve": 0.14 } },
+        { "label": "Took HRT in the past — now stopped",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Eligible / indicated but not taking",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "ENDO": 0.10 },
+          "reservoirs": { "bone_reserve": -0.12 } }
+      ],
+      "dimensions": {
+        "age": { "min": 40, "max": 120 },
+        "sex": ["female"],
+        "axis_tags": ["lifestage", "reproductive"],
+        "personas": ["menopause", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_SEX", "in": ["Female"] },
+          { "q": "Q_MSK_EARLY_MENOPAUSE", "in": ["Perimenopausal (periods irregular)", "Postmenopausal — age 45–55 (normal timing)", "Early menopause — before age 45", "Surgical menopause (ovaries removed)"] }
+        ],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.E2"] },
+      "source": "NICE NG187 menopause; WHI bone density outcomes; IOF HRT and osteoporosis",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MSK_FLEXIBILITY_MOBILITY",
+      "text": "How would you rate your overall flexibility and joint mobility (ability to touch toes, full shoulder reach, hip mobility)?",
+      "category": "Physical Activity — Mobility",
+      "domain": "BODYCOMP_MSK",
+      "conditions": ["osteoarthritis", "poor_posture", "back_pain", "falls_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Very flexible — full range of motion, no stiffness",
+          "direction": "decrease_risk", "magnitude": "moderate",
+          "pillars": { "BCM": -0.12, "FIT": -0.08 },
+          "reservoirs": { "muscle_reserve": 0.08 } },
+        { "label": "Moderate — some stiffness but functional",
+          "direction": "neutral", "magnitude": "none",
+          "pillars": {}, "reservoirs": {} },
+        { "label": "Limited — noticeable restrictions affecting daily tasks",
+          "direction": "increase_risk", "magnitude": "moderate",
+          "pillars": { "BCM": 0.14, "FIT": 0.10 },
+          "reservoirs": { "muscle_reserve": -0.10 } },
+        { "label": "Very limited — significant daily impairment",
+          "direction": "increase_risk", "magnitude": "strong",
+          "pillars": { "BCM": 0.24, "FIT": 0.18 },
+          "reservoirs": { "muscle_reserve": -0.16 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["activity", "pain"],
+        "personas": ["elderly", "athlete"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "IPAQ-SF"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.MVPA"] },
+      "source": "OMICS Introductory Report; ACSM flexibility guidelines",
+      "flag": "illustrative-reverify"
+    }
+  ]
+}

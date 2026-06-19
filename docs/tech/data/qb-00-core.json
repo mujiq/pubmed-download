@@ -1,0 +1,333 @@
+{
+  "domain": "CORE",
+  "questions": [
+    {
+      "id": "Q_CORE_AGE", "text": "What is your age?", "category": "Demographics", "domain": "CORE",
+      "conditions": ["all"], "stream": "LIFE", "type": "numeric",
+      "responses": [
+        { "label": "<40", "direction": "decrease_risk", "magnitude": "weak", "pillars": {}, "reservoirs": {} },
+        { "label": "40–59", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "60–74", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.10, "BCM": 0.08, "REN": 0.06 }, "reservoirs": { "cardiorespiratory_reserve": -0.08, "bone_reserve": -0.08, "renal_reserve": -0.06 } },
+        { "label": "75+", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.18, "BCM": 0.16, "REN": 0.12, "MCS": 0.08 }, "reservoirs": { "cardiorespiratory_reserve": -0.16, "bone_reserve": -0.16, "muscle_reserve": -0.14, "renal_reserve": -0.12 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["lifestage"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
+      "priority": 1, "cadence": "annual", "refresh": "slow",
+      "perceived_actual": { "kind": "anchor", "corroborated_by": [] },
+      "source": "OMICS Introductory Report", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_SEX", "text": "What is your sex assigned at birth?", "category": "Demographics", "domain": "CORE",
+      "conditions": ["all"], "stream": "LIFE", "type": "single_select",
+      "responses": [
+        { "label": "Male", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Female", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Intersex / prefer to describe", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["reproductive"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [ { "if_response": "any", "ask": "Q_CORE_GENDER" } ] },
+      "priority": 1, "cadence": "once", "refresh": "static",
+      "perceived_actual": { "kind": "anchor", "corroborated_by": [] },
+      "source": "Doc 05 sex-specific models", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_GENDER", "text": "What is your gender identity, and are you on gender-affirming hormones?", "category": "Demographics", "domain": "CORE",
+      "conditions": ["all"], "stream": "LIFE", "type": "single_select",
+      "responses": [
+        { "label": "Cis man", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Cis woman", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Trans woman (on estrogen)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Trans man (on testosterone)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Non-binary / other", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["reproductive"], "personas": ["transfem", "transmasc"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
+      "priority": 2, "cadence": "annual", "refresh": "slow",
+      "perceived_actual": { "kind": "anchor", "corroborated_by": ["lab.E2", "lab.testosterone"] },
+      "source": "Doc 05 sex-specific models", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_ETHNICITY", "text": "What is your ethnicity / ancestral background?", "category": "Demographics", "domain": "CORE",
+      "conditions": ["type_2_diabetes", "atherosclerosis", "high_cholesterol", "ckd", "vitamin_d_deficiency"], "stream": "LIFE", "type": "single_select",
+      "responses": [
+        { "label": "White / European", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "South Asian", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.14, "CV": 0.12 }, "reservoirs": { "glycemic_burden": 0.10, "atherogenic_burden": 0.08 } },
+        { "label": "East/SE Asian", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MET": 0.08 }, "reservoirs": { "glycemic_burden": 0.06 } },
+        { "label": "Black / African", "direction": "increase_risk", "magnitude": "weak", "pillars": { "CV": 0.08, "REN": 0.06 }, "reservoirs": { "vascular_bp_load": 0.06, "renal_reserve": -0.05 } },
+        { "label": "Middle Eastern / Gulf Arab", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MET": 0.08, "NUT": 0.06 }, "reservoirs": { "glycemic_burden": 0.06, "micronutrient_reserve": -0.06 } },
+        { "label": "Hispanic / Latino", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MET": 0.08, "HEP": 0.06 }, "reservoirs": { "glycemic_burden": 0.06, "hepatic_fat": 0.05 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["genetic_familial"], "personas": ["southasian", "ramadan_dm"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
+      "priority": 2, "cadence": "once", "refresh": "static",
+      "perceived_actual": { "kind": "anchor", "corroborated_by": [] },
+      "source": "OMICS Introductory Report; Doc 15 UAE localization", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_HEIGHT", "text": "What is your height?", "category": "Anthropometrics", "domain": "CORE",
+      "conditions": ["obesity", "all"], "stream": "LIFE", "type": "numeric",
+      "responses": [ { "label": "value (cm)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} } ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["anthropometric"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [ { "if_response": "any", "ask": "Q_CORE_WEIGHT" } ] },
+      "priority": 1, "cadence": "annual", "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["bcm.height"] },
+      "source": "OMICS Introductory Report", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_WEIGHT", "text": "What is your current weight?", "category": "Anthropometrics", "domain": "CORE",
+      "conditions": ["obesity", "type_2_diabetes", "atherosclerosis", "osteoarthritis", "nafld"], "stream": "LIFE", "type": "numeric",
+      "responses": [ { "label": "value (kg) — drives BMI", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} } ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["anthropometric", "metabolic"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [ { "if_response": "BMI>=30", "ask": "Q_CARDIOMET_WAIST" } ] },
+      "priority": 1, "cadence": "Core", "refresh": "dynamic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["wearable.weight", "bcm.bmi"] },
+      "source": "OMICS Introductory Report", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_BMI", "text": "Your BMI (derived from height and weight)", "category": "Anthropometrics", "domain": "CORE",
+      "conditions": ["obesity", "type_2_diabetes", "hair_loss", "eczema", "atherosclerosis", "low_testosterone", "osteoarthritis"], "stream": "LIFE", "type": "numeric",
+      "responses": [
+        { "label": "<18.5 (underweight)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "BCM": 0.12, "NUT": 0.10, "HEM": 0.06 }, "reservoirs": { "muscle_reserve": -0.10, "micronutrient_reserve": -0.08, "bone_reserve": -0.08 } },
+        { "label": "18.5–24.9 (normal)", "direction": "decrease_risk", "magnitude": "weak", "pillars": {}, "reservoirs": {} },
+        { "label": "25–29.9 (overweight)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.12, "CV": 0.08, "BCM": 0.06 }, "reservoirs": { "adiposity": 0.10, "glycemic_burden": 0.06 } },
+        { "label": "30+ (obese)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.22, "CV": 0.14, "HEP": 0.10, "BCM": 0.08 }, "reservoirs": { "adiposity": 0.20, "glycemic_burden": 0.14, "hepatic_fat": 0.10, "inflammatory_load": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["anthropometric", "metabolic"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [], "validated_by": "" },
+      "priority": 1, "cadence": "Core", "refresh": "dynamic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["bcm.bmi", "bcm.body_fat_pct"] },
+      "source": "OMICS Introductory Report; WHO (ethnicity-adjusted)", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_MARITAL", "text": "What is your current marital / partnership status?", "category": "Socioeconomic", "domain": "CORE",
+      "conditions": ["anxiety", "depression", "chronic_fatigue_syndrome", "obesity", "longevity"], "stream": "LIFE", "type": "single_select",
+      "responses": [
+        { "label": "Married or living with partner", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "MCS": -0.06 }, "reservoirs": { "allostatic_load": -0.05 } },
+        { "label": "Single", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Divorced / separated / widowed", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.05 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["social"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [], "validated_by": "UCLA-3" },
+      "priority": 3, "cadence": "annual", "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": [] },
+      "source": "OMICS Introductory Report", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_EDUCATION", "text": "What is your highest level of education?", "category": "Socioeconomic", "domain": "CORE",
+      "conditions": ["dementia", "cognitive_decline", "obesity"], "stream": "LIFE", "type": "single_select",
+      "responses": [
+        { "label": "Less than 12 years", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": {} },
+        { "label": "12+ years / high school", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Bachelor's degree or higher", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "MCS": -0.06 }, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["social"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
+      "priority": 4, "cadence": "once", "refresh": "static",
+      "perceived_actual": { "kind": "anchor", "corroborated_by": [] },
+      "source": "OMICS Introductory Report (education = cognitive reserve proxy)", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_INCOME_EMPLOY", "text": "What is your employment status and approximate household income?", "category": "Socioeconomic", "domain": "CORE",
+      "conditions": ["chronic_fatigue_syndrome", "depression", "anxiety"], "stream": "LIFE", "type": "single_select",
+      "responses": [
+        { "label": "Employed, comfortable income", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "MCS": -0.05 }, "reservoirs": { "allostatic_load": -0.05 } },
+        { "label": "Employed, financial strain", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.06 } },
+        { "label": "Unemployed / unable to work", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.10 }, "reservoirs": { "allostatic_load": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["social", "stress"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [], "validated_by": "PSS-4" },
+      "priority": 4, "cadence": "annual", "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": [] },
+      "source": "OMICS Introductory Report", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_ENVIRONMENT", "text": "How would you describe the environment you live in?", "category": "Environment", "domain": "CORE",
+      "conditions": ["hay_fever", "asthma", "obesity", "facial_wrinkles", "copd"], "stream": "LIFE", "type": "single_select",
+      "responses": [
+        { "label": "Rural / low pollution", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "INF": -0.05 }, "reservoirs": { "inflammatory_load": -0.05 } },
+        { "label": "Suburban", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Urban / high pollution", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.10, "CV": 0.06 }, "reservoirs": { "inflammatory_load": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["environment"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
+      "priority": 3, "cadence": "annual", "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": [] },
+      "source": "OMICS Introductory Report", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_OCCUPATION", "text": "Which best describes your work and posture during the day?", "category": "Occupation", "domain": "CORE",
+      "conditions": ["back_pain", "facial_wrinkles", "obesity", "sarcopenia"], "stream": "LIFE", "type": "multi_select",
+      "responses": [
+        { "label": "Mostly seated / desk", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "FIT": 0.10, "BCM": 0.08, "MET": 0.06 }, "reservoirs": { "cardiorespiratory_reserve": -0.08, "glycemic_burden": 0.06 } },
+        { "label": "Sustained single posture", "direction": "increase_risk", "magnitude": "weak", "pillars": { "BCM": 0.08 }, "reservoirs": { "muscle_reserve": -0.05 } },
+        { "label": "Manual labour", "direction": "increase_risk", "magnitude": "weak", "pillars": { "BCM": 0.06 }, "reservoirs": {} },
+        { "label": "Outdoor / high sun exposure", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.05 }, "reservoirs": {} },
+        { "label": "Active, varied movement", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "FIT": -0.06 }, "reservoirs": { "cardiorespiratory_reserve": 0.05 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["occupation", "activity"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
+      "priority": 3, "cadence": "annual", "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["wearable.sedentary_time"] },
+      "source": "OMICS Introductory Report", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_SMOKING", "text": "What is your tobacco / nicotine use status?", "category": "Substance", "domain": "CORE",
+      "conditions": ["atherosclerosis", "copd", "hay_fever", "facial_wrinkles", "hair_loss", "dementia", "low_testosterone"], "stream": "LIFE", "type": "single_select",
+      "responses": [
+        { "label": "Never", "direction": "decrease_risk", "magnitude": "weak", "pillars": {}, "reservoirs": {} },
+        { "label": "Former", "direction": "increase_risk", "magnitude": "weak", "pillars": { "CV": 0.06, "HEM": 0.05 }, "reservoirs": { "atherogenic_burden": 0.05 } },
+        { "label": "Current — light (<10/day)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.14, "HEM": 0.10, "INF": 0.10 }, "reservoirs": { "atherogenic_burden": 0.12, "inflammatory_load": 0.10, "oxygen_delivery_reserve": -0.08 } },
+        { "label": "Current — heavy (10+/day)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.24, "HEM": 0.16, "INF": 0.16, "HEP": 0.06 }, "reservoirs": { "atherogenic_burden": 0.22, "inflammatory_load": 0.18, "oxygen_delivery_reserve": -0.14, "cardiorespiratory_reserve": -0.12 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["substance"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [ { "if_response": "Current — light (<10/day)", "ask": "Q_CORE_SHISHA_VAPE" }, { "if_response": "Current — heavy (10+/day)", "ask": "Q_CORE_SHISHA_VAPE" } ], "validated_by": "SUBSTANCE" },
+      "priority": 1, "cadence": "Core", "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.cotinine"] },
+      "source": "OMICS Introductory Report; Doc 02 modifiers", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_SHISHA_VAPE", "text": "Do you use waterpipe (shisha), vaping, or nicotine pouches?", "category": "Substance", "domain": "CORE",
+      "conditions": ["atherosclerosis", "copd", "irritable_bowel_syndrome"], "stream": "LIFE", "type": "multi_select",
+      "responses": [
+        { "label": "None", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Shisha (sessions/week)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.12, "HEM": 0.10, "INF": 0.08 }, "reservoirs": { "inflammatory_load": 0.08, "oxygen_delivery_reserve": -0.08 } },
+        { "label": "Vaping", "direction": "increase_risk", "magnitude": "weak", "pillars": { "CV": 0.06, "INF": 0.05 }, "reservoirs": { "inflammatory_load": 0.05 } },
+        { "label": "Nicotine pouches", "direction": "increase_risk", "magnitude": "weak", "pillars": { "CV": 0.05 }, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["substance"], "personas": ["ramadan_dm", "southasian"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [], "validated_by": "SUBSTANCE" },
+      "priority": 2, "cadence": "Core", "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.cotinine"] },
+      "source": "OMICS Introductory Report; Doc 15 (shisha prevalence UAE)", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_ALCOHOL", "text": "How much alcohol do you drink in a typical week?", "category": "Substance", "domain": "CORE",
+      "conditions": ["atherosclerosis", "nafld", "dementia", "irritable_bowel_syndrome", "low_testosterone", "facial_wrinkles", "longevity"], "stream": "LIFE", "type": "single_select",
+      "responses": [
+        { "label": "None", "direction": "decrease_risk", "magnitude": "weak", "pillars": {}, "reservoirs": {} },
+        { "label": "1–7 units", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "8–14 units", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.10, "CV": 0.06, "MCS": 0.05 }, "reservoirs": { "hepatic_fat": 0.08, "allostatic_load": 0.05 } },
+        { "label": "15+ units", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.20, "CV": 0.10, "MCS": 0.08, "MET": 0.06 }, "reservoirs": { "hepatic_fat": 0.18, "inflammatory_load": 0.08, "allostatic_load": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["substance"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [ { "if_response": "15+ units", "ask": "Q_CORE_SUBSTANCE_USE" } ], "validated_by": "AUDIT-C" },
+      "priority": 1, "cadence": "Core", "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.GGT", "lab.ALT", "lab.MCV"] },
+      "source": "OMICS Introductory Report; AUDIT-C", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_SUBSTANCE_USE", "text": "Have you struggled with substance misuse (cannabis, cocaine, amphetamines, opioids) or been diagnosed with a use disorder?", "category": "Substance", "domain": "CORE",
+      "conditions": ["anxiety", "depression"], "stream": "LIFE", "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "decrease_risk", "magnitude": "weak", "pillars": {}, "reservoirs": {} },
+        { "label": "Past, in recovery", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.05 } },
+        { "label": "Current / active", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.18, "CV": 0.06, "HEP": 0.06 }, "reservoirs": { "allostatic_load": 0.12 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["substance", "stress"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
+      "priority": 2, "cadence": "quarterly", "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS Introductory Report", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_FAMHX", "text": "Which conditions have your biological parents or siblings been diagnosed with? (select all)", "category": "Family History", "domain": "CORE",
+      "conditions": ["all"], "stream": "LIFE", "type": "multi_select",
+      "responses": [
+        { "label": "None known", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Heart disease / high cholesterol", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.14 }, "reservoirs": { "atherogenic_burden": 0.10 } },
+        { "label": "Type 2 diabetes", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.14 }, "reservoirs": { "glycemic_burden": 0.10 } },
+        { "label": "Dementia", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.12 }, "reservoirs": {} },
+        { "label": "Depression / anxiety", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.12 }, "reservoirs": { "allostatic_load": 0.06 } },
+        { "label": "Autoimmune (RA, lupus, thyroid)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.12, "ENDO": 0.06 }, "reservoirs": { "inflammatory_load": 0.08 } },
+        { "label": "Allergic (hay fever, eczema, asthma)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.10 }, "reservoirs": { "inflammatory_load": 0.06 } },
+        { "label": "Obesity", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MET": 0.08, "BCM": 0.06 }, "reservoirs": { "adiposity": 0.06 } },
+        { "label": "Osteoporosis / hip fracture", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "BCM": 0.12 }, "reservoirs": { "bone_reserve": -0.08 } },
+        { "label": "Cancer", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.06 }, "reservoirs": {} },
+        { "label": "Male-pattern baldness", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "BCM": 0.0 }, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["genetic_familial"], "personas": ["all", "fh"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
+      "priority": 1, "cadence": "annual", "refresh": "slow",
+      "perceived_actual": { "kind": "anchor", "corroborated_by": ["lab.ApoB", "lab.Lp(a)"] },
+      "source": "OMICS Introductory Report (family history items consolidated)", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_PRENATAL", "text": "Early-life exposures: were you exposed to any of the following before birth or in childhood? (select all)", "category": "Prenatal & Early Life", "domain": "CORE",
+      "conditions": ["hay_fever", "eczema", "asthma", "anxiety", "chronic_fatigue_syndrome"], "stream": "LIFE", "type": "multi_select",
+      "responses": [
+        { "label": "None / not sure", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Mother smoked while pregnant", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.06 }, "reservoirs": { "inflammatory_load": 0.05 } },
+        { "label": "High maternal stress in pregnancy", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.05 } },
+        { "label": "Second-hand smoke in childhood", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.06 }, "reservoirs": { "inflammatory_load": 0.05 } },
+        { "label": "Maternal infection in pregnancy", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.05 }, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["genetic_familial", "environment"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
+      "priority": 4, "cadence": "once", "refresh": "static",
+      "perceived_actual": { "kind": "anchor", "corroborated_by": [] },
+      "source": "OMICS Introductory Report (prenatal items consolidated)", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_ACE", "text": "During childhood, did you experience physical/sexual abuse, bullying, or emotional/physical neglect?", "category": "Prenatal & Early Life", "domain": "CORE",
+      "conditions": ["anxiety", "depression", "chronic_pain", "irritable_bowel_syndrome"], "stream": "LIFE", "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes, one type", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.12 }, "reservoirs": { "allostatic_load": 0.10 } },
+        { "label": "Yes, multiple types", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.20 }, "reservoirs": { "allostatic_load": 0.16 } },
+        { "label": "Prefer not to say", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "genetic_familial"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [], "validated_by": "PSS-4" },
+      "priority": 3, "cadence": "once", "refresh": "static",
+      "perceived_actual": { "kind": "anchor", "corroborated_by": ["lab.cortisol_rhythm"] },
+      "source": "OMICS Introductory Report (ACE items consolidated)", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_SELF_HEALTH", "text": "Overall, how would you rate your own health right now?", "category": "Self-Perception", "domain": "CORE",
+      "conditions": ["all", "longevity"], "stream": "GOAL", "type": "scale",
+      "responses": [
+        { "label": "Excellent", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Good", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Fair", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.05 }, "reservoirs": {} },
+        { "label": "Poor", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.08 }, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["cognition", "social"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
+      "priority": 2, "cadence": "quarterly", "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["purescore.total"] },
+      "source": "Self-rated health (perceived persona anchor) — drives perceived-vs-actual gap", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_SELF_PERSONA", "text": "Which best describes how you see your own lifestyle today?", "category": "Self-Perception", "domain": "CORE",
+      "conditions": ["all"], "stream": "GOAL", "type": "single_select",
+      "responses": [
+        { "label": "Athletic / very active", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Reasonably healthy", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Trying to improve", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Struggling / unhealthy", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.05 }, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["cognition", "activity"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
+      "priority": 2, "cadence": "quarterly", "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.MVPA", "lab.HbA1c", "purescore.total"] },
+      "source": "Perceived-persona self-classification — compared with derived persona (Appendix F)", "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CORE_GOALS", "text": "What are your top health goals? (select up to 3)", "category": "Self-Perception", "domain": "CORE",
+      "conditions": ["all"], "stream": "GOAL", "type": "multi_select",
+      "responses": [
+        { "label": "Live longer / healthy aging", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Lose weight / body composition", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "More energy / better sleep", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Reduce stress / mood", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Fitness / strength", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Cognition / memory", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["cognition"], "personas": ["all"] },
+      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
+      "priority": 2, "cadence": "quarterly", "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "Goal stream (Doc 18) — steers nudge prioritization (Doc 07)", "flag": "illustrative-reverify"
+    }
+  ]
+}

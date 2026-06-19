@@ -90,7 +90,7 @@ score visibly tracks short-term action. Each marker carries a robust **personal 
 A bounded, smooth gradient turns recent personal movement into a small score change:
 
 ```
- r_i^pers = κ · tanh( z_i / 2 )                       # κ = 0.10 cap; continuous, monotone
+ r_i^pers = κ_resp · tanh( z_i / 2 )                       # κ_resp = 0.10 cap; continuous, monotone
  r_i      = band_clamp(  max(r_i^clin, φ·r_i^cohort) + r_i^pers · 𝟙[non-critical]  )
 ```
 
@@ -236,7 +236,7 @@ clinically honest:
    regressing wearable metric pushes `z_i` adverse → `r_i` up → PureScore down, and shows as
    **↓ Trajectory** on the affected pillars and, if it accelerates, an **Early-warning** flag
    (Doc 12 §4–§5) — before any band is crossed.
-3. **Honest ceiling.** Responsiveness is bounded by `κ` and `band_clamp`: fixed/irreversible burden
+3. **Honest ceiling.** Responsiveness is bounded by `κ_resp` and `band_clamp`: fixed/irreversible burden
    (genetics, age, established disease) does **not** fake-improve from short-term effort — it shows
    as low **Modifiability** (Doc 12 §4) so the engine never sells false hope (D5/D16).
 4. **The loop:** measure → personal-baseline `z` (2b) → continuous score + companion trends →
@@ -257,7 +257,7 @@ This object is the substrate for the nudge engine (Doc 07) and the clinician vie
 | Symbol | Meaning | Default |
 |--------|---------|---------|
 | `φ` | cohort-blend weight (Stage 2) | 0.60 |
-| `κ` | personal-baseline responsiveness cap (Stage 2b) | 0.10 |
+| `κ_resp` | personal-baseline responsiveness cap (Stage 2b) | 0.10 |
 | `r_i^green` | within-green optimum-centering gradient cap | <0.15 |
 | `γ` | pillar power-mean exponent | 3 |
 | `δ` | PureScore power-mean exponent | 2 |

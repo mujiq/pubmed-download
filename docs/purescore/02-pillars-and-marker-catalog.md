@@ -224,6 +224,10 @@ pathway (Doc 11), and is **never** averaged away by the formula (Doc 03 §6 hard
   escalate independently.
 - **Adherence / engagement** (behavioural): not scored as health, but feeds the nudge engine's
   feasibility model (Doc 07) and the reservoir inflows (behaviours, Doc 04).
+- **Stress / allostatic load** (PSS, HRV, resting-HR, cortisol slope): modelled as the cross-cutting
+  **ALLO** reservoir (Doc 04) and surfaced to users as the **Stress-load** companion score (Doc 12
+  §4.1) — deliberately **not** a standalone pillar, since its markers already live in MCS/ENDO/CV/SLP
+  and a weighted pillar would double-count that burden (D24).
 
 ## Marker weights and pillar weights
 - Within-pillar weights `w_i` above are **defaults**; they are cohort-adjusted (e.g., UACR weight

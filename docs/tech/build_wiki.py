@@ -144,32 +144,45 @@ def md_to_html(md):
     return "".join(out), h2
 
 # ----------------------------------------------------------------- navigation
+# Pipeline / data-to-decision ordering. Doc number badges float across groups (no longer
+# sequential) — the "Doc NN" identity is preserved; group composition follows the system flow.
 NAV = [
  ("Start here", [("index.html", "Home"), ("conventions.html", "Conventions & glossary"), ("decisions.html", "Decision log")]),
- ("Foundations", [(DOCMAP[n], SHORT[n], n) for n in ["00","01","02","03","04"]]),
- ("Models & engine", [(DOCMAP[n], SHORT[n], n) for n in ["05","06","07","08"]]),
- ("Validation & governance", [(DOCMAP[n], SHORT[n], n) for n in ["09","10","11","12","13","14"]]),
- ("UAE, actions & experience", [(DOCMAP[n], SHORT[n], n) for n in ["15","16","17","18"]]),
+ ("Foundations & data", [(DOCMAP[n], SHORT[n], n) for n in ["00","01","18","02"]]),
+ ("Scoring & dynamics", [(DOCMAP[n], SHORT[n], n) for n in ["03","04"]]),
+ ("Interpretation & personalization", [(DOCMAP[n], SHORT[n], n) for n in ["05","06","08","12"]]),
+ ("Action & engagement", [(DOCMAP[n], SHORT[n], n) for n in ["07","16"]]),
+ ("Validation, governance & localization", [(DOCMAP[n], SHORT[n], n) for n in ["09","13","14","11","17","10","15"]]),
  ("Reference appendices", [("appendix-biomarkers.html","A · Biomarkers"),("appendix-wearables.html","B · Wearables"),
-                           ("appendix-questions.html","C · Questionnaires"),("appendix-personas.html","D · Personas")]),
+                           ("appendix-questions.html","C · Questionnaires"),("appendix-personas.html","D · Personas"),
+                           ("appendix-question-bank.html","E · Question bank"),("appendix-lifestyles.html","F · Lifestyles"),
+                           ("appendix-coverage-audit.html","G · Coverage audit"),("appendix-adherence.html","H · Adherence"),
+                           ("appendix-persona-matrix.html","I · Persona matrix"),("appendix-goals.html","J · Goals")]),
  ("Doctor's board (admin)", [("admin-index.html","Dashboard"),("admin-lab-ranges.html","Lab ranges"),
                              ("admin-weights.html","Weights & constants"),("admin-lifestyle.html","Lifestyle / PRO"),
                              ("admin-personas.html","Personas & frames"),("admin-governance.html","Governance & sign-off")]),
- ("Interactive", [("feedback-loop.html", "Live feedback-loop demo")]),
+ ("Diagrams & system maps", [("behemoth-class-diagram.html", "Behemoth Class Diagram"),
+                             ("states.html", "Patient state machine"),
+                             ("engagement-state-machines.html", "Engagement state machines")]),
+ ("Demos & visual prototypes", [("feedback-loop.html", "Live feedback-loop demo"),
+                                ("wearable-baselines.html", "Wearable Baselines")]),
 ]
 
-ORDER = (["index.html"] + [DOCMAP[n] for n in sorted(DOCMAP)] +
-         ["conventions.html","decisions.html",
-          "appendix-biomarkers.html","appendix-wearables.html","appendix-questions.html","appendix-personas.html",
-          "admin-index.html","admin-lab-ranges.html","admin-weights.html","admin-lifestyle.html",
-          "admin-personas.html","admin-governance.html","feedback-loop.html"])
+# prev/next follows the sidebar reading order exactly (derived from NAV)
+ORDER = [it[0] for grp, items in NAV for it in items]
 PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
           "appendix-biomarkers.html":"Appendix A · Biomarkers","appendix-wearables.html":"Appendix B · Wearables",
           "appendix-questions.html":"Appendix C · Questionnaires","appendix-personas.html":"Appendix D · Personas",
+          "appendix-question-bank.html":"Appendix E · Question bank","appendix-lifestyles.html":"Appendix F · Lifestyles",
+          "appendix-coverage-audit.html":"Appendix G · Coverage audit","appendix-adherence.html":"Appendix H · Adherence",
+          "appendix-persona-matrix.html":"Appendix I · Persona matrix","appendix-goals.html":"Appendix J · Goals",
           "admin-index.html":"Admin · Dashboard","admin-lab-ranges.html":"Admin · Lab ranges",
           "admin-weights.html":"Admin · Weights","admin-lifestyle.html":"Admin · Lifestyle",
           "admin-personas.html":"Admin · Personas","admin-governance.html":"Admin · Governance",
-          "feedback-loop.html":"Live feedback-loop demo"}
+          "feedback-loop.html":"Live feedback-loop demo","states.html":"Patient state machine",
+          "behemoth-class-diagram.html":"Behemoth Class Diagram",
+          "engagement-state-machines.html":"Engagement state machines",
+          "wearable-baselines.html":"Wearable Baselines"}
 for n in DOCMAP: PTITLE[DOCMAP[n]] = "Doc %s · %s" % (n, SHORT[n])
 
 def sidebar(active):
@@ -271,20 +284,28 @@ def render_index():
          'Doctor\'s-board configuration screens, and a live feedback-loop demo. Start at '
          '<a href="00-vision-principles-and-lessons.html">Doc 00</a> or jump anywhere.</p></div>',
          C.ILLUS,
-         '<div class="diagram"><div class="dt">How the documents connect</div><pre class="mermaid">%s</pre></div>' % flow,
-         '<div class="section-h">Foundations &amp; engine</div><div class="grid c3">']
-    for n in ["00","01","02","03","04","05","06","07","08"]:
-        b.append('<a class="card" href="%s"><span class="n">Doc %s</span><h3>%s</h3><p>%s</p></a>'
-                 % (DOCMAP[n], n, SHORT[n], esc(C.SUMMARY[n])))
-    b.append('</div><div class="section-h">Validation, governance, UAE &amp; experience</div><div class="grid c3">')
-    for n in ["09","10","11","12","13","14","15","16","17","18"]:
-        b.append('<a class="card" href="%s"><span class="n">Doc %s</span><h3>%s</h3><p>%s</p></a>'
-                 % (DOCMAP[n], n, SHORT[n], esc(C.SUMMARY[n])))
-    b.append('</div><div class="section-h">Reference appendices</div><div class="grid c4">')
+         '<div class="diagram"><div class="dt">How the documents connect</div><pre class="mermaid">%s</pre></div>' % flow]
+    # doc-card sections are driven by the NAV pipeline groups, so the landing page stays in
+    # sync with the sidebar automatically (only groups whose items carry a Doc number).
+    for grp, items in NAV:
+        nums = [it[2] for it in items if len(it) > 2]
+        if not nums: continue
+        b.append('<div class="section-h">%s</div><div class="grid c3">' % grp.replace("&", "&amp;"))
+        for n in nums:
+            b.append('<a class="card" href="%s"><span class="n">Doc %s</span><h3>%s</h3><p>%s</p></a>'
+                     % (DOCMAP[n], n, SHORT[n], esc(C.SUMMARY[n])))
+        b.append('</div>')
+    b.append('<div class="section-h">Reference appendices</div><div class="grid c4">')
     for href, t, d in [("appendix-biomarkers.html","Biomarker catalogue","Every marker, band, tier &amp; weight"),
                        ("appendix-wearables.html","Wearable metrics","Layers, trust tiers (D22), pillars"),
                        ("appendix-questions.html","Questionnaires","PHQ-9, GAD-7, AUDIT-C, ISI… full items"),
-                       ("appendix-personas.html","Personas","Cohort frames & edge cases")]:
+                       ("appendix-personas.html","Personas","Cohort frames & edge cases"),
+                       ("appendix-question-bank.html","Question bank","350 items → pillars, reservoirs, deps, filters"),
+                       ("appendix-lifestyles.html","Lifestyles","Axes, archetypes, perceived-vs-actual"),
+                       ("appendix-coverage-audit.html","Coverage audit","Product-loop gaps: persona, goals, adherence"),
+                       ("appendix-adherence.html","Adherence","Micro check-ins → reservoirs (closes F1)"),
+                       ("appendix-persona-matrix.html","Persona matrix","Signals → persona posterior (closes F2)"),
+                       ("appendix-goals.html","Goals","Catalogue keyed by applicability (closes F3)")]:
         b.append('<a class="card" href="%s"><h3>%s</h3><p>%s</p></a>' % (href, t, d))
     b.append('</div><div class="section-h">Doctor\'s board — quarterly configuration review</div><div class="grid c3">')
     for href, t, d in [("admin-index.html","Dashboard","All config domains &amp; review status"),
@@ -294,12 +315,20 @@ def render_index():
                        ("admin-personas.html","Personas & frames","Cohort overrides"),
                        ("admin-governance.html","Governance & sign-off","Workflow, gates, audit")]:
         b.append('<a class="card" href="%s"><h3>%s</h3><p>%s</p></a>' % (href, t, d))
-    b.append('</div><div class="section-h">Interactive</div><div class="grid c2">'
+    b.append('</div><div class="section-h">Diagrams &amp; system maps</div><div class="grid c3">'
+             '<a class="card" href="behemoth-class-diagram.html"><h3>Behemoth class diagram</h3>'
+             '<p>The full PureScore object model — markers, pillars, reservoirs, engine and feedback loop — in one class diagram.</p></a>'
+             '<a class="card" href="states.html"><h3>Patient state machine</h3>'
+             '<p>Every state the five streams (labs, wearables, lifestyle, goals, AI recs) can occupy for one human '
+             '— click a state and watch the recommendation engine re-derive, filtered by age, sex, life stage and persona.</p></a>'
+             '<a class="card" href="engagement-state-machines.html"><h3>Engagement state machines</h3>'
+             '<p>Technical lifecycle states for nudges, check-ins, self-reports and adherence checks — Mermaid state diagrams with transition tables and data fields.</p></a></div>'
+             '<div class="section-h">Demos &amp; visual prototypes</div><div class="grid c3">'
              '<a class="card" href="feedback-loop.html"><h3>Live feedback-loop demo</h3>'
              '<p>Tap the top-5 actions or log a bad night and watch PureScore and the companion dimensions respond '
              '— the continuous, personalized scoring of D23 / Doc 03 §2b in motion.</p></a>'
-             '<a class="card" href="conventions.html"><h3>Conventions &amp; glossary</h3>'
-             '<p>The binding symbols, the 12 pillars, band semantics and the hard safety non-negotiables.</p></a></div>')
+             '<a class="card" href="wearable-baselines.html"><h3>Wearable Baselines</h3>'
+             '<p>Mobile baseline-band visualizations: category summaries with composite bands, data gaps and anomalies, drilling into per-metric detail.</p></a></div>')
     page("index.html", "Home", "".join(b))
 
 # ----------------------------------------------------------------- main
@@ -308,17 +337,28 @@ def main():
     for n in sorted(DOCMAP): render_doc(n)
     render_simple("README.md", "conventions.html", "Conventions & glossary", "Conventions & glossary")
     render_simple("decisions.md", "decisions.html", "Decision log", "Decision log")
-    for fn, build in [("appendix-biomarkers.html", C.build_biomarkers), ("appendix-wearables.html", C.build_wearables),
-                      ("appendix-questions.html", C.build_questions), ("appendix-personas.html", C.build_personas)]:
+    # builders resolved by name at call time so a not-yet-present builder (multi-agent edits) is skipped, not fatal
+    for fn, bname in [("appendix-biomarkers.html", "build_biomarkers"), ("appendix-wearables.html", "build_wearables"),
+                      ("appendix-questions.html", "build_questions"), ("appendix-personas.html", "build_personas"),
+                      ("appendix-question-bank.html", "build_question_bank"), ("appendix-lifestyles.html", "build_lifestyles"),
+                      ("appendix-coverage-audit.html", "build_coverage_audit"),
+                      ("appendix-adherence.html", "build_adherence"), ("appendix-persona-matrix.html", "build_persona_matrix"),
+                      ("appendix-goals.html", "build_goals"),
+                      ("behemoth-class-diagram.html", "build_behemoth")]:
+        build = getattr(C, bname, None)
+        if build is None:
+            print("  ! skip %s — wiki_content.%s not defined yet" % (fn, bname)); continue
         tab, body = build(); page(fn, tab, body)
     for fn, build in A.ADMIN_PAGES:
         tab, body = build(); page(fn, tab, body)
-    fbody = os.path.join(HERE, "feedback-loop.body.html")
-    if os.path.exists(fbody):
-        page("feedback-loop.html", "Live feedback-loop demo", open(fbody, encoding="utf-8").read())
-        built = len(ORDER)
-    else:
-        built = len(ORDER) - 1
+    built = len(ORDER)
+    for fn, tab in [("feedback-loop.html", "Live feedback-loop demo"), ("states.html", "Patient state machine"),
+                    ("engagement-state-machines.html", "Engagement state machines")]:
+        body = os.path.join(HERE, fn[:-5] + ".body.html")
+        if os.path.exists(body):
+            page(fn, tab, open(body, encoding="utf-8").read())
+        else:
+            built -= 1
     print("Generated %d pages → %s" % (built, HERE))
 
 if __name__ == "__main__":

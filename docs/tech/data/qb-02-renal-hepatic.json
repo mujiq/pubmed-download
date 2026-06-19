@@ -1,0 +1,1017 @@
+{
+  "domain": "RENAL_HEPATIC",
+  "questions": [
+    {
+      "id": "Q_RENHEP_CKD_DX",
+      "text": "Have you ever been diagnosed with chronic kidney disease (CKD) or told your kidney function (eGFR) is below normal?",
+      "category": "Renal History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["chronic_kidney_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes — Stage 1–2 (mild, eGFR 60+)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "REN": 0.14, "CV": 0.08 }, "reservoirs": { "renal_reserve": -0.12, "vascular_bp_load": 0.06 } },
+        { "label": "Yes — Stage 3 (eGFR 30–59)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.25, "CV": 0.14, "MET": 0.08 }, "reservoirs": { "renal_reserve": -0.22, "vascular_bp_load": 0.10, "inflammatory_load": 0.08 } },
+        { "label": "Yes — Stage 4–5 or dialysis", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.30, "CV": 0.22, "MET": 0.14, "HEM": 0.12 }, "reservoirs": { "renal_reserve": -0.30, "vascular_bp_load": 0.18, "inflammatory_load": 0.14, "oxygen_delivery_reserve": -0.12 } },
+        { "label": "Not sure", "direction": "increase_risk", "magnitude": "weak", "pillars": { "REN": 0.05 }, "reservoirs": {} }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "metabolic"],
+        "personas": ["ckd", "dialysis", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes — Stage 4–5 or dialysis", "ask": "Q_RENHEP_DIALYSIS_FREQ" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.eGFR", "lab.creatinine", "lab.cystatin_C"] },
+      "source": "KDIGO CKD guidelines 2022; NKF staging criteria",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_DIALYSIS_FREQ",
+      "text": "If you are on dialysis, what type and how often?",
+      "category": "Renal History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["chronic_kidney_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Not on dialysis", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Hemodialysis 3×/week", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.28, "CV": 0.20, "HEM": 0.14 }, "reservoirs": { "renal_reserve": -0.28, "oxygen_delivery_reserve": -0.14, "vascular_bp_load": 0.16 } },
+        { "label": "Peritoneal dialysis (daily)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.26, "CV": 0.16, "INF": 0.10 }, "reservoirs": { "renal_reserve": -0.26, "inflammatory_load": 0.10, "vascular_bp_load": 0.12 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["dialysis"]
+      },
+      "dependencies": {
+        "show_if": [{ "q": "Q_RENHEP_CKD_DX", "in": ["Yes — Stage 4–5 or dialysis"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.eGFR", "lab.BUN"] },
+      "source": "KDIGO CKD 2022; USRDS annual data report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_WATER_INTAKE",
+      "text": "How much plain water or unsweetened fluid do you typically drink per day?",
+      "category": "Hydration",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["chronic_kidney_disease", "kidney_stones", "recurrent_uti"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Less than 1 litre", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.22, "INF": 0.08 }, "reservoirs": { "renal_reserve": -0.18, "inflammatory_load": 0.08 } },
+        { "label": "1–1.5 litres", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "REN": 0.12 }, "reservoirs": { "renal_reserve": -0.10 } },
+        { "label": "1.5–2.5 litres", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "More than 2.5 litres", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "REN": -0.12, "INF": -0.05 }, "reservoirs": { "renal_reserve": 0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["ckd", "dialysis", "elderly", "ramadan_dm"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.urine_osmolality", "lab.BUN_creatinine_ratio"] },
+      "source": "EFSA dietary reference values for water 2010; Borghi et al. NEJM 1996 (kidney stones)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_SALT_INTAKE",
+      "text": "How would you describe your salt / sodium intake?",
+      "category": "Diet",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["chronic_kidney_disease", "kidney_stones"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Low — rarely add salt, avoid processed food", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "REN": -0.10, "CV": -0.08 }, "reservoirs": { "renal_reserve": 0.08, "vascular_bp_load": -0.08 } },
+        { "label": "Moderate — some processed food, occasional salt", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "High — daily processed food, frequent salt addition", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "REN": 0.14, "CV": 0.12 }, "reservoirs": { "renal_reserve": -0.10, "vascular_bp_load": 0.12 } },
+        { "label": "Very high — processed food most meals + extra salt", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.20, "CV": 0.18 }, "reservoirs": { "renal_reserve": -0.16, "vascular_bp_load": 0.18 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["ckd", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.urine_sodium_24h", "lab.urine_Na_creatinine_ratio"] },
+      "source": "He & MacGregor Lancet 2002; KDIGO CKD nutrition 2020",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_PROTEIN_LOAD",
+      "text": "How much protein do you typically eat per day? (include meat, fish, eggs, dairy, protein supplements)",
+      "category": "Diet",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["chronic_kidney_disease", "kidney_stones", "hyperuricemia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Low (<0.6 g/kg/day) — mostly plant sources", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "REN": -0.10 }, "reservoirs": { "renal_reserve": 0.08 } },
+        { "label": "Moderate (0.6–1.2 g/kg/day)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "High (1.2–2 g/kg/day) — gym diet or frequent meat", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "REN": 0.12, "MET": 0.06 }, "reservoirs": { "renal_reserve": -0.10, "glycemic_burden": 0.05 } },
+        { "label": "Very high (>2 g/kg/day) — protein supplements daily", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.20, "MET": 0.08, "INF": 0.06 }, "reservoirs": { "renal_reserve": -0.16, "inflammatory_load": 0.06 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["ckd", "dialysis"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.urine_urea_24h", "lab.BUN"] },
+      "source": "Kalantar-Zadeh et al. JASN 2017; KDIGO CKD nutrition 2020",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_KIDNEY_STONES_DX",
+      "text": "Have you ever had a kidney stone (nephrolithiasis)?",
+      "category": "Renal History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["kidney_stones", "hyperuricemia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes — once", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "REN": 0.14 }, "reservoirs": { "renal_reserve": -0.10 } },
+        { "label": "Yes — two or more times", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.24, "MET": 0.06 }, "reservoirs": { "renal_reserve": -0.20, "glycemic_burden": 0.05 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["ckd"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes — two or more times", "ask": "Q_RENHEP_OXALATE_INTAKE" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.urine_oxalate_24h", "lab.uric_acid"] },
+      "source": "Stamatelou et al. Kidney Int 2003; Pearle et al. AUA guideline 2014",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_OXALATE_INTAKE",
+      "text": "How often do you eat high-oxalate foods: spinach, rhubarb, nuts, beetroot, chocolate, strong tea?",
+      "category": "Diet",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["kidney_stones"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely / never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "A few times a week", "direction": "increase_risk", "magnitude": "weak", "pillars": { "REN": 0.06 }, "reservoirs": { "renal_reserve": -0.05 } },
+        { "label": "Daily", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "REN": 0.12 }, "reservoirs": { "renal_reserve": -0.10 } },
+        { "label": "Multiple times daily", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.20 }, "reservoirs": { "renal_reserve": -0.16 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["ckd"]
+      },
+      "dependencies": {
+        "show_if": [{ "q": "Q_RENHEP_KIDNEY_STONES_DX", "in": ["Yes — once", "Yes — two or more times"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.urine_oxalate_24h"] },
+      "source": "Liebman & Al-Wahsh Adv Nutr 2011; EAU urolithiasis guideline 2023",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_SUGARY_DRINKS",
+      "text": "How often do you drink sugar-sweetened beverages, fruit juices, or energy drinks?",
+      "category": "Diet",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["kidney_stones", "hyperuricemia", "nafld", "chronic_kidney_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely / never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "1–3 times/week", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MET": 0.06, "HEP": 0.05 }, "reservoirs": { "glycemic_burden": 0.05, "hepatic_fat": 0.05 } },
+        { "label": "Daily (1 drink)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.12, "HEP": 0.10, "REN": 0.06 }, "reservoirs": { "glycemic_burden": 0.10, "hepatic_fat": 0.10, "renal_reserve": -0.05 } },
+        { "label": "Multiple times daily", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.20, "HEP": 0.16, "REN": 0.10 }, "reservoirs": { "glycemic_burden": 0.18, "hepatic_fat": 0.16, "renal_reserve": -0.10, "inflammatory_load": 0.08 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["prediabetic", "ramadan_dm", "ckd"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.uric_acid", "lab.HbA1c", "lab.ALT"] },
+      "source": "Choi & Curhan NEJM 2008 (fructose-gout); Lustig et al. Nature 2012; Duffey & Popkin Am J Clin Nutr 2007",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_NSAID_USE",
+      "text": "How often do you use over-the-counter pain relievers (ibuprofen, naproxen, diclofenac, aspirin >1g/day)?",
+      "category": "Medication & Supplements",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["chronic_kidney_disease", "elevated_liver_enzymes"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely / never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Occasionally (<2×/week)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "REN": 0.06 }, "reservoirs": { "renal_reserve": -0.05 } },
+        { "label": "Regularly (≥2×/week)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "REN": 0.14, "HEP": 0.08 }, "reservoirs": { "renal_reserve": -0.12, "hepatic_fat": 0.06 } },
+        { "label": "Daily / chronic use", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.22, "HEP": 0.14, "INF": 0.06 }, "reservoirs": { "renal_reserve": -0.20, "hepatic_fat": 0.10, "inflammatory_load": 0.06 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["substance", "condition_load"],
+        "personas": ["ckd", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.creatinine", "lab.ALT", "lab.AST"] },
+      "source": "Whelton et al. Ann Intern Med 1997; De Broe & Elseviers NEJM 1998",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_HEPATOTOXIC_SUPPS",
+      "text": "Do you regularly take any herbal or dietary supplements? (e.g. kava, valerian, green tea extract, anabolic compounds, excessive vitamin A)",
+      "category": "Medication & Supplements",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["elevated_liver_enzymes", "nafld", "cirrhosis_risk"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "None", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Herbal: kava, valerian, comfrey, or weight-loss teas", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.24 }, "reservoirs": { "hepatic_fat": 0.14, "inflammatory_load": 0.10 } },
+        { "label": "Green tea extract (concentrated capsules)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.12 }, "reservoirs": { "hepatic_fat": 0.08 } },
+        { "label": "Anabolic / SARMS / testosterone boosters", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.22, "ENDO": 0.10 }, "reservoirs": { "hepatic_fat": 0.12, "inflammatory_load": 0.08 } },
+        { "label": "High-dose vitamin A (>10,000 IU/day)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.12 }, "reservoirs": { "hepatic_fat": 0.10 } },
+        { "label": "Standard vitamins/minerals only", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["substance", "diet"],
+        "personas": ["ckd"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.ALT", "lab.AST", "lab.ALP", "lab.bilirubin"] },
+      "source": "Navarro et al. Hepatology 2014; LiverTox database (NIH); Stickel et al. Gut 2011",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_UTI_HISTORY",
+      "text": "How many urinary tract infections (UTIs) have you had in the past 12 months?",
+      "category": "Renal / Urological History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["recurrent_uti"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "None", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "1 UTI", "direction": "increase_risk", "magnitude": "weak", "pillars": { "REN": 0.06, "INF": 0.05 }, "reservoirs": { "renal_reserve": -0.05, "inflammatory_load": 0.05 } },
+        { "label": "2 UTIs", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "REN": 0.12, "INF": 0.10 }, "reservoirs": { "renal_reserve": -0.10, "inflammatory_load": 0.10 } },
+        { "label": "3 or more UTIs", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.22, "INF": 0.16 }, "reservoirs": { "renal_reserve": -0.16, "inflammatory_load": 0.16 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["female"],
+        "axis_tags": ["condition_load", "reproductive"],
+        "personas": ["ckd", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [{ "q": "Q_CORE_SEX", "in": ["Female"] }],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "3 or more UTIs", "ask": "Q_RENHEP_UTI_SYMPTOMS" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.urine_culture", "lab.urine_dipstick"] },
+      "source": "Foxman B. Am J Med 2002; Hooton TM NEJM 2012",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_UTI_SYMPTOMS",
+      "text": "Do you currently have any of these symptoms: burning on urination, frequency, urgency, cloudy or foul-smelling urine?",
+      "category": "Renal / Urological History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["recurrent_uti"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "None of the above", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Burning / stinging on urination", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "REN": 0.12, "INF": 0.10 }, "reservoirs": { "inflammatory_load": 0.10 } },
+        { "label": "Increased frequency / urgency", "direction": "increase_risk", "magnitude": "weak", "pillars": { "REN": 0.06 }, "reservoirs": {} },
+        { "label": "Cloudy or foul-smelling urine", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "REN": 0.10, "INF": 0.08 }, "reservoirs": { "inflammatory_load": 0.08 } },
+        { "label": "Flank pain or fever (possible kidney involvement)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.22, "INF": 0.18 }, "reservoirs": { "renal_reserve": -0.14, "inflammatory_load": 0.16 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["female"],
+        "axis_tags": ["condition_load", "pain"],
+        "personas": ["ckd", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [{ "q": "Q_CORE_SEX", "in": ["Female"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 3,
+      "cadence": "on-trigger",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.urine_culture", "lab.urine_dipstick"] },
+      "source": "Hooton TM NEJM 2012; Gupta et al. Ann Intern Med 2001",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_URIC_ACID_DX",
+      "text": "Have you been told you have high uric acid (hyperuricemia) or gout?",
+      "category": "Metabolic History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["hyperuricemia", "kidney_stones", "chronic_kidney_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes — high uric acid only (no gout attacks)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "REN": 0.12, "MET": 0.10, "CV": 0.06 }, "reservoirs": { "renal_reserve": -0.10, "glycemic_burden": 0.06, "inflammatory_load": 0.06 } },
+        { "label": "Yes — gout attacks (≥1 in past year)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.18, "MET": 0.14, "CV": 0.10, "INF": 0.12 }, "reservoirs": { "renal_reserve": -0.14, "glycemic_burden": 0.08, "inflammatory_load": 0.14 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "metabolic"],
+        "personas": ["ckd", "prediabetic"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes — gout attacks (≥1 in past year)", "ask": "Q_RENHEP_SUGARY_DRINKS" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.uric_acid"] },
+      "source": "Zhu et al. Arthritis Rheum 2011; Feig et al. NEJM 2008 (uric acid-CKD)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_PURINE_INTAKE",
+      "text": "How often do you eat high-purine foods: red meat, organ meats (liver/kidney), shellfish, anchovies, sardines?",
+      "category": "Diet",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["hyperuricemia", "kidney_stones"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely / never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "1–3 times/week", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MET": 0.05, "INF": 0.05 }, "reservoirs": { "inflammatory_load": 0.05 } },
+        { "label": "4–6 times/week", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.10, "INF": 0.08, "REN": 0.06 }, "reservoirs": { "inflammatory_load": 0.08, "renal_reserve": -0.05 } },
+        { "label": "Daily or more", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.18, "INF": 0.14, "REN": 0.12 }, "reservoirs": { "inflammatory_load": 0.14, "renal_reserve": -0.10, "glycemic_burden": 0.06 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["ckd"]
+      },
+      "dependencies": {
+        "show_if": [{ "q": "Q_RENHEP_URIC_ACID_DX", "in": ["Yes — high uric acid only (no gout attacks)", "Yes — gout attacks (≥1 in past year)"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.uric_acid"] },
+      "source": "Choi et al. NEJM 2004; Dalbeth et al. Nat Rev Rheumatol 2019",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_NAFLD_DX",
+      "text": "Have you ever been diagnosed with fatty liver, non-alcoholic fatty liver disease (NAFLD), or MAFLD?",
+      "category": "Hepatic History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["nafld", "elevated_liver_enzymes", "cirrhosis_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes — mild / early (no fibrosis)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.16, "MET": 0.12 }, "reservoirs": { "hepatic_fat": 0.14, "glycemic_burden": 0.08, "inflammatory_load": 0.06 } },
+        { "label": "Yes — with fibrosis or steatohepatitis (NASH)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.26, "MET": 0.16, "CV": 0.10, "INF": 0.10 }, "reservoirs": { "hepatic_fat": 0.22, "glycemic_burden": 0.12, "inflammatory_load": 0.14, "atherogenic_burden": 0.08 } },
+        { "label": "Not sure", "direction": "increase_risk", "magnitude": "weak", "pillars": { "HEP": 0.06 }, "reservoirs": { "hepatic_fat": 0.05 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "metabolic"],
+        "personas": ["prediabetic", "ckd"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes — with fibrosis or steatohepatitis (NASH)", "ask": "Q_RENHEP_CIRRHOSIS_SYMPTOMS" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.ALT", "lab.AST", "lab.liver_ultrasound", "lab.FIB4_score"] },
+      "source": "Chalasani et al. Hepatology 2018 AASLD/AGA guideline; Younossi et al. Hepatology 2016",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_LIVER_ENZYME_SX",
+      "text": "Have you been told your liver enzymes (ALT, AST, GGT, or ALP) were elevated on a blood test?",
+      "category": "Hepatic History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["elevated_liver_enzymes", "nafld", "cirrhosis_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No / never tested", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes — mildly elevated (1–3× upper limit)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.14, "INF": 0.06 }, "reservoirs": { "hepatic_fat": 0.10, "inflammatory_load": 0.06 } },
+        { "label": "Yes — markedly elevated (>3× upper limit)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.24, "INF": 0.12 }, "reservoirs": { "hepatic_fat": 0.18, "inflammatory_load": 0.12 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "metabolic"],
+        "personas": ["prediabetic", "ckd"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes — markedly elevated (>3× upper limit)", "ask": "Q_RENHEP_HEPATOTOXIC_SUPPS" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.ALT", "lab.AST", "lab.GGT", "lab.ALP"] },
+      "source": "Kwo et al. Am J Gastroenterol 2017; Pratt & Kaplan NEJM 2000",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_PROCESSED_FOOD",
+      "text": "How much of your diet comes from ultra-processed foods (fast food, packaged snacks, ready meals, frozen pizza)?",
+      "category": "Diet",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["nafld", "chronic_kidney_disease", "elevated_liver_enzymes"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Very little (<20% of meals)", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "HEP": -0.10, "MET": -0.08 }, "reservoirs": { "hepatic_fat": -0.08, "glycemic_burden": -0.06 } },
+        { "label": "Some (20–40% of meals)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "A lot (40–60% of meals)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.12, "MET": 0.10, "REN": 0.06 }, "reservoirs": { "hepatic_fat": 0.10, "glycemic_burden": 0.10, "renal_reserve": -0.05 } },
+        { "label": "Most meals (>60%)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.20, "MET": 0.18, "REN": 0.10, "INF": 0.10 }, "reservoirs": { "hepatic_fat": 0.18, "glycemic_burden": 0.16, "renal_reserve": -0.10, "inflammatory_load": 0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["prediabetic", "ckd", "ramadan_dm"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.ALT", "lab.HbA1c"] },
+      "source": "Rauber et al. BMJ 2019; Srour et al. BMJ 2019 (NOVA classification UPF)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_FRUCTOSE_INTAKE",
+      "text": "Do you consume products sweetened with high-fructose corn syrup, agave, or large amounts of fruit juice daily?",
+      "category": "Diet",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["nafld", "hyperuricemia", "elevated_liver_enzymes"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No / rarely", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes — a few times a week", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.12, "MET": 0.10 }, "reservoirs": { "hepatic_fat": 0.10, "glycemic_burden": 0.08 } },
+        { "label": "Yes — daily", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.20, "MET": 0.16, "REN": 0.06 }, "reservoirs": { "hepatic_fat": 0.18, "glycemic_burden": 0.14, "renal_reserve": -0.05, "inflammatory_load": 0.08 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["prediabetic", "ckd", "ramadan_dm"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.ALT", "lab.uric_acid", "lab.triglycerides"] },
+      "source": "Lustig et al. Nature 2012; Lim et al. J Clin Invest 2010 (fructose de novo lipogenesis)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_GALLSTONES_DX",
+      "text": "Have you been diagnosed with gallstones (cholelithiasis) or had your gallbladder removed?",
+      "category": "Hepatic / Biliary History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["gallstones"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes — diagnosed, gallbladder intact", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.14, "INF": 0.08 }, "reservoirs": { "hepatic_fat": 0.08, "inflammatory_load": 0.08 } },
+        { "label": "Yes — gallbladder removed (cholecystectomy)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "HEP": 0.06 }, "reservoirs": { "hepatic_fat": 0.05 } }
+      ],
+      "dimensions": {
+        "age": { "min": 18, "max": 120 },
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["prediabetic", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.ALP", "lab.bilirubin", "lab.abdominal_ultrasound"] },
+      "source": "Portincasa et al. Lancet 2006; Stinton & Shaffer Gastroenterol Clin 2012",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_GALLSTONES_RISK_SEX",
+      "text": "Have you had multiple pregnancies, used oral contraceptives, or undergone rapid weight loss (>1 kg/week)?",
+      "category": "Hepatic / Biliary History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["gallstones"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "None of the above", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "2 or more pregnancies", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.12 }, "reservoirs": { "hepatic_fat": 0.08 } },
+        { "label": "Oral contraceptive pill — current or past use", "direction": "increase_risk", "magnitude": "weak", "pillars": { "HEP": 0.06 }, "reservoirs": { "hepatic_fat": 0.05 } },
+        { "label": "Rapid weight loss in past year (crash diet / bariatric)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.14, "MET": 0.06 }, "reservoirs": { "hepatic_fat": 0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["female"],
+        "axis_tags": ["reproductive", "condition_load"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [{ "q": "Q_CORE_SEX", "in": ["Female"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 3,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.abdominal_ultrasound"] },
+      "source": "Bates & Everhart Gastroenterol 2007; Portincasa et al. Lancet 2006",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_CIRRHOSIS_SYMPTOMS",
+      "text": "Have you noticed any of these: yellowing of skin/eyes (jaundice), abdominal swelling, easy bruising, or spider veins on skin?",
+      "category": "Hepatic History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["cirrhosis_risk", "elevated_liver_enzymes"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "None of the above", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yellowing of skin or eyes (jaundice)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.28, "INF": 0.10 }, "reservoirs": { "hepatic_fat": 0.18, "inflammatory_load": 0.12 } },
+        { "label": "Abdominal swelling / fluid (ascites)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.28, "CV": 0.10 }, "reservoirs": { "hepatic_fat": 0.20, "inflammatory_load": 0.12 } },
+        { "label": "Easy bruising / prolonged bleeding", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.18, "HEM": 0.10 }, "reservoirs": { "hepatic_fat": 0.12, "inflammatory_load": 0.08 } },
+        { "label": "Spider angiomata or palmar redness", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.16 }, "reservoirs": { "hepatic_fat": 0.10, "inflammatory_load": 0.08 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "pain"],
+        "personas": ["ckd", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_RENHEP_NAFLD_DX", "in": ["Yes — with fibrosis or steatohepatitis (NASH)"] },
+          { "q": "Q_CORE_ALCOHOL", "in": ["15+ units"] }
+        ],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "on-trigger",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.bilirubin", "lab.ALT", "lab.AST", "lab.PT_INR", "lab.albumin"] },
+      "source": "Heidelbaugh & Bruderly Am Fam Physician 2006; Runyon NEJM 2004",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_ALCOHOL_PATTERN",
+      "text": "When you drink alcohol, do you tend to drink until intoxicated or binge (4+ drinks in one session for women, 5+ for men)?",
+      "category": "Hepatic / Substance",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["cirrhosis_risk", "elevated_liver_enzymes", "nafld"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "I don't drink alcohol", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "No — I usually stop after 1–2 drinks", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Occasionally binge (once a month or less)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.14, "CV": 0.08 }, "reservoirs": { "hepatic_fat": 0.10, "inflammatory_load": 0.08 } },
+        { "label": "Frequently binge (weekly or more)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.26, "CV": 0.12, "MCS": 0.06 }, "reservoirs": { "hepatic_fat": 0.22, "inflammatory_load": 0.14, "allostatic_load": 0.08 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["substance"],
+        "personas": ["ckd", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [{ "q": "Q_CORE_ALCOHOL", "in": ["8–14 units", "15+ units"] }],
+        "skip_if": [{ "q": "Q_CORE_ALCOHOL", "in": ["None"] }],
+        "triggers": [],
+        "validated_by": "AUDIT-C"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.GGT", "lab.ALT", "lab.MCV"] },
+      "source": "O'Shea et al. Hepatology 2010; AUDIT-C Babor et al. WHO 2001",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_DM_HTN_HX",
+      "text": "Have you been diagnosed with type 2 diabetes, prediabetes, or hypertension (high blood pressure)?",
+      "category": "Comorbidity History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["chronic_kidney_disease", "nafld", "elevated_liver_enzymes", "hyperuricemia"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "None of the above", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Prediabetes (impaired fasting glucose or HbA1c 5.7–6.4%)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.14, "HEP": 0.10, "REN": 0.08 }, "reservoirs": { "glycemic_burden": 0.12, "hepatic_fat": 0.08, "renal_reserve": -0.06 } },
+        { "label": "Type 2 diabetes (on treatment)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.24, "HEP": 0.14, "REN": 0.16, "CV": 0.14 }, "reservoirs": { "glycemic_burden": 0.22, "hepatic_fat": 0.12, "renal_reserve": -0.14, "atherogenic_burden": 0.10 } },
+        { "label": "Hypertension (on or off treatment)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.20, "REN": 0.16 }, "reservoirs": { "vascular_bp_load": 0.18, "renal_reserve": -0.14 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "metabolic"],
+        "personas": ["prediabetic", "ckd", "ramadan_dm", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.HbA1c", "lab.fasting_glucose", "lab.eGFR", "wearable.bp_systolic"] },
+      "source": "KDIGO DM-CKD guideline 2022; Brunt et al. Nat Rev Dis Primers 2015",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_COFFEE_INTAKE",
+      "text": "How many cups of coffee do you drink per day?",
+      "category": "Diet",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["nafld", "elevated_liver_enzymes", "cirrhosis_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "None", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "1–2 cups/day", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "HEP": -0.06 }, "reservoirs": { "hepatic_fat": -0.05, "inflammatory_load": -0.05 } },
+        { "label": "3–4 cups/day", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "HEP": -0.12, "INF": -0.06 }, "reservoirs": { "hepatic_fat": -0.10, "inflammatory_load": -0.08 } },
+        { "label": "5+ cups/day", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "HEP": -0.14, "INF": -0.08 }, "reservoirs": { "hepatic_fat": -0.12, "inflammatory_load": -0.08 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["prediabetic", "ckd"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.GGT", "lab.ALT"] },
+      "source": "Kennedy et al. Aliment Pharmacol Ther 2016; Freedman et al. Hepatology 2009 (coffee-cirrhosis meta-analysis)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_PHYSICAL_ACTIVITY",
+      "text": "How much moderate-to-vigorous physical activity do you get per week?",
+      "category": "Lifestyle",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["nafld", "chronic_kidney_disease", "hyperuricemia", "gallstones"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "None / <30 min/week", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.12, "MET": 0.10, "CV": 0.08 }, "reservoirs": { "hepatic_fat": 0.10, "glycemic_burden": 0.08, "cardiorespiratory_reserve": -0.08 } },
+        { "label": "30–90 min/week", "direction": "increase_risk", "magnitude": "weak", "pillars": { "HEP": 0.05, "MET": 0.05 }, "reservoirs": { "hepatic_fat": 0.05 } },
+        { "label": "90–150 min/week", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "150+ min/week (meets guidelines)", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "HEP": -0.12, "MET": -0.10, "CV": -0.08 }, "reservoirs": { "hepatic_fat": -0.10, "glycemic_burden": -0.08, "cardiorespiratory_reserve": 0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["activity", "metabolic"],
+        "personas": ["prediabetic", "ckd", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "IPAQ-SF"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.MVPA", "lab.ALT"] },
+      "source": "Vilar-Gomez et al. Gastroenterology 2015 (exercise NAFLD); Pechter et al. Nephrol Dial Transplant 2003",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_WEIGHT_CHANGE",
+      "text": "How has your weight changed in the past 6 months?",
+      "category": "Anthropometric Trend",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["nafld", "gallstones", "elevated_liver_enzymes"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Stable (±2 kg)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Gained 2–5 kg", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.10, "MET": 0.10 }, "reservoirs": { "hepatic_fat": 0.08, "glycemic_burden": 0.08, "adiposity": 0.08 } },
+        { "label": "Gained >5 kg", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.18, "MET": 0.16, "CV": 0.08 }, "reservoirs": { "hepatic_fat": 0.14, "glycemic_burden": 0.12, "adiposity": 0.14 } },
+        { "label": "Lost 2–5 kg (intentional)", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "HEP": -0.10, "MET": -0.08 }, "reservoirs": { "hepatic_fat": -0.08, "glycemic_burden": -0.06, "adiposity": -0.08 } },
+        { "label": "Lost >5 kg very rapidly (<3 months)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.12 }, "reservoirs": { "hepatic_fat": 0.06 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["anthropometric", "metabolic"],
+        "personas": ["prediabetic", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Lost >5 kg very rapidly (<3 months)", "ask": "Q_RENHEP_GALLSTONES_DX" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["wearable.weight", "bcm.bmi"] },
+      "source": "Kral et al. Gastroenterology 1993 (rapid loss gallstones); Promrat et al. Hepatology 2010",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_FATIGUE_DARK_URINE",
+      "text": "Do you experience unexplained fatigue, dark-coloured urine, or noticeable puffiness / swelling in your legs or face?",
+      "category": "Symptoms",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["chronic_kidney_disease", "elevated_liver_enzymes", "cirrhosis_risk"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "None of the above", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Persistent unexplained fatigue", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "REN": 0.08, "HEP": 0.08, "HEM": 0.06 }, "reservoirs": { "renal_reserve": -0.06, "oxygen_delivery_reserve": -0.06 } },
+        { "label": "Dark or tea-coloured urine (not dehydration)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.22, "REN": 0.14 }, "reservoirs": { "hepatic_fat": 0.10, "renal_reserve": -0.12 } },
+        { "label": "Leg or facial oedema (swelling)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "REN": 0.20, "CV": 0.14, "HEP": 0.10 }, "reservoirs": { "renal_reserve": -0.16, "vascular_bp_load": 0.12 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "pain"],
+        "personas": ["ckd", "dialysis", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.eGFR", "lab.creatinine", "lab.bilirubin", "lab.albumin"] },
+      "source": "KDIGO CKD 2022 clinical presentation; Heidelbaugh & Bruderly AFP 2006",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_VIRAL_HEPATITIS",
+      "text": "Have you ever been diagnosed with or tested positive for viral hepatitis (hepatitis B or C)?",
+      "category": "Hepatic History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["cirrhosis_risk", "elevated_liver_enzymes"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No — and tested negative", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "No — never tested", "direction": "increase_risk", "magnitude": "weak", "pillars": { "HEP": 0.05 }, "reservoirs": {} },
+        { "label": "Yes — hepatitis B (treated or chronic)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.28, "INF": 0.14 }, "reservoirs": { "hepatic_fat": 0.16, "inflammatory_load": 0.14 } },
+        { "label": "Yes — hepatitis C (treated or chronic)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.28, "INF": 0.14 }, "reservoirs": { "hepatic_fat": 0.16, "inflammatory_load": 0.14 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "genetic_familial"],
+        "personas": ["ckd", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes — hepatitis B (treated or chronic)", "ask": "Q_RENHEP_CIRRHOSIS_SYMPTOMS" },
+          { "if_response": "Yes — hepatitis C (treated or chronic)", "ask": "Q_RENHEP_CIRRHOSIS_SYMPTOMS" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.HBsAg", "lab.anti_HCV", "lab.ALT"] },
+      "source": "WHO global hepatitis report 2017; Terrault et al. Hepatology 2018 (HBV)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_METABOLIC_SYNDROME",
+      "text": "Have you been told you have metabolic syndrome, or do you have a waist circumference >94 cm (men) / >80 cm (women) plus two or more of: high triglycerides, low HDL, high blood pressure, high fasting glucose?",
+      "category": "Comorbidity History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["nafld", "gallstones", "hyperuricemia", "chronic_kidney_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No / unlikely", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Possibly — 2 features present", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.14, "HEP": 0.12, "CV": 0.10 }, "reservoirs": { "glycemic_burden": 0.10, "hepatic_fat": 0.10, "atherogenic_burden": 0.08 } },
+        { "label": "Yes — 3 or more features (metabolic syndrome)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.24, "HEP": 0.20, "CV": 0.16, "REN": 0.10 }, "reservoirs": { "glycemic_burden": 0.18, "hepatic_fat": 0.18, "atherogenic_burden": 0.14, "renal_reserve": -0.10, "inflammatory_load": 0.10 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["metabolic", "condition_load"],
+        "personas": ["prediabetic", "ckd", "ramadan_dm", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.triglycerides", "lab.HDL", "lab.fasting_glucose", "bcm.waist", "wearable.bp_systolic"] },
+      "source": "Alberti et al. Circulation 2009 (IDF/AHA harmonised definition); Lonardo et al. Gut 2015 (MetS-NAFLD)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_ABDOMINAL_PAIN",
+      "text": "Do you experience recurring pain or discomfort in the right upper abdomen or right shoulder tip?",
+      "category": "Symptoms",
+      "domain": "RENAL_HEPATIC",
+      "conditions": ["gallstones", "elevated_liver_enzymes", "cirrhosis_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Occasional dull ache", "direction": "increase_risk", "magnitude": "weak", "pillars": { "HEP": 0.06 }, "reservoirs": { "inflammatory_load": 0.05 } },
+        { "label": "Episodic sharp/cramping pain (biliary colic pattern)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "HEP": 0.14, "INF": 0.08 }, "reservoirs": { "hepatic_fat": 0.06, "inflammatory_load": 0.08 } },
+        { "label": "Severe, persistent pain — previously investigated", "direction": "increase_risk", "magnitude": "strong", "pillars": { "HEP": 0.22, "INF": 0.12 }, "reservoirs": { "hepatic_fat": 0.10, "inflammatory_load": 0.14 } }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "pain"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Episodic sharp/cramping pain (biliary colic pattern)", "ask": "Q_RENHEP_GALLSTONES_DX" },
+          { "if_response": "Severe, persistent pain — previously investigated", "ask": "Q_RENHEP_GALLSTONES_DX" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.ALP", "lab.bilirubin", "lab.abdominal_ultrasound"] },
+      "source": "Portincasa et al. Lancet 2006; Trowbridge et al. JAMA 2003",
+      "flag": "illustrative-reverify"
+    }
+  ]
+}

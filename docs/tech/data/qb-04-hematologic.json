@@ -1,0 +1,1614 @@
+{
+  "domain": "HEMATOLOGIC",
+  "questions": [
+    {
+      "id": "Q_HEM_RED_MEAT_FREQ",
+      "text": "How often do you eat red meat, organ meat, or iron-fortified foods (e.g., red meat, liver, fortified cereals)?",
+      "category": "Diet & Iron Intake",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["iron_deficiency_anemia", "hemochromatosis", "anemia_of_chronic_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Rarely / never (< 1×/week)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14, "NUT": 0.10 },
+          "reservoirs": { "iron_reserve": -0.10, "micronutrient_reserve": -0.06 }
+        },
+        {
+          "label": "1–3×/week",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "4–6×/week",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": -0.06 },
+          "reservoirs": { "iron_reserve": 0.05 }
+        },
+        {
+          "label": "Daily or more (incl. organ meat)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14, "INF": 0.08 },
+          "reservoirs": { "iron_reserve": 0.15, "inflammatory_load": 0.06 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Daily or more (incl. organ meat)", "ask": "Q_HEM_HEMOCHROMATOSIS_FHX" }
+        ],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.serum_ferritin", "lab.serum_iron", "lab.transferrin_saturation"] },
+      "source": "OMICS Introductory Report; Hallberg & Hulthen (2000) Am J Clin Nutr; WHO iron requirements",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_VEGAN_VEG_DIET",
+      "text": "Do you follow a vegan or vegetarian diet?",
+      "category": "Diet & Iron Intake",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["iron_deficiency_anemia", "b12_folate_anemia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No — I eat meat and fish",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Pescatarian (fish, no meat)",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Vegetarian (no meat/fish, eats dairy/eggs)",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.08, "NUT": 0.06 },
+          "reservoirs": { "iron_reserve": -0.06, "micronutrient_reserve": -0.05 }
+        },
+        {
+          "label": "Vegan (no animal products)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.16, "NUT": 0.12 },
+          "reservoirs": { "iron_reserve": -0.10, "micronutrient_reserve": -0.10 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Vegan (no animal products)", "ask": "Q_HEM_B12_SUPPLEMENT" },
+          { "if_response": "Vegetarian (no meat/fish, eats dairy/eggs)", "ask": "Q_HEM_B12_SUPPLEMENT" }
+        ],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.B12", "lab.serum_ferritin", "lab.MCV"] },
+      "source": "Pawlak et al. (2013) Nutrition Reviews; Craig (2010) Am J Clin Nutr",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_B12_SUPPLEMENT",
+      "text": "Do you take a vitamin B12 or B-complex supplement regularly?",
+      "category": "Supplementation",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["b12_folate_anemia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Yes, daily",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": -0.12, "NUT": -0.08 },
+          "reservoirs": { "micronutrient_reserve": 0.10 }
+        },
+        {
+          "label": "Yes, occasionally (not daily)",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": -0.06, "NUT": -0.05 },
+          "reservoirs": { "micronutrient_reserve": 0.05 }
+        },
+        {
+          "label": "No",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.12, "NUT": 0.08 },
+          "reservoirs": { "micronutrient_reserve": -0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_HEM_VEGAN_VEG_DIET", "in": ["Vegan (no animal products)", "Vegetarian (no meat/fish, eats dairy/eggs)"] }
+        ],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.B12", "lab.homocysteine"] },
+      "source": "Pawlak et al. (2013) Nutrition Reviews; EFSA B12 intake guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_MENSTRUAL_BLEEDING",
+      "text": "How heavy is your typical menstrual flow?",
+      "category": "Reproductive Health",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["iron_deficiency_anemia", "bleeding_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Light (few pads/tampons per day)",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Moderate (regular use of protection)",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Heavy (soaking through protection, clots)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.18, "NUT": 0.08 },
+          "reservoirs": { "iron_reserve": -0.14, "oxygen_delivery_reserve": -0.08 }
+        },
+        {
+          "label": "No current periods (menopause / amenorrhea / hormonal suppression)",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": -0.05 },
+          "reservoirs": { "iron_reserve": 0.06 }
+        }
+      ],
+      "dimensions": {
+        "age": { "min": 12, "max": 55 },
+        "sex": ["female"],
+        "axis_tags": ["reproductive", "condition_load"],
+        "personas": ["pregnancy", "menopause"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_SEX", "in": ["Female"] }
+        ],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Heavy (soaking through protection, clots)", "ask": "Q_HEM_IRON_SUPPLEMENT" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.serum_ferritin", "lab.Hb", "lab.MCV"] },
+      "source": "Munro et al. (2018) BJOG; WHO iron deficiency guidelines; NICE heavy menstrual bleeding guideline",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_IRON_SUPPLEMENT",
+      "text": "Are you currently taking an iron supplement?",
+      "category": "Supplementation",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["iron_deficiency_anemia", "hemochromatosis"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Yes, prescribed by a doctor",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": -0.14 },
+          "reservoirs": { "iron_reserve": 0.12 }
+        },
+        {
+          "label": "Yes, self-prescribed / OTC",
+          "direction": "neutral",
+          "magnitude": "weak",
+          "pillars": { "HEM": -0.06, "HEP": 0.05 },
+          "reservoirs": { "iron_reserve": 0.06 }
+        },
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["pregnancy", "dialysis"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.serum_ferritin", "lab.transferrin_saturation"] },
+      "source": "WHO iron supplementation guidelines; Camaschella (2015) NEJM",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_HEMOCHROMATOSIS_FHX",
+      "text": "Do you have a family history (parent or sibling) of hereditary hemochromatosis or iron overload?",
+      "category": "Family History — Iron",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["hemochromatosis"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.25, "HEP": 0.18 },
+          "reservoirs": { "iron_reserve": 0.20, "hepatic_fat": 0.10 }
+        },
+        {
+          "label": "Not sure",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.05 },
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["genetic_familial"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes", "ask": "Q_HEM_HEMOCHROMATOSIS_DX" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "once",
+      "refresh": "static",
+      "perceived_actual": { "kind": "anchor", "corroborated_by": ["lab.serum_ferritin", "lab.transferrin_saturation", "lab.HFE_genotype"] },
+      "source": "Bacon et al. (2011) Hepatology; Adams & Barton (2007) Lancet",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_HEMOCHROMATOSIS_DX",
+      "text": "Have you been diagnosed with hemochromatosis or told you carry the HFE gene variant?",
+      "category": "Diagnosed Conditions",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["hemochromatosis"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Yes, diagnosed and on treatment (phlebotomy / venesection)",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": -0.14, "HEP": -0.10 },
+          "reservoirs": { "iron_reserve": -0.12 }
+        },
+        {
+          "label": "Yes, diagnosed but not currently treating",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.24, "HEP": 0.20 },
+          "reservoirs": { "iron_reserve": 0.20, "hepatic_fat": 0.14, "inflammatory_load": 0.08 }
+        },
+        {
+          "label": "Carrier (heterozygous HFE), no symptoms",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.08 },
+          "reservoirs": { "iron_reserve": 0.06 }
+        },
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "genetic_familial"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_HEM_HEMOCHROMATOSIS_FHX", "in": ["Yes"] }
+        ],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.serum_ferritin", "lab.transferrin_saturation", "lab.HFE_genotype"] },
+      "source": "Bacon et al. (2011) Hepatology; EASL hemochromatosis guidelines (2022)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_ANEMIA_DIAGNOSIS",
+      "text": "Have you ever been diagnosed with anemia or told your hemoglobin / red blood cell count is low?",
+      "category": "Diagnosed Conditions",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["iron_deficiency_anemia", "b12_folate_anemia", "anemia_of_chronic_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Yes, currently (active diagnosis)",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.26, "FIT": 0.14 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.20, "iron_reserve": -0.10 }
+        },
+        {
+          "label": "Yes, in the past (resolved)",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.08 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.05, "iron_reserve": -0.05 }
+        },
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Not sure",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["pregnancy", "dialysis", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes, currently (active diagnosis)", "ask": "Q_HEM_FATIGUE_PALLOR" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.Hb", "lab.MCV", "lab.serum_ferritin", "lab.B12"] },
+      "source": "WHO (2011) Haemoglobin concentrations for diagnosis of anaemia; Camaschella (2019) Blood",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_FATIGUE_PALLOR",
+      "text": "In the past 3 months, how often have you experienced unusual fatigue, pallor (pale skin/conjunctiva), or shortness of breath on light exertion?",
+      "category": "Symptoms",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["iron_deficiency_anemia", "b12_folate_anemia", "anemia_of_chronic_disease", "low_spo2_respiratory", "polycythemia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Never / rarely",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Sometimes (few days/month)",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.08, "FIT": 0.06 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.05 }
+        },
+        {
+          "label": "Often (most weeks)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.16, "FIT": 0.10 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.12, "cardiorespiratory_reserve": -0.06 }
+        },
+        {
+          "label": "Almost always",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.24, "FIT": 0.14, "MCS": 0.06 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.18, "cardiorespiratory_reserve": -0.10 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.Hb", "lab.serum_ferritin", "wearable.SpO2", "wearable.resting_hr"] },
+      "source": "WHO anaemia symptom criteria; Camaschella (2019) Blood; NICE CKS anaemia",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_SPO2_SYMPTOMS",
+      "text": "Do you experience persistent breathlessness, bluish tinge to lips/fingertips, or have you been told your blood oxygen saturation (SpO2) is low?",
+      "category": "Symptoms",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["low_spo2_respiratory"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Occasionally (exercise only)",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.07, "FIT": 0.08 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.06, "cardiorespiratory_reserve": -0.05 }
+        },
+        {
+          "label": "Frequently at rest or light activity",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.22, "CV": 0.10, "FIT": 0.14 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.18, "cardiorespiratory_reserve": -0.12 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["athlete", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.SpO2", "lab.ABG", "lab.Hb"] },
+      "source": "BTS oxygen therapy guidelines; NICE COPD guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_ALTITUDE_LIVING",
+      "text": "Do you currently live or regularly spend time at high altitude (above 2,000 m / 6,500 ft)?",
+      "category": "Environment",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["low_spo2_respiratory", "polycythemia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No — sea level or low altitude",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes — moderate altitude (2,000–3,500 m)",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.08, "CV": 0.05 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.06 }
+        },
+        {
+          "label": "Yes — high altitude (> 3,500 m)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14, "CV": 0.10 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.12 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["environment"],
+        "personas": ["athlete"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 3,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["wearable.SpO2"] },
+      "source": "Bartsch & Swenson (2013) NEJM; West (2004) J Appl Physiol altitude physiology",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_BLOOD_DONATION",
+      "text": "How often do you donate blood?",
+      "category": "Iron Loss",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["iron_deficiency_anemia", "hemochromatosis", "bleeding_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Never",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Less than once a year",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "1–2× per year",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": -0.05 },
+          "reservoirs": { "iron_reserve": -0.05 }
+        },
+        {
+          "label": "3–4× per year",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.12 },
+          "reservoirs": { "iron_reserve": -0.12, "oxygen_delivery_reserve": -0.06 }
+        },
+        {
+          "label": "5+ times per year",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.20 },
+          "reservoirs": { "iron_reserve": -0.18, "oxygen_delivery_reserve": -0.10 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["athlete"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.serum_ferritin", "lab.Hb"] },
+      "source": "Cable et al. (2012) Transfusion; Iron and blood donation — NHS guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_GI_BLEEDING",
+      "text": "Have you noticed any of the following that could indicate gastrointestinal bleeding? (select all that apply)",
+      "category": "Symptoms — GI Blood Loss",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["iron_deficiency_anemia", "bleeding_risk", "anemia_of_chronic_disease"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        {
+          "label": "None of the below",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Blood in stool / black tarry stools",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.28, "INF": 0.10 },
+          "reservoirs": { "iron_reserve": -0.20, "oxygen_delivery_reserve": -0.12 }
+        },
+        {
+          "label": "Blood in urine (hematuria)",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.22, "REN": 0.12 },
+          "reservoirs": { "iron_reserve": -0.14, "renal_reserve": -0.08 }
+        },
+        {
+          "label": "Frequent nosebleeds or prolonged bleeding from cuts",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14 },
+          "reservoirs": { "iron_reserve": -0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "pain"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.fecal_occult_blood", "lab.serum_ferritin", "lab.Hb"] },
+      "source": "NICE (2023) colorectal cancer referral; Rockey (2010) Gastroenterology",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_CHRONIC_DISEASE_LOAD",
+      "text": "Have you been diagnosed with any of the following chronic conditions? (select all that apply)",
+      "category": "Diagnosed Conditions — ACD Risk",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["anemia_of_chronic_disease", "iron_deficiency_anemia"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        {
+          "label": "None",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Chronic kidney disease (CKD / dialysis)",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.26, "REN": 0.20 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.18, "renal_reserve": -0.18 }
+        },
+        {
+          "label": "Rheumatoid arthritis or other autoimmune disease",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.16, "INF": 0.16 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.10, "inflammatory_load": 0.12 }
+        },
+        {
+          "label": "Inflammatory bowel disease (Crohn's / ulcerative colitis)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.16, "INF": 0.12 },
+          "reservoirs": { "iron_reserve": -0.10, "inflammatory_load": 0.10 }
+        },
+        {
+          "label": "HIV / AIDS",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14, "INF": 0.10 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.08, "inflammatory_load": 0.08 }
+        },
+        {
+          "label": "Cancer (active or recent)",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.24, "INF": 0.16 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.16, "inflammatory_load": 0.14 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["dialysis", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.Hb", "lab.hsCRP", "lab.ferritin", "lab.TIBC"] },
+      "source": "Weiss & Goodnough (2005) NEJM; Nemeth & Ganz (2014) Ann Rev Nutr",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_PRIOR_DVT_CLOT",
+      "text": "Have you ever been diagnosed with a blood clot, deep vein thrombosis (DVT), or pulmonary embolism (PE)?",
+      "category": "Clotting History",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["thrombosis_clotting_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes, once (> 2 years ago, no recurrence)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.16, "CV": 0.10 },
+          "reservoirs": { "atherogenic_burden": 0.08 }
+        },
+        {
+          "label": "Yes, recurrent or within last 2 years",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.28, "CV": 0.16 },
+          "reservoirs": { "atherogenic_burden": 0.14, "vascular_bp_load": 0.08 }
+        },
+        {
+          "label": "Not sure",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes, once (> 2 years ago, no recurrence)", "ask": "Q_HEM_ANTICOAGULANT" },
+          { "if_response": "Yes, recurrent or within last 2 years", "ask": "Q_HEM_ANTICOAGULANT" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.D_dimer", "lab.Factor_V_Leiden", "lab.prothrombin_G20210A"] },
+      "source": "Cushman (2007) Circulation; Wells score clinical validation",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_FAMILY_CLOTTING",
+      "text": "Has a parent or sibling had a blood clot, DVT, stroke under age 60, or been told they have a clotting disorder (e.g., Factor V Leiden, antiphospholipid syndrome)?",
+      "category": "Family History — Clotting",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["thrombosis_clotting_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.22, "CV": 0.12 },
+          "reservoirs": { "atherogenic_burden": 0.10 }
+        },
+        {
+          "label": "Not sure",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.05 },
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["genetic_familial"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "once",
+      "refresh": "static",
+      "perceived_actual": { "kind": "anchor", "corroborated_by": ["lab.Factor_V_Leiden", "lab.prothrombin_G20210A", "lab.antiphospholipid_Ab"] },
+      "source": "Rosendaal (1999) Lancet thrombophilia review; ACOG inherited thrombophilia guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_IMMOBILITY_FLIGHTS",
+      "text": "In the past 3 months, have you had any prolonged immobility (bed rest ≥ 3 days) or long-haul flights (≥ 4 hours)?",
+      "category": "Thrombosis Risk Factors",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["thrombosis_clotting_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Long-haul flight only",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.07, "CV": 0.05 },
+          "reservoirs": {}
+        },
+        {
+          "label": "Bed rest or hospitalisation ≥ 3 days",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14, "CV": 0.08 },
+          "reservoirs": { "muscle_reserve": -0.06 }
+        },
+        {
+          "label": "Both long flight and extended bed rest",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.22, "CV": 0.12 },
+          "reservoirs": { "muscle_reserve": -0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["activity", "condition_load"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": [] },
+      "source": "Heit et al. (2000) Ann Intern Med; Kelman et al. (2003) BMJ air travel DVT",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_CONTRACEPTIVE_HRT",
+      "text": "Are you currently using combined oral contraceptives (COC), the contraceptive patch, vaginal ring, or hormone replacement therapy (HRT)?",
+      "category": "Hormonal Medications",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["thrombosis_clotting_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes — combined oral contraceptive (estrogen + progestogen)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.16, "CV": 0.08, "ENDO": 0.06 },
+          "reservoirs": { "atherogenic_burden": 0.06 }
+        },
+        {
+          "label": "Yes — contraceptive patch or vaginal ring",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.16, "CV": 0.08 },
+          "reservoirs": { "atherogenic_burden": 0.06 }
+        },
+        {
+          "label": "Yes — HRT (combined estrogen + progestogen)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14, "CV": 0.10 },
+          "reservoirs": { "atherogenic_burden": 0.08 }
+        },
+        {
+          "label": "Progestogen-only pill / IUD / implant",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": -0.05 },
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": { "min": 15, "max": 70 },
+        "sex": ["female"],
+        "axis_tags": ["reproductive", "condition_load"],
+        "personas": ["menopause"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_SEX", "in": ["Female"] }
+        ],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.D_dimer"] },
+      "source": "Lidegaard et al. (2011) BMJ COC and VTE; ACOG HRT clotting risk bulletin",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_ANTICOAGULANT",
+      "text": "Are you currently taking blood-thinning medication (e.g., warfarin, rivaroxaban, apixaban, heparin)?",
+      "category": "Medications",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["thrombosis_clotting_risk", "bleeding_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes — anticoagulant (warfarin / NOAC)",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": -0.12 },
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes — antiplatelet only (aspirin / clopidogrel)",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": -0.05 },
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_HEM_PRIOR_DVT_CLOT", "in": ["Yes, once (> 2 years ago, no recurrence)", "Yes, recurrent or within last 2 years"] }
+        ],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.INR", "lab.anti_Xa"] },
+      "source": "NICE AF / VTE anticoagulation pathways",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_BLEEDING_TENDENCY",
+      "text": "Have you noticed easy bruising, prolonged bleeding after minor cuts, or been told you have a bleeding disorder (e.g., haemophilia, von Willebrand disease, low platelets)?",
+      "category": "Bleeding Risk",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["bleeding_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Mild — occasional easy bruising",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.08 },
+          "reservoirs": { "iron_reserve": -0.05 }
+        },
+        {
+          "label": "Moderate — prolonged bleeding, frequent bruising",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.16 },
+          "reservoirs": { "iron_reserve": -0.10, "oxygen_delivery_reserve": -0.06 }
+        },
+        {
+          "label": "Diagnosed bleeding disorder",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.26 },
+          "reservoirs": { "iron_reserve": -0.16, "oxygen_delivery_reserve": -0.10 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "genetic_familial"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.PT", "lab.aPTT", "lab.platelet_count", "lab.vWF_Ag"] },
+      "source": "Federici (2004) Haemophilia; Sadler et al. (2006) J Thromb Haemost vWD",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_POLYCYTHEMIA_SYMPTOMS",
+      "text": "Have you noticed persistent facial redness / flushing, itching after a hot shower (aquagenic pruritus), headaches with visual changes, or been told your red blood cell count or haematocrit is high?",
+      "category": "Symptoms — Polycythemia",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["polycythemia", "thrombosis_clotting_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Some symptoms (1–2 of the above)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.16, "CV": 0.10 },
+          "reservoirs": { "vascular_bp_load": 0.08, "atherogenic_burden": 0.06 }
+        },
+        {
+          "label": "Multiple symptoms / diagnosed with polycythemia vera",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.28, "CV": 0.18 },
+          "reservoirs": { "vascular_bp_load": 0.14, "atherogenic_burden": 0.12, "inflammatory_load": 0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["athlete", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.Hb", "lab.hematocrit", "lab.EPO", "lab.JAK2_V617F"] },
+      "source": "Tefferi (2013) NEJM polycythemia vera; McMullin et al. (2005) Br J Haematol",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_ATHLETE_TRAINING",
+      "text": "Do you engage in high-volume endurance training (e.g., running > 50 km/week, cycling > 10 h/week, or similar)?",
+      "category": "Activity — Athlete Risk",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["iron_deficiency_anemia", "low_spo2_respiratory", "anemia_of_chronic_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Moderate training (< 8 h/week)",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "High-volume training (8–15 h/week)",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.08, "FIT": -0.06 },
+          "reservoirs": { "iron_reserve": -0.06, "oxygen_delivery_reserve": 0.06 }
+        },
+        {
+          "label": "Elite / very high-volume (> 15 h/week)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14, "FIT": -0.10, "INF": 0.06 },
+          "reservoirs": { "iron_reserve": -0.10, "oxygen_delivery_reserve": 0.08, "inflammatory_load": 0.06 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["activity", "condition_load"],
+        "personas": ["athlete"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "IPAQ-SF"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.serum_ferritin", "wearable.MVPA", "wearable.SpO2"] },
+      "source": "Schumacher et al. (2002) Int J Sports Med; Peeling et al. (2008) sports anaemia review",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_PREGNANCY_STATUS",
+      "text": "Are you currently pregnant or have you given birth in the past 6 months?",
+      "category": "Reproductive Health",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["iron_deficiency_anemia", "b12_folate_anemia", "thrombosis_clotting_risk"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Not applicable / no",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Currently pregnant",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.22, "NUT": 0.14, "CV": 0.08 },
+          "reservoirs": { "iron_reserve": -0.16, "micronutrient_reserve": -0.12, "oxygen_delivery_reserve": -0.08 }
+        },
+        {
+          "label": "Postpartum (< 6 months since birth)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.16, "NUT": 0.10 },
+          "reservoirs": { "iron_reserve": -0.12, "micronutrient_reserve": -0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": { "min": 15, "max": 50 },
+        "sex": ["female"],
+        "axis_tags": ["reproductive", "lifestage"],
+        "personas": ["pregnancy"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_CORE_SEX", "in": ["Female"] }
+        ],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.Hb", "lab.serum_ferritin", "lab.B12", "lab.folate"] },
+      "source": "WHO (2016) antenatal care guidelines; NICE maternal anaemia guideline",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_DIALYSIS_ESRD",
+      "text": "Are you on kidney dialysis (haemodialysis or peritoneal dialysis)?",
+      "category": "Diagnosed Conditions",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["anemia_of_chronic_disease", "iron_deficiency_anemia"],
+      "stream": "LIFE",
+      "type": "boolean",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.28, "REN": 0.26 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.20, "renal_reserve": -0.22, "iron_reserve": -0.14 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["dialysis"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.Hb", "lab.eGFR", "lab.serum_ferritin", "lab.EPO"] },
+      "source": "KDIGO (2012) anaemia in CKD guideline; Macdougall (2012) NEJM renal anaemia",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_NEUROLOGIC_B12_SX",
+      "text": "Have you experienced any of the following that may indicate B12 or folate deficiency? (select all that apply)",
+      "category": "Symptoms — B12/Folate",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["b12_folate_anemia"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        {
+          "label": "None",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Tingling or numbness in hands / feet",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14, "MCS": 0.08 },
+          "reservoirs": { "micronutrient_reserve": -0.10 }
+        },
+        {
+          "label": "Memory problems or cognitive fog",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.10, "MCS": 0.12 },
+          "reservoirs": { "micronutrient_reserve": -0.08 }
+        },
+        {
+          "label": "Smooth / sore tongue (glossitis)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14 },
+          "reservoirs": { "micronutrient_reserve": -0.10 }
+        },
+        {
+          "label": "Mood changes / depression",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.06, "MCS": 0.10 },
+          "reservoirs": { "micronutrient_reserve": -0.06 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.B12", "lab.folate", "lab.homocysteine", "lab.MMA"] },
+      "source": "Stabler (2013) NEJM B12 deficiency; Green (2017) Lancet vitamin B12 deficiency",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_FOLATE_DIET",
+      "text": "How often do you eat leafy greens, legumes, or fortified grains (main dietary folate sources)?",
+      "category": "Diet — Folate",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["b12_folate_anemia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Rarely / never",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14, "NUT": 0.12 },
+          "reservoirs": { "micronutrient_reserve": -0.10 }
+        },
+        {
+          "label": "1–3×/week",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Daily or most days",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": -0.06, "NUT": -0.06 },
+          "reservoirs": { "micronutrient_reserve": 0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["pregnancy"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.folate", "lab.homocysteine"] },
+      "source": "Bailey & Gregory (1999) J Nutr; IOM folate dietary reference intakes",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_PPI_ANTACID_USE",
+      "text": "Do you regularly take proton pump inhibitors (PPIs, e.g., omeprazole, esomeprazole) or antacids?",
+      "category": "Medications",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["iron_deficiency_anemia", "b12_folate_anemia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Occasionally (< 3 months continuous)",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.07, "NUT": 0.05 },
+          "reservoirs": { "iron_reserve": -0.05, "micronutrient_reserve": -0.05 }
+        },
+        {
+          "label": "Yes, long-term (> 3 months continuously)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14, "NUT": 0.10 },
+          "reservoirs": { "iron_reserve": -0.10, "micronutrient_reserve": -0.10 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 3,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.B12", "lab.serum_ferritin"] },
+      "source": "Lam et al. (2013) Gastroenterology PPI and B12; Sarzynski et al. (2011) Am J Gastroenterol PPI iron",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_SPLENOMEGALY_JAUNDICE",
+      "text": "Have you ever been told you have an enlarged spleen, jaundice (yellowing of skin/eyes), or diagnosed with a haemolytic anaemia (e.g., sickle cell, thalassaemia, G6PD deficiency)?",
+      "category": "Diagnosed Conditions — Haemolysis",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["anemia_of_chronic_disease", "b12_folate_anemia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes — haemolytic or haematological disorder",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "HEM": 0.26, "INF": 0.10 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.18, "iron_reserve": -0.08, "inflammatory_load": 0.08 }
+        },
+        {
+          "label": "Not sure / under investigation",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.06 },
+          "reservoirs": { "oxygen_delivery_reserve": -0.05 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load", "genetic_familial"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "once",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.bilirubin", "lab.LDH", "lab.reticulocyte_count", "lab.Hb"] },
+      "source": "Dhaliwal et al. (2004) Am Fam Physician haemolytic anaemia; Modell & Darlison (2008) Bull WHO thalassaemia",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_HEM_NSAIDs_ASPIRIN",
+      "text": "Do you take NSAIDs (ibuprofen, naproxen, diclofenac) or high-dose aspirin regularly?",
+      "category": "Medications",
+      "domain": "HEMATOLOGIC",
+      "conditions": ["bleeding_risk", "iron_deficiency_anemia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No / rarely",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Occasionally (< weekly)",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "HEM": 0.06 },
+          "reservoirs": { "iron_reserve": -0.05 }
+        },
+        {
+          "label": "Regularly (weekly or more)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "HEM": 0.14, "INF": 0.06 },
+          "reservoirs": { "iron_reserve": -0.10, "inflammatory_load": 0.05 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["condition_load"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.fecal_occult_blood", "lab.Hb"] },
+      "source": "Weil et al. (2000) Lancet NSAID GI bleeding; Garcia Rodriguez et al. (2004) Aliment Pharmacol",
+      "flag": "illustrative-reverify"
+    }
+  ]
+}

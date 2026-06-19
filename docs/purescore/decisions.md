@@ -36,6 +36,8 @@
 | D21 | UAE-localization scope & Ramadan handling | LOCKED | auto | 2026-06-15 |
 | D22 | Wearable-metric trust tiering | LOCKED | user | 2026-06-15 |
 | D23 | Continuous personalized scoring & feedback loop | LOCKED | user | 2026-06-16 |
+| D24 | Stress as a pillar? → companion Stress-load score | LOCKED | user | 2026-06-18 |
+| D25 | Close the intake loop: adherence, persona-determination, goals | LOCKED | user | 2026-06-19 |
 
 ---
 
@@ -386,7 +388,7 @@ do biomarkers/wearables/baselines feed that without becoming clinically dishones
   *labels read off the curve*, never the generator (Doc 03 §1).
 - **Within-green optimum-centering ON by default** — a small gradient toward each marker's optimum
   so the score moves even inside green (Doc 03 §1; Doc 12 §5.2).
-- **New Stage 2b — personal-baseline z-score** (`r_i^pers = κ·tanh(z_i/2)`, `κ=0.10`,
+- **New Stage 2b — personal-baseline z-score** (`r_i^pers = κ_resp·tanh(z_i/2)`, `κ_resp=0.10`,
   `band_clamp`): better-than-your-baseline nudges PureScore **up**, worse trends it **down**,
   updated daily for wearables/behaviour and per-measurement for labs (Doc 03 §2b).
 - **Positive-`Δ` guarantee on the top-5** — every recommended action carries a strictly positive
@@ -396,6 +398,67 @@ do biomarkers/wearables/baselines feed that without becoming clinically dishones
 personalization can never relax a red, clear a critical, or flip a band; fixed/irreversible burden
 shows as low **Modifiability** so there is no false hope (D5/D16). **Affects.** Doc 03 (§1, new §2b,
 §6.1, constants), Doc 07 (§3.3–§3.4), Doc 12 (§5.1); the `tech/` interactive feedback-loop page.
+
+## D24 — Stress as a 13th pillar? *(user)*
+**Question.** Users intuitively want a "Stress score." Should **Stress** be promoted from a
+cross-cutting reservoir + distributed markers to a standalone **scored pillar** with its own
+PureScore weight — and if surfaced, what should it measure? *(Lens chosen: product/user clarity;
+definition chosen: physiological stress load — HRV, resting-HR, cortisol slope, sleep disruption.)*
+**Options.**
+- A ★ **Companion "Stress-load" score, not a pillar.** Surface a prominent **Stress-load** dimension
+  in the companion meta-vector (Doc 12 §4.1): physiological by definition (HRV depression, resting-HR
+  elevation, cortisol slope, sleep disruption) blended with the existing **ALLO** allostatic-load
+  reservoir (Doc 04). **Read-only** — reuses markers already owned by CV/ENDO/SLP and the ALLO
+  `κ`-couplings, and carries **no weight in the PureScore aggregation**, so users get the score with
+  zero double-counting.
+- B — **True 13th pillar, markers relocated** into Stress (clean ownership, but depletes CV/ENDO/SLP,
+  shifts their scores, and forces a full 13-pillar re-weight).
+- C — **True 13th pillar, shared/down-weighted markers** (breaks one-marker-one-home, complicates
+  audit, still risks double-count).
+- D — **Promote the ALLO reservoir to a visible surface** but keep it a reservoir (close to A, minus
+  the acute autonomic blend users feel day-to-day).
+**Decision.** **A — Stress is *not* taken as a pillar; it is surfaced as the Stress-load companion
+score.** **Rationale.** (1) Stress is *upstream and cross-cutting*, not an organ system — it already
+propagates into CV/MET/SLP/MCS/ENDO via the ALLO reservoir's `κ` matrix (Doc 04); a weighted pillar
+on top would **double-count** the same allostatic burden. (2) The physiological definition draws on
+HRV/RHR/cortisol/sleep signals **already scored** inside CV/ENDO/SLP — relocating or sharing them
+damages those pillars or the audit trail. (3) Inferred stress/readiness is **inferential/consumer-tier**;
+**D22** already rules it *informational-only, never a band* — a companion score honours that, a
+scored pillar would violate it. (4) The product goal is met without aggregation surgery: a headline
+**Stress-load: low / elevated / high** chip, paired with **Confidence**, gives users the number they
+want honestly. **Guardrails.** Stress-load never moves the headline PureScore, never sets or clears a
+band, never triggers a critical; it may only raise **Early-warning** Watch/Advisory (Doc 12 §5) and
+re-rank stress-reducing nudges (Doc 07). **Affects.** Doc 12 §4 (new companion dimension `St`, §4.1),
+Doc 02 (cross-cutting modifiers note), Doc 04 (ALLO surfaced as the chronic component), Doc 07
+(stress-down nudge ranking); the `tech/` companion-vector surfaces.
+
+## D25 — Close the intake loop (adherence · persona-determination · goals) *(user)*
+**Question.** The product-loop coverage audit (Appendix G) found the capture→…→adherence loop open at
+three stages: **adherence check-ins** (F1, P0), **input→persona determination** (F2, P0), and a
+**user-goals catalogue** (F3, P1). How should these be closed?
+**Options.**
+- A ★ **Machine-readable data + reference appendices, with the audit auto-closing the findings.** Add
+  `data/adherence.json`, `data/persona-matrix.json`, `data/goals.json` (engine-ready), each surfaced as a
+  new appendix (H · Adherence, I · Persona matrix, J · Goals). Wire the audit's live stats so F1/F2/F3
+  flip to **Addressed** automatically on rebuild, with a dated v3 finding version recording closure.
+- B — Fold into existing pages (adherence as a question-bank section, goals into Appendix F, matrix into
+  the audit sketch). Fewer pages, but mixes new systems into existing ones.
+- C — Documentation-only prose specs, manual status flip (doesn't feed the engine or auto-close).
+**Decision.** **A.** **Rationale.** Keeps everything in the established `data/*.json` → builder pipeline;
+the artifacts are engine-ready (reservoir inflows, softmax posterior, applicability-keyed targets) and the
+audit *self-verifies* closure from live data rather than by hand. Depth = **comprehensive seed**: 18
+adherence check-ins (one per nudge family), the full 40-persona × 38-signal matrix, 33 goals (≥2/pillar).
+**Design notes.** (1) *Adherence* — each check-in writes `adherence ∈ [0,1]` + a reason-taxonomy code back
+to its reservoir (Doc 04), the engagement/Trajectory dimension (Doc 12), and nudge feasibility (Doc 07 §3).
+(2) *Persona determination* — posterior = softmax over signed per-column evidence; hard sex/age/life-stage
+priors zero impossible columns first; many-to-many; resolves to the comprehensive persona set (F6). (3)
+*Goals* — applicability vector (persona · archetype · life-stage · age · sex · condition) + a wearable/lab/PRO
+target + modifiability + linked nudges; drives the UserGoals lifecycle on the state machine.
+**Guardrails.** Illustrative weights/targets — calibrate before production; adherence is self-report
+(trust-tiered, corroborated by wearables where possible); goals never relax a clinical anchor.
+**Affects.** Appendix G (auto-close F1–F3, v3 versions), new Appendices H/I/J, `data/adherence.json`,
+`data/persona-matrix.json`, `data/goals.json`; Doc 04 (reservoir inflows), Doc 07/16 (nudge↔adherence),
+the `states.html` UserGoals lifecycle.
 
 ---
 

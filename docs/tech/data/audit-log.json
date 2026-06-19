@@ -1,0 +1,90 @@
+{
+  "meta": {
+    "name": "PureScore questionnaire coverage audit — cumulative log",
+    "lens": "product-coverage (capture → score → wearable-match → persona → goals → nudge → adherence)",
+    "current_version": "2026-06-19",
+    "revisions": [
+      {"date": "2026-06-19", "tag": "v1", "note": "Baseline product-loop audit: loop scorecard, pillar/reservoir heatmaps, 6 findings, spec sketches."},
+      {"date": "2026-06-19", "tag": "v2", "note": "Versioned/cumulative log; per-metric source tagging + per-pillar fusion scenarios; wearable cadence×provider matrix; metric-calculation popups."}
+    ],
+    "status_rule": "auto_rule may promote a stored status to 'addressed' when its expression is true against the live build stats; it never demotes."
+  },
+  "items": [
+    {
+      "id": "F1", "title": "Adherence check-ins are absent", "severity": "P0", "stage": "7 · Adherence",
+      "status": "addressed", "auto_rule": "adher_n > 0",
+      "versions": [
+        {"date": "2026-06-19", "tag": "v1", "status": "open",
+         "body": "<b>0</b> adherence items in the bank. The loop cannot close: completed / partial / skipped nudges never re-enter as reservoir inflows (Doc 04) or move the engagement &amp; Trajectory companion dimensions (Doc 12). Without it, personalization can't learn what works. <b>Fix:</b> the adherence micro check-in instrument (see sketch, <a href=\"#sk-adherence\">Adherence sketch</a>)."},
+        {"date": "2026-06-19", "tag": "v3", "status": "addressed",
+         "body": "<b>Built (D25):</b> <a href=\"appendix-adherence.html\">Appendix H</a> ships 18 adherence micro check-ins (<code>data/adherence.json</code>), one per nudge family, each writing an <code>adherence ∈ [0,1]</code> value + reason back to its reservoir (Doc 04) and the engagement dimension (Doc 12). The loop now closes; <code>adher_n &gt; 0</code> so this auto-verifies."}
+      ]
+    },
+    {
+      "id": "F2", "title": "No input→persona determination matrix", "severity": "P0", "stage": "4 · Persona",
+      "status": "addressed", "auto_rule": "persona_det_n > 0",
+      "versions": [
+        {"date": "2026-06-19", "tag": "v1", "status": "open",
+         "body": "Personas are used to <i>gate</i> questions and frame ranges, but nothing lets the engine <b>infer</b> a persona/archetype from the answers (0 questions carry a persona-determination weight). Cold-start can't resolve a new user to a frame, so early scoring stays generic. <b>Fix:</b> a signal→persona weight matrix + softmax posterior (see <a href=\"#sk-persona\">Persona-matrix sketch</a>)."},
+        {"date": "2026-06-19", "tag": "v3", "status": "addressed",
+         "body": "<b>Built (D25):</b> <a href=\"appendix-persona-matrix.html\">Appendix I</a> ships the determination matrix (<code>data/persona-matrix.json</code>): 40 personas (15 clinical × 25 archetype) × 38 signals with signed weights, hard sex/age/life-stage priors, and a softmax posterior so a persona is <b>inferred</b> from answers. <code>persona_det_n &gt; 0</code> auto-verifies."}
+      ]
+    },
+    {
+      "id": "F3", "title": "No structured user-goals catalogue", "severity": "P1", "stage": "5 · Goals",
+      "status": "addressed", "auto_rule": "goal_struct > 0",
+      "versions": [
+        {"date": "2026-06-19", "tag": "v1", "status": "open",
+         "body": "The UserGoals stream (state machine) and goal-focused nudge re-ranking have no backing data; goals can't be bound to persona / lifestyle / age / sex / condition or scored for progress against a wearable/lab metric. <b>Fix:</b> a goals catalogue keyed by applicability (see <a href=\"#sk-goals\">Goals sketch</a>)."},
+        {"date": "2026-06-19", "tag": "v3", "status": "addressed",
+         "body": "<b>Built (D25):</b> <a href=\"appendix-goals.html\">Appendix J</a> ships 33 goals (<code>data/goals.json</code>), ≥2 per pillar, each keyed by an applicability vector (persona · archetype · life-stage · age · sex · condition) with a wearable/lab/PRO target, modifiability, and linked Appendix-H nudges — driving the UserGoals lifecycle on the state machine. <code>goal_struct &gt; 0</code> auto-verifies."}
+      ]
+    },
+    {
+      "id": "F4", "title": "Wearable-match is under-specified (free-text corroboration)", "severity": "P1", "stage": "3 · Wearable-match",
+      "status": "in_progress", "auto_rule": null,
+      "versions": [
+        {"date": "2026-06-19", "tag": "v1", "status": "open",
+         "body": "<code>corroborated_by</code> is prose, not a typed link to a wearable metric, so stage-3 can't be automated or audited; a large share of questions have no actual to check perceived answers against."},
+        {"date": "2026-06-19", "tag": "v2", "status": "in_progress",
+         "body": "Advanced by this revision: added (a) per-metric <b>source-channel tags</b> and per-pillar <b>fusion scenarios</b> (<a href=\"#fusion\">§ Source fusion</a>) and (b) a <b>metric × provider cadence</b> matrix (<a href=\"#cadence\">§ Cadence</a>). <b>Remaining:</b> typed <i>question → wearable-metric → tolerance</i> links inside the bank itself."}
+      ]
+    },
+    {
+      "id": "F5", "title": "HEP / REN self-report is thin", "severity": "P2", "stage": "2 · Score",
+      "status": "in_progress", "auto_rule": null,
+      "versions": [
+        {"date": "2026-06-19", "tag": "v1", "status": "open",
+         "body": "HEP and REN get a small fraction of the self-report weight that INF / CV / MCS carry."},
+        {"date": "2026-06-19", "tag": "v2", "status": "in_progress",
+         "body": "Documented as a deliberate design choice: both pillars are <b>lab-led</b> — the source-fusion table (<a href=\"#fusion\">§ Source fusion</a>) shows <i>biomarker-lab</i> as the dominant channel for REN/HEP, with self-report contributing context/adherence only. <b>Optional:</b> add 2–3 symptom/risk self-report items each."}
+      ]
+    },
+    {
+      "id": "F6", "title": "Two unreconciled persona layers", "severity": "P2", "stage": "4 · Persona",
+      "status": "addressed", "auto_rule": null,
+      "versions": [
+        {"date": "2026-06-19", "tag": "v1", "status": "open",
+         "body": "Appendix D (clinical, 15) and Appendix F (lifestyle archetypes, 25) overlap but aren't a single comprehensive set, so 'all possible personas' is ambiguous and the determination matrix has no canonical target."},
+        {"date": "2026-06-19", "tag": "v2", "status": "addressed",
+         "body": "Resolved: the <a href=\"#personas\">comprehensive persona set</a> publishes the canonical union (15 clinical × 25 archetype = up to 40 frames) as the explicit determination target for the §-fusion / persona matrix."}
+      ]
+    },
+    {
+      "id": "F7", "title": "Markers lack a typed source channel", "severity": "P1", "stage": "2 · Score",
+      "status": "open", "auto_rule": "source_typed > 0",
+      "versions": [
+        {"date": "2026-06-19", "tag": "v2", "status": "open",
+         "body": "Surfaced by this revision's source-tagging pass: markers carry a free-text guideline <code>source</code> but no typed <b>channel</b> ({biomarker-lab · wearable-clinical · wearable-consumer · wearable-inferential · self-report · derived}), so the multi-source fusion rules (<a href=\"#fusion\">§ Source fusion</a>) can't be enforced programmatically. <b>Fix:</b> add a <code>channel</code> enum per marker in the data model (Doc 01)."}
+      ]
+    },
+    {
+      "id": "F8", "title": "No per-provider cadence / freshness SLA", "severity": "P2", "stage": "3 · Wearable-match",
+      "status": "open", "auto_rule": null,
+      "versions": [
+        {"date": "2026-06-19", "tag": "v2", "status": "open",
+         "body": "Surfaced by the cadence trace (<a href=\"#cadence\">§ Cadence</a>): there is no freshness/cadence contract per provider, so the 'stale wearable' state (state machine) has no per-source threshold and the Confidence dimension can't decay correctly per metric. <b>Fix:</b> define a staleness window + expected cadence per metric × provider."}
+      ]
+    }
+  ]
+}

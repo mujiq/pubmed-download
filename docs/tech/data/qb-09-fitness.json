@@ -1,0 +1,2383 @@
+{
+ "domain": "FITNESS_ACTIVITY",
+ "questions": [
+  {
+   "id": "Q_FIT_WEEKLY_SESSIONS",
+   "text": "In a typical week, how many times do you do at least 30 minutes of intentional exercise (any type)?",
+   "category": "Exercise Volume",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "low_cardiorespiratory_fitness",
+    "sedentary_behavior",
+    "deconditioning",
+    "reduced_longevity_activity"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Never (0 sessions)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.28,
+      "CV": 0.18,
+      "MET": 0.12,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.2,
+      "muscle_reserve": -0.1,
+      "glycemic_burden": 0.12
+     }
+    },
+    {
+     "label": "1–2 sessions/week",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.14,
+      "CV": 0.08,
+      "MET": 0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.1,
+      "glycemic_burden": 0.06
+     }
+    },
+    {
+     "label": "3–4 sessions/week",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "5–6 sessions/week",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.14,
+      "CV": -0.1,
+      "MET": -0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.12,
+      "muscle_reserve": 0.06,
+      "glycemic_burden": -0.08
+     }
+    },
+    {
+     "label": "Daily (7+ sessions/week)",
+     "direction": "decrease_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": -0.22,
+      "CV": -0.14,
+      "MET": -0.1
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.18,
+      "muscle_reserve": 0.08,
+      "glycemic_burden": -0.12
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "athlete",
+     "elderly",
+     "prediabetic"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [
+     {
+      "if_response": "Never (0 sessions)",
+      "ask": "Q_FIT_SITTING_HOURS"
+     }
+    ],
+    "validated_by": "IPAQ-SF"
+   },
+   "priority": 1,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.MVPA",
+     "wearable.steps"
+    ]
+   },
+   "source": "IPAQ-SF; OMICS activity items; WHO PA guidelines 2020",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_VIGOROUS_MINS",
+   "text": "How many minutes per week do you do vigorous-intensity activity (hard breathing, can only say a few words — e.g. running, fast cycling, HIIT)?",
+   "category": "Exercise Intensity",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "low_cardiorespiratory_fitness",
+    "low_vo2max",
+    "reduced_longevity_activity"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "None",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.18,
+      "CV": 0.1
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.14,
+      "glycemic_burden": 0.08
+     }
+    },
+    {
+     "label": "1–74 min/week",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "FIT": 0.06,
+      "CV": 0.04
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.05
+     }
+    },
+    {
+     "label": "75–149 min/week (WHO minimum)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "150+ min/week",
+     "direction": "decrease_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": -0.22,
+      "CV": -0.14,
+      "MET": -0.08,
+      "MCS": -0.05
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.18,
+      "glycemic_burden": -0.1,
+      "allostatic_load": -0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "athlete",
+     "betablocker",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "IPAQ-SF"
+   },
+   "priority": 1,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.MVPA",
+     "wearable.vo2max"
+    ]
+   },
+   "source": "IPAQ-SF; WHO PA guidelines 2020; Kodama 2009 meta-analysis (VO2max & CVD)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_MODERATE_MINS",
+   "text": "How many minutes per week do you do moderate-intensity activity (noticeably elevated breathing, can hold a conversation — e.g. brisk walking, cycling, swimming at leisure)?",
+   "category": "Exercise Intensity",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "low_cardiorespiratory_fitness",
+    "sedentary_behavior",
+    "deconditioning"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "None",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.16,
+      "CV": 0.1,
+      "MET": 0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.12,
+      "glycemic_burden": 0.08
+     }
+    },
+    {
+     "label": "1–149 min/week",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "FIT": 0.06,
+      "MET": 0.04
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.05,
+      "glycemic_burden": 0.04
+     }
+    },
+    {
+     "label": "150–299 min/week (WHO minimum)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "300+ min/week",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.14,
+      "CV": -0.1,
+      "MET": -0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.12,
+      "glycemic_burden": -0.08,
+      "inflammatory_load": -0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "elderly",
+     "prediabetic",
+     "betablocker"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "IPAQ-SF"
+   },
+   "priority": 1,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.MVPA",
+     "wearable.steps"
+    ]
+   },
+   "source": "IPAQ-SF; WHO PA guidelines 2020",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_WALKING_MINS",
+   "text": "On a typical day, how many minutes do you spend walking (including walking to/from transport, errands, leisure)?",
+   "category": "NEAT / Daily Activity",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "sedentary_behavior",
+    "deconditioning",
+    "reduced_longevity_activity"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Less than 10 min/day",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.14,
+      "CV": 0.08,
+      "MET": 0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.1,
+      "glycemic_burden": 0.08
+     }
+    },
+    {
+     "label": "10–29 min/day",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "FIT": 0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.05
+     }
+    },
+    {
+     "label": "30–59 min/day",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "60+ min/day",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.12,
+      "CV": -0.08,
+      "MET": -0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.1,
+      "glycemic_burden": -0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "elderly",
+     "prediabetic"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "IPAQ-SF"
+   },
+   "priority": 2,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.steps",
+     "wearable.MVPA"
+    ]
+   },
+   "source": "IPAQ-SF; Paluch 2022 (steps/day & mortality); OMICS activity items",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_DAILY_STEPS",
+   "text": "How many steps per day do you typically take (including a wearable or phone estimate if you have one)?",
+   "category": "NEAT / Daily Activity",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "sedentary_behavior",
+    "deconditioning",
+    "reduced_longevity_activity",
+    "low_cardiorespiratory_fitness"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Under 3,000 steps/day",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.22,
+      "CV": 0.14,
+      "MET": 0.1
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.16,
+      "glycemic_burden": 0.12,
+      "muscle_reserve": -0.08
+     }
+    },
+    {
+     "label": "3,000–5,999 steps/day",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.12,
+      "CV": 0.08,
+      "MET": 0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.08,
+      "glycemic_burden": 0.06
+     }
+    },
+    {
+     "label": "6,000–9,999 steps/day",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "10,000+ steps/day",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.14,
+      "CV": -0.1,
+      "MET": -0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.12,
+      "glycemic_burden": -0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "elderly",
+     "prediabetic",
+     "athlete"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "IPAQ-SF"
+   },
+   "priority": 2,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.steps",
+     "wearable.MVPA"
+    ]
+   },
+   "source": "Paluch 2022 Lancet (steps-mortality); OMICS activity items",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_SITTING_HOURS",
+   "text": "On a typical weekday, how many hours do you spend sitting or reclining (excluding sleep)?",
+   "category": "Sedentary Behavior",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "sedentary_behavior",
+    "low_cardiorespiratory_fitness",
+    "deconditioning"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Less than 4 hours/day",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.12,
+      "CV": -0.08,
+      "MET": -0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.1,
+      "glycemic_burden": -0.08
+     }
+    },
+    {
+     "label": "4–6 hours/day",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "7–9 hours/day",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.12,
+      "CV": 0.08,
+      "MET": 0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.1,
+      "glycemic_burden": 0.08,
+      "muscle_reserve": -0.06
+     }
+    },
+    {
+     "label": "10+ hours/day",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.22,
+      "CV": 0.14,
+      "MET": 0.12,
+      "BCM": 0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.16,
+      "glycemic_burden": 0.14,
+      "muscle_reserve": -0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity",
+     "occupation"
+    ],
+    "personas": [
+     "elderly",
+     "prediabetic"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [
+     {
+      "q": "Q_CORE_OCCUPATION",
+      "in": [
+       "Active, varied movement"
+      ]
+     }
+    ],
+    "triggers": [],
+    "validated_by": "IPAQ-SF"
+   },
+   "priority": 1,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.sedentary_time",
+     "wearable.steps"
+    ]
+   },
+   "source": "IPAQ-SF; Biswas 2015 (sitting time & mortality); OMICS activity items",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_TV_HOURS",
+   "text": "On a typical day, how many hours do you spend watching TV or streaming video?",
+   "category": "Sedentary Behavior",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "sedentary_behavior",
+    "reduced_longevity_activity"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Less than 1 hour/day",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "1–2 hours/day",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "3–4 hours/day",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "FIT": 0.07,
+      "MET": 0.06,
+      "MCS": 0.04
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.05,
+      "cardiorespiratory_reserve": -0.05
+     }
+    },
+    {
+     "label": "5+ hours/day",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.14,
+      "MET": 0.1,
+      "CV": 0.07,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.1,
+      "cardiorespiratory_reserve": -0.08,
+      "allostatic_load": 0.05
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity",
+     "stress"
+    ],
+    "personas": [
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "IPAQ-SF"
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.sedentary_time"
+    ]
+   },
+   "source": "Katzmarzyk 2009 (TV hours & CVD mortality); OMICS activity items",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_STRENGTH_DAYS",
+   "text": "How many days per week do you do muscle-strengthening activities (resistance training, bodyweight exercises, heavy gardening/lifting)?",
+   "category": "Strength Training",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "low_muscle_strength",
+    "deconditioning",
+    "reduced_longevity_activity",
+    "poor_recovery"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Never",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.2,
+      "BCM": 0.18,
+      "MET": 0.1,
+      "CV": 0.08
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.18,
+      "bone_reserve": -0.1,
+      "glycemic_burden": 0.1
+     }
+    },
+    {
+     "label": "1 day/week",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.1,
+      "BCM": 0.1
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.08,
+      "glycemic_burden": 0.05
+     }
+    },
+    {
+     "label": "2 days/week (WHO minimum)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "3–4 days/week",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.14,
+      "BCM": -0.14,
+      "MET": -0.08
+     },
+     "reservoirs": {
+      "muscle_reserve": 0.14,
+      "bone_reserve": 0.08,
+      "glycemic_burden": -0.08
+     }
+    },
+    {
+     "label": "5+ days/week",
+     "direction": "decrease_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": -0.2,
+      "BCM": -0.18,
+      "MET": -0.1
+     },
+     "reservoirs": {
+      "muscle_reserve": 0.18,
+      "bone_reserve": 0.1,
+      "glycemic_burden": -0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "athlete",
+     "elderly",
+     "prediabetic"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 1,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.MVPA"
+    ]
+   },
+   "source": "WHO PA guidelines 2020; Stamatakis 2022 (muscle-strengthening & longevity)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_SELF_FITNESS",
+   "text": "How would you rate your own cardiovascular fitness compared to others your age?",
+   "category": "Self-Rated Fitness",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "low_cardiorespiratory_fitness",
+    "low_vo2max",
+    "deconditioning"
+   ],
+   "stream": "LIFE",
+   "type": "scale",
+   "responses": [
+    {
+     "label": "Excellent — I can sustain hard effort for long periods",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.16,
+      "CV": -0.1
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.14
+     }
+    },
+    {
+     "label": "Good — comfortably active, rarely breathless",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "FIT": -0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.05
+     }
+    },
+    {
+     "label": "Average",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Below average — get breathless with moderate effort",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.14,
+      "CV": 0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.12
+     }
+    },
+    {
+     "label": "Poor — breathless with light activity or at rest",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.26,
+      "CV": 0.16,
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.2,
+      "allostatic_load": 0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "athlete",
+     "betablocker",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [
+     {
+      "if_response": "Poor — breathless with light activity or at rest",
+      "ask": "Q_FIT_STAIR_BREATHLESS"
+     }
+    ]
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.vo2max",
+     "wearable.hr_recovery",
+     "wearable.MVPA"
+    ]
+   },
+   "source": "OMICS activity items; self-rated fitness predicts VO2max (Myers 2017)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_STAIR_BREATHLESS",
+   "text": "When you climb 2–3 flights of stairs at a normal pace, how do you feel?",
+   "category": "Functional Cardiorespiratory Test",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "low_cardiorespiratory_fitness",
+    "low_vo2max",
+    "deconditioning"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No breathlessness at all",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.14,
+      "CV": -0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.12
+     }
+    },
+    {
+     "label": "Slightly breathless, recovers quickly",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Noticeably breathless, need to pause",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.16,
+      "CV": 0.1
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.14
+     }
+    },
+    {
+     "label": "Severely breathless — avoid stairs",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.28,
+      "CV": 0.18,
+      "BCM": 0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.22,
+      "muscle_reserve": -0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "betablocker",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 2,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.vo2max",
+     "wearable.hr_recovery"
+    ]
+   },
+   "source": "OMICS activity items; stair-climb test as VO2max proxy (Petersen 2020); NOTE: betablocker attenuates HR response — perceived breathlessness more reliable than HR in this persona",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_WALK_DISTANCE",
+   "text": "Can you walk at least 1 km (about 10–15 minutes) on flat ground without stopping due to breathlessness, pain, or fatigue?",
+   "category": "Functional Capacity",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "low_cardiorespiratory_fitness",
+    "deconditioning",
+    "low_muscle_strength"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Yes, easily",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "FIT": -0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.05
+     }
+    },
+    {
+     "label": "Yes, but I feel it",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "No — I need to stop or can only do shorter distances",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.26,
+      "CV": 0.14,
+      "BCM": 0.1
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.2,
+      "muscle_reserve": -0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "elderly",
+     "betablocker"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 2,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.steps",
+     "wearable.MVPA"
+    ]
+   },
+   "source": "6MWT functional capacity assessment; OMICS activity items",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_HR_RECOVERY",
+   "text": "After vigorous exercise (e.g., running, fast cycling), how quickly does your heart rate feel like it returns to normal?",
+   "category": "Recovery",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "poor_recovery",
+    "low_cardiorespiratory_fitness",
+    "low_vo2max"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Very fast — within 1–2 minutes",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.16,
+      "CV": -0.1
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.14
+     }
+    },
+    {
+     "label": "Moderate — within 3–5 minutes",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Slow — takes 6–10 minutes or more",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.16,
+      "CV": 0.1
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.12
+     }
+    },
+    {
+     "label": "Very slow or I never push hard enough to test",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.22,
+      "CV": 0.14,
+      "MCS": 0.05
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.16
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "athlete",
+     "betablocker",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 2,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.hr_recovery",
+     "wearable.vo2max"
+    ]
+   },
+   "source": "Cole 1999 NEJM (HRR & mortality); OMICS activity items; NOTE: betablocker blunts HR and HR recovery — perceived recovery is confounded; cross-reference wearable.hr_recovery if available",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_RECOVERY_SORENESS",
+   "text": "After a typical workout, how do you feel 24–48 hours later?",
+   "category": "Recovery",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "poor_recovery",
+    "deconditioning",
+    "low_muscle_strength"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Fine — ready to train again",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "FIT": -0.06,
+      "BCM": -0.05
+     },
+     "reservoirs": {
+      "muscle_reserve": 0.05,
+      "allostatic_load": -0.05
+     }
+    },
+    {
+     "label": "Mildly sore but functional",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Significantly sore / fatigued for 2+ days",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.12,
+      "BCM": 0.1,
+      "INF": 0.08
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.08,
+      "inflammatory_load": 0.08,
+      "allostatic_load": 0.06
+     }
+    },
+    {
+     "label": "I rarely or never exercise",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.2,
+      "BCM": 0.14,
+      "CV": 0.1
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.14,
+      "muscle_reserve": -0.12
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "athlete",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.hr_recovery",
+     "wearable.MVPA"
+    ]
+   },
+   "source": "OMICS activity items; Twist 2012 (DOMS & recovery fitness marker)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_SPORT_PARTICIPATION",
+   "text": "Do you regularly participate in organized sport or group fitness activities (team sports, classes, running clubs, etc.)?",
+   "category": "Structured Activity",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "sedentary_behavior",
+    "reduced_longevity_activity",
+    "low_cardiorespiratory_fitness"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Yes, weekly",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.14,
+      "CV": -0.08,
+      "MCS": -0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.12,
+      "allostatic_load": -0.08
+     }
+    },
+    {
+     "label": "Occasionally (monthly or less)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "No — I exercise only alone or not at all",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "FIT": 0.06,
+      "MCS": 0.05
+     },
+     "reservoirs": {
+      "allostatic_load": 0.05
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity",
+     "social"
+    ],
+    "personas": [
+     "athlete",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.MVPA"
+    ]
+   },
+   "source": "Oja 2017 (sport participation & longevity); OMICS activity items",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_WEARABLE_VO2MAX",
+   "text": "Does a fitness tracker or smartwatch give you an estimated VO2 max or fitness score? If so, what does it show?",
+   "category": "Objective Fitness Data",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "low_vo2max",
+    "low_cardiorespiratory_fitness",
+    "reduced_longevity_activity"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Yes — Excellent or Superior (VO2max ~50+ ml/kg/min)",
+     "direction": "decrease_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": -0.24,
+      "CV": -0.16
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.2
+     }
+    },
+    {
+     "label": "Yes — Good (VO2max ~40–49)",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.14,
+      "CV": -0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.12
+     }
+    },
+    {
+     "label": "Yes — Fair / Average (VO2max ~30–39)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Yes — Poor or Low (VO2max <30)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.26,
+      "CV": 0.18,
+      "MET": 0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.2,
+      "glycemic_burden": 0.08
+     }
+    },
+    {
+     "label": "No tracker or no VO2max reading",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "athlete",
+     "betablocker",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "wearable.vo2max"
+    ]
+   },
+   "source": "Kodama 2009 (VO2max & CVD/mortality); NOTE: betablocker reduces maxHR → wearable VO2max underestimated; flag gap if betablocker persona detected",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_EXERTION_BREATHLESS",
+   "text": "At what level of activity do you typically become breathless or need to slow down?",
+   "category": "Functional Cardiorespiratory Test",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "low_cardiorespiratory_fitness",
+    "low_vo2max",
+    "deconditioning"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Only during intense effort (sprinting, HIIT)",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.14
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.12
+     }
+    },
+    {
+     "label": "During sustained moderate effort (jogging, fast cycling)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "During brisk walking or light housework",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.16,
+      "CV": 0.1
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.14
+     }
+    },
+    {
+     "label": "During slow walking or dressing / bathing",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.28,
+      "CV": 0.18,
+      "BCM": 0.1
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.22,
+      "muscle_reserve": -0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "betablocker",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 1,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.vo2max",
+     "wearable.hr_recovery"
+    ]
+   },
+   "source": "OMICS activity items; MRC dyspnea scale; NOTE: betablocker blunts HR — breathlessness timing is confounded; wearable.hr_recovery preferred for objective confirmation",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_MUSCLE_STRENGTH_FUNCTION",
+   "text": "How do you rate your muscular strength and ability to carry out tasks needing physical force (lifting, carrying, getting up from a chair)?",
+   "category": "Muscular Strength",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "low_muscle_strength",
+    "deconditioning",
+    "reduced_longevity_activity"
+   ],
+   "stream": "LIFE",
+   "type": "scale",
+   "responses": [
+    {
+     "label": "Very strong — no limitations",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.14,
+      "BCM": -0.14
+     },
+     "reservoirs": {
+      "muscle_reserve": 0.14,
+      "bone_reserve": 0.06
+     }
+    },
+    {
+     "label": "Reasonably strong — minor limitations",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Moderate limitations — avoid heavy tasks",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.14,
+      "BCM": 0.14,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.12,
+      "bone_reserve": -0.06,
+      "allostatic_load": 0.06
+     }
+    },
+    {
+     "label": "Significant weakness — difficulty with everyday tasks",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.22,
+      "BCM": 0.22,
+      "MCS": 0.1,
+      "CV": 0.06
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.2,
+      "bone_reserve": -0.1,
+      "allostatic_load": 0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "elderly",
+     "athlete"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.MVPA"
+    ]
+   },
+   "source": "OMICS activity items; Ruiz 2008 (grip strength & CVD mortality)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_GRIP_STRENGTH",
+   "text": "Have you ever had your grip strength measured (dynamometer) or completed a formal fitness test? If so, what was the result?",
+   "category": "Muscular Strength",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "low_muscle_strength",
+    "reduced_longevity_activity"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Yes — above average or strong for my age",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.14,
+      "BCM": -0.12,
+      "CV": -0.08
+     },
+     "reservoirs": {
+      "muscle_reserve": 0.12,
+      "cardiorespiratory_reserve": 0.08
+     }
+    },
+    {
+     "label": "Yes — average for my age",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Yes — below average or weak for my age",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.22,
+      "BCM": 0.2,
+      "CV": 0.1
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.18,
+      "cardiorespiratory_reserve": -0.08
+     }
+    },
+    {
+     "label": "Never tested",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "athlete",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "wearable.MVPA"
+    ]
+   },
+   "source": "Ruiz 2008 (grip strength & all-cause mortality); Leong 2015 PURE",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_DECONDITIONING_TREND",
+   "text": "Over the past 12 months, has your overall fitness and ability to do physical tasks changed?",
+   "category": "Deconditioning Trend",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "deconditioning",
+    "low_cardiorespiratory_fitness",
+    "poor_recovery"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Improved significantly",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.14,
+      "CV": -0.08,
+      "BCM": -0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.12,
+      "muscle_reserve": 0.08
+     }
+    },
+    {
+     "label": "Stayed about the same",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Declined somewhat",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.14,
+      "CV": 0.08,
+      "BCM": 0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.1,
+      "muscle_reserve": -0.08
+     }
+    },
+    {
+     "label": "Declined significantly",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.22,
+      "CV": 0.14,
+      "BCM": 0.14,
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.18,
+      "muscle_reserve": -0.14,
+      "allostatic_load": 0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity"
+    ],
+    "personas": [
+     "elderly",
+     "betablocker"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.MVPA",
+     "wearable.vo2max",
+     "wearable.steps"
+    ]
+   },
+   "source": "OMICS activity items; deconditioning trajectory as independent predictor",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_RECOVERY_SLEEP",
+   "text": "How would you rate the quality of your sleep for physical recovery (feeling restored and ready to be active the next day)?",
+   "category": "Recovery",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "poor_recovery",
+    "deconditioning",
+    "low_muscle_strength"
+   ],
+   "stream": "LIFE",
+   "type": "scale",
+   "responses": [
+    {
+     "label": "Excellent — I wake feeling fully recovered",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.1,
+      "SLP": -0.12,
+      "BCM": -0.06
+     },
+     "reservoirs": {
+      "muscle_reserve": 0.08,
+      "allostatic_load": -0.08,
+      "sleep_debt": -0.1
+     }
+    },
+    {
+     "label": "Good",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Fair — sometimes wake tired or sore",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "FIT": 0.07,
+      "SLP": 0.08
+     },
+     "reservoirs": {
+      "sleep_debt": 0.06,
+      "muscle_reserve": -0.05
+     }
+    },
+    {
+     "label": "Poor — rarely feel recovered after sleep",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.14,
+      "SLP": 0.16,
+      "BCM": 0.08,
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "sleep_debt": 0.14,
+      "muscle_reserve": -0.1,
+      "allostatic_load": 0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity",
+     "sleep"
+    ],
+    "personas": [
+     "athlete",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "ISI"
+   },
+   "priority": 3,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.hr_recovery",
+     "wearable.MVPA"
+    ]
+   },
+   "source": "OMICS activity items; Simpson 2017 (sleep & muscle recovery); cross-pillar SLP/FIT",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_PROLONGED_SITTING_BREAKS",
+   "text": "When you have a long sitting session (e.g., at a desk or in a vehicle), how often do you get up and move?",
+   "category": "Sedentary Behavior",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "sedentary_behavior",
+    "deconditioning"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Every 30 minutes or more often",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.12,
+      "CV": -0.08,
+      "MET": -0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.08,
+      "glycemic_burden": -0.08
+     }
+    },
+    {
+     "label": "About once per hour",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Every 2–3 hours",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "FIT": 0.06,
+      "MET": 0.05
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.05
+     }
+    },
+    {
+     "label": "Rarely or never — sit for hours uninterrupted",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.14,
+      "CV": 0.08,
+      "MET": 0.1
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.08,
+      "glycemic_burden": 0.1,
+      "vascular_bp_load": 0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity",
+     "occupation"
+    ],
+    "personas": [
+     "prediabetic",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_FIT_SITTING_HOURS",
+      "in": [
+       "7–9 hours/day",
+       "10+ hours/day"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "IPAQ-SF"
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.sedentary_time",
+     "wearable.steps"
+    ]
+   },
+   "source": "Dunstan 2012 (breaks in sitting & glycemia); Diaz 2017 (sedentary bout duration)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_LONGEVITY_ACTIVITY",
+   "text": "Which best describes your typical activity pattern over recent years?",
+   "category": "Longitudinal Activity Pattern",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "reduced_longevity_activity",
+    "low_cardiorespiratory_fitness",
+    "low_muscle_strength"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Consistently active for 10+ years",
+     "direction": "decrease_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": -0.22,
+      "CV": -0.14,
+      "BCM": -0.1,
+      "MCS": -0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.18,
+      "muscle_reserve": 0.12,
+      "bone_reserve": 0.08
+     }
+    },
+    {
+     "label": "Active for several years, recent dip",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "FIT": -0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.06
+     }
+    },
+    {
+     "label": "Inconsistent — active periods then lulls",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mostly inactive for 5+ years",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.26,
+      "CV": 0.16,
+      "BCM": 0.12,
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.2,
+      "muscle_reserve": -0.14,
+      "bone_reserve": -0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": {
+     "min": 30,
+     "max": 120
+    },
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity",
+     "lifestage"
+    ],
+    "personas": [
+     "athlete",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 2,
+   "cadence": "annual",
+   "refresh": "slow",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.MVPA",
+     "wearable.steps"
+    ]
+   },
+   "source": "Lee 2012 (lifetime PA & longevity); Wen 2011 (dose-response PA & mortality)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_PERCEIVED_VS_ACTUAL",
+   "text": "How does your self-assessed fitness compare with what objective data (wearable, fitness test) actually shows?",
+   "category": "Perceived-vs-Actual Gap",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "low_vo2max",
+    "low_cardiorespiratory_fitness"
+   ],
+   "stream": "GOAL",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "I have objective data and it confirms I am fit",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.14,
+      "CV": -0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.12
+     }
+    },
+    {
+     "label": "I have no objective data — going on feel",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Data suggests I am less fit than I thought",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.14,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.1,
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Data confirms I am less fit than my peers",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.22,
+      "CV": 0.12
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.16
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity",
+     "cognition"
+    ],
+    "personas": [
+     "athlete",
+     "betablocker"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.vo2max",
+     "wearable.hr_recovery",
+     "wearable.MVPA",
+     "wearable.steps"
+    ]
+   },
+   "source": "Perceived-vs-actual fitness gap (PureScore core concept, Doc 18); self-rated fitness vs measured VO2max correlation",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_INJURY_BARRIER",
+   "text": "Has a physical injury, chronic pain, or disability significantly limited your ability to exercise in the past 6 months?",
+   "category": "Exercise Barriers",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "deconditioning",
+    "low_muscle_strength",
+    "poor_recovery"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Yes — minor limitation, still somewhat active",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "FIT": 0.07,
+      "BCM": 0.06,
+      "MCS": 0.05
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.05,
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Yes — major limitation, mostly inactive",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.22,
+      "BCM": 0.16,
+      "MCS": 0.1,
+      "CV": 0.08
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": -0.14,
+      "muscle_reserve": -0.14,
+      "allostatic_load": 0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity",
+     "pain"
+    ],
+    "personas": [
+     "elderly",
+     "betablocker"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 2,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.MVPA",
+     "wearable.steps"
+    ]
+   },
+   "source": "OMICS activity items; injury/pain as primary inactivity mediator",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_FIT_NEAT_LIFESTYLE",
+   "text": "Outside of planned exercise, how active is your typical day (e.g., housework, gardening, manual tasks, taking the stairs)?",
+   "category": "NEAT / Daily Activity",
+   "domain": "FITNESS_ACTIVITY",
+   "conditions": [
+    "sedentary_behavior",
+    "deconditioning",
+    "reduced_longevity_activity"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Very active — on my feet most of the day",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": -0.12,
+      "MET": -0.1,
+      "CV": -0.06
+     },
+     "reservoirs": {
+      "cardiorespiratory_reserve": 0.1,
+      "glycemic_burden": -0.08
+     }
+    },
+    {
+     "label": "Moderately active — mix of sitting and moving",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mostly sedentary with brief movement bouts",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "FIT": 0.12,
+      "MET": 0.1,
+      "CV": 0.06
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.08,
+      "cardiorespiratory_reserve": -0.08
+     }
+    },
+    {
+     "label": "Almost entirely sedentary outside planned exercise",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "FIT": 0.2,
+      "MET": 0.14,
+      "CV": 0.1
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.14,
+      "cardiorespiratory_reserve": -0.12,
+      "adiposity": 0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "activity",
+     "occupation"
+    ],
+    "personas": [
+     "prediabetic",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "IPAQ-SF"
+   },
+   "priority": 2,
+   "cadence": "Core",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.steps",
+     "wearable.MVPA",
+     "wearable.sedentary_time"
+    ]
+   },
+   "source": "Levine 2014 (NEAT & energy balance); IPAQ-SF; OMICS activity items",
+   "flag": "illustrative-reverify"
+  }
+ ]
+}

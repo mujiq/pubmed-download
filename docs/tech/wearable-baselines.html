@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Baseline · Category Summaries</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+:root{
+  --bg:#070a0f; --bg2:#0a0e15; --surface:#10151e; --surface2:#161d28; --elev:#1b2430;
+  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.12);
+  --txt:#e8eef5; --txt2:#94a3b4; --txt3:#5d6b7c;
+  --accent:#2ee6c9; --accent-dim:rgba(46,230,201,.14);
+  --good:#3ad6a0; --nominal:#49c6d8; --warn:#edb14a; --bad:#f0606e; --violet:#8f9bff;
+  --shadow:0 24px 60px -20px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:
+    radial-gradient(900px 600px at 18% -5%, rgba(46,230,201,.07), transparent 60%),
+    radial-gradient(800px 700px at 100% 10%, rgba(143,155,255,.06), transparent 55%),
+    var(--bg);
+  color:var(--txt); min-height:100vh; display:flex; align-items:center; justify-content:center;
+  gap:54px; padding:40px 28px; -webkit-font-smoothing:antialiased;
+}
+.tnum{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ===== Desktop info rail ===== */
+.rail{width:340px;max-width:340px;flex-shrink:0}
+.rail .kicker{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.rail h1{font-size:29px;line-height:1.12;margin:14px 0 10px;font-weight:800;letter-spacing:-.02em}
+.rail .lede{color:var(--txt2);font-size:13.5px;line-height:1.6;margin-bottom:22px}
+.rail .lede b{color:var(--txt)}
+.rail h3{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--txt3);font-weight:700;margin:22px 0 10px}
+.rail-item{display:flex;gap:12px;padding:11px 13px;border-radius:13px;border:1px solid transparent;align-items:flex-start}
+.rail-item .n{width:24px;height:24px;border-radius:7px;flex-shrink:0;display:grid;place-items:center;font-size:11.5px;font-weight:700;background:var(--elev);color:var(--txt2);margin-top:1px}
+.rail-tt{font-size:13.5px;font-weight:650}
+.rail-dd{font-size:12px;color:var(--txt3);line-height:1.5;margin-top:2px}
+.rail-foot{margin-top:22px;font-size:11.5px;color:var(--txt3);line-height:1.6;border-top:1px solid var(--line);padding-top:16px}
+
+/* ===== Phone ===== */
+.device{
+  width:392px;height:min(846px,94vh);flex-shrink:0;position:relative;
+  background:linear-gradient(180deg,#1a1f29,#0b0e14);
+  border-radius:54px;padding:13px;
+  box-shadow:var(--shadow),0 0 0 2px #2a313d,0 0 0 11px #0c0f15,0 0 0 12px #1f2632;
+}
+.screen{position:relative;width:100%;height:100%;background:var(--bg2);border-radius:42px;overflow:hidden;display:flex;flex-direction:column}
+.notch{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:118px;height:32px;background:#000;border-radius:18px;z-index:40}
+.statusbar{height:50px;flex-shrink:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 7px;font-size:13.5px;font-weight:650;z-index:30}
+.statusbar .icons{display:flex;gap:6px;align-items:center}
+.statusbar svg{display:block}
+
+/* app header */
+.appbar{padding:8px 20px 10px;flex-shrink:0;display:flex;align-items:center;gap:12px;min-height:52px}
+.backbtn{width:34px;height:34px;border-radius:10px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;cursor:pointer;flex-shrink:0;transition:.15s}
+.backbtn:hover{background:var(--surface2)}
+.backbtn svg{width:17px;height:17px;stroke:var(--txt);stroke-width:2;fill:none}
+.appbar .hello{font-size:11.5px;color:var(--txt2);font-weight:500}
+.appbar .title{font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:1px;line-height:1.05}
+.appbar .spacer{flex:1}
+.avatar{width:36px;height:36px;border-radius:50%;background:conic-gradient(from 140deg,#2ee6c9,#8f9bff,#2ee6c9);padding:2px;flex-shrink:0}
+.avatar div{width:100%;height:100%;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--txt)}
+
+/* scroll body */
+.body{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 16px 90px;scrollbar-width:none}
+.body::-webkit-scrollbar{display:none}
+.view{display:none}
+.view.on{display:block;animation:fade .32s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ===== L1 home ===== */
+.bodyscore{background:linear-gradient(160deg,var(--surface2),var(--surface));border:1px solid var(--line);border-radius:20px;padding:16px 18px;display:flex;align-items:center;gap:16px;margin:2px 0 16px}
+.ring{width:74px;height:74px;flex-shrink:0;position:relative}
+.ring .num{position:absolute;inset:0;display:grid;place-items:center;font-size:21px;font-weight:800}
+.bodyscore .meta .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt3);font-weight:700}
+.bodyscore .meta .big{font-size:15px;font-weight:700;margin:3px 0}
+.bodyscore .meta .sub{font-size:12px;color:var(--txt2);line-height:1.45}
+.bodyscore .meta .sub b{color:var(--warn)}
+
+.sectlbl{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--txt3);font-weight:700;margin:6px 4px 10px}
+.catcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 15px;margin-bottom:11px;cursor:pointer;transition:.16s;position:relative;overflow:hidden}
+.catcard:hover{border-color:var(--line2);background:var(--surface2);transform:translateY(-1px)}
+.catcard .top{display:flex;align-items:center;gap:11px}
+.catico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}
+.catico svg{width:19px;height:19px;fill:none;stroke-width:1.9}
+.catcard .nm{font-size:14.5px;font-weight:700;flex:1}
+.catcard .nm .cnt{font-size:11px;color:var(--txt3);font-weight:500;margin-top:1px;display:block}
+.statepill{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:.02em}
+.catcard .spark{margin-top:10px;height:38px}
+.flagrow{display:flex;align-items:center;gap:6px;margin-top:9px;font-size:11.5px;color:var(--txt2)}
+.flagdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.arrow{position:absolute;right:14px;bottom:13px;color:var(--txt3);font-size:16px;opacity:.5}
+
+/* ===== L2 category ===== */
+.chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none;margin-bottom:4px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;font-size:12px;font-weight:650;padding:7px 13px;border-radius:11px;background:var(--surface);border:1px solid var(--line);color:var(--txt2);cursor:pointer;transition:.15s;white-space:nowrap}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#04130f}
+.chip:not(.on):hover{background:var(--surface2);color:var(--txt)}
+
+.compcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:15px 16px;margin-bottom:13px}
+.compcard .row{display:flex;align-items:flex-end;justify-content:space-between}
+.compcard .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt3);font-weight:700}
+.compcard .val{font-size:30px;font-weight:800;letter-spacing:-.01em;line-height:1;margin-top:6px}
+.compcard .dev{font-size:12.5px;font-weight:650;margin-top:5px}
+.compcard .rt{text-align:right}
+.compcard .rt .k{font-size:11px;color:var(--txt3);font-weight:600}
+.compcard .rt .v{font-size:15px;font-weight:750;margin-top:2px}
+
+.chart-wrap{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 8px 8px;margin-bottom:13px}
+.chart-head{display:flex;justify-content:space-between;align-items:center;padding:0 8px 6px}
+.chart-head .t{font-size:13px;font-weight:700}
+.chart-head .s{font-size:11px;color:var(--txt3)}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;padding:4px 10px 2px}
+.lg{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--txt2);cursor:pointer}
+.lg .sw{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+
+.metricrow{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:13px;background:var(--surface);border:1px solid var(--line);margin-bottom:8px;cursor:pointer;transition:.15s}
+.metricrow:hover{background:var(--surface2);border-color:var(--line2)}
+.metricrow .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.metricrow .nm{font-size:13.5px;font-weight:650;flex:1}
+.metricrow .nm small{display:block;color:var(--txt3);font-weight:500;font-size:11px;margin-top:1px}
+.metricrow .vv{text-align:right;font-weight:750;font-size:14px}
+.metricrow .vv small{display:block;font-weight:600;font-size:11px;margin-top:1px}
+
+.flags-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:13px 15px;margin-bottom:13px}
+.flags-card .h{font-size:12px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.flagitem{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--txt2);padding:4px 0}
+.flagitem b{color:var(--txt);font-weight:650}
+
+/* ===== L3 metric detail ===== */
+.hero{background:linear-gradient(160deg,var(--surface2),var(--surface));border:1px solid var(--line);border-radius:20px;padding:16px 18px;margin-bottom:13px}
+.hero .top{display:flex;justify-content:space-between;align-items:flex-start}
+.hero .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt3);font-weight:700}
+.hero .v{font-size:38px;font-weight:800;letter-spacing:-.02em;line-height:1;margin-top:7px}
+.hero .v .u{font-size:15px;font-weight:600;color:var(--txt2);margin-left:4px}
+.hero .badge{font-size:11px;font-weight:700;padding:5px 10px;border-radius:11px}
+.hero .dl{font-size:12.5px;color:var(--txt2);margin-top:9px}
+.hero .dl b{font-weight:700}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:13px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 13px}
+.stat .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);font-weight:700}
+.stat .v{font-size:17px;font-weight:750;margin-top:5px}
+.stat .v small{font-size:11.5px;color:var(--txt2);font-weight:600;margin-left:3px}
+
+/* ===== bottom nav ===== */
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:74px;background:linear-gradient(180deg,rgba(10,14,21,.4),rgba(10,14,21,.96) 38%);backdrop-filter:blur(16px);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;padding:0 6px 16px;z-index:25}
+.tab{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--txt3);cursor:pointer;font-family:inherit;flex:1;padding:8px 0 0}
+.tab svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9}
+.tab span{font-size:9.5px;font-weight:650;letter-spacing:.01em}
+.tab.on{color:var(--accent)}
+
+.hatch{fill:url(#hatchPat)}
+</style>
+</head>
+<body>
+
+<!-- ============ DESKTOP RAIL ============ -->
+<aside class="rail">
+  <div class="kicker">Baseline · Category Layer</div>
+  <h1>Five categories, one defensible read.</h1>
+  <p class="lede">Above the single-metric views sits a <b>category layer</b>. Each category fuses its metrics into one composite signal against your personal baseline band — surfacing <b>gaps, anomalies and deviations</b> at a glance, then drilling down to the metric.</p>
+
+  <h3>Three levels</h3>
+  <div class="rail-item"><div class="n">1</div><div><div class="rail-tt">Home · all categories</div><div class="rail-dd">7-day composite spark + today vs band + open flags. The morning scan.</div></div></div>
+  <div class="rail-item"><div class="n">2</div><div><div class="rail-tt">Category summary</div><div class="rail-dd">One unified 30-day graph — composite hero + normalized constituent ribbons, 5 switchable styles.</div></div></div>
+  <div class="rail-item"><div class="n">3</div><div><div class="rail-tt">Metric detail</div><div class="rail-dd">Baseline band with 7-day / weekly / monthly windows + robust stats.</div></div></div>
+
+  <h3>5 summary styles (tap to compare)</h3>
+  <div class="rail-item"><div class="n">A</div><div><div class="rail-tt">Composite Ribbon</div><div class="rail-dd">Composite z-line on a ±1σ band; faint metric ribbons; hatched gaps; anomaly pulses. The clinical default.</div></div></div>
+  <div class="rail-item"><div class="n">B</div><div><div class="rail-tt">Deviation Matrix</div><div class="rail-dd">One baseline-band lane per metric + today marker. Maximum legibility.</div></div></div>
+  <div class="rail-item"><div class="n">C</div><div><div class="rail-tt">Stream</div><div class="rail-dd">Stacked deviation streams — see which metric drives the category.</div></div></div>
+  <div class="rail-item"><div class="n">D</div><div><div class="rail-tt">Polar Pulse</div><div class="rail-dd">Radial spokes, today vs baseline ring; outward = better.</div></div></div>
+  <div class="rail-item"><div class="n">E</div><div><div class="rail-tt">Calendar Heat</div><div class="rail-dd">30-day grid by composite deviation + constituent sparklines.</div></div></div>
+
+  <div class="rail-foot">Bands = rolling 28-day median ± MAD (robust). Anomaly = |z| ≥ 2. Sample data is synthetic, for design only.</div>
+</aside>
+
+<!-- ============ PHONE ============ -->
+<div class="device">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="statusbar">
+      <span class="tnum">9:41</span>
+      <span class="icons">
+        <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="6" width="3" height="5" rx="1" fill="currentColor"/><rect x="4.5" y="4" width="3" height="7" rx="1" fill="currentColor"/><rect x="9" y="2" width="3" height="9" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg>
+        <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><path d="M8 2.2C10 2.2 11.8 3 13.1 4.3L8 9.5 2.9 4.3C4.2 3 6 2.2 8 2.2Z" fill="currentColor" opacity=".4"/><path d="M8 5.2C8.9 5.2 9.7 5.6 10.3 6.2L8 9.5 5.7 6.2C6.3 5.6 7.1 5.2 8 5.2Z" fill="currentColor"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="0.5" width="21" height="11" rx="3" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="16.5" height="8" rx="1.5" fill="currentColor"/><rect x="23" y="3.5" width="1.6" height="5" rx="1" fill="currentColor" opacity=".5"/></svg>
+      </span>
+    </div>
+
+    <div class="appbar" id="appbar"></div>
+
+    <div class="body" id="body">
+      <div class="view" id="v-home"></div>
+      <div class="view" id="v-cat"></div>
+      <div class="view" id="v-metric"></div>
+    </div>
+
+    <div class="tabbar" id="tabs"></div>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+  <pattern id="hatchPat" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="6" height="6" fill="rgba(255,255,255,.02)"/>
+    <line x1="0" y1="0" x2="0" y2="6" stroke="rgba(255,255,255,.13)" stroke-width="1.4"/>
+  </pattern>
+</defs></svg>
+
+<script>
+/* =================================================================
+   DATA MODEL
+   ================================================================= */
+const N = 180, WIN = 28;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+
+const META = [
+  // Cardiovascular
+  {key:'hrv',  name:'HRV',          unit:'ms',     base:64,   sd:8,    better:'high', dec:0},
+  {key:'rhr',  name:'Resting HR',   unit:'bpm',    base:54,   sd:3,    better:'low',  dec:0},
+  {key:'resp', name:'Respiratory',  unit:'br/min', base:14.6, sd:0.8,  better:'low',  dec:1},
+  {key:'spo2', name:'SpO₂',         unit:'%',      base:96.6, sd:1.0,  better:'high', dec:0},
+  // Sleep architecture
+  {key:'tst',  name:'Total Sleep',  unit:'h',      base:7.4,  sd:0.7,  better:'high', dec:1},
+  {key:'eff',  name:'Efficiency',   unit:'%',      base:89,   sd:3.5,  better:'high', dec:0},
+  {key:'deep', name:'Deep Sleep',   unit:'min',    base:74,   sd:14,   better:'high', dec:0},
+  {key:'rem',  name:'REM Sleep',    unit:'min',    base:96,   sd:18,   better:'high', dec:0},
+  {key:'reg',  name:'Regularity',   unit:'SRI',    base:82,   sd:6,    better:'high', dec:0},
+  // Activity & energy
+  {key:'steps',name:'Steps',        unit:'',       base:8600, sd:2400, better:'high', dec:0},
+  {key:'act',  name:'Active Min',   unit:'min',    base:42,   sd:16,   better:'high', dec:0},
+  {key:'vo2',  name:'VO₂max',       unit:'',       base:47,   sd:1.4,  better:'high', dec:1},
+  {key:'strain',name:'Strain',      unit:'',       base:11.5, sd:3,    better:'mid',  dec:1},
+  {key:'cals', name:'Active kcal',  unit:'kcal',   base:520,  sd:170,  better:'high', dec:0},
+  // Body & metabolic
+  {key:'wt',   name:'Weight',       unit:'kg',     base:78.5, sd:0.9,  better:'mid',  dec:1},
+  {key:'glu',  name:'Glucose',      unit:'mg/dL',  base:92,   sd:9,    better:'mid',  dec:0},
+  {key:'temp', name:'Skin Temp',    unit:'°C',     base:0,    sd:0.22, better:'mid',  dec:2, signed:true},
+  {key:'bf',   name:'Body Fat',     unit:'%',      base:18.5, sd:0.6,  better:'mid',  dec:1},
+  // Recovery / readiness
+  {key:'ready',name:'Readiness',    unit:'',       base:72,   sd:9,    better:'high', dec:0},
+];
+const M = {}; META.forEach((m,i)=>{m.dec=m.dec??0; m.idx=i; M[m.key]=m;});
+
+function gen(m, seed){
+  const rng = mulberry32(seed);
+  const gauss=()=>{let u=0,v=0;while(!u)u=rng();while(!v)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};
+  const slope=(rng()-0.42)*m.sd*0.010;
+  const phase=rng()*6.28;
+  const series=[]; let drift=0;
+  for(let i=0;i<N;i++){
+    drift+=slope;
+    const weekly=Math.sin(i/7*6.283+phase)*m.sd*0.16;
+    series.push(m.base+drift+weekly+gauss()*m.sd*0.66);
+  }
+  // inject a couple of anomaly spikes
+  const ai=N-Math.floor(rng()*40)-5; series[ai]+= (rng()>0.5?1:-1)*m.sd*2.6;
+  // coverage map — mostly present, a recent gap block
+  const cov=[]; for(let i=0;i<N;i++) cov.push(rng()>0.07);
+  const gapStart=N-18+Math.floor(rng()*5); for(let i=0;i<3;i++) cov[gapStart+i]=false;
+  return {series, cov};
+}
+META.forEach((m,i)=>{const g=gen(m,1000+i*97); m.series=g.series; m.cov=g.cov; m.today=g.series[N-1];});
+
+/* ---- robust rolling baseline (28-day median ± MAD) + EWMA ---- */
+function buildStats(m){
+  const med=[],sig=[],ew=[]; let prev=m.series[0]; const alpha=0.18;
+  for(let i=0;i<N;i++){
+    const arr=[];
+    for(let j=Math.max(0,i-WIN+1);j<=i;j++){ if(m.cov[j]) arr.push(m.series[j]); }
+    if(arr.length<4){ med[i]=m.base; sig[i]=m.sd; }
+    else{
+      arr.sort((a,b)=>a-b);
+      const md=arr[arr.length>>1];
+      const dev=arr.map(v=>Math.abs(v-md)).sort((a,b)=>a-b);
+      const mad=dev[dev.length>>1];
+      med[i]=md; sig[i]=Math.max(m.sd*0.4, 1.4826*mad || m.sd);
+    }
+    const v=m.cov[i]?m.series[i]:prev; prev=i===0?v:alpha*v+(1-alpha)*prev; ew[i]=prev;
+  }
+  m.med=med; m.sig=sig; m.ewma=ew;
+  // goodness z per day (directional, robust)
+  m.gz=[]; m.zr=[];
+  for(let i=0;i<N;i++){
+    const zz=(m.series[i]-med[i])/sig[i];
+    m.zr[i]=zz;
+    m.gz[i]= m.better==='high'?zz : m.better==='low'?-zz : -Math.abs(zz);
+  }
+}
+META.forEach(buildStats);
+
+/* =================================================================
+   CATEGORIES
+   ================================================================= */
+const CATS = [
+  {key:'cardio',  name:'Cardiovascular', short:'Heart',  col:'#ff7a8a',
+   metrics:['hrv','rhr','resp','spo2'],
+   ico:'<path d="M12 20s-7-4.6-9.3-9C1 7.7 3 4 6.4 4 8.7 4 10 5.4 12 7.7 14 5.4 15.3 4 17.6 4 21 4 23 7.7 21.3 11 19 15.4 12 20 12 20Z"/>'},
+  {key:'sleep',   name:'Sleep Architecture', short:'Sleep', col:'#8f9bff',
+   metrics:['tst','eff','deep','rem','reg'],
+   ico:'<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/>'},
+  {key:'activity',name:'Activity & Energy', short:'Move', col:'#3ad6a0',
+   metrics:['steps','act','vo2','strain','cals'],
+   ico:'<path d="M13 3l-2 7h5l-7 11 2-8H6z" stroke-linejoin="round"/>'},
+  {key:'body',    name:'Body & Metabolic', short:'Body', col:'#edb14a',
+   metrics:['wt','glu','temp','bf'],
+   ico:'<circle cx="12" cy="6" r="3"/><path d="M6 21v-2a6 6 0 0 1 12 0v2"/>'},
+  {key:'recovery',name:'Recovery & Readiness', short:'Recover', col:'#2ee6c9',
+   metrics:['ready','hrv','rhr','temp','tst'],
+   ico:'<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke-linejoin="round"/>'},
+];
+const CAT = {}; CATS.forEach(c=>{
+  CAT[c.key]=c;
+  c.comp=[];
+  for(let i=0;i<N;i++){
+    let s=0,n=0; c.metrics.forEach(k=>{const m=M[k]; if(m.cov[i]){s+=m.gz[i];n++;}});
+    c.comp[i]= n? s/n : null;
+  }
+  c.todayIdx = (()=>{for(let i=N-1;i>=0;i--) if(c.comp[i]!=null) return i; return N-1;})();
+  c.today = c.comp[c.todayIdx];
+});
+
+/* =================================================================
+   HELPERS
+   ================================================================= */
+const C={good:'#3ad6a0',nominal:'#49c6d8',warn:'#edb14a',bad:'#f0606e',accent:'#2ee6c9',violet:'#8f9bff',txt2:'#94a3b4',txt3:'#5d6b7c',line2:'rgba(255,255,255,.12)'};
+function gColorZ(s){ if(s>=0.5)return C.good; if(s>=-0.5)return C.nominal; if(s>=-1.3)return C.warn; return C.bad; }
+function gLabelZ(s){ if(s>=0.5)return 'Above baseline'; if(s>=-0.5)return 'Within baseline'; if(s>=-1.3)return 'Below baseline'; return 'Well below baseline'; }
+function gColor(m,i){return gColorZ(m.gz[i]);}
+function fmt(m,v){ if(m.key==='steps')return Math.round(v).toLocaleString(); const s=v.toFixed(m.dec); return (m.signed&&v>0?'+':'')+s; }
+function sig1(z){return (z>=0?'+':'')+z.toFixed(1)+'σ';}
+function anomCount(m,from){let c=0;for(let i=from;i<N;i++) if(m.cov[i]&&Math.abs(m.zr[i])>=2)c++;return c;}
+function coverage(m,from){let c=0,t=0;for(let i=from;i<N;i++){t++;if(m.cov[i])c++;}return Math.round(100*c/t);}
+function mean(a){return a.reduce((x,y)=>x+y,0)/a.length;}
+function windowMean(m,days){const a=[];for(let i=N-days;i<N;i++)if(m.cov[i])a.push(m.series[i]);return a.length?mean(a):m.base;}
+function W(el){return Math.max(280, el.clientWidth);}
+function clearEl(id){const e=document.getElementById(id);if(e)e.innerHTML='';return e;}
+
+/* =================================================================
+   ROUTER
+   ================================================================= */
+const state = { level:'home', cat:'cardio', metric:'hrv', style:'ribbon', win:'month' };
+const VIEWMAP = {home:'v-home', cat:'v-cat', metric:'v-metric'};
+
+function go(level, opts={}){
+  Object.assign(state, opts); state.level=level;
+  Object.values(VIEWMAP).forEach(id=>document.getElementById(id).classList.remove('on'));
+  document.getElementById(VIEWMAP[level]).classList.add('on');
+  document.getElementById('body').scrollTop=0;
+  renderAppbar();
+  if(level==='home') renderHome();
+  if(level==='cat') renderCategory();
+  if(level==='metric') renderMetric();
+  renderTabs();
+}
+
+/* ---------- appbar ---------- */
+function renderAppbar(){
+  const ab=document.getElementById('appbar');
+  if(state.level==='home'){
+    ab.innerHTML=`<div><div class="hello">Friday, 19 Jun</div><div class="title">Baseline</div></div>
+      <div class="spacer"></div><div class="avatar"><div>MQ</div></div>`;
+  } else if(state.level==='cat'){
+    const c=CAT[state.cat];
+    ab.innerHTML=`<div class="backbtn" onclick="go('home')"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="hello">Category · 28-day baseline</div><div class="title">${c.name}</div></div>`;
+  } else {
+    const m=M[state.metric], c=CAT[state.cat];
+    ab.innerHTML=`<div class="backbtn" onclick="go('cat')"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="hello">${c.name}</div><div class="title">${m.name}</div></div>`;
+  }
+}
+
+/* ---------- bottom tabs ---------- */
+function renderTabs(){
+  const homeIco='<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z" stroke-linejoin="round"/>';
+  const tabs=[{key:'__home',name:'Home',ico:homeIco}].concat(CATS.map(c=>({key:c.key,name:c.short,ico:c.ico})));
+  const cur = state.level==='home'?'__home':state.cat;
+  document.getElementById('tabs').innerHTML=tabs.map(t=>{
+    const on = t.key===cur && (t.key==='__home'?state.level==='home':true);
+    const act = t.key==='__home'?`go('home')`:`go('cat',{cat:'${t.key}',metric:'${CAT[t.key].metrics[0]}'})`;
+    return `<button class="tab ${on?'on':''}" onclick="${act}"><svg viewBox="0 0 24 24" stroke="currentColor">${t.ico}</svg><span>${t.name}</span></button>`;
+  }).join('');
+}
+
+/* =================================================================
+   L1 — HOME
+   ================================================================= */
+function renderHome(){
+  const root=clearEl('v-home');
+  // body composite = mean of cat composites today
+  const bodyZ = mean(CATS.map(c=>c.today));
+  const bodyScore = Math.round(50 + bodyZ*16);
+  const flagsTotal = META.filter(m=>m.cov[N-1]&&Math.abs(m.zr[N-1])>=2).length;
+
+  root.innerHTML = `
+    <div class="bodyscore">
+      <div class="ring" id="bodyring"></div>
+      <div class="meta">
+        <div class="lbl">Whole-body baseline</div>
+        <div class="big">${gLabelZ(bodyZ)}</div>
+        <div class="sub">${flagsTotal? `<b>${flagsTotal} metric${flagsTotal>1?'s':''}</b> flagged today across ${CATS.length} categories.` : 'All metrics within personal baseline.'}</div>
+      </div>
+    </div>
+    <div class="sectlbl">Categories · tap to open</div>
+    <div id="catlist"></div>`;
+
+  drawRing(document.getElementById('bodyring'), bodyScore, gColorZ(bodyZ));
+
+  const list=document.getElementById('catlist');
+  CATS.forEach(c=>{
+    const col=gColorZ(c.today);
+    const flags=c.metrics.filter(k=>{const m=M[k];return m.cov[N-1]&&Math.abs(m.zr[N-1])>=2;}).length;
+    const card=document.createElement('div');
+    card.className='catcard';
+    card.onclick=()=>go('cat',{cat:c.key,metric:c.metrics[0]});
+    card.innerHTML=`
+      <div class="top">
+        <div class="catico" style="background:${c.col}1f"><svg viewBox="0 0 24 24" stroke="${c.col}">${c.ico}</svg></div>
+        <div class="nm">${c.name}<span class="cnt">${c.metrics.length} metrics</span></div>
+        <div class="statepill" style="background:${col}22;color:${col}">${gLabelZ(c.today).replace(' baseline','')}</div>
+      </div>
+      <div class="spark" id="spark-${c.key}"></div>
+      <div class="flagrow">
+        <span class="flagdot" style="background:${col}"></span>
+        ${flags? `<b style="color:var(--txt)">${flags}</b>&nbsp;deviation${flags>1?'s':''} flagged · last 7&nbsp;days` : 'No active deviations · last 7 days'}
+      </div>
+      <div class="arrow">›</div>`;
+    list.appendChild(card);
+    drawSpark(document.getElementById('spark-'+c.key), c);
+  });
+}
+
+function drawRing(host, score, col){
+  const w=74,h=74,r=30,cx=w/2,cy=h/2,circ=2*Math.PI*r;
+  const pct=Math.max(0,Math.min(1,score/100));
+  const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+  svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',r).attr('fill','none').attr('stroke','rgba(255,255,255,.08)').attr('stroke-width',7);
+  svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',r).attr('fill','none').attr('stroke',col).attr('stroke-width',7)
+     .attr('stroke-linecap','round').attr('stroke-dasharray',`${circ*pct} ${circ}`).attr('transform',`rotate(-90 ${cx} ${cy})`);
+  d3.select(host).append('div').attr('class','num tnum').text(score);
+}
+
+function drawSpark(host, c){
+  const days=7, w=W(host), h=38;
+  const data=[]; for(let i=N-days;i<N;i++) data.push({i:i-(N-days), v:c.comp[i]});
+  const x=d3.scaleLinear().domain([0,days-1]).range([2,w-2]);
+  const y=d3.scaleLinear().domain([-2.4,2.4]).range([h-3,3]);
+  const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+  // band ±1
+  svg.append('rect').attr('x',0).attr('y',y(1)).attr('width',w).attr('height',y(-1)-y(1)).attr('fill',c.col).attr('opacity',.07);
+  svg.append('line').attr('x1',0).attr('x2',w).attr('y1',y(0)).attr('y2',y(0)).attr('stroke','rgba(255,255,255,.12)').attr('stroke-dasharray','2 3');
+  const valid=data.filter(d=>d.v!=null);
+  const line=d3.line().defined(d=>d.v!=null).x(d=>x(d.i)).y(d=>y(d.v)).curve(d3.curveMonotoneX);
+  svg.append('path').datum(data).attr('fill','none').attr('stroke',c.col).attr('stroke-width',2).attr('opacity',.85).attr('d',line);
+  const last=valid[valid.length-1];
+  if(last) svg.append('circle').attr('cx',x(last.i)).attr('cy',y(last.v)).attr('r',3.6).attr('fill',gColorZ(last.v)).attr('stroke','#0a0e15').attr('stroke-width',1.5);
+}
+
+/* =================================================================
+   L2 — CATEGORY SUMMARY
+   ================================================================= */
+const STYLES=[{k:'ribbon',n:'Ribbon'},{k:'matrix',n:'Matrix'},{k:'stream',n:'Stream'},{k:'polar',n:'Polar'},{k:'calendar',n:'Calendar'}];
+const STYLE_SUB={ribbon:'Composite z-line on ±1σ band · constituent ribbons',matrix:'One baseline-band lane per metric',stream:'Stacked deviation contribution over 30 days',polar:'Today vs baseline ring · outward = better',calendar:'30-day deviation grid + sparklines'};
+
+function renderCategory(){
+  const c=CAT[state.cat];
+  const root=clearEl('v-cat');
+  const col=gColorZ(c.today);
+  const flags=c.metrics.map(k=>M[k]).filter(m=>m.cov[N-1]&&Math.abs(m.zr[N-1])>=2);
+
+  root.innerHTML=`
+    <div class="chips" id="stylechips">
+      ${STYLES.map(s=>`<button class="chip ${s.k===state.style?'on':''}" data-k="${s.k}">${s.n}</button>`).join('')}
+    </div>
+    <div class="compcard">
+      <div class="row">
+        <div>
+          <div class="lbl">Composite deviation</div>
+          <div class="val" style="color:${col}">${sig1(c.today)}</div>
+          <div class="dev" style="color:${col}">${gLabelZ(c.today)}</div>
+        </div>
+        <div class="rt">
+          <div class="k">Acute : Chronic</div>
+          <div class="v tnum">${acuteChronic(c)}</div>
+          <div class="k" style="margin-top:9px">Open flags</div>
+          <div class="v tnum" style="color:${flags.length?C.warn:C.good}">${flags.length}</div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-head"><div class="t">${STYLES.find(s=>s.k===state.style).n} summary</div><div class="s">${STYLE_SUB[state.style]}</div></div>
+      <div id="catchart"></div>
+      <div class="legend" id="catlegend"></div>
+    </div>
+    ${flags.length? `<div class="flags-card">
+      <div class="h">⚑ Deviation flags · today</div>
+      ${flags.map(m=>`<div class="flagitem"><span class="flagdot" style="background:${gColor(m,N-1)}"></span><b>${m.name}</b> ${sig1(m.zr[N-1])} · ${gLabelZ(m.gz[N-1])}</div>`).join('')}
+    </div>`:''}
+    <div class="sectlbl">Metrics · tap for detail</div>
+    <div id="catmetrics"></div>`;
+
+  root.querySelectorAll('#stylechips .chip').forEach(b=>b.onclick=()=>{state.style=b.dataset.k;renderCategory();});
+
+  drawCatChart(document.getElementById('catchart'), c);
+
+  // metric rows
+  const ml=document.getElementById('catmetrics');
+  c.metrics.forEach(k=>{
+    const m=M[k]; const r=document.createElement('div'); r.className='metricrow';
+    r.onclick=()=>go('metric',{metric:k});
+    r.innerHTML=`<span class="dot" style="background:${gColor(m,N-1)}"></span>
+      <div class="nm">${m.name}<small>baseline ${fmt(m,m.med[N-1])}${m.unit?' '+m.unit:''} · ${coverage(m,N-30)}% covered</small></div>
+      <div class="vv">${fmt(m,m.today)}<small style="color:${gColor(m,N-1)}">${sig1(m.zr[N-1])}</small></div>`;
+    ml.appendChild(r);
+  });
+}
+
+function acuteChronic(c){
+  // ratio of 7-day vs 28-day composite magnitude proxy (HRV/RHR style load)
+  const a=[],b=[];
+  for(let i=N-7;i<N;i++) if(c.comp[i]!=null) a.push(c.comp[i]);
+  for(let i=N-28;i<N;i++) if(c.comp[i]!=null) b.push(c.comp[i]);
+  const am=a.length?mean(a):0, bm=b.length?mean(b):0;
+  const r=(1+am*0.18)/(1+bm*0.18);
+  return r.toFixed(2);
+}
+
+/* ---- shared chart dispatcher ---- */
+function drawCatChart(host, c){
+  host.innerHTML='';
+  const leg=document.getElementById('catlegend'); if(leg)leg.innerHTML='';
+  ({ribbon:drawRibbon,matrix:drawMatrix,stream:drawStream,polar:drawPolar,calendar:drawCalendar})[state.style](host,c);
+}
+function metricColors(c){const sc=d3.scaleSequential(d3.interpolateCool).domain([0,c.metrics.length-1]);
+  return c.metrics.map((k,i)=>i/(c.metrics.length-1||1));}
+function legendHtml(c){
+  const leg=document.getElementById('catlegend');
+  leg.innerHTML=c.metrics.map((k,i)=>{const m=M[k];const col=mcol(c,i);
+    return `<div class="lg"><span class="sw" style="background:${col}"></span>${m.name}</div>`;}).join('');
+}
+function mcol(c,i){ // distinct hue per metric, tinted toward category color
+  const h=d3.hsl(c.col); const base=h.h; const step=42;
+  return d3.hsl((base + (i-1)*step + 360)%360, 0.55, 0.62)+'';
+}
+
+const RANGE=30; // L2 always 30-day
+
+/* ===== STYLE A — Composite Ribbon ===== */
+function drawRibbon(host, c){
+  const w=W(host), h=224, mg={t:12,r:12,b:20,l:30};
+  const iw=w-mg.l-mg.r, ih=h-mg.t-mg.b;
+  const start=N-RANGE;
+  const x=d3.scaleLinear().domain([0,RANGE-1]).range([0,iw]);
+  const y=d3.scaleLinear().domain([-3,3]).range([ih,0]);
+  const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+  const g=svg.append('g').attr('transform',`translate(${mg.l},${mg.t})`);
+
+  // baseline band ±1σ
+  g.append('rect').attr('x',0).attr('y',y(1)).attr('width',iw).attr('height',y(-1)-y(1)).attr('fill',c.col).attr('opacity',.12).attr('rx',4);
+  // ±2 guide
+  [2,-2].forEach(v=>g.append('line').attr('x1',0).attr('x2',iw).attr('y1',y(v)).attr('y2',y(v)).attr('stroke','rgba(255,255,255,.06)').attr('stroke-dasharray','3 4'));
+  g.append('line').attr('x1',0).attr('x2',iw).attr('y1',y(0)).attr('y2',y(0)).attr('stroke','rgba(255,255,255,.18)');
+  // y labels
+  [['+2σ',2],['baseline',0],['−2σ',-2]].forEach(([t,v])=>g.append('text').attr('x',-6).attr('y',y(v)+3).attr('text-anchor','end').attr('font-size',8.5).attr('fill',C.txt3).text(t));
+
+  // gaps (where composite null) — hatched
+  for(let i=0;i<RANGE;i++){ if(c.comp[start+i]==null){
+    const x0=i>0?(x(i-1)+x(i))/2:x(i)-iw/RANGE/2, x1=i<RANGE-1?(x(i)+x(i+1))/2:x(i)+iw/RANGE/2;
+    g.append('rect').attr('x',x0).attr('y',0).attr('width',Math.max(2,x1-x0)).attr('height',ih).attr('class','hatch');
+  }}
+
+  // constituent ribbons (faint)
+  c.metrics.forEach((k,mi)=>{const m=M[k];
+    const data=[]; for(let i=0;i<RANGE;i++) data.push({i, v:m.cov[start+i]?m.gz[start+i]:null});
+    const line=d3.line().defined(d=>d.v!=null).x(d=>x(d.i)).y(d=>y(d.v)).curve(d3.curveMonotoneX);
+    g.append('path').datum(data).attr('fill','none').attr('stroke',mcol(c,mi)).attr('stroke-width',1.4).attr('opacity',.32).attr('d',line);
+  });
+
+  // composite hero
+  const cd=[]; for(let i=0;i<RANGE;i++) cd.push({i, v:c.comp[start+i]});
+  const cline=d3.line().defined(d=>d.v!=null).x(d=>x(d.i)).y(d=>y(d.v)).curve(d3.curveMonotoneX);
+  const carea=d3.area().defined(d=>d.v!=null).x(d=>x(d.i)).y0(y(0)).y1(d=>y(d.v)).curve(d3.curveMonotoneX);
+  const defs=svg.append('defs'); const gr=defs.append('linearGradient').attr('id','cgr').attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',1);
+  gr.append('stop').attr('offset','0%').attr('stop-color',c.col).attr('stop-opacity',.35);
+  gr.append('stop').attr('offset','100%').attr('stop-color',c.col).attr('stop-opacity',0);
+  g.append('path').datum(cd).attr('fill','url(#cgr)').attr('d',carea);
+  g.append('path').datum(cd).attr('fill','none').attr('stroke',c.col).attr('stroke-width',2.6).attr('stroke-linecap','round').attr('d',cline);
+
+  // anomaly pulses (any constituent |z|>=2)
+  for(let i=0;i<RANGE;i++){
+    const anyA=c.metrics.some(k=>{const m=M[k];return m.cov[start+i]&&Math.abs(m.zr[start+i])>=2;});
+    if(anyA && c.comp[start+i]!=null){
+      const cy=y(c.comp[start+i]);
+      g.append('circle').attr('cx',x(i)).attr('cy',cy).attr('r',7).attr('fill','none').attr('stroke',C.warn).attr('stroke-width',1.3).attr('opacity',.5);
+      g.append('circle').attr('cx',x(i)).attr('cy',cy).attr('r',3).attr('fill',C.warn);
+    }
+  }
+  // today marker
+  const ti=c.todayIdx-start;
+  if(ti>=0){const cy=y(c.comp[c.todayIdx]);
+    g.append('circle').attr('cx',x(ti)).attr('cy',cy).attr('r',4.5).attr('fill',gColorZ(c.today)).attr('stroke','#0a0e15').attr('stroke-width',2);}
+  legendHtml(c);
+}
+
+/* ===== STYLE B — Deviation Matrix ===== */
+function drawMatrix(host, c){
+  const w=W(host); const rowH=42, padL=86, padR=44, top=4;
+  const h=top+c.metrics.length*rowH+6;
+  const iw=w-padL-padR;
+  const start=N-RANGE;
+  const x=d3.scaleLinear().domain([0,RANGE-1]).range([0,iw]);
+  const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+
+  c.metrics.forEach((k,mi)=>{
+    const m=M[k]; const cy=top+mi*rowH+rowH/2;
+    const g=svg.append('g').attr('transform',`translate(${padL},${cy})`);
+    const yh=rowH*0.62;
+    const y=d3.scaleLinear().domain([-2.6,2.6]).range([yh/2,-yh/2]);
+    // baseline band
+    g.append('rect').attr('x',0).attr('y',y(1)).attr('width',iw).attr('height',y(-1)-y(1)).attr('fill',mcol(c,mi)).attr('opacity',.16).attr('rx',3);
+    g.append('line').attr('x1',0).attr('x2',iw).attr('y1',y(0)).attr('y2',y(0)).attr('stroke','rgba(255,255,255,.14)');
+    // gaps
+    for(let i=0;i<RANGE;i++) if(!m.cov[start+i]){
+      g.append('rect').attr('x',x(i)-iw/RANGE/2).attr('y',-yh/2).attr('width',iw/RANGE).attr('height',yh).attr('class','hatch');
+    }
+    // value track
+    const data=[]; for(let i=0;i<RANGE;i++) data.push({i,v:m.cov[start+i]?m.zr[start+i]*(m.better==='low'?-1:m.better==='mid'?-Math.sign(m.zr[start+i]):1):null});
+    // use directional gz so up=good
+    const dd=[]; for(let i=0;i<RANGE;i++) dd.push({i,v:m.cov[start+i]?m.gz[start+i]:null});
+    const line=d3.line().defined(d=>d.v!=null).x(d=>x(d.i)).y(d=>y(Math.max(-2.6,Math.min(2.6,d.v)))).curve(d3.curveMonotoneX);
+    g.append('path').datum(dd).attr('fill','none').attr('stroke',mcol(c,mi)).attr('stroke-width',1.8).attr('opacity',.9).attr('d',line);
+    // anomalies
+    for(let i=0;i<RANGE;i++) if(m.cov[start+i]&&Math.abs(m.zr[start+i])>=2){
+      g.append('circle').attr('cx',x(i)).attr('cy',y(Math.max(-2.6,Math.min(2.6,m.gz[start+i])))).attr('r',2.6).attr('fill',C.warn);
+    }
+    // today dot
+    g.append('circle').attr('cx',x(RANGE-1)).attr('cy',y(Math.max(-2.6,Math.min(2.6,m.gz[N-1])))).attr('r',4).attr('fill',gColor(m,N-1)).attr('stroke','#0a0e15').attr('stroke-width',1.6);
+    // label
+    svg.append('text').attr('x',padL-10).attr('y',cy-3).attr('text-anchor','end').attr('font-size',11.5).attr('font-weight',650).attr('fill',C.txt2||'#94a3b4').text(m.name);
+    svg.append('text').attr('x',padL-10).attr('y',cy+11).attr('text-anchor','end').attr('font-size',9.5).attr('fill',C.txt3).text(fmt(m,m.med[N-1])+(m.unit?' '+m.unit:''));
+    // today value right
+    svg.append('text').attr('x',w-6).attr('y',cy-1).attr('text-anchor','end').attr('font-size',12).attr('font-weight',750).attr('fill',gColor(m,N-1)).text(sig1(m.zr[N-1]));
+  });
+}
+
+/* ===== STYLE C — Stream ===== */
+function drawStream(host, c){
+  const w=W(host), h=224, mg={t:14,r:12,b:22,l:12};
+  const iw=w-mg.l-mg.r, ih=h-mg.t-mg.b;
+  const start=N-RANGE;
+  const keys=c.metrics;
+  const rows=[];
+  for(let i=0;i<RANGE;i++){const o={i};keys.forEach(k=>{const m=M[k];o[k]=m.cov[start+i]?Math.max(0.05,Math.abs(m.gz[start+i])):0.05;});rows.push(o);}
+  const stack=d3.stack().keys(keys).offset(d3.stackOffsetWiggle).order(d3.stackOrderInsideOut);
+  const series=stack(rows);
+  const x=d3.scaleLinear().domain([0,RANGE-1]).range([0,iw]);
+  const yMin=d3.min(series,s=>d3.min(s,d=>d[0])), yMax=d3.max(series,s=>d3.max(s,d=>d[1]));
+  const y=d3.scaleLinear().domain([yMin,yMax]).range([ih,0]);
+  const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+  const g=svg.append('g').attr('transform',`translate(${mg.l},${mg.t})`);
+  const area=d3.area().x(d=>x(d.data.i)).y0(d=>y(d[0])).y1(d=>y(d[1])).curve(d3.curveBasis);
+  g.selectAll('path').data(series).join('path').attr('d',area)
+    .attr('fill',(d,i)=>mcol(c,i)).attr('opacity',.78)
+    .attr('stroke','rgba(10,14,21,.5)').attr('stroke-width',.6);
+  // anomaly ticks along top
+  for(let i=0;i<RANGE;i++){
+    if(keys.some(k=>{const m=M[k];return m.cov[start+i]&&Math.abs(m.zr[start+i])>=2;}))
+      g.append('line').attr('x1',x(i)).attr('x2',x(i)).attr('y1',0).attr('y2',6).attr('stroke',C.warn).attr('stroke-width',1.6);
+  }
+  g.append('text').attr('x',0).attr('y',ih+15).attr('font-size',9.5).attr('fill',C.txt3).text('30 days ago');
+  g.append('text').attr('x',iw).attr('y',ih+15).attr('text-anchor','end').attr('font-size',9.5).attr('fill',C.txt3).text('today');
+  legendHtml(c);
+}
+
+/* ===== STYLE D — Polar Pulse ===== */
+function drawPolar(host, c){
+  const w=W(host), h=240, cx=w/2, cy=h/2+4, R=Math.min(w,h)/2-30;
+  const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+  const g=svg.append('g').attr('transform',`translate(${cx},${cy})`);
+  const keys=c.metrics, n=keys.length;
+  const rad=z=>{const zz=Math.max(-2.5,Math.min(2.5,z)); return R*(0.18+ (zz+2.5)/5*0.82);};
+  const ang=i=>(-Math.PI/2)+i/n*2*Math.PI;
+  // grid rings at z=-1,0,1
+  [[-1,'rgba(255,255,255,.06)'],[0,'rgba(255,255,255,.16)'],[1,'rgba(255,255,255,.06)']].forEach(([z,col])=>{
+    g.append('circle').attr('r',rad(z)).attr('fill','none').attr('stroke',col).attr('stroke-dasharray',z===0?'none':'2 4');
+  });
+  // baseline band ring (±1) shaded
+  g.append('circle').attr('r',rad(1)).attr('fill',c.col).attr('opacity',.05);
+  // spokes + labels
+  keys.forEach((k,i)=>{const m=M[k]; const a=ang(i);
+    g.append('line').attr('x1',0).attr('y1',0).attr('x2',Math.cos(a)*R).attr('y2',Math.sin(a)*R).attr('stroke','rgba(255,255,255,.06)');
+    const lx=Math.cos(a)*(R+14), ly=Math.sin(a)*(R+14);
+    g.append('text').attr('x',lx).attr('y',ly+3).attr('text-anchor',Math.abs(Math.cos(a))<0.3?'middle':(Math.cos(a)>0?'start':'end')).attr('font-size',10).attr('font-weight',600).attr('fill',C.txt2).text(m.name);
+  });
+  // trail: composite-period polygons for a few past days (faint)
+  [10,5].forEach((back,bi)=>{
+    const pts=keys.map((k,i)=>{const m=M[k];const idx=N-1-back;const a=ang(i);const r=rad(m.cov[idx]?m.gz[idx]:0);return [Math.cos(a)*r,Math.sin(a)*r];});
+    g.append('polygon').attr('points',pts.map(p=>p.join(',')).join(' ')).attr('fill','none').attr('stroke',c.col).attr('opacity',.12+bi*0.06).attr('stroke-width',1);
+  });
+  // today polygon
+  const tpts=keys.map((k,i)=>{const m=M[k];const a=ang(i);const r=rad(m.gz[N-1]);return [Math.cos(a)*r,Math.sin(a)*r];});
+  g.append('polygon').attr('points',tpts.map(p=>p.join(',')).join(' ')).attr('fill',c.col).attr('fill-opacity',.16).attr('stroke',c.col).attr('stroke-width',2).attr('stroke-linejoin','round');
+  keys.forEach((k,i)=>{const m=M[k];const a=ang(i);const r=rad(m.gz[N-1]);
+    g.append('circle').attr('cx',Math.cos(a)*r).attr('cy',Math.sin(a)*r).attr('r',3.4).attr('fill',gColor(m,N-1)).attr('stroke','#0a0e15').attr('stroke-width',1.4);
+  });
+}
+
+/* ===== STYLE E — Calendar Heat + sparks ===== */
+function drawCalendar(host, c){
+  const w=W(host);
+  const cell=Math.min(36,(w-6*5)/7), gap=5;
+  const cols=7, rows=Math.ceil(RANGE/cols);
+  const gridH=rows*(cell+gap);
+  const svg=d3.select(host).append('svg').attr('width',w).attr('height',gridH+8);
+  const start=N-RANGE;
+  const colScale=z=>gColorZ(z);
+  for(let i=0;i<RANGE;i++){
+    const r=Math.floor(i/cols), cc=i%cols;
+    const cx=cc*(cell+gap), cy=r*(cell+gap)+2;
+    const v=c.comp[start+i];
+    const x0=(w-(cols*cell+(cols-1)*gap))/2;
+    const cell_g=svg.append('g').attr('transform',`translate(${x0+cx},${cy})`);
+    if(v==null){
+      cell_g.append('rect').attr('width',cell).attr('height',cell).attr('rx',7).attr('fill','none').attr('stroke','rgba(255,255,255,.12)').attr('stroke-dasharray','3 3');
+    }else{
+      cell_g.append('rect').attr('width',cell).attr('height',cell).attr('rx',7).attr('fill',colScale(v)).attr('opacity',Math.min(.92,0.28+Math.abs(v)*0.3));
+      cell_g.append('text').attr('x',cell/2).attr('y',cell/2+3).attr('text-anchor','middle').attr('font-size',8.5).attr('font-weight',700).attr('fill','rgba(0,0,0,.55)').text(sig1(v).replace('σ',''));
+      const anyA=c.metrics.some(k=>{const m=M[k];return m.cov[start+i]&&Math.abs(m.zr[start+i])>=2;});
+      if(anyA) cell_g.append('rect').attr('width',cell).attr('height',cell).attr('rx',7).attr('fill','none').attr('stroke',C.warn).attr('stroke-width',1.8);
+    }
+  }
+  // constituent sparklines row
+  const sp=d3.select(host).append('div').style('margin-top','10px').style('display','grid').style('gap','3px');
+  c.metrics.forEach((k,mi)=>{const m=M[k];
+    const row=sp.append('div').style('display','flex').style('align-items','center').style('gap','8px');
+    row.append('span').style('font-size','10.5px').style('color','var(--txt3)').style('width','62px').style('flex-shrink','0').text(m.name);
+    const sw=W(host)-78, sh=18;
+    const ssvg=row.append('svg').attr('width',sw).attr('height',sh);
+    const x=d3.scaleLinear().domain([0,RANGE-1]).range([1,sw-1]);
+    const y=d3.scaleLinear().domain([-2.5,2.5]).range([sh-2,2]);
+    ssvg.append('line').attr('x1',0).attr('x2',sw).attr('y1',y(0)).attr('y2',y(0)).attr('stroke','rgba(255,255,255,.08)');
+    const data=[];for(let i=0;i<RANGE;i++)data.push({i,v:m.cov[start+i]?m.gz[start+i]:null});
+    const line=d3.line().defined(d=>d.v!=null).x(d=>x(d.i)).y(d=>y(Math.max(-2.5,Math.min(2.5,d.v)))).curve(d3.curveMonotoneX);
+    ssvg.append('path').datum(data).attr('fill','none').attr('stroke',mcol(c,mi)).attr('stroke-width',1.4).attr('d',line);
+    ssvg.append('circle').attr('cx',x(RANGE-1)).attr('cy',y(Math.max(-2.5,Math.min(2.5,m.gz[N-1])))).attr('r',2.6).attr('fill',gColor(m,N-1));
+  });
+}
+
+/* =================================================================
+   L3 — METRIC DETAIL
+   ================================================================= */
+const WINS=[{k:'week',n:'7-Day'},{k:'weekly',n:'Weekly'},{k:'month',n:'Monthly'}];
+function renderMetric(){
+  const m=M[state.metric];
+  const root=clearEl('v-metric');
+  const col=gColor(m,N-1);
+  const a7=windowMean(m,7), a28=windowMean(m,28);
+  const trend = a7>a28?'▲':a7<a28?'▼':'▬';
+  const trendCol = (m.better==='high'?(a7>a28):(m.better==='low'?(a7<a28):Math.abs(a7-m.base)<Math.abs(a28-m.base)))?C.good:C.warn;
+  const acr=((a7-m.med[N-1])/m.sig[N-1])/(((a28-m.med[N-1])/m.sig[N-1])||1);
+  const anom=anomCount(m,N-30), cov=coverage(m,N-30);
+
+  root.innerHTML=`
+    <div class="hero">
+      <div class="top">
+        <div>
+          <div class="lbl">Today</div>
+          <div class="v" style="color:${col}">${fmt(m,m.today)}<span class="u">${m.unit}</span></div>
+        </div>
+        <div class="badge" style="background:${col}22;color:${col}">${sig1(m.zr[N-1])}</div>
+      </div>
+      <div class="dl">${gLabelZ(m.gz[N-1])} · baseline <b>${fmt(m,m.med[N-1])}${m.unit?' '+m.unit:''}</b> <span style="color:var(--txt3)">(±${(m.sig[N-1]).toFixed(m.dec||1)})</span></div>
+    </div>
+    <div class="chips" id="winchips">
+      ${WINS.map(wd=>`<button class="chip ${wd.k===state.win?'on':''}" data-k="${wd.k}">${wd.n}</button>`).join('')}
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-head"><div class="t">${WINS.find(wd=>wd.k===state.win).n} baseline band</div><div class="s" id="winsub"></div></div>
+      <div id="metricchart"></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">EWMA (recent)</div><div class="v tnum">${fmt(m,m.ewma[N-1])}<small>${m.unit}</small></div></div>
+      <div class="stat"><div class="k">7d vs 28d</div><div class="v tnum" style="color:${trendCol}">${trend} ${fmt(m,a7)}<small>vs ${fmt(m,a28)}</small></div></div>
+      <div class="stat"><div class="k">Acute : Chronic</div><div class="v tnum">${(acr||0).toFixed(2)}</div></div>
+      <div class="stat"><div class="k">Anomalies · 30d</div><div class="v tnum" style="color:${anom?C.warn:C.good}">${anom}</div></div>
+      <div class="stat"><div class="k">Data coverage · 30d</div><div class="v tnum">${cov}<small>%</small></div></div>
+      <div class="stat"><div class="k">% within band · 30d</div><div class="v tnum">${pctInBand(m,30)}<small>%</small></div></div>
+    </div>`;
+
+  root.querySelectorAll('#winchips .chip').forEach(b=>b.onclick=()=>{state.win=b.dataset.k;renderMetric();});
+
+  const host=document.getElementById('metricchart'), sub=document.getElementById('winsub');
+  if(state.win==='week'){sub.textContent='Last 7 days vs band'; drawWeek(host,m);}
+  else if(state.win==='weekly'){sub.textContent='Median + IQR per week'; drawWeekly(host,m);}
+  else {sub.textContent='30-day median ± MAD ribbon'; drawMonth(host,m);}
+}
+function pctInBand(m,days){let c=0,t=0;for(let i=N-days;i<N;i++){if(!m.cov[i])continue;t++;if(Math.abs(m.zr[i])<=1)c++;}return t?Math.round(100*c/t):0;}
+
+function drawMonth(host,m){
+  const w=W(host), h=210, mg={t:12,r:14,b:22,l:36};
+  const iw=w-mg.l-mg.r, ih=h-mg.t-mg.b, R=30, start=N-R;
+  const x=d3.scaleLinear().domain([0,R-1]).range([0,iw]);
+  const lo=Math.min(d3.min(m.series.slice(start)), m.med[N-1]-2.4*m.sig[N-1]);
+  const hi=Math.max(d3.max(m.series.slice(start)), m.med[N-1]+2.4*m.sig[N-1]);
+  const y=d3.scaleLinear().domain([lo,hi]).nice().range([ih,0]);
+  const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+  const g=svg.append('g').attr('transform',`translate(${mg.l},${mg.t})`);
+  // band ribbon (med ± sig per day)
+  const bandData=[];for(let i=0;i<R;i++)bandData.push({i,lo:m.med[start+i]-m.sig[start+i],hi:m.med[start+i]+m.sig[start+i],md:m.med[start+i]});
+  const bandArea=d3.area().x(d=>x(d.i)).y0(d=>y(d.lo)).y1(d=>y(d.hi)).curve(d3.curveMonotoneX);
+  g.append('path').datum(bandData).attr('fill',gColor(m,N-1)).attr('opacity',.13).attr('d',bandArea);
+  g.append('path').datum(bandData).attr('fill','none').attr('stroke','rgba(255,255,255,.22)').attr('stroke-width',1).attr('stroke-dasharray','3 3').attr('d',d3.line().x(d=>x(d.i)).y(d=>y(d.md)).curve(d3.curveMonotoneX));
+  // gaps
+  for(let i=0;i<R;i++) if(!m.cov[start+i]) g.append('rect').attr('x',x(i)-iw/R/2).attr('y',0).attr('width',iw/R).attr('height',ih).attr('class','hatch');
+  // value line
+  const data=[];for(let i=0;i<R;i++)data.push({i,v:m.cov[start+i]?m.series[start+i]:null});
+  const line=d3.line().defined(d=>d.v!=null).x(d=>x(d.i)).y(d=>y(d.v)).curve(d3.curveMonotoneX);
+  g.append('path').datum(data).attr('fill','none').attr('stroke',gColor(m,N-1)).attr('stroke-width',2).attr('d',line);
+  // anomalies
+  for(let i=0;i<R;i++) if(m.cov[start+i]&&Math.abs(m.zr[start+i])>=2)
+    g.append('circle').attr('cx',x(i)).attr('cy',y(m.series[start+i])).attr('r',3.4).attr('fill',C.warn).attr('stroke','#0a0e15').attr('stroke-width',1.2);
+  // today
+  g.append('circle').attr('cx',x(R-1)).attr('cy',y(m.today)).attr('r',4.5).attr('fill',gColor(m,N-1)).attr('stroke','#0a0e15').attr('stroke-width',2);
+  // y axis
+  y.ticks(4).forEach(t=>{g.append('text').attr('x',-7).attr('y',y(t)+3).attr('text-anchor','end').attr('font-size',9).attr('fill',C.txt3).text(m.key==='steps'?Math.round(t/1000)+'k':t.toFixed(m.dec));});
+  g.append('text').attr('x',0).attr('y',ih+15).attr('font-size',9).attr('fill',C.txt3).text('−30d');
+  g.append('text').attr('x',iw).attr('y',ih+15).attr('text-anchor','end').attr('font-size',9).attr('fill',C.txt3).text('today');
+}
+
+function drawWeek(host,m){
+  const w=W(host), h=210, mg={t:14,r:16,b:24,l:36};
+  const iw=w-mg.l-mg.r, ih=h-mg.t-mg.b, R=7, start=N-R;
+  const x=d3.scalePoint().domain(d3.range(R)).range([0,iw]).padding(0.5);
+  const lo=Math.min(d3.min(m.series.slice(start)),m.med[N-1]-2.2*m.sig[N-1]);
+  const hi=Math.max(d3.max(m.series.slice(start)),m.med[N-1]+2.2*m.sig[N-1]);
+  const y=d3.scaleLinear().domain([lo,hi]).nice().range([ih,0]);
+  const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+  const g=svg.append('g').attr('transform',`translate(${mg.l},${mg.t})`);
+  // band band
+  g.append('rect').attr('x',0).attr('y',y(m.med[N-1]+m.sig[N-1])).attr('width',iw).attr('height',y(m.med[N-1]-m.sig[N-1])-y(m.med[N-1]+m.sig[N-1])).attr('fill',gColor(m,N-1)).attr('opacity',.13).attr('rx',4);
+  g.append('line').attr('x1',0).attr('x2',iw).attr('y1',y(m.med[N-1])).attr('y2',y(m.med[N-1])).attr('stroke','rgba(255,255,255,.22)').attr('stroke-dasharray','3 3');
+  g.append('text').attr('x',iw).attr('y',y(m.med[N-1])-4).attr('text-anchor','end').attr('font-size',8.5).attr('fill',C.txt3).text('baseline');
+  const days=['M','T','W','T','F','S','S'];
+  // connector
+  const data=[];for(let i=0;i<R;i++)data.push({i,v:m.cov[start+i]?m.series[start+i]:null});
+  g.append('path').datum(data).attr('fill','none').attr('stroke',gColor(m,N-1)).attr('stroke-width',1.6).attr('opacity',.5)
+    .attr('d',d3.line().defined(d=>d.v!=null).x(d=>x(d.i)).y(d=>y(d.v)).curve(d3.curveMonotoneX));
+  for(let i=0;i<R;i++){
+    const xx=x(i);
+    g.append('text').attr('x',xx).attr('y',ih+16).attr('text-anchor','middle').attr('font-size',10).attr('fill',C.txt3).text(days[(i+ (N-R))%7]||days[i]);
+    if(!m.cov[start+i]){g.append('text').attr('x',xx).attr('y',y((lo+hi)/2)).attr('text-anchor','middle').attr('font-size',9).attr('fill',C.txt3).text('—');continue;}
+    const v=m.series[start+i], anom=Math.abs(m.zr[start+i])>=2;
+    g.append('line').attr('x1',xx).attr('x2',xx).attr('y1',y(m.med[N-1])).attr('y2',y(v)).attr('stroke',gColor(m,start+i)).attr('stroke-width',1).attr('opacity',.4);
+    g.append('circle').attr('cx',xx).attr('cy',y(v)).attr('r',i===R-1?6:4.5).attr('fill',gColor(m,start+i)).attr('stroke',anom?C.warn:'#0a0e15').attr('stroke-width',anom?2:1.4);
+    g.append('text').attr('x',xx).attr('y',y(v)-9).attr('text-anchor','middle').attr('font-size',9).attr('font-weight',700).attr('fill',C.txt2).text(fmt(m,v));
+  }
+}
+
+function drawWeekly(host,m){
+  const w=W(host), h=210, mg={t:14,r:16,b:24,l:36};
+  const iw=w-mg.l-mg.r, ih=h-mg.t-mg.b, WK=6;
+  // build weekly buckets (last WK weeks of 7)
+  const weeks=[];
+  for(let wk=WK-1;wk>=0;wk--){
+    const s=N-(wk+1)*7, e=N-wk*7; const arr=[];
+    for(let i=s;i<e;i++) if(i>=0&&m.cov[i]) arr.push(m.series[i]);
+    if(arr.length){arr.sort((a,b)=>a-b);
+      weeks.push({q1:d3.quantile(arr,.25),md:d3.quantile(arr,.5),q3:d3.quantile(arr,.75),min:arr[0],max:arr[arr.length-1]});
+    } else weeks.push(null);
+  }
+  const all=weeks.filter(Boolean);
+  const lo=Math.min(d3.min(all,d=>d.min),m.med[N-1]-1.5*m.sig[N-1]);
+  const hi=Math.max(d3.max(all,d=>d.max),m.med[N-1]+1.5*m.sig[N-1]);
+  const y=d3.scaleLinear().domain([lo,hi]).nice().range([ih,0]);
+  const x=d3.scaleBand().domain(d3.range(weeks.length)).range([0,iw]).padding(0.38);
+  const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+  const g=svg.append('g').attr('transform',`translate(${mg.l},${mg.t})`);
+  // baseline band
+  g.append('rect').attr('x',0).attr('y',y(m.med[N-1]+m.sig[N-1])).attr('width',iw).attr('height',y(m.med[N-1]-m.sig[N-1])-y(m.med[N-1]+m.sig[N-1])).attr('fill',gColor(m,N-1)).attr('opacity',.1);
+  g.append('line').attr('x1',0).attr('x2',iw).attr('y1',y(m.med[N-1])).attr('y2',y(m.med[N-1])).attr('stroke','rgba(255,255,255,.2)').attr('stroke-dasharray','3 3');
+  weeks.forEach((wd,i)=>{
+    const bx=x(i), bw=x.bandwidth(), cxx=bx+bw/2;
+    g.append('text').attr('x',cxx).attr('y',ih+16).attr('text-anchor','middle').attr('font-size',9.5).attr('fill',C.txt3).text(i===weeks.length-1?'now':'w-'+(weeks.length-1-i));
+    if(!wd){g.append('text').attr('x',cxx).attr('y',y((lo+hi)/2)).attr('text-anchor','middle').attr('font-size',9).attr('fill',C.txt3).text('—');return;}
+    const dz=(wd.md-m.med[N-1])/m.sig[N-1];
+    const col=gColorZ(m.better==='high'?dz:m.better==='low'?-dz:-Math.abs(dz));
+    // whisker
+    g.append('line').attr('x1',cxx).attr('x2',cxx).attr('y1',y(wd.max)).attr('y2',y(wd.min)).attr('stroke',col).attr('opacity',.4).attr('stroke-width',1);
+    // box
+    g.append('rect').attr('x',bx).attr('y',y(wd.q3)).attr('width',bw).attr('height',Math.max(2,y(wd.q1)-y(wd.q3))).attr('rx',3).attr('fill',col).attr('opacity',.28).attr('stroke',col).attr('stroke-width',1);
+    // median
+    g.append('line').attr('x1',bx).attr('x2',bx+bw).attr('y1',y(wd.md)).attr('y2',y(wd.md)).attr('stroke',col).attr('stroke-width',2);
+  });
+  y.ticks(4).forEach(t=>g.append('text').attr('x',-7).attr('y',y(t)+3).attr('text-anchor','end').attr('font-size',9).attr('fill',C.txt3).text(m.key==='steps'?Math.round(t/1000)+'k':t.toFixed(m.dec)));
+}
+
+/* ---- boot ---- */
+go('home');
+window.addEventListener('resize',()=>{ if(state.level==='home')renderHome(); else if(state.level==='cat')renderCategory(); else renderMetric(); });
+</script>
+</body>
+</html>

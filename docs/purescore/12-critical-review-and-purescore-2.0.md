@@ -139,6 +139,7 @@ computed per-pillar and rolled up.
 | **Skew / robustness** | `Sk_i` | per-marker skew; drives transform choice; surfaced when heavy-tailed | descriptor |
 | **Volatility** | `Vo_k` | short-window within-patient variance (damps `Cf_k` and `Tr_k`) | 0–100 |
 | **Modifiability** | `Mo_k` | share of `R_k` from modifiable (lifestyle/med-responsive) vs fixed (genetic/age/irreversible) inputs | 0–100 |
+| **Stress-load** | `St` | autonomic/allostatic load (higher = more loaded): `σ(a·B̄_ALLO + b·z_auto)` — `B̄_ALLO` = normalized allostatic-load reservoir (Doc 04), `z_auto` = trust-weighted personal-baseline deviation of HRV↓ / resting-HR↑ / sleep-disruption. **Read-only; no PureScore weight** (§4.1, D24) | 0–100 + tier |
 
 **Confidence vs sufficiency are distinct:** sufficiency = *is the data present?*; confidence =
 *is present data trustworthy/stable?* A pillar can be sufficient but low-confidence (noisy device)
@@ -150,6 +151,34 @@ or high-quality but insufficient (one pristine lab, everything else imputed).
 
 Critical-cascade headline is unchanged from Doc 03, but now always paired with the **Criticality
 badge** so "40 from one emergency red" reads differently from "40 from diffuse yellows."
+
+### 4.1 Stress-load — a companion dimension, **not** a 13th pillar (D24)
+
+Users intuitively want a "Stress" number, so PureScore 2.0 surfaces **Stress-load** (`St`) prominently
+in the companion vector — but it is **read-only and carries no weight in the score**. It models the
+*physiological* stress users feel day-to-day, blended from two parts:
+
+- **Chronic** — the normalized **ALLO allostatic/stress reservoir** `B̄_ALLO = B_ALLO / B_ALLO^max`
+  (Doc 04 §2/§5), which already integrates PSS/PHQ/GAD, cortisol slope and life events over days–months.
+- **Acute** — a trust-weighted **autonomic deviation** `z_auto`: personal-baseline depression of HRV,
+  resting-HR elevation and sleep disruption, each down-weighted by its wearable tier (D22).
+
+`St = 100·σ(a·B̄_ALLO + b·z_auto)`, always paired with **Confidence** so the noisy, inferential
+autonomic signal is shown honestly, and reported as a tier **low / elevated / high**.
+
+**Why stress is not taken as a pillar:**
+1. **No double-count.** `St` *reads* HRV/resting-HR/cortisol/sleep markers that stay owned by
+   **CV / ENDO / SLP** for scoring, and the **ALLO** reservoir already propagates stress into
+   CV/MET/SLP/MCS/ENDO through the `κ` interference matrix (Doc 04). A weighted Stress pillar on top
+   would count the same allostatic burden twice.
+2. **Trust.** Inferred stress/readiness is **inferential/consumer-tier** — already ruled
+   *informational-only, never a band* (D22). A companion score honours that; a scored pillar would not.
+3. **Taxonomy.** Pillars are organ/functional domains; stress is an *upstream, cross-cutting driver*,
+   best modelled as a reservoir (Doc 04) plus this companion readout.
+
+**What `St` may do:** raise the **Early-warning** ladder (§5) to Watch/Advisory, and re-rank
+stress-reducing actions in the nudge engine (Doc 07). **What it never does:** move the headline
+PureScore, set or clear a band, or trigger a critical.
 
 ## 5. Early-detection layer (cross-pillar visibility)
 
@@ -171,7 +200,7 @@ Doc 09 shrinkage.) This catches "your RHR 52→60, still green" before any band 
 
 **This `z_i` is the engine's feedback term.** The same personal z drives **Stage 2b** of the core
 score (Doc 03 §2b): better-than-baseline nudges PureScore up, worse-than-baseline trends it down —
-continuously, bounded by `κ` and `band_clamp` so it never relaxes a clinical anchor or clears a
+continuously, bounded by `κ_resp` and `band_clamp` so it never relaxes a clinical anchor or clears a
 critical. One signal, three surfaces: it moves **the number**, the **Trajectory** arrow (§5.2), and
 the **Early-warning** ladder (§5.3) — the substrate of the patient feedback loop (Doc 07 §3.4).
 
