@@ -44,6 +44,9 @@
 | D29 | Typed wearable corroboration (question→metric→tolerance) | LOCKED | user | 2026-06-19 |
 | D30 | Close the last P2 audit items: cadence freshness-SLA + HEP/REN symptom items | LOCKED | user | 2026-06-19 |
 | D31 | Wiki navigation: progressive "book" arc, collapsible groups, Connects-to footers | LOCKED | user | 2026-06-19 |
+| D32 | Calculation Explorer (audit tree + map) on a JSON-canonical shared engine | LOCKED | user | 2026-06-20 |
+| D33 | Cohort-matched cold-start: impute missing LAB biomarkers from age×sex×life-stage cohort medians | LOCKED | user | 2026-06-20 |
+| D34 | Full decision-tree explorer: missing/incomplete data, every branch shown, filter-search | LOCKED | user | 2026-06-20 |
 
 ---
 
@@ -589,6 +592,112 @@ prev/next remains the straight-through read).
 **Affects.** `build_wiki.py` (`NAV`, `NAV_BLURB`, `sidebar()`, `_inject_connects()`), `assets/wiki.js` (collapse +
 search), `assets/wiki.css` (`.navgrp`/`.grp-*`/`.connects`); all 70 generated pages. See the `[[wiki-nav-book-arc]]`
 memory.
+
+## D32 — Calculation Explorer (audit tree + map) on a JSON-canonical shared engine *(user)*
+**Question.** The full PureScore calculation lived only inside the `purescore-uber-map.html` JavaScript (its own
+`DEF`/`TH`/`PILL`/`CRIT`/`W` scorer), and other pages computed their own values. How should we visualise the *entire*
+calculation across the wiki, let users drill from any output down to its leaf inputs, and stop the scoring math from
+drifting between pages?
+**Options.**
+- A ★ **Computation/audit tree (primary) + flow map (secondary), on one shared JSON-canonical engine.** A new
+  `data/calc-graph.json` (thin: topology, formulas, gates; references catalog ids for weights/constants) is resolved at
+  build time into `assets/calc-data.js` and consumed by a single `assets/engine.js`; the page becomes a `[Tree | Map]`
+  explorer with 5 selectable roots, editable leaf sliders (live recompute), and a right sliding drawer (formula,
+  constants, gates, inputs, live value, source JSON, deep-links). A `build_wiki.py` guard fails the build on drift.
+- B — Keep the spatial uber-map only, hand-fix the weight desync (no structural fix; islands remain).
+- C — Author a standalone diagram without unifying the engine (prettier, but the "all pages, one JSON" goal unmet).
+**Decision.** **A.** **Rationale.** Makes the calculation *auditable* (trace every value to its inputs) and *single-source*:
+`data/*.json` is now canonical for the engine, Python and JS both read it, and the build aborts if any page reintroduces a
+hardcoded scorer or the weights stop summing to 1. Going canonical also corrected three latent uber-map desyncs —
+`CV` weight `0.14→0.13` (matches `pillar-weights.json`), reservoir cap `ρ 0.15→0.20` (`constants.json` `ρ_k`), and the
+previously-missing `PURE_CRIT_CAP=40` cap when any pillar is critical. **Design notes.** (1) *Roots* — PureScore (full
+depth: R_total → pillar → reservoir coupling + marker → 6-stage marker pipeline → raw input), Companion vector, Nudge
+utility `U_a`, Adherence inflow, Actuarial premium. (2) *Editable leaves* — sliders perturb any marker; the whole tree
+recomputes through the shared engine. (3) *file:// safe* — no runtime `fetch`; build inlines JSON into `calc-data.js`.
+(4) *Feedback-loop demo* keeps its distinct Stage-2b temporal model (personal-baseline `κ·tanh`, day-advance drift) but
+now sources its pillar weights / γ / δ from the same canonical JSON, so it can't drift either. **Guardrails.** All numbers
+illustrative — re-verify before production (README §5.6); consumer/inferential channels still can't drive a red (D22);
+`PURE_CRIT_CAP` makes any critical pillar cap the score at 40. **Affects.** NEW `data/calc-graph.json`,
+`assets/engine.js`, `assets/calc-explorer.js`, generated `assets/calc-data.js`; `wiki_content.py`
+(`resolve_calc_data()`/`write_calc_data()`, rebuilt `build_purescore_uber()`); `build_wiki.py` (`write_calc_data()` call +
+`_engine_guard()` hard drift-check); `feedback-loop.body.html` (canonical-sourced constants). The Male/Female and
+dataflow pages have no scorer island (catalog tables / static DFD). *Follow-up:* flip the remaining `wiki_content`
+catalogs (`PILLARS`, `MODIFIERS`, …) to load from their extracted JSON so the catalog axis is canonical too.
+
+## D33 — Cohort-matched cold-start: impute missing LAB biomarkers from cohort medians *(user)*
+**Question.** A patient with no EHR/EMR (Patient360) lab data still needs a score. How do we score them in the
+absence of measured labs without faking certainty or hiding danger?
+**Options.**
+- A ★ **Cohort-median imputation for LAB markers only, with honest accuracy/completeness signalling.** When a
+  *lab* biomarker has no measured value, impute the matched-cohort median (a neutral prior) and mark
+  `source = cohort_imputed`; wearables and PRO/questionnaire inputs are never imputed (used when present, absent
+  otherwise). Cohort match key = **age-band × sex-at-birth × pregnancy/life-stage only** (general-population
+  reference; no ethnicity/race, lifestyle, or disease/condition strata in the match). Imputed labs contribute at
+  reduced confidence weight (`q_impute`), drop pillar **coverage**, **can never display clean-green**
+  (`cov_green_floor`) and **can never fire the critical cascade or escalation** — an unmeasured *critical* lab
+  instead raises a high-priority "measure this" action. Surfaced via a NEW companion dimension
+  **Provenance / Source-grade** (measured-vs-imputed lab mix) plus lowered **Confidence** and **Representativeness**
+  (`Rp_impute`); the headline reads **Provisional** while any scored lab is imputed. Imputed/provisional scores are
+  **excluded from the actuarial layer** (Doc 10). A real lab arriving replaces the imputed value per-marker and
+  confidence jumps.
+- B — Impute *all* missing clinical inputs (labs + vitals + DEXA + wearables) from cohort medians. *Rejected:* over-
+  reaches the "labs only" intent and silently fabricates wearable/PRO signals.
+- C — Refuse to score until labs exist (INSUFFICIENT only). *Rejected:* abandons the cold-start patient; the engine
+  already supports neutral-prior imputation (Doc 01 §4.3) honestly.
+**Decision.** **A.** **Rationale.** Extends the existing per-marker median fallback (Doc 01 §4.3) into a formal,
+auditable cold-start path that is *safe both ways* — never optimistic (coverage cap + no clean-green), never alarmist
+(imputed labs cannot escalate) — and *honest* (the score carries its own provenance/uncertainty rather than masquerading
+as measured). Keeping the match key to age × sex × life-stage avoids protected-class-proxy fairness risk (Doc 11 §6.1)
+and yields large, stable cells (simpler validation, Doc 09). **Design notes.** (1) *Scope* — imputable = the 20
+blood/urine labs only (`source:"lab"`, `imputable:true` in `calc-graph.json`); SBP/waist/body-fat/DEXA/OSA
+(`clinical`), wearables (`wearable`) and PHQ-9/GAD-7/ISI (`pro`) keep today's behaviour. (2) *Constants* —
+`q_impute=0.30` (imputed-lab confidence), `Rp_impute=0.70` (age×sex×stage match representativeness),
+`cov_green_floor=0.60` (coverage below which a pillar can't show clean-green); all illustrative, tunable, versioned.
+(3) *Vectors* — "accuracy" = Confidence + Representativeness (both lowered) + the new Provenance axis; "completeness" =
+Data-sufficiency + Coverage (both drop). (4) *Lifecycle* — acute mode and active life-stage plans (Doc 06) suppress/
+override imputation; the matched cohort must respect sex-at-birth and pregnancy/menopause stage (Doc 05); intersex →
+individual-baseline, not cohort. **Guardrails.** All numbers illustrative — re-verify (README §5.6). Imputed labs:
+never green-clean, never critical/escalating, never priced (Doc 10), always flagged Provisional with a "measure this"
+nudge. **Affects.** `data/calc-graph.json` (marker `source`/`imputable`, impute pipeline stage, Provenance companion
+node, cold-start demo profiles), `data/constants.json` (`q_impute`/`Rp_impute`/`cov_green_floor`), `wiki_content.py`
+(`resolve_calc_data()` + the affected mermaids 01/09/12/14 + `build_purescore_dataflow`), `assets/engine.js`
+(measured-vs-imputed scoring, Provenance/coverage, imputed-critical block), `assets/calc-explorer.js` (drawer +
+pipeline label); Docs 01/03/12 (engine truth) and 05/06/09/10/11/14/16/17/18 + eligibility-gating + admin
+(propagation). Staged: Stage 1 = data SoT + this entry; Stage 2 = engine + diagrams; Stage 3 = doc/admin propagation.
+
+## D34 — Full decision-tree explorer: missing/incomplete data, every branch shown, filter-search *(user)*
+**Question.** The D32 Calculation Explorer only expanded the path actually taken for the selected profile, hid the
+missing-data logic (every marker had a default), and had no way to jump to a step. How should it show the *complete*
+calculation — including branches that don't apply — and let users probe incomplete data?
+**Options.**
+- A ★ **Explicit decision tree + interactive data-state + filter-search.** (1) Every conditional renders as a ◇ gate
+  node with **all** branches; the branch active for the current profile is highlighted, the not-taken branches are
+  shown dimmed with their condition (so the full path is visible *regardless of applicability*). (2) Applicability
+  gates (sex · pregnancy · age-band · life-stage) sit atop **all** roots; per-marker pipeline conditionals
+  (confidence/fallback · cohort blend · personalization on/off · critical cascade) sit under each marker. (3) Each leaf
+  marker gets a **data-state control** (present → stale → missing) and there are **stream presets** (labs · wearable ·
+  PRO · clinical) that flip a whole channel; the engine recomputes confidence, fires the D33 fallback branch, and shows
+  **coverage + Confidence** live. (4) A **filter-search** box narrows the tree to matching nodes + their ancestors.
+- B — Annotate a single linear path with the conditions inline (no separate branch nodes). *Rejected:* not a real
+  decision tree; doesn't show not-taken paths.
+- C — Static missing-data branch only (no interactivity). *Rejected:* can't explore how gaps move the score.
+**Decision.** **A.** **Rationale.** Directly answers "show the full calculation formula and full decision tree path
+regardless of applicability" and makes the D33 missing-data model *visible and testable* — you can knock out a channel
+and watch coverage/Confidence fall and the imputation/drop branches light up, exactly the honest cold-start behaviour
+D33 specifies (imputable→cohort median at `q_impute`, non-imputable→drop + Confidence↓, only fresh data hard-fires the
+critical cascade). Stays on the D32 JSON-canonical spine: branches, gates and engine params are **data** in
+`calc-graph.json`, evaluated by the shared engine. **Design notes.** (1) *Data* — new `gates`, per-stage `branches`,
+profile `sex`/`age`/`lifestage`, and `engine_params` (`conf_floor`, `tau_days`, `stale_dt_days`, `q_source` by channel)
+in `calc-graph.json`; `q_impute`/`Rp_impute`/`cov_green_floor` resolved generically from `constants.json`. (2) *Engine* —
+`markerEval()` returns the active conf/blend/pers/crit branch + effective r, weight and confidence; `gateState()` maps
+profile attrs to active gate branches; pillar/overall **coverage** and **Confidence** are computed and `cov_green_floor`
+flags low-coverage. (3) *UI* — Tree-only; the Map already shows the whole graph. **Guardrails.** Illustrative — re-verify
+(README §5.6); `Rp_impute` is used as the imputed-marker down-weight (D33 frames it as representativeness — reconcile
+before production); cohort median is illustrated by the marker default (real build uses age×sex×life-stage tables, D33).
+**Affects.** `data/calc-graph.json` (gates, branches, profile attrs, engine_params), `assets/engine.js` (missing-data +
+branch + gate evaluation), `assets/calc-explorer.js` (◇ gate/branch nodes, data-state controls, stream presets,
+filter-search, coverage readout), `wiki_content.py` `build_purescore_uber()` (search/stream/coverage markup + CSS).
+Builds on **D32**, visualises **D33**.
 
 ### Maintenance notes
 - New decisions append as `D24+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and

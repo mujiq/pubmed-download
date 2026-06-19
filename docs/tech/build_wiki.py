@@ -5,7 +5,7 @@ multi-page wiki under docs/tech/, plus reference appendices and Doctor's-board a
 
 Run:  python3 build_wiki.py   (from docs/tech/)
 """
-import os, re, glob
+import os, re, glob, json
 import wiki_content as C
 import wiki_admin as A
 
@@ -445,6 +445,7 @@ def render_index():
 
 # ----------------------------------------------------------------- main
 def main():
+    C.write_calc_data()   # generate assets/calc-data.js from canonical JSON (engine source)
     render_index()
     for n in sorted(DOCMAP): render_doc(n)
     render_simple("README.md", "conventions.html", "Conventions & glossary", "Conventions & glossary")
@@ -491,6 +492,38 @@ def main():
     print("Generated %d pages → %s" % (built, HERE))
     _inject_connects()
     _consistency_check()
+    _engine_guard()
+
+def _engine_guard():
+    """HARD guard (per D32): data/*.json is canonical for the scoring engine. Fail the build if
+    weights don't sum to 1, calc-graph refs don't resolve, assets/calc-data.js is stale vs the
+    JSON, or any generated page reintroduces a hardcoded 'island' scorer (the class of bug that
+    let the uber-map drift to CV=0.14 while pillar-weights.json said 0.13)."""
+    errs = []
+    w = [v for _, v in C._load("pillar-weights.json")["weights"]]
+    if abs(sum(w) - 1.0) > 1e-6:
+        errs.append("pillar weights sum to %.4f, not 1.0" % sum(w))
+    resolved = None
+    try:
+        resolved = C.resolve_calc_data()
+    except Exception as e:
+        errs.append("calc-graph.json references unresolved: %s" % e)
+    cdp = os.path.join(HERE, "assets", "calc-data.js")
+    if resolved is not None and os.path.exists(cdp):
+        want = "window.PURESCORE_DATA=" + json.dumps(resolved, ensure_ascii=False, separators=(",", ":"))
+        if want not in open(cdp, encoding="utf-8").read():
+            errs.append("assets/calc-data.js is stale vs data/*.json — rerun build_wiki.py")
+    banned = ["var TH={", "var PILLMETA=", "function scoreProfile", "var PILL={cv:"]
+    for fn in sorted(glob.glob(os.path.join(HERE, "*.html"))):
+        h = open(fn, encoding="utf-8").read()
+        for b in banned:
+            if b in h:
+                errs.append("%s reintroduces a hardcoded scorer (%r) — use assets/engine.js" % (os.path.basename(fn), b))
+    if errs:
+        for e in errs:
+            print("  [engine-guard] FAIL: %s" % e)
+        raise SystemExit("  [engine-guard] %d JSON-canonical violation(s) — build aborted" % len(errs))
+    print("  [engine-guard] OK — engine values are canonical from data/*.json")
 
 def _consistency_check():
     """Build-time guard: warn if any generated page's count claims drift from the live data."""
@@ -585,7 +618,7 @@ def _inject_connects():
         for a, b in _GRID_OF.items():
             if b == fn: cand.append(a)
         cand += _CONNECTS_EXTRA.get(fn, [])
-        cand += sorted(out.get(fn, set()), key=lambda x: -len(inbound.get(x, ())))[:6]
+        cand += sorted(out.get(fn, set()), key=lambda x: (-len(inbound.get(x, ())), x))[:6]
         cand += [s for s in sibs_of.get(fn, []) if s != fn][:4]
         for r in cand:
             if r == fn or r in seen or r not in pages:

@@ -39,9 +39,12 @@ you **must**: (1) consult the dependency map below, (2) update every affected di
 Do not let a spec change silently desync a diagram. If unsure whether a diagram is affected,
 open it and check.
 
+**Engine is JSON-canonical (D32).** The scoring math is NOT hardcoded in any page. `data/calc-graph.json` (+ `data/pillar-weights.json`, `data/constants.json`) is canonical; `build_wiki.py` calls `wiki_content.write_calc_data()` to resolve it into the generated `assets/calc-data.js`, which the shared `assets/engine.js` consumes. **Change scoring by editing the JSON, then rebuild — never edit a page's JS scorer.** `build_wiki.py:_engine_guard()` HARD-FAILS the build if weights don't sum to 1, calc-graph refs don't resolve, `calc-data.js` is stale, or any page reintroduces a hardcoded scorer (`var TH={`, `var PILLMETA=`, `function scoreProfile`, `var PILL={cv:`).
+
 **Diagram → source dependency map**
 - `purescore-dataflow.html` (PureScore Calculation DFD) ← Docs 01, 02, 03, 04, 05, 06, 11, 12 + admin weights/δ. *Any scoring/gate/reservoir/critical-marker/acute/coverage change → review here first.*
-- `purescore-uber-map.html` (interactive full-lifecycle map + 10 sample profiles) ← the **entire pipeline**: Docs 01–04 (scoring/reservoirs), 06/07/11/12 (lifecycle), Appendix H (adherence), eligibility/onboarding. *Any scoring, gate, pillar, reservoir, lifecycle, or profile change → update this map's node/edge data + profile scorer too.*
+- `purescore-uber-map.html` (**Calculation Explorer**: audit Tree + flow Map, 5 roots, 10 profiles, editable leaves) ← `data/calc-graph.json` via `assets/engine.js` + `assets/calc-explorer.js`. *Change scoring/gate/pillar/reservoir/profile data in `calc-graph.json` (+ catalogs) and rebuild; do NOT hand-edit node/edge/scorer JS.*
+- `assets/engine.js` (shared scorer) + `assets/calc-explorer.js` (Tree/Map/drawer UI) ← `window.PURESCORE_DATA` (generated `assets/calc-data.js`). `feedback-loop.body.html` keeps its own Stage-2b temporal demo but sources weights/γ/δ from the same `PURESCORE_DATA`.
 - `behemoth-class-diagram.html` ← the whole object model (Docs 01–04, 07, 12) — data-driven in `wiki_content.py` (`build_behemoth`); also see the `[[behemoth-diagram-keep-in-sync]]` memory.
 - `engagement-state-machines.html` ← Doc 07 (nudge), Appendix H adherence (`data/adherence.json`), Docs 09/11/12.
 - `states.html` (patient life-state machine) ← Docs 05/06 (acute, life-stage), data streams (Doc 18).

@@ -3,11 +3,116 @@
 All values are illustrative, literature/guideline-anchored, and must be re-verified
 (README §5.6) before production. Compiled from docs 00-18."""
 
-import json, os
+import json, os, re
 _HERE = os.path.dirname(os.path.abspath(__file__))
 def _load(name):
     with open(os.path.join(_HERE, "data", name), encoding="utf-8") as f:
         return json.load(f)
+
+# ----------------------------------------------------------------- calc-graph resolver
+# data/calc-graph.json + data/pillar-weights.json + data/constants.json are CANONICAL.
+# resolve_calc_data() only RESOLVES references into one dict; it invents no values.
+# write_calc_data() emits assets/calc-data.js (generated) consumed by assets/engine.js,
+# so every compute page shares one source over file:// (no runtime fetch / CORS).
+def _const_num(s):
+    """First float out of a constants.json value string ('0.60', '0.15 / 0.50' → 0.6/0.15)."""
+    m = re.search(r"-?\d+(?:\.\d+)?", str(s))
+    return float(m.group(0)) if m else None
+
+def resolve_calc_data():
+    g = _load("calc-graph.json")
+    weights = {k: v for k, v in _load("pillar-weights.json")["weights"]}
+    consts = {c[0]: c[2] for c in _load("constants.json")["constants"]}
+    missing = []
+    for pid, p in g["pillars"].items():
+        if p["wRef"] not in weights:
+            missing.append("pillar %s wRef %s" % (pid, p["wRef"])); continue
+        p["weight"] = weights[p["wRef"]]
+    sym = g["_meta"]["uses_constants"]
+    for s in sym.values():
+        if s not in consts: missing.append("constant %s" % s)
+    if missing:
+        raise ValueError("calc-graph.json references unresolved: " + "; ".join(missing))
+    g["const"] = {"delta": _const_num(consts[sym["delta"]]), "rho": _const_num(consts[sym["rho"]]),
+                  "r_crit": _const_num(consts[sym["r_crit"]]), "pure_crit_cap": _const_num(consts[sym["pure_crit_cap"]]),
+                  "phi": _const_num(consts[sym["phi"]]),
+                  "q_impute": _const_num(consts[sym["q_impute"]]), "rp_impute": _const_num(consts[sym["rp_impute"]]),
+                  "cov_green_floor": _const_num(consts[sym["cov_green_floor"]])}
+    g["_constants_raw"] = _load("constants.json")["constants"]
+    g["_weights_raw"] = _load("pillar-weights.json")["weights"]
+    _attach_panels(g)
+    return g
+
+# Attach (build-time, from canonical JSON) the PRO instruments and wearable metadata the
+# Flight-Deck cockpit shows: PHQ-9/GAD-7/ISI items so a PRO marker renders as a real
+# questionnaire, and trust-tier/accuracy/devices for wearable markers.
+_MARKER_INSTRUMENT = {"phq": "PHQ-9", "gad": "GAD-7", "isi": "ISI"}
+def _attach_panels(g):
+    try:
+        instruments = {i["id"]: i for i in _load("instruments.json")["instruments"]}
+    except Exception:
+        instruments = {}
+    g["instruments"] = {}
+    for mk, iid in _MARKER_INSTRUMENT.items():
+        it = instruments.get(iid)
+        if not it or not it.get("items"):
+            continue
+        nums = [int(n) for n in re.findall(r"(\d+)\s*=", it.get("scale", ""))]
+        maxlvl = max(nums) if nums else 3
+        g["instruments"][mk] = {"id": iid, "name": it.get("name", iid), "stem": it.get("stem", ""),
+                                "scale": it.get("scale", ""), "items": it["items"],
+                                "maxlvl": maxlvl, "scoring": it.get("scoring", "")}
+    # wearable metadata by loose name match (wearables.json rows: [name, agg, tier, accuracy, pillars, devices])
+    try:
+        wrows = _load("wearables.json")["wearables"]
+    except Exception:
+        wrows = []
+    def _match(label):
+        low = label.lower()
+        keys = {"rhr": "resting hr", "hrv": "hrv", "spo2": "spo", "sleepdur": "sleep",
+                "sleepeff": "sleep", "vo2": "vo", "steps": "step", "mvpa": "mvpa"}
+        for r in wrows:
+            nm = str(r[0]).lower()
+            if low in keys and keys[low] in nm:
+                return {"metric": r[0], "tier": r[2], "accuracy": r[3], "devices": r[5] if len(r) > 5 else ""}
+        return None
+    g["wearmeta"] = {}
+    for mk, mm in g["markers"].items():
+        if mm.get("source") == "wearable":
+            wm = _match(mk)
+            if wm:
+                g["wearmeta"][mk] = wm
+    # adherence check-in items (Appendix H) — for the patient check-in card
+    try:
+        ad = _load("adherence.json")["items"]
+    except Exception:
+        ad = []
+    g["adherence_items"] = [{"ref": x.get("ref"), "family": x.get("nudge_family"), "pillars": x.get("pillars", []),
+                             "cadence": x.get("cadence"), "stem": x.get("stem"),
+                             "responses": [{"label": r.get("label"), "adherence": r.get("adherence")} for r in x.get("responses", [])]}
+                            for x in ad]
+    # patient goals (Appendix J) — for the next-actions queue
+    try:
+        gl = _load("goals.json")["goals"]
+    except Exception:
+        gl = []
+    g["goals"] = [{"id": x.get("id"), "title": x.get("title"), "pillar": x.get("pillar"),
+                   "metric": {"name": x.get("metric", {}).get("name"), "target": x.get("metric", {}).get("target"),
+                              "horizon_wk": x.get("metric", {}).get("horizon_wk"), "source": x.get("metric", {}).get("source")},
+                   "app": {"sex": x.get("applicability", {}).get("sex", "any"),
+                           "age_range": x.get("applicability", {}).get("age_range", [0, 120]),
+                           "life_stage": x.get("applicability", {}).get("life_stage", "any")}}
+                  for x in gl]
+    return g
+
+def write_calc_data():
+    g = resolve_calc_data()
+    js = ("/* GENERATED by build_wiki.py from data/calc-graph.json + pillar-weights.json + constants.json. "
+          "Do NOT edit — edit the JSON. */\nwindow.PURESCORE_DATA=" +
+          json.dumps(g, ensure_ascii=False, separators=(",", ":")) + ";\n")
+    with open(os.path.join(_HERE, "assets", "calc-data.js"), "w", encoding="utf-8") as f:
+        f.write(js)
+    return g
 
 # ----------------------------------------------------------------- per-doc summaries
 SUMMARY = {
@@ -128,309 +233,19 @@ MERMAID = {
   SC --> EXP["scribe · chat · scheduling<br/>in-home · insurance-auth"]"""),
 }
 
-# ----------------------------------------------------------------- biomarker catalogue (Doc 02)
-# (marker, tier, two_sided, green, yellow, red, w, source, critical?)
-PILLARS = [
- ("CV","Cardiovascular & Vascular","atherogenic burden · vascular/BP load · cardiorespiratory reserve",[
-   ("Systolic BP","mmHg","C",1,"90–119","120–139 (or <90)","≥140 or <85",".15","ACC/AHA 2017",1),
-   ("Diastolic BP","mmHg","C",1,"60–79","80–89","≥90 or <55",".10","ACC/AHA",0),
-   ("ApoB","mg/dL","P",0,"<80 (<65 high-risk)","80–99","≥100",".18","ESC/EAS",1),
-   ("LDL-C","mg/dL","C",0,"<100 (<70 high-risk)","100–159","≥160",".12","ACC/AHA",1),
-   ("HDL-C","mg/dL","C",1,"≥50 F / ≥40 M","40–49","<40 (very low)",".06","ACC/AHA",0),
-   ("Lp(a)","nmol/L","P",0,"<75","75–125","≥125",".10","ESC (lifetime, once)",0),
-   ("Resting HR","bpm","C",1,"50–69","70–84 (or <45)","≥85 or <40",".07","wearable/literature",0),
-   ("HRV (RMSSD, age-adj)","ms","C",0,"cohort p50+","p20–p50","<p10",".07","wearable norms",0),
-   ("CAC","Agatston","X",0,"0","1–99","≥100 (≥300 high)",".15","MESA",1),
- ]),
- ("MET","Metabolic & Glycemic","glycemic burden · adiposity · hepatic fat",[
-   ("HbA1c","%","C",0,"<5.4","5.4–6.4","≥6.5",".22","ADA",1),
-   ("Fasting glucose","mg/dL","C",1,"70–99","100–125 (or <65)","≥126 or <55",".15","ADA",1),
-   ("Fasting insulin","µIU/mL","P",0,"<8","8–14",">14",".10","literature",0),
-   ("HOMA-IR","index","P",0,"<1.5","1.5–2.9","≥3.0",".12","literature",0),
-   ("Triglycerides","mg/dL","C",0,"<90","90–149","≥150 (≥500 acute)",".10","ADA/AHA",1),
-   ("Waist circumference","cm","C",0,"<94 M / <80 F","up to 102 M / 88 F","≥102 M / ≥88 F",".12","IDF",0),
-   ("CGM time-in-range","%","X",0,"≥90","70–89","<70",".10","consensus TIR",0),
-   ("CGM glycemic variability","CV%","X",0,"<25","25–36",">36",".09","consensus",0),
- ]),
- ("REN","Renal","renal reserve · KDIGO eGFR×UACR heatmap (Doc 08)",[
-   ("eGFR (cystatin-C)","mL/min/1.73m²","P",0,"≥90","60–89","<60 (<30 severe)",".35","KDIGO 2024",1),
-   ("eGFR (creatinine)","mL/min/1.73m²","C",0,"≥90","60–89","<60",".15","KDIGO",1),
-   ("UACR","mg/g","P",0,"<30","30–299","≥300",".25","KDIGO",1),
-   ("Potassium","mmol/L","C",1,"3.6–5.0","5.1–5.5 / 3.3–3.5","≥5.6 or ≤3.2",".15","lab",1),
-   ("Sodium","mmol/L","C",1,"136–144","130–135 / 145–148","<130 or >148",".10","lab",0),
- ]),
- ("HEP","Hepatic","hepatic fat · inflammatory load",[
-   ("ALT","U/L","C",0,"<30 M / <20 F","up to 50",">50 (3× ULN acute)",".22","AASLD",1),
-   ("AST","U/L","C",0,"<30","30–45",">45",".15","AASLD",1),
-   ("GGT","U/L","P",0,"<30","30–60",">60",".12","literature",0),
-   ("FIB-4 index","index","P",0,"<1.3","1.3–2.67",">2.67",".25","AASLD fibrosis",1),
-   ("Liver fat (CAP / MRI-PDFF)","—","X",0,"normal","mild steatosis","mod–severe",".16","AASLD",0),
-   ("Bilirubin","mg/dL","C",0,"<1.2","1.2–2.0",">2.0",".10","lab",0),
- ]),
- ("INF","Inflammation & Immune","inflammatory load (central hub, Doc 04)",[
-   ("hsCRP","mg/L","C",0,"<1.0","1.0–3.0",">3.0 (>10 acute)",".30","AHA/CDC",1),
-   ("WBC","×10⁹/L","C",1,"4.0–9.0","9.1–11 / 3.5–3.9",">11 or <3.5",".18","lab",1),
-   ("Ferritin (as inflammation)","ng/mL","P",1,"sex-specific opt","high-normal","very high/low",".14","see NUT/HEM",0),
-   ("Neutrophil:Lymphocyte ratio","ratio","P",0,"<2","2–3",">3",".12","literature",0),
-   ("IL-6","pg/mL","X",0,"<1.5","1.5–3",">3",".14","research",0),
-   ("Albumin (inverse APR)","g/dL","C",1,"4.0–5.0","3.5–3.9","<3.5",".12","lab",0),
- ]),
- ("HEM","Hematologic & Oxygen Transport","oxygen-delivery reserve · iron reserve",[
-   ("Hemoglobin","g/dL","C",1,"13.5–17 M / 12–15.5 F","mild low/high","<11 or >18",".25","WHO",1),
-   ("Hematocrit","%","C",1,"40–50 M / 36–46 F","borderline","extremes",".12","lab",0),
-   ("RDW","%","C",0,"<13.5","13.5–15",">15",".10","lab/prognostic",0),
-   ("Platelets","×10⁹/L","C",1,"150–400","100–149 / 401–500","<100 or >500",".13","lab",1),
-   ("Iron saturation","%","P",1,"25–45","15–24 / 46–55","<15 or >55",".12","lab",0),
-   ("SpO₂","%","C",0,"≥96","92–95","<92",".18","clinical",1),
-   ("Ferritin (iron stores)","ng/mL","P",1,"50–150","30–49 / 151–300","<30 or >300",".10","lab",0),
- ]),
- ("ENDO","Endocrine & Hormonal (sex-specific, Doc 05)","allostatic/stress load · metabolic · bone reserve",[
-   ("TSH","mIU/L","P",1,"0.5–2.5","2.5–4.5 / 0.3–0.5",">4.5 or <0.3",".22","ATA",0),
-   ("Free T4","ng/dL","P",1,"0.9–1.6","borderline","out of range",".10","ATA",0),
-   ("Cortisol rhythm (diurnal slope)","AUC","X",0,"healthy slope","flattening","flat/inverted",".14","research",0),
-   ("Sex hormones (E2/Prog/FSH/LH/T/SHBG/AMH)","—","P/X",1,"see Doc 05 by phase/stage","—","—",".34","Doc 05",0),
-   ("Fasting cortisol","µg/dL","P",1,"5–15","15–20",">20 or <3",".10","lab",0),
-   ("Prolactin","ng/mL","P",0,"sex-specific","borderline","high",".10","lab",0),
- ]),
- ("BCM","Body Composition & Musculoskeletal","adiposity (burden) · muscle/strength · bone reserve",[
-   ("BMI","kg/m²","C",1,"18.5–24.9","25–29.9 / 17–18.4","≥30 or <17",".12","WHO (ethnicity-adj)",0),
-   ("Body fat % (DEXA)","%","X",1,"sex/age optimal","borderline","high/very low",".14","ISCD",0),
-   ("ALMI / lean mass index","kg/m²","X",0,"≥ sex cut-off","low-normal","sarcopenic",".16","EWGSOP2",1),
-   ("Grip strength","kg","P",0,"≥ sex/age norm","low-normal","weak (frailty)",".14","EWGSOP2",0),
-   ("Gait speed","m/s","P",0,">1.0","0.8–1.0","<0.8",".08","EWGSOP2",0),
-   ("BMD T-score (DEXA)","SD","X",0,"≥ −1.0","−1.0 to −2.5","≤ −2.5",".20","ISCD/WHO",1),
-   ("Visceral adipose","—","X",0,"low","moderate","high",".16","literature",0),
- ]),
- ("NUT","Nutrition & Micronutrients","micronutrient reserve · inflammatory load",[
-   ("25-OH Vitamin D","ng/mL","C",1,"30–60","20–29 / 60–80","<20 or >100",".18","Endocrine Soc.",1),
-   ("Vitamin B12","pg/mL","P",1,"400–900","200–399","<200 or >1100",".12","lab",0),
-   ("Folate","ng/mL","P",0,">5","3–5","<3",".08","lab",0),
-   ("Ferritin (stores)","ng/mL","P",1,"50–150","see HEM","extremes",".10","lab",0),
-   ("Omega-3 index","%","P",0,"≥8","4–8","<4",".14","literature",0),
-   ("Magnesium","mg/dL","P",1,"1.8–2.4","borderline","<1.5 or >2.6",".10","lab",1),
-   ("Diet-quality (HEI/Mediterranean)","score","C",0,"high","moderate","poor",".16","survey",0),
-   ("Fiber intake","g/day","C",0,"≥25 F / ≥30 M","15–24","<15",".12","survey",0),
- ]),
- ("SLP","Sleep & Circadian Recovery","sleep debt (central burden) · allostatic load · inflammation",[
-   ("Sleep duration (14-day mean)","h","C",1,"7–9","6–7 / 9–10","<6 or >10 chronic",".24","NSF/AASM",1),
-   ("Sleep regularity index","SRI","C",0,"high","moderate","low (shift-like)",".16","literature",0),
-   ("Sleep efficiency","%","C",0,"≥90","85–89","<85",".12","wearable",0),
-   ("Deep + REM proportion","%","C",0,"age-normal","low-normal","low",".12","wearable",0),
-   ("Overnight SpO₂ / ODI (apnea)","ODI","X",1,"normal","mild","mod–severe OSA",".20","HSAT",1),
-   ("Nighttime HR/HRV recovery","—","C",0,"good recovery","borderline","poor",".16","wearable",0),
- ]),
- ("FIT","Physical Activity & Cardiorespiratory Fitness","cardiorespiratory reserve · muscle reserve · glycemic burden (−)",[
-   ("VO₂max (est.)","mL/kg/min","P",0,"≥ sex/age p60","p20–p60","< p10",".30","Cooper/ACSM",1),
-   ("MVPA","min/week","C",0,"≥150 (≥300 ideal)","75–149","<75",".20","WHO",0),
-   ("Steps/day (14-day mean)","steps","C",0,"≥8000","5000–7999","<5000",".14","literature",0),
-   ("Sedentary time","h/day","C",0,"<6","6–9",">9",".10","literature",0),
-   ("Grip strength (shared w/ BCM)","kg","P",0,"≥ norm","low-normal","weak",".12","EWGSOP2",0),
-   ("HR recovery (wearable)","bpm","C",0,"fast","moderate","slow",".14","literature",0),
- ]),
- ("MCS","Mental, Cognitive & Social Health","allostatic/stress load (central) · sleep debt (bidirectional)",[
-   ("PHQ-9 (depression)","score","C",0,"0–4","5–14","≥15 (item-9>0 ⇒ red)",".24","validated",1),
-   ("GAD-7 (anxiety)","score","C",0,"0–4","5–14","≥15",".18","validated",0),
-   ("Perceived stress (PSS)","score","C",0,"low","moderate","high",".14","validated",0),
-   ("Loneliness (UCLA-3)","score","C",0,"connected","some isolation","isolated",".14","validated",0),
-   ("Cognitive screen (age-adj)","score","X",1,"normal","borderline","impaired",".16","validated",0),
-   ("Subjective wellbeing (WHO-5)","score","C",0,"high","moderate","low",".14","validated",0),
- ]),
-]
-
-MODIFIERS = [
- ("Smoking / nicotine","PRO + cotinine","multiplies CV, HEM/respiratory, INF risk"),
- ("Alcohol","PRO","modifies HEP, MET, MCS, CV"),
- ("Respiratory (SpO₂, FEV1, smoking)","mixed","folds into HEM oxygen-transport + CV; severe values escalate independently"),
- ("Adherence / engagement","behavioural","not scored as health; feeds the nudge feasibility model (Doc 07) and reservoir inflows (Doc 04)"),
-]
-
-# ----------------------------------------------------------------- wearables (Doc 18 / 01)
-# (metric, layer, tier, q_source, pillars, devices)
-WEARABLES = [
- ("Resting HR","aggregated","consumer-validated","0.6–0.8","CV · FIT · MCS","Apple Watch · Oura · Whoop · Fitbit"),
- ("HRV (RMSSD)","aggregated","consumer-validated","0.6–0.8","CV · MCS · SLP · ENDO","Oura · Whoop · Apple Watch"),
- ("Steps / MVPA","aggregated","consumer-validated","0.6–0.8","FIT · MET · CV","all wrist/phone"),
- ("Sleep duration / efficiency / regularity","aggregated","consumer-validated","0.6–0.8","SLP · MCS","Oura · Whoop · Apple Watch"),
- ("SpO₂ (spot/overnight)","aggregated","consumer-validated","0.6–0.8","HEM · SLP","Apple Watch · Oura"),
- ("Skin / body temperature","aggregated","consumer-validated","0.6–0.8","ENDO (cycle) · INF (illness)","Oura · Whoop"),
- ("CGM glucose / time-in-range","aggregated","clinical-grade","0.85–1.0","MET","Freestyle Libre · Dexcom"),
- ("Blood pressure (cuff)","aggregated","clinical-grade","0.85–1.0","CV · REN","Omron · Withings BPM"),
- ("Single-lead ECG / rhythm","derived→confirmed","clinical-grade","0.85–1.0","CV","Apple Watch · KardiaMobile"),
- ("Weight / body composition","aggregated","consumer-validated","0.6–0.8","BCM · MET","smart scales (Withings/Garmin)"),
- ("VO₂max (estimate)","derived","inferential","informational only","FIT · CV","Apple Watch · Garmin"),
- ("Readiness / recovery","derived","inferential","informational only","SLP · MCS · FIT","Oura · Whoop · Garmin"),
- ("Stress score","derived","inferential","informational only","MCS","Garmin · Fitbit · Whoop"),
- ("Sleep stages (REM/deep/light)","derived","inferential","informational only","SLP","all wearables"),
- ("Respiratory rate","derived","inferential","informational only","HEM · SLP","Oura · Whoop · Apple Watch"),
-]
-
-# ----------------------------------------------------------------- instruments (Doc 02 MCS, Doc 18)
-LIKERT_0_3 = '0 = not at all · 1 = several days · 2 = more than half the days · 3 = nearly every day'
-INSTRUMENTS = [
- {"id":"PHQ-9","name":"PHQ-9 — Patient Health Questionnaire (depression)","pillar":"MCS","cadence":"quarterly / on-trigger",
-  "stem":"Over the last 2 weeks, how often have you been bothered by any of the following problems?","scale":LIKERT_0_3,
-  "items":["Little interest or pleasure in doing things","Feeling down, depressed, or hopeless",
-   "Trouble falling or staying asleep, or sleeping too much","Feeling tired or having little energy",
-   "Poor appetite or overeating","Feeling bad about yourself — or that you are a failure",
-   "Trouble concentrating on things","Moving or speaking slowly, or being fidgety/restless",
-   "Thoughts that you would be better off dead, or of hurting yourself"],
-  "scoring":"Sum 0–27. 0–4 none/minimal · 5–9 mild · 10–14 moderate · 15–19 mod-severe · 20–27 severe.",
-  "bands":"green 0–4 · yellow 5–14 · red ≥15","safety":"Item 9 > 0 forces MCS red/critical irrespective of total and fires the crisis pathway (Doc 11). Never averaged away.",
-  "src":"Kroenke 2001 (public domain)"},
- {"id":"PHQ-2","name":"PHQ-2 — ultra-brief depression screen","pillar":"MCS","cadence":"Core (every visit)",
-  "stem":"Over the last 2 weeks, how often bothered by…","scale":LIKERT_0_3,
-  "items":["Little interest or pleasure in doing things","Feeling down, depressed, or hopeless"],
-  "scoring":"Sum 0–6; ≥3 → administer full PHQ-9.","bands":"≥3 triggers PHQ-9","safety":"Positive screen escalates to PHQ-9.","src":"Kroenke 2003"},
- {"id":"GAD-7","name":"GAD-7 — Generalized Anxiety Disorder","pillar":"MCS","cadence":"quarterly / on-trigger",
-  "stem":"Over the last 2 weeks, how often have you been bothered by the following problems?","scale":LIKERT_0_3,
-  "items":["Feeling nervous, anxious, or on edge","Not being able to stop or control worrying",
-   "Worrying too much about different things","Trouble relaxing","Being so restless that it is hard to sit still",
-   "Becoming easily annoyed or irritable","Feeling afraid as if something awful might happen"],
-  "scoring":"Sum 0–21. 0–4 minimal · 5–9 mild · 10–14 moderate · 15–21 severe.","bands":"green 0–4 · yellow 5–14 · red ≥15",
-  "safety":"—","src":"Spitzer 2006 (public domain)"},
- {"id":"GAD-2","name":"GAD-2 — ultra-brief anxiety screen","pillar":"MCS","cadence":"Core (every visit)","scale":LIKERT_0_3,
-  "stem":"Over the last 2 weeks, how often bothered by…",
-  "items":["Feeling nervous, anxious, or on edge","Not being able to stop or control worrying"],
-  "scoring":"Sum 0–6; ≥3 → administer full GAD-7.","bands":"≥3 triggers GAD-7","safety":"—","src":"Kroenke 2007"},
- {"id":"AUDIT-C","name":"AUDIT-C — alcohol use","pillar":"HEP / MET / MCS","cadence":"Core","scale":"item-specific 0–4",
-  "stem":"Alcohol consumption screen (WHO).",
-  "items":["How often do you have a drink containing alcohol? (0 never … 4 ≥4×/week)",
-   "How many standard drinks on a typical drinking day? (0:1–2 … 4:≥10)",
-   "How often do you have ≥6 drinks on one occasion? (0 never … 4 daily/almost)"],
-  "scoring":"Sum 0–12.","bands":"at-risk ≥4 M / ≥3 F","safety":"High scores route to brief intervention + LFTs.","src":"Bush 1998 (WHO)"},
- {"id":"PSS-4","name":"PSS-4 — Perceived Stress Scale (short)","pillar":"MCS / ENDO","cadence":"quarterly","scale":"0 never … 4 very often",
-  "stem":"In the last month, how often have you felt…",
-  "items":["…unable to control the important things in your life?","…confident about your ability to handle personal problems? (reverse)",
-   "…that things were going your way? (reverse)","…difficulties piling up so high you could not overcome them?"],
-  "scoring":"Reverse items 2–3, sum 0–16; higher = more stress.","bands":"green low · yellow moderate · red high","safety":"—","src":"Cohen 1983"},
- {"id":"UCLA-3","name":"UCLA-3 — loneliness / social connection","pillar":"MCS","cadence":"quarterly","scale":"1 hardly ever · 2 some of the time · 3 often",
-  "stem":"How often do you feel…",
-  "items":["…that you lack companionship?","…left out?","…isolated from others?"],
-  "scoring":"Sum 3–9; ≥6 ≈ lonely.","bands":"green ≤4 · yellow 5 · red ≥6","safety":"—","src":"Hughes 2004"},
- {"id":"WHO-5","name":"WHO-5 — Well-Being Index","pillar":"MCS","cadence":"quarterly","scale":"0 at no time … 5 all of the time",
-  "stem":"Over the last 2 weeks…",
-  "items":["I have felt cheerful and in good spirits","I have felt calm and relaxed","I have felt active and vigorous",
-   "I woke up feeling fresh and rested","My daily life has been filled with things that interest me"],
-  "scoring":"Sum ×4 → 0–100; <50 low well-being, <28 screen for depression.","bands":"green ≥50 · yellow 28–49 · red <28","safety":"<28 → PHQ-9.","src":"WHO 1998"},
- {"id":"ISI","name":"ISI — Insomnia Severity Index","pillar":"SLP","cadence":"on-trigger","scale":"0–4 per item",
-  "stem":"Rate the severity of your insomnia problems in the last 2 weeks.",
-  "items":["Difficulty falling asleep","Difficulty staying asleep","Problem waking too early",
-   "Satisfaction with current sleep pattern","Interference with daily functioning",
-   "Noticeability to others of impairment","Worry/distress about sleep"],
-  "scoring":"Sum 0–28.","bands":"0–7 none · 8–14 sub-threshold · 15–21 moderate · 22–28 severe","safety":"Pairs with overnight SpO₂/ODI → OSA referral.","src":"Morin 2011"},
- {"id":"IPAQ-SF","name":"IPAQ-SF — activity (self-report, cross-checks wearable)","pillar":"FIT","cadence":"Core","scale":"days/week × min/day",
-  "stem":"In the last 7 days, time spent in vigorous, moderate, and walking activity (+ sitting).",
-  "items":["Vigorous-intensity days & minutes","Moderate-intensity days & minutes","Walking days & minutes","Sitting time on a weekday"],
-  "scoring":"Convert to MET-min/week; map to MVPA band.","bands":"≥150 min MVPA green","safety":"Self-report cross-checked vs wearable steps/MVPA for plausibility (Doc 01).","src":"IPAQ 2002"},
- {"id":"DIET","name":"Diet-quality screener (Mediterranean / HEI-style)","pillar":"NUT / MET","cadence":"Core","scale":"frequency per item",
-  "stem":"Usual weekly intake across food groups.",
-  "items":["Vegetables & fruit servings/day","Whole grains vs refined","Legumes/nuts per week","Fish per week",
-   "Olive oil as main fat","Red/processed meat per week","Sugary drinks/day","Ultra-processed food frequency"],
-  "scoring":"Composite 0–14 (Mediterranean) → diet-quality band.","bands":"high / moderate / poor","safety":"—","src":"PREDIMED-style"},
- {"id":"SUBSTANCE","name":"Smoking / nicotine / shisha (cross-cutting modifier)","pillar":"CV · HEM · INF","cadence":"Core","scale":"status + pack-years",
-  "stem":"Tobacco / nicotine / waterpipe use.",
-  "items":["Current status (never / former / current)","Cigarettes/day & pack-years","Waterpipe (shisha) sessions/week",
-   "Vaping/nicotine pouches","Cotinine (if available, objective)"],
-  "scoring":"Risk multiplier on CV, HEM/respiratory, INF (Doc 02 modifiers).","bands":"never / former / current","safety":"Current use raises CV/respiratory weighting and screening.","src":"Doc 02"},
- # --- respiratory / atopy (resolve question-bank validated_by) ---
- {"id":"TNSS","name":"TNSS — Total Nasal Symptom Score (allergic rhinitis)","pillar":"INF","cadence":"on-trigger","scale":"0 none … 3 severe per symptom",
-  "stem":"Rate each nasal symptom over the past 24 h / typical day.",
-  "items":["Nasal congestion","Rhinorrhoea (runny nose)","Sneezing","Nasal itching"],
-  "scoring":"Sum 0–12.","bands":"0–3 mild · 4–7 moderate · 8–12 severe","safety":"—","src":"Downie 2004 (illustrative)"},
- {"id":"ACQ","name":"ACQ — Asthma Control Questionnaire","pillar":"INF","cadence":"on-trigger",
-  "scale":"0 (none) … 6 (severe) per item; reliever item banded","stem":"Over the past week…",
-  "items":["Night waking from asthma","Symptoms on waking","Activity limitation","Shortness of breath","Wheeze","Reliever puffs/day"],
-  "scoring":"Mean of items 0–6.","bands":"<0.75 well-controlled · 0.75–1.5 grey · ≥1.5 uncontrolled","safety":"Uncontrolled → clinician review; pairs with peak-flow.","src":"Juniper 1999"},
- {"id":"POEM","name":"POEM — Patient-Oriented Eczema Measure","pillar":"INF","cadence":"on-trigger","scale":"0 no days … 4 every day per item",
-  "stem":"Over the last week, how many days did your skin…",
-  "items":["Itch","Disturb sleep","Bleed","Weep/ooze","Crack","Flake","Feel dry/rough"],
-  "scoring":"Sum 0–28.","bands":"0–2 clear · 3–7 mild · 8–16 moderate · 17–24 severe · 25–28 very severe","safety":"—","src":"Charman 2004"},
- {"id":"MRC_DYSPNOEA","name":"MRC Dyspnoea Scale (breathlessness)","pillar":"CV · HEM","cadence":"on-trigger","scale":"grade 1–5",
-  "stem":"Which best describes your breathlessness?",
-  "items":["1 — only on strenuous exertion","2 — hurrying / slight hill","3 — walks slower / stops on the level","4 — stops after ~100 m","5 — too breathless to leave the house / on dressing"],
-  "scoring":"Single grade 1–5.","bands":"3–5 significant functional limitation","safety":"Grade ≥4 with desaturation → expedited review (pairs with SpO₂).","src":"Fletcher 1959 (mMRC)"},
- # --- mental / cognitive ---
- {"id":"EPDS","name":"EPDS — Edinburgh Postnatal Depression Scale","pillar":"MCS","cadence":"pregnancy / postpartum",
-  "scale":"0–3 per item (10 items)","stem":"In the past 7 days (perinatal mood)…",
-  "items":["Able to laugh / see the funny side","Looked forward with enjoyment","Blamed myself unnecessarily","Anxious or worried","Scared / panicky","Things getting on top of me","Unhappy → difficulty sleeping","Sad or miserable","So unhappy I have been crying","Thoughts of harming myself"],
-  "scoring":"Sum 0–30.","bands":"green <10 · yellow 10–12 · red ≥13 (likely depression)","safety":"Item 10 > 0 (self-harm) forces MCS red/critical and fires the crisis pathway (Doc 11), like PHQ-9 item 9.","src":"Cox 1987"},
- {"id":"MINI-COG","name":"Mini-Cog / cognitive screen (age-adjusted)","pillar":"MCS","cadence":"annual ≥65 / on-trigger",
-  "scale":"recall 0–3 + clock 0 or 2","stem":"Three-word recall + clock-drawing test.",
-  "items":["Register & recall 3 words","Draw a clock to a set time (normal = 2)","Total = recall + clock"],
-  "scoring":"0–5.","bands":"≥3 likely normal · <3 screen-positive → MoCA/MMSE + clinician","safety":"Screen-positive routes to formal cognitive assessment, never an autonomous diagnosis.","src":"Borson 2000"},
- {"id":"PHQ-15","name":"PHQ-15 — somatic symptom burden","pillar":"MCS","cadence":"quarterly / on-trigger","scale":"0 not bothered … 2 bothered a lot",
-  "stem":"Over the last 4 weeks, bothered by… (15 somatic symptoms)",
-  "items":["Stomach pain","Back pain","Pain in arms/legs/joints","Headaches","Chest pain","Dizziness","Palpitations","Shortness of breath","Bowel symptoms","Fatigue / low energy","Trouble sleeping"],
-  "scoring":"Sum 0–30.","bands":"0–4 minimal · 5–9 low · 10–14 medium · 15–30 high","safety":"High somatic burden cross-checks MCS and the relevant organ pillars.","src":"Kroenke 2002"},
- {"id":"DAST-10","name":"DAST-10 — Drug Abuse Screening Test","pillar":"MCS","cadence":"on-trigger","scale":"yes / no (10 items)",
-  "stem":"In the past 12 months, regarding non-medical drug use…",
-  "items":["Used more than intended","Unable to stop","Neglected obligations","Guilt about use","Withdrawal symptoms","Medical / social / legal problems from use"],
-  "scoring":"Sum 0–10.","bands":"0 none · 1–2 low · 3–5 moderate · 6–8 substantial · 9–10 severe","safety":"Moderate+ routes to brief intervention / referral.","src":"Skinner 1982"},
- {"id":"AUDIT","name":"AUDIT — Alcohol Use Disorders Identification Test (full)","pillar":"HEP · MCS","cadence":"on-trigger (AUDIT-C positive)","scale":"0–4 per item (10 items)",
-  "stem":"Full alcohol screen when AUDIT-C is positive.",
-  "items":["AUDIT-C consumption items 1–3","Impaired control over drinking","Failed normal expectations","Morning drinking","Guilt after drinking","Blackouts","Injury from drinking","Others concerned"],
-  "scoring":"Sum 0–40.","bands":"0–7 low · 8–15 hazardous · 16–19 harmful · ≥20 likely dependence","safety":"≥20 → assess dependence/withdrawal; LFTs; brief intervention.","src":"Saunders 1993 (WHO)"},
- # --- frailty / sleep / sex-specific ---
- {"id":"SARC-F","name":"SARC-F — sarcopenia / frailty screen","pillar":"BCM","cadence":"annual (≥65)","scale":"0–2 per item",
-  "stem":"Difficulty with strength, ambulation, rising, stairs, falls.",
-  "items":["Lifting / carrying ~4.5 kg","Walking across a room","Rising from a chair / bed","Climbing 10 stairs","Falls in the past year"],
-  "scoring":"Sum 0–10.","bands":"≥4 suggests sarcopenia → grip / gait + ALMI (Doc 02 BCM)","safety":"Positive routes to functional assessment + resistance-training plan.","src":"Malmstrom 2013"},
- {"id":"PSQI","name":"PSQI — Pittsburgh Sleep Quality Index","pillar":"SLP","cadence":"on-trigger","scale":"7 components, 0–3 each",
-  "stem":"Sleep quality over the last month (7 components).",
-  "items":["Subjective sleep quality","Sleep latency","Sleep duration","Habitual efficiency","Disturbances","Sleep-medication use","Daytime dysfunction"],
-  "scoring":"Global 0–21.","bands":">5 = poor sleep quality","safety":"Pairs with ISI + wearable sleep; high score + snoring → STOP-BANG / OSA.","src":"Buysse 1989"},
- {"id":"STOP-BANG","name":"STOP-BANG — OSA risk screen","pillar":"SLP","cadence":"on-trigger","scale":"yes / no (8 items)",
-  "stem":"Snoring, Tiredness, Observed apnoea, Pressure (BP), BMI, Age, Neck, Gender.",
-  "items":["Loud Snoring","Daytime Tiredness","Observed apnoea","high blood Pressure","BMI > 35","Age > 50","Neck > 40 cm","male sex"],
-  "scoring":"Sum 0–8.","bands":"0–2 low · 3–4 intermediate · 5–8 high OSA risk","safety":"High risk → overnight SpO₂/ODI or HSAT (Doc 02 SLP); cross-checks ISI.","src":"Chung 2008"},
- {"id":"IIEF-5","name":"IIEF-5 — erectile function (male)","pillar":"ENDO","cadence":"on-trigger","scale":"1–5 per item (5 items)",
-  "stem":"Over the past 6 months (male sexual function)…",
-  "items":["Confidence in getting an erection","Erections firm enough for penetration","Maintaining after penetration","Maintaining to completion","Satisfaction with intercourse"],
-  "scoring":"Sum 5–25.","bands":"22–25 none · 17–21 mild · 12–16 mild-mod · 8–11 moderate · 5–7 severe ED","safety":"ED can be an early CV/endothelial and low-testosterone marker — cross-check CV/ENDO.","src":"Rosen 1999 (male)"},
- {"id":"MENQOL","name":"MENQOL — Menopause-specific Quality of Life (female)","pillar":"ENDO","cadence":"on-trigger","scale":"Likert; higher = more bothersome",
-  "stem":"Bother from menopausal symptoms across four domains.",
-  "items":["Vasomotor (hot flushes, sweats)","Psychosocial","Physical","Sexual"],
-  "scoring":"Domain mean scores (higher = worse QoL).","bands":"descriptor by domain","safety":"Severe vasomotor/sleep impact → ENDO/SLP attention; HRT decision is clinician-led.","src":"Hilditch 1996 (female)"},
-]
-
-# ----------------------------------------------------------------- personas (from the live calculator)
-PERSONAS = [
- ("healthy","Healthy adult",40,"—","0.90","—","Well-represented reference cohort."),
- ("prediabetic","Pre-diabetes",52,"—","0.85","MET 1.6 · CV 1.3 · REN 1.1","Glycemic burden accumulating; metabolic markers trending up."),
- ("ckd","CKD-3 on ACE-i",60,"ACE-i","0.80","REN 2.0 · CV 1.4 · MET 1.2","BP/UACR managed; mild K⁺ rise drug-expected (Watch, not Alert); eGFR declining."),
- ("athlete","Endurance athlete",30,"—","0.40","—","RHR 42 & low glucose are adaptive; out-of-cohort → cohort stats suppressed, confidence lowered."),
- ("betablocker","On β-blocker",58,"β-blocker","0.70","CV 1.3","RHR & VO₂max confounded (down-weighted, not scored as fitness); BP managed."),
- ("elderly","Older adult (84)",84,"ACE-i","0.60","REN 1.2 · BCM 1.3 · FIT 1.1","Age-adjusted BMI/BP(J-curve)/eGFR/VO₂max frames; low-yield flags de-prioritized; sarcopenic drift; NUT competing-risk-muted."),
- ("dialysis","ESRD on dialysis",64,"—","0.50","REN 1.5 · CV 1.4","eGFR excluded (adequacy frame); structural damage fixed; renal anemia expected; NUT/SLP competing-risk-muted."),
- ("pregnancy","Pregnancy (T2)",31,"—","0.50","ENDO 1.3 · HEM 1.2 · CV 1.2","Physiologic anemia & eGFR-rise expected (bands shifted); pre-eclampsia/GDM absolute anchors retained."),
- ("menopause","Postmenopausal",56,"—","0.82","CV 1.2 · BCM 1.3","Estrogen-loss CV & bone-loss risk (BMD red sooner); ApoB drift; vasomotor sleep impact."),
- ("southasian","South-Asian male",45,"—","1.0","MET 1.4 · CV 1.3","WHO Asian BMI/waist cut-points; ASCVD under-predicts → ethnicity-aware equation; G6PD/FH/vit-D screening raised (D18)."),
- ("ramadan_dm","Gulf-Arab T2D, Ramadan",52,"metformin · SGLT2i","1.0","MET 1.5","Med-timing & hypo/dehydration safety (IDF-DAR); SGLT2i held on dehydration risk; clinician-set fast-break rule."),
- ("fh","Familial hypercholesterolemia",38,"—","0.75","CV 1.5","ApoB genetic, NOT lifestyle-modifiable (needs medication); modifiability low."),
- ("labartifact","Lab artifact (hemolysis)",55,"—","0.85","—","Isolated implausible K⁺ 6.6 → reconfirm, not emergency (Doc 12 §3.4); corroboration would escalate."),
-]
-
-# ----------------------------------------------------------------- pillar base weights + constants (Doc 03)
-PILLAR_W = [("CV",.13),("MET",.12),("REN",.07),("HEP",.06),("INF",.07),("HEM",.06),
-            ("ENDO",.06),("BCM",.07),("NUT",.06),("SLP",.10),("FIT",.10),("MCS",.10)]
-CONSTANTS = [
- ("φ","cohort-blend weight (Stage 2)","0.60","Doc 03 §2"),
- ("κ_resp","personal-baseline responsiveness cap (Stage 2b)","0.10","Doc 03 §2b"),
- ("γ","pillar power-mean exponent","3","Doc 03 §3"),
- ("δ","PureScore power-mean exponent","2","Doc 03 §5"),
- ("ρ_k","reservoir contribution cap to a pillar","0.20","Doc 03 §3"),
- ("R_crit","critical-pillar risk floor","0.60","Doc 03 §4"),
- ("PURE_CRIT_CAP","PureScore cap when any pillar critical","40","Doc 03 §5"),
- ("zone cuts","green / yellow / red on r","0.15 / 0.50","README §3.5"),
-]
-QSOURCE = [
- ("Lab (venous)","1.0","clinical-grade reference"),
- ("Wearable — clinical-grade (CGM, validated cuff, single-lead ECG)","0.85–1.0","near-lab; can corroborate a critical"),
- ("Wearable — consumer-validated (resting HR, steps, sleep duration)","0.6–0.8","feeds score, discounted; Watch/Advisory only"),
- ("Wearable — inferential/derived (readiness, stress, sleep stages)","informational only","never sets a band"),
- ("Consumer survey / PRO","0.5–0.7","self-report, plausibility-checked"),
- ("Literature fallback","0.2–0.4","cohort median when no own data; lowers coverage"),
-]
+# ----------------------------------------------------------------- canonical metadata (single source of truth)
+# All scoring/catalogue metadata now lives in data/*.json (extracted from the former inline
+# Python defs — see data/_extract_catalogs.py). Edit the JSON, NOT this file. Every builder
+# and page reads these same objects, so the wiki has one source of truth.
+#   pillars.json  marker = [name, unit, tier, two_sided, green, yellow, red, w, source, critical?]
+PILLARS     = _load("pillars.json")["pillars"]
+MODIFIERS   = _load("modifiers.json")["modifiers"]
+WEARABLES   = _load("wearables.json")["wearables"]            # [metric, layer, tier, q_source, pillars, devices]
+INSTRUMENTS = _load("instruments.json")["instruments"]
+PERSONAS    = _load("personas.json")["personas"]             # [id, name, age, meds, coverage, multipliers, notes]
+PILLAR_W    = _load("pillar-weights.json")["weights"]
+CONSTANTS   = _load("constants.json")["constants"]
+QSOURCE     = _load("qsource.json")["qsource"]
 
 # =================================================================== HTML helpers
 def _esc(s):
@@ -496,7 +311,8 @@ def build_biomarkers():
          '<div class="tagrow" style="margin:10px 0 18px">'
          '<span class="tier C">C</span> Core <span class="tier P">P</span> Peripheral '
          '<span class="tier X">X</span> Comprehensive &nbsp; · &nbsp; <span class="chip b-mut">2s</span> two-sided '
-         '(low <i>and</i> high adverse)</div>']
+         '(low <i>and</i> high adverse)</div>',
+         '<div class="callout note"><div class="ct">Marker pipeline</div><a class="xref" href="appendix-wearables.html">ingest &amp; trust-tier (Appendix B)</a> &rarr; <b>bands (you are here)</b> &rarr; <a class="xref" href="purescore-wearable-baselines.html">personal baseline (Baselines · Wearables)</a> &middot; scoring math <a class="xref" href="03-scoring-formula.html">Doc 03</a>.</div>']
     for pid, pname, res, rows in PILLARS:
         h.append('<h2 id="%s">%s · %s</h2>' % (pid, pid, _esc(pname)))
         h.append('<p class="small muted">Reservoir links: %s</p>' % _esc(res))
@@ -539,15 +355,37 @@ def build_wearables():
          'anomaly may raise <b>Watch/Advisory</b> but <b>cannot drive a red/critical without a clinical-grade '
          'confirmation</b> (CGM / validated cuff / single-lead ECG, or a lab). '
          '(<a class="xref" href="12-critical-review-and-purescore-2.0.html">Doc 12</a> §3.4)</div>',
+         '<div class="callout note"><div class="ct">Marker pipeline</div>ingest &amp; <b>trust-tier (you are here)</b> &rarr; <a class="xref" href="appendix-biomarkers.html">bands (Appendix A · Markers)</a> &rarr; <a class="xref" href="purescore-wearable-baselines.html">personal baseline (Baselines · Wearables)</a> &middot; aggregated via <b>Terra</b> (below).</div>',
          '<div class="tablewrap"><table><thead><tr><th>Metric</th><th>Layer</th><th>Trust tier</th>'
-         '<th>q_source</th><th>Pillars</th><th>Devices</th></tr></thead><tbody>']
+         '<th>q_source</th><th>Pillars</th><th>Devices</th><th>Role</th></tr></thead><tbody>']
     tcls = {"clinical-grade":"b-green","consumer-validated":"b-acc","inferential":"b-yellow"}
     for (m, layer, tier, q, pil, dev) in WEARABLES:
+        role = ('<span class="chip b-yellow">informational (D22)</span>' if tier=="inferential"
+                else '<span class="chip b-mut">alert/event</span>' if "confirmed" in layer
+                else '<span class="chip b-green">banded → A</span>')
         h.append('<tr><td><b>%s</b></td><td class="small muted">%s</td>'
                  '<td><span class="chip %s">%s</span></td><td class="mono small">%s</td>'
-                 '<td class="small">%s</td><td class="small muted">%s</td></tr>'
-                 % (_esc(m), _esc(layer), tcls.get(tier,"b-mut"), _esc(tier), _esc(q), _esc(pil), _esc(dev)))
+                 '<td class="small">%s</td><td class="small muted">%s</td><td>%s</td></tr>'
+                 % (_esc(m), _esc(layer), tcls.get(tier,"b-mut"), _esc(tier), _esc(q), _esc(pil), _esc(dev), role))
     h.append('</tbody></table></div>')
+    h.append('<div class="callout spec"><div class="ct">Terra — the ingestion API</div>'
+             'PureScore ingests wearable data through <b>Terra</b>, the aggregation API that normalizes 30+ devices '
+             '(Apple Health, Google Fit, Oura, Whoop, Garmin, Fitbit, Samsung, Dexcom, Freestyle Libre…) into uniform '
+             'models. Every signal above arrives via a Terra model; the trust tier and <code>q_source</code> still apply per signal.</div>')
+    h.append('<h2 id="terra">Terra metric families → PureScore coverage</h2>')
+    h.append('<div class="tablewrap"><table><thead><tr><th>Terra family</th><th>Example metrics</th><th>Feeds</th><th>Coverage</th></tr></thead><tbody>')
+    for fam, ex, feeds, cov in [
+      ("Body","HR · HRV · SpO₂ · skin temp · glucose · BP · ECG/AFib · body-comp","CV · MET · HEM · ENDO · INF",'<span class="chip b-green">banded (Appendix A); ECG = alert</span>'),
+      ("Activity / Daily","steps · distance · calories · active-duration · MET-min · HR-zones","FIT · MET · CV",'<span class="chip b-acc">steps/MVPA banded; volume metrics feed FIT</span>'),
+      ("Sleep","total + stage durations · efficiency · latency · HR/HRV · respiration","SLP · MCS · CV",'<span class="chip b-acc">duration/efficiency/regularity banded; stages informational (D22)</span>'),
+      ("Menstruation","cycle phase · period · ovulation · temp shift","ENDO (Doc 05)",'<span class="chip b-mut">routed to sex-specific models (Doc 05)</span>'),
+      ("Nutrition","calories · macros · hydration","NUT (lifestyle)",'<span class="chip b-mut">routed to NUT via lifestyle / question bank</span>')]:
+        h.append('<tr><td><b>%s</b></td><td class="small">%s</td><td class="small muted">%s</td><td>%s</td></tr>' % (fam, ex, feeds, cov))
+    h.append('</tbody></table></div>')
+    h.append('<p class="small muted">Coverage: <span class="chip b-green">banded</span> = a banded marker in '
+             '<a class="xref" href="appendix-biomarkers.html">Appendix A</a> · '
+             '<span class="chip b-yellow">informational</span> = D22 inferential, never sets a band · '
+             '<span class="chip b-mut">routed</span> = scored elsewhere.</p>')
     return "Appendix B · Wearables", "".join(h)
 
 def build_questions():
@@ -1171,37 +1009,75 @@ def build_purescore_dataflow():
 
 # =================================================================== PURESCORE UBER MAP (interactive)
 def build_purescore_uber():
-    body = r"""<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Diagrams &amp; system maps &rsaquo; PureScore uber-map</div>
-<h1>PureScore Uber-Map <span class="small muted">&middot; interactive &middot; 12 pillars &middot; 15 reservoirs</span></h1>
-<p class="lead">The entire PureScore lifecycle on one pan/zoom canvas, with the full <b>12-pillar &times; 15-reservoir</b> calculation.
-Pick a sample profile and press <b>Play</b> to watch values flow box-by-box. <b>Click</b> a box for its formula, conditions and live value;
-<b>double-click</b> to zoom to it. Illustrative numbers (README &sect;5.6).</p>
+    body = r"""<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Diagrams &amp; system maps &rsaquo; PureScore calculation explorer</div>
+<h1>PureScore Calculation Explorer <span class="small muted">&middot; cockpit &middot; one engine, one JSON</span></h1>
+<div id="fdConfig" class="fd-config"></div>
 
-<div class="um-tools" id="umTools">
-  <select id="umProfile" class="um-sel"></select>
-  <button class="um-btn" id="umPlay">&#9654; Play</button>
-  <button class="um-btn" id="umStep">Step &raquo;</button>
-  <button class="um-btn" id="umReset">Reset</button>
-  <label class="um-lab">speed <input type="range" id="umSpeed" min="120" max="900" value="380" step="60"></label>
-  <span class="um-grow"></span>
-  <label class="um-lab"><input type="checkbox" id="umPath" checked> highlight path</label>
+<div class="ce-tabs">
+  <button class="ce-tab active" data-view="tree">&#9636; Cockpit</button>
+  <button class="ce-tab" data-view="map">&#9638; Flow map</button>
+  <label class="um-lab" style="margin-left:8px">profile <select id="ceProfile" class="um-sel"></select></label>
+  <span class="ce-grow"></span>
+  <button class="um-btn" id="ceFocus" title="hide the wiki chrome for a full-width cockpit">&#10530; focus</button>
+</div>
+
+<div id="ceCockpit">
+  <div class="fd-band">
+    <div class="fd-scorebox"><div class="n" id="fdScoreN">&mdash;</div><div class="ci" id="fdScoreCI"></div><div class="b" id="fdScoreB">PURESCORE</div></div>
+    <div class="fd-companion" id="fdComp"></div>
+    <div class="fd-pillwrap"><div class="fd-seclabel">12 pillars &middot; R_k (click to trace)</div><div class="fd-pillgrid" id="fdPillars"></div></div>
+    <div class="fd-reswrap"><div class="fd-seclabel">15 reservoirs &middot; load</div><div class="fd-restanks" id="fdRes"></div></div>
+  </div>
+
+  <div class="ce-tools ce-treeonly">
+    <label class="um-lab">root <select id="ceRoot" class="um-sel"></select></label>
+    <input id="ceSearch" class="ce-search" type="search" placeholder="&#128269; filter the tree &mdash; marker, formula, constant, gate&hellip;">
+    <span class="um-lab">missing&rarr;</span>
+    <button class="um-btn ce-strm" data-src="lab">labs</button>
+    <button class="um-btn ce-strm" data-src="wearable">wearable</button>
+    <button class="um-btn ce-strm" data-src="pro">PRO</button>
+    <button class="um-btn ce-strm" data-src="clinical">clinical</button>
+    <button class="um-btn" id="ceExpand">expand</button>
+    <button class="um-btn" id="ceCollapse">collapse</button>
+    <button class="um-btn" id="ceResetMk">reset</button>
+    <span class="um-grow"></span>
+    <span id="ceCoverage" class="um-lab"></span>
+  </div>
+
+  <div class="fd-main ce-treeonly">
+    <div class="ce-tree" id="ceTree"></div>
+    <aside class="fd-trace" id="ceTrace"><div class="fd-trace-h">execution trace</div>
+      <div id="ceTraceBody" class="fd-trace-b"><p class="muted small">Click any node (tree, pillar dial, or reservoir tank) to trace its complete execution path &mdash; formula, conditions, actual values and contribution at every level.</p></div></aside>
+  </div>
+
+  <div class="fd-strip ce-treeonly">
+    <div class="fd-card"><div class="fd-card-h">Companion vector</div><div id="fdCompPanel"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Patient action queue &middot; next 5</div><div id="fdQueue"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Adherence check-ins to ask</div><div id="fdCheckins"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Adherence history &middot; 12 wk</div><div id="fdAdhHist"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Wearable baselines &middot; tap to drill <a href="wearable-baselines.html" style="float:right;color:#9cc7f0;text-decoration:none">full app &rsaquo;</a></div><div id="fdWearBase"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Top nudges &middot; &Delta;PureScore</div><div id="fdNudge"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Forecast trajectory</div><div id="fdForecast"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Critical annunciator</div><div id="fdCrit"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Pillar contribution &middot; where points go</div><div id="fdWaterfall"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Data freshness &middot; systems check</div><div id="fdSystems"></div></div>
+    <div class="fd-card"><div class="fd-card-h">What-if vs baseline</div><div id="fdWhatif"></div></div>
+    <div class="fd-card" style="grid-column:1/-1"><div class="fd-card-h">Trends &middot; PureScore &amp; pillars <span id="fdRangeBtns" class="fd-range"></span></div><div id="fdTrend"></div></div>
+  </div>
+</div>
+
+<div class="ce-tools ce-maponly" style="display:none">
   <label class="um-lab"><input type="checkbox" id="umGates"> firing gates only</label>
   <button class="um-btn" id="umFit">Fit</button>
   <button class="um-btn" id="umFs">&#10530; Fullscreen</button>
-  <span id="umScoreBadge" class="um-score">&mdash;</span>
 </div>
-<div class="um-areas" id="umAreas"></div>
-<div class="um-wrap" id="umWrap">
-  <svg id="umSvg" width="100%" height="100%"></svg>
-  <div class="um-hint" id="umHint">drag = pan &middot; scroll = zoom &middot; click = detail &middot; dbl-click = zoom to box</div>
-</div>
-<div class="um-modal" id="umModal"><div class="um-card">
-  <button class="um-x" id="umX">&times;</button>
-  <div id="umModalBody"></div>
-</div></div>
+<div id="umAreas" class="um-areas ce-maponly" style="display:none"></div>
+<div class="um-wrap ce-maponly" id="umWrap" style="display:none"><svg id="umSvg" width="100%" height="100%"></svg>
+  <div class="um-hint">drag = pan &middot; scroll = zoom &middot; click = trace</div></div>
+<div id="ceTip" class="ce-tip"></div>
 
 <style>
-.um-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+/* ---- shared (map) ---- */
 .um-sel,.um-btn{font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid var(--line,#2a3340);background:var(--bg2,#0c1320);color:inherit;cursor:pointer}
 .um-btn:hover{background:var(--line,#1a2230)}
 .um-lab{font-size:12px;color:var(--dim,#9bb0c5);display:flex;align-items:center;gap:5px}
@@ -1216,282 +1092,212 @@ Pick a sample profile and press <b>Play</b> to watch values flow box-by-box. <b>
 #umSvg{display:block;cursor:grab;touch-action:none}
 #umSvg.drag{cursor:grabbing}
 .um-node{cursor:pointer}
-.um-node rect{transition:opacity .2s}
 .um-node text{font:600 11.5px Inter,system-ui,sans-serif;fill:#e8eef6;pointer-events:none}
 .um-node .um-val{font-weight:800;font-size:11px;fill:#fff}
 .um-node.on rect{stroke-width:3}
-.um-node.dim{opacity:.16}
 .um-edge{fill:none;stroke:#36424f;stroke-width:1.3}
-.um-edge.on{stroke:#2ee6c9;stroke-width:2.4}
 .um-edge.loop{stroke-dasharray:5 4}
 .um-areabg{opacity:.5}
 .um-arealabel{font:700 11px Inter,sans-serif;letter-spacing:.04em;text-transform:uppercase}
-.um-modal{display:none;position:fixed;inset:0;background:rgba(4,8,14,.6);z-index:10000;align-items:center;justify-content:center}
-.um-modal.show{display:flex}
-.um-card{background:#0d1422;border:1px solid #2b5a86;border-radius:14px;max-width:560px;width:90%;max-height:80vh;overflow:auto;padding:18px 20px;position:relative}
-.um-x{position:absolute;right:12px;top:10px;background:none;border:none;color:#9bb0c5;font-size:22px;cursor:pointer}
-.um-card h3{margin:0 6px 0 0;display:inline}
-.um-card .um-tag{font-size:11px;padding:2px 8px;border-radius:6px;border:1px solid}
-.um-card pre{background:#080d18;border:1px solid #1c2636;border-radius:8px;padding:10px 12px;font-size:12.5px;overflow:auto;color:#bcd2f0;white-space:pre-wrap}
-.um-card ul{margin:8px 0 0;padding-left:18px;font-size:13px}
-.um-card .um-live{margin-top:12px;padding:10px 12px;border-radius:8px;background:#0c1726;border:1px solid #2b5a86;font-size:13px}
+/* ---- tabs / tools ---- */
+.ce-tabs{display:flex;gap:8px;align-items:center;margin:14px 0 8px;border-bottom:1px solid var(--line,#222c3a);padding-bottom:8px}
+.ce-tab{font:inherit;font-size:13px;font-weight:700;padding:7px 14px;border-radius:9px 9px 0 0;border:1px solid transparent;background:none;color:var(--dim,#9bb0c5);cursor:pointer}
+.ce-tab.active{background:#0c1726;border-color:#2b5a86;color:#e8eef6}
+.ce-grow{flex:1}
+.ce-tools{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:8px 0}
+/* ---- flight-deck band ---- */
+.fd-band{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;padding:9px 11px;border:1px solid var(--line,#222c3a);border-radius:14px;background:linear-gradient(180deg,#0c1422,#0a0f18);position:sticky;top:52px;z-index:30}
+/* condensed (pinned) band on scroll */
+.fd-band.cond{padding:5px 9px;gap:8px;box-shadow:0 6px 18px rgba(2,6,12,.5)}
+.fd-band.cond .fd-companion,.fd-band.cond .fd-seclabel{display:none}
+.fd-band.cond .fd-scorebox{min-width:64px;padding:2px 8px}
+.fd-band.cond .fd-scorebox .n{font-size:26px}
+.fd-band.cond .fd-pillgrid{grid-template-columns:repeat(12,1fr);gap:2px}
+.fd-band.cond .fd-pill{padding:1px 2px}
+.fd-band.cond .fd-pill .id span:first-child{display:none}
+.fd-band.cond .fd-pill .r{font-size:10px}
+.fd-band.cond .fd-restanks{height:30px}
+.fd-band.cond .fd-tank{width:9px}
+/* config / weights bar */
+.fd-config{margin:10px 0;border:1px solid var(--line,#222c3a);border-radius:12px;background:#0a1018}
+.fd-cfg-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 11px;cursor:pointer;font-size:11.5px;color:#cfe0f5}
+.fd-cfg-head .k{font-family:ui-monospace,Menlo,monospace;color:#9bb0c5}
+.fd-cfg-head .k b{color:#e8eef6}
+.fd-cfg-head .sp{flex:1}
+.fd-cfg-head .ed{font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid #2b5a86;color:#9cc7f0}
+.fd-cfg-body{display:none;padding:4px 11px 11px;border-top:1px solid #1c2636}
+.fd-config.open .fd-cfg-body{display:block}
+.fd-cfg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:5px 14px;margin:6px 0}
+.fd-knob{display:flex;align-items:center;gap:6px;font-size:11px;color:#9bb0c5}
+.fd-knob label{width:62px;flex:none}
+.fd-knob input[type=range]{flex:1;accent-color:#2ee6c9}
+.fd-knob .vv{width:42px;text-align:right;font-weight:700;color:#e8eef6;font-variant-numeric:tabular-nums}
+.fd-cfg-sub{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#6b7d92;margin:9px 0 3px}
+.fd-cfg-res{font-size:11px;color:#9bb0c5;line-height:1.7}
+.fd-cfg-res b{color:#cfe0f5}
+.fd-cfg-actions{display:flex;gap:8px;align-items:center;margin-top:8px}
+.fd-cfg-warn{font-size:10.5px;color:#edc14a}
+/* focus mode (hide wiki chrome) */
+body.cefocus .topbar,body.cefocus .side,body.cefocus .chapter-ctx,body.cefocus .crumbs,body.cefocus .pn,body.cefocus .wf,body.cefocus .connects{display:none!important}
+body.cefocus .shell{display:block}
+body.cefocus .main{max-width:none;width:100%;padding:8px 14px}
+body.cefocus .fd-band{top:0}
+.fd-scorebox{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:92px;padding:4px 12px;border-radius:12px;background:#0a1726;border:1px solid #2b5a86}
+.fd-scorebox .n{font-size:40px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums}
+.fd-scorebox .b{font-size:9px;letter-spacing:.1em;margin-top:4px;font-weight:700}
+.fd-companion{display:grid;grid-template-columns:repeat(2,auto);gap:4px 12px;align-content:center;padding:2px 10px;border-left:1px solid #1c2636;border-right:1px solid #1c2636}
+.fd-gauge{font-size:11px;color:#9bb0c5;white-space:nowrap}
+.fd-gauge b{color:#e8eef6;font-weight:700;font-variant-numeric:tabular-nums}
+.fd-seclabel{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#6b7d92;margin-bottom:4px}
+.fd-pillwrap{flex:1;min-width:250px}
+.fd-pillgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.fd-pill{border:1px solid #243042;border-radius:8px;padding:3px 5px;background:#0c1320;cursor:pointer}
+.fd-pill:hover{border-color:#3a6ea5}
+.fd-pill .id{font-size:9.5px;font-weight:800;color:#cfe0f5;display:flex;justify-content:space-between}
+.fd-pill .r{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.fd-pill .bar{height:4px;border-radius:3px;background:#1c2636;margin-top:2px;overflow:hidden}
+.fd-pill .bar i{display:block;height:100%}
+.fd-pill.crit{box-shadow:0 0 0 1px #f0606e inset}
+.fd-pill.lowcov{border-style:dashed;opacity:.78}
+.fd-reswrap{min-width:236px}
+.fd-restanks{display:flex;gap:3px;align-items:flex-end;height:52px}
+.fd-tank{width:12px;background:#0c1320;border:1px solid #243042;border-radius:3px;height:100%;display:flex;flex-direction:column-reverse;cursor:pointer}
+.fd-tank i{display:block;width:100%}
+.fd-tank.asset i{background:#3ad6a0}.fd-tank.burden i{background:#e0796b}
+.fd-tank:hover{border-color:#3a6ea5}
+/* ---- main: tree | trace ---- */
+.fd-main{display:grid;grid-template-columns:1fr 360px;gap:10px;margin-top:8px;align-items:start}
+.ce-tree{min-width:0;border:1px solid var(--line,#222c3a);border-radius:14px;background:#0a1018;padding:8px 6px;overflow:auto;max-height:72vh}
+.fd-trace{border:1px solid var(--line,#222c3a);border-radius:14px;background:#0a1018;max-height:72vh;overflow:auto;position:sticky;top:8px}
+.fd-trace-h{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#9bb0c5;padding:9px 12px;border-bottom:1px solid #1c2636;position:sticky;top:0;background:#0c1422;z-index:2}
+.fd-trace-b{padding:11px 13px;font-size:12.5px;color:#cdd9e8}
+.fd-trace-b pre{background:#080d18;border:1px solid #1c2636;border-radius:8px;padding:8px 10px;font-size:11.5px;overflow:auto;color:#bcd2f0;white-space:pre-wrap;margin:5px 0}
+.fd-k{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#6b7d92;margin:11px 0 3px}
+.fd-path{list-style:none;margin:0;padding:0}
+.fd-path li{padding:4px 8px;border-left:2px solid #243042;margin:2px 0;font-size:12px;font-variant-numeric:tabular-nums}
+.fd-path li b{color:#fff}
+.fd-live{margin-top:8px;padding:8px 10px;border-radius:8px;background:#0c1726;border:1px solid #2b5a86}
+/* ---- bottom strip ---- */
+.fd-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:10px;margin-top:10px}
+.fd-card{border:1px solid var(--line,#222c3a);border-radius:12px;background:#0a1018;padding:8px 11px;min-height:104px}
+.fd-card-h{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#6b7d92;margin-bottom:6px}
+.fd-nud{display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0}
+.fd-nud .d{margin-left:auto;font-weight:800;color:#3ad6a0;font-variant-numeric:tabular-nums}
+.fd-ping{display:inline-block;font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid #2a3a4d;margin:2px 3px 0 0;color:#cfe0f5}
+/* companion vector bars */
+.fd-cv{display:flex;align-items:center;gap:7px;font-size:11px;margin:3px 0}
+.fd-cv .l{width:78px;color:#9bb0c5;flex:none}
+.fd-cv .t{width:100%;height:6px;border-radius:4px;background:#1c2636;overflow:hidden}
+.fd-cv .t i{display:block;height:100%;background:#49c6d8}
+.fd-cv .v{width:54px;text-align:right;font-weight:700;color:#e8eef6;font-variant-numeric:tabular-nums;flex:none}
+/* patient action queue */
+.fd-q{border:1px solid #1c2636;border-radius:8px;padding:5px 8px;margin:4px 0;background:#0c1320}
+.fd-q .t{font-size:12px;font-weight:700;color:#e8eef6}
+.fd-q .m{font-size:10.5px;color:#9bb0c5;margin-top:1px}
+.fd-q .tag{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;border:1px solid #2b5a86;color:#9cc7f0;margin-right:5px}
+.fd-q .d{float:right;font-weight:800;color:#3ad6a0;font-size:11px}
+/* check-in questions */
+.fd-ci{margin:5px 0;font-size:12px}
+.fd-ci .s{color:#dbe6f3}
+.fd-ci .o{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px}
+.fd-ci .o span{font-size:10px;padding:1px 6px;border-radius:5px;border:1px solid #2a3a4d;color:#9bb0c5}
+/* adherence history */
+.fd-hist-wk{display:flex;gap:3px;margin:4px 0}
+.fd-hist-wk i{width:12px;height:12px;border-radius:3px;display:block}
+.fd-hrow{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#9bb0c5;margin:2px 0}
+.fd-hrow .nm{width:84px;flex:none}
+.fd-hrow .cells{display:flex;gap:2px}
+.fd-hrow .cells i{width:10px;height:10px;border-radius:2px;display:block}
+/* score ± CI */
+.fd-scorebox .ci{font-size:10px;color:#9bb0c5;margin-top:2px;font-weight:700}
+.fd-scorebox .ci .prov{color:#edc14a}
+/* waterfall */
+.fd-wf{display:flex;align-items:center;gap:6px;font-size:11px;margin:2px 0;cursor:pointer}
+.fd-wf:hover{background:#101a28;border-radius:5px}
+.fd-wf .id{width:34px;font-weight:800;color:#cfe0f5;flex:none}
+.fd-wf .t{flex:1;height:9px;background:#1c2636;border-radius:4px;overflow:hidden}
+.fd-wf .t i{display:block;height:100%}
+.fd-wf .v{width:34px;text-align:right;color:#e8eef6;font-weight:700;font-variant-numeric:tabular-nums;flex:none}
+/* systems check */
+.fd-sys{display:flex;align-items:center;gap:7px;font-size:11px;margin:3px 0}
+.fd-sys .ch{width:74px;flex:none;color:#cfe0f5;font-weight:600}
+.fd-sys .st{font-weight:800}
+.fd-sys .meta{margin-left:auto;color:#9bb0c5;font-variant-numeric:tabular-nums}
+/* what-if */
+.fd-wi{display:flex;align-items:center;gap:6px;font-size:11.5px;margin:2px 0;font-variant-numeric:tabular-nums}
+.fd-wi .m{flex:1;color:#dbe6f3}
+.fd-wi .d{font-weight:800}
+.fd-wi .net{border-top:1px solid #1c2636;margin-top:4px;padding-top:4px;font-weight:800}
+/* critical annunciator */
+.fd-crit{border:1px solid #7a3344;border-radius:8px;background:#1a0c12;padding:6px 9px;margin:4px 0;font-size:11.5px}
+.fd-crit .h{font-weight:800;color:#ffb9c6}
+.fd-crit .x{color:#e8c7cf;margin-top:2px}
+.fd-crit .sm{margin-top:3px;color:#cdd9e8}
+.fd-crit .sm b{color:#fff}
+.fd-ok{font-size:12px;color:#3ad6a0}
+/* trend + range */
+.fd-range{float:right}
+.fd-range button{font:inherit;font-size:10px;padding:1px 7px;border-radius:6px;border:1px solid #2a3a4d;background:#0c1622;color:#9bb0c5;cursor:pointer;margin-left:3px}
+.fd-range button.on{background:#16335e;border-color:#3a6ea5;color:#fff}
+.fd-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:10.5px;margin-top:4px;color:#9bb0c5}
+.fd-legend span i{display:inline-block;width:10px;height:3px;vertical-align:middle;margin-right:3px}
+/* wearable baselines */
+.fd-wb{display:flex;align-items:center;gap:7px;font-size:11.5px;padding:3px 4px;border-radius:6px;cursor:pointer}
+.fd-wb:hover{background:#101a28}
+.fd-wb.off{opacity:.45;cursor:default}
+.fd-wb .nm{width:96px;flex:none;color:#cfe0f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fd-wb svg{flex:none}
+.fd-wb .tv{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;color:#e8eef6}
+.fd-wb .zc{width:44px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.fd-wb .meta{margin-left:auto;color:#6b7d92}
+.fd-band-viz{position:relative;height:14px;background:#1c2636;border-radius:7px;margin:6px 0}
+.fd-band-viz .b1{position:absolute;top:0;bottom:0;left:25%;right:25%;background:rgba(58,214,160,.22);border-left:1px solid rgba(58,214,160,.6);border-right:1px solid rgba(58,214,160,.6)}
+.fd-band-viz .mk{position:absolute;top:-3px;width:3px;height:20px;background:#fff;border-radius:2px}
+/* ---- tree rows ---- */
+.ce-row{display:flex;align-items:center;gap:7px;padding:2px 8px;margin:1px 0;border-left:3px solid #2a3340;border-radius:0 7px 7px 0;cursor:pointer;font-size:13px}
+.ce-row:hover{background:#101a28}
+.ce-row.sel{background:#11233a;outline:1px solid #2b5a86}
+.ce-row.has>.ce-lab{font-weight:600}
+.ce-car{width:12px;color:#6b7d92;font-size:10px;flex:none}
+.ce-car.open{color:#2ee6c9}
+.ce-lab{color:#dbe6f3}
+.ce-val{margin-left:auto;font-weight:700;font-size:12px;color:#cfe0f5;font-family:ui-monospace,Menlo,monospace;white-space:nowrap}
+.ce-val.z-green{color:#3ad6a0}.ce-val.z-yellow{color:#edc14a}.ce-val.z-red{color:#f0606e}
+.ce-rng{width:108px;accent-color:#2ee6c9;margin-left:auto}
+.ce-rng+.ce-val{margin-left:8px;min-width:70px;text-align:right}
+.ce-rng:disabled{opacity:.3}
+.ce-i{flex:none;background:none;border:none;color:#5b7790;cursor:pointer;font-size:13px;padding:0 2px}
+.ce-i:hover{color:#2ee6c9}
+.ce-cap{font-size:10px;color:#6b7d92;margin-left:6px;white-space:nowrap}
+/* ---- decision branches ---- */
+.ce-row.ce-active{background:rgba(58,214,160,.08)}
+.ce-row.ce-active>.ce-car{color:#3ad6a0}.ce-row.ce-active>.ce-val{color:#3ad6a0}
+.ce-row.ce-inactive{opacity:.4}.ce-row.ce-inactive>.ce-car{color:#6b7d92}
+/* ---- data-state ---- */
+.ce-state{flex:none;width:20px;height:18px;border-radius:5px;border:1px solid #2a3a4d;background:#0c1622;color:#9bb0c5;font-size:10px;font-weight:800;cursor:pointer;padding:0}
+.ce-state.s-present{border-color:#2f6b48;color:#3ad6a0}
+.ce-state.s-stale{border-color:#7a5f24;color:#edc14a;background:#1d1a0c}
+.ce-state.s-missing{border-color:#7a3344;color:#f0606e;background:#2a1118}
+/* ---- PRO questionnaire ---- */
+.ce-qitem{display:flex;align-items:center;gap:6px;padding:2px 8px 2px 26px;font-size:12px}
+.ce-qitem .q{flex:1;color:#c5d3e6}
+.ce-qopt{display:flex;gap:2px}
+.ce-qopt button{width:18px;height:18px;border-radius:4px;border:1px solid #2a3a4d;background:#0c1622;color:#9bb0c5;font-size:10px;cursor:pointer;padding:0}
+.ce-qopt button.on{background:#16335e;border-color:#3a6ea5;color:#fff}
+/* ---- search + streams ---- */
+.ce-search{flex:1;min-width:200px;font:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1px solid var(--line,#2a3340);background:var(--bg2,#0c1320);color:inherit}
+.ce-strm.on{background:#2a1118;border-color:#7a3344;color:#ffb9c6}
+/* ---- chips + tip ---- */
+.ce-chip{font-size:11px;padding:2px 8px;border-radius:7px;border:1px solid #2a3a4d;background:#0c1622;color:#cfe0f5;text-decoration:none}
+a.ce-chip:hover{border-color:#2ee6c9;color:#fff}
+.ce-chips{display:flex;flex-wrap:wrap;gap:5px}
+.ce-tip{position:fixed;z-index:9999;pointer-events:none;background:#0d1422;border:1px solid #2b5a86;border-radius:8px;padding:7px 10px;font-size:11.5px;color:#cfe0f5;max-width:260px;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.ce-tip b{color:#fff}
+@media(max-width:900px){.fd-main{grid-template-columns:1fr}.fd-strip{grid-template-columns:1fr}.fd-pillgrid{grid-template-columns:repeat(4,1fr)}}
 </style>
-
-<script>
-(function(){
-var AR=[
- {k:'onboard',l:'Onboarding',c:'#8f9bff'},{k:'capture',l:'Data capture',c:'#49c6d8'},
- {k:'gate',l:'Eligibility & gating',c:'#2ee6c9'},{k:'marker',l:'Marker scoring',c:'#5ad1b0'},
- {k:'reservoir',l:'MONIAC reservoirs (15)',c:'#7c83e8'},{k:'pillar',l:'Pillars (12)',c:'#3ad6a0'},
- {k:'score',l:'Score & cascade',c:'#edb14a'},{k:'safety',l:'Safety',c:'#f0606e'},
- {k:'companion',l:'Companion',c:'#9aa7bd'},{k:'nudge',l:'Nudges',c:'#f59e4b'},
- {k:'adherence',l:'Adherence',c:'#e6c84a'},{k:'recal',l:'Recalibration',c:'#b08bff'}];
-var ACOL={};AR.forEach(function(a){ACOL[a.k]=a.c;});
-
-// base (non-pillar/reservoir) nodes
-var N=[
- {id:'onb',a:'onboard',l:'Onboarding intake',c:0,r:6,k:'process',f:'first-run capture: demographics, baseline Hx, screeners',conds:['phase ① one-time','sets the applicability vector'],s:'Onboarding & first-run'},
- {id:'lab',a:'capture',l:'Labs (venous/DTC)',c:1,r:4,k:'store',f:'biomarker Observations',conds:['clinical-grade anchors the bands'],s:'Doc 01'},
- {id:'wear',a:'capture',l:'Wearables (D22)',c:1,r:5,k:'store',f:'trust-tiered streams',conds:['inferential = informational only'],s:'Doc 18 §2'},
- {id:'ehr',a:'capture',l:'Patient360 EHR',c:1,r:6,k:'store',f:'conditions (ICD-10) + meds (ATC)',conds:['drives adherence triggers'],s:'Doc 01'},
- {id:'life',a:'capture',l:'Lifestyle / PRO',c:1,r:7,k:'store',f:'self-report questionnaires',conds:['lower confidence; fills gaps'],s:'Doc 18 §1'},
- {id:'gate',a:'gate',l:'Eligibility & gating',c:2,r:5.5,k:'gate',f:'only valid/relevant questions reach scoring',conds:['sex gate (menopause→female)','show_if (smoking detail if smoker)'],s:'Eligibility & gating'},
- {id:'conf',a:'marker',l:'Confidence + decay',c:3,r:3.5,k:'gate',f:'confidence = q_source · exp(−Δt/τ)',conds:['<floor → stale → fallback'],s:'Doc 01 §2'},
- {id:'band',a:'marker',l:'Clinical band r_clin',c:3,r:4.5,k:'process',f:'r off continuous curve (green/yellow/red)',conds:['guideline cut-points'],s:'Doc 03 §1'},
- {id:'cohort',a:'marker',l:'Cohort percentile',c:3,r:5.5,k:'process',f:'r_cohort = F_ic(x) percentile',conds:['NHANES / UK-Biobank'],s:'Doc 01 §4.2'},
- {id:'mmax',a:'marker',l:'max(r_clin, φ·r_cohort)',c:3,r:6.5,k:'gate',f:'φ=0.6 — cohort can only RAISE',conds:['clinical anchor never diluted'],s:'Doc 03 §2'},
- {id:'pers',a:'marker',l:'Personalization + clamp',c:3,r:7.5,k:'gate',f:'band_clamp(… + r_pers·𝟙[non-critical])',conds:['disabled for critical markers'],s:'Doc 03 §2b'},
- {id:'agg',a:'score',l:'δ-power-mean → R_total',c:6,r:5,k:'process',f:'R_total = sqrt(Σ W_k·R_k²)',conds:['worst-pillar leaning'],s:'Doc 03 §5.2'},
- {id:'crit',a:'score',l:'Critical cascade',c:6,r:7,k:'gate',f:'critical-marker red → R_k ← max(R_k,0.60)',conds:['never averaged away'],s:'Doc 03 §6'},
- {id:'score',a:'score',l:'PureScore = 100(1−R)',c:7,r:5,k:'output',f:'round(100·(1−R_total))',conds:['0–100, banded'],s:'Doc 03'},
- {id:'esc',a:'safety',l:'Crisis escalation',c:7,r:8,k:'gate',f:'acute-danger red → clinician pathway',conds:['independent of scalar score'],s:'Doc 11'},
- {id:'comp',a:'companion',l:'Companion vector',c:8,r:3.5,k:'output',f:'Confidence · Trajectory · early-warning',conds:['carries reliability flags'],s:'Doc 12'},
- {id:'nud',a:'nudge',l:'Top-5 nudges',c:8,r:5.5,k:'process',f:'U_a = impact · p̂_a · ease',conds:['every action positive ΔPureScore'],s:'Doc 07'},
- {id:'adh',a:'adherence',l:'Adherence check-ins',c:9,r:5.5,k:'process',f:'adherence ∈ [0,1] → reservoir inflow',conds:['EHR-triggered; 7-day EWMA'],s:'Appendix H'},
- {id:'recal',a:'recal',l:'Recalibration / re-score',c:10,r:5.5,k:'process',f:'realized Δ refits p̂_a + baseline',conds:['closes the loop'],s:'Doc 09'}
-];
-
-// 12 pillars (col5) and 15 reservoirs (col4) generated
-var PILLMETA=[['cv','CV · cardiovascular',['SBP','ApoB','LDL','RHR','HDL','HRV'],'SBP, ApoB, LDL'],
- ['met','MET · metabolic',['HbA1c','glucose','TG','waist'],'HbA1c, glucose, TG'],
- ['ren','REN · renal',['eGFR','UACR','K+'],'eGFR, UACR, K+'],
- ['hep','HEP · hepatic',['ALT','FIB-4'],'ALT, FIB-4'],
- ['inf','INF · inflammation',['hsCRP','WBC'],'hsCRP (acute)'],
- ['hem','HEM · hematologic',['Hb','platelets','SpO₂','ferritin'],'Hb, platelets, SpO₂'],
- ['endo','ENDO · endocrine',['TSH','vit-D'],'severe'],
- ['bcm','BCM · body-comp/MSK',['body-fat','ALMI','T-score'],'severe sarcopenia/osteoporosis'],
- ['nut','NUT · nutrition',['vit-D','B12','omega-3'],'severe deficiency'],
- ['slp','SLP · sleep',['sleep dur','efficiency','OSA'],'severe OSA'],
- ['fit','FIT · fitness',['VO₂max','steps','MVPA'],'very low VO₂ (priority)'],
- ['mcs','MCS · mental/cognitive',['PHQ-9','GAD-7','ISI'],'PHQ-9 severe']];
-var RESMETA=[['ath','ATH · atherogenic','burden','cv'],['vbp','VBP · vascular/BP','burden','cv'],
- ['gly','GLY · glycemic','burden','met'],['adi','ADI · adiposity','burden','met'],
- ['hepf','HEPF · hepatic fat','burden','hep'],['infl','INFL · inflammatory','burden','inf'],
- ['allo','ALLO · allostatic','burden','mcs'],['sld','SLD · sleep debt','burden','slp'],
- ['crf','CRF · cardioresp','asset','fit'],['mus','MUS · muscle','asset','bcm'],
- ['bon','BON · bone','asset','bcm'],['renr','RENR · renal','asset','ren'],
- ['micr','MICR · micronutrient','asset','nut'],['oxd','OXD · oxygen','asset','hem'],
- ['iron','IRON · iron','asset','hem']];
-RESMETA.forEach(function(m,i){N.push({id:m[0],a:'reservoir',l:m[1],c:4,r:i,k:'store',
- f:'reservoir load L_j ∈ [0,1] · polarity: '+m[2]+' · feeds '+m[3].toUpperCase(),
- conds:['B̃_k coupled into pillar via ρ_k','leakage λ_j, interference κ (Doc 04)'],s:'Doc 04'});});
-PILLMETA.forEach(function(m,i){N.push({id:m[0],a:'pillar',l:m[1],c:5,r:i,k:'pillar',
- f:'R_k = clamp01(conf-weighted δ-power-mean of ['+m[2].join(', ')+'] + ρ·reservoir load)',
- conds:['critical: '+m[3]],s:'Doc 02'});});
-
-var E=[['onb','gate'],['lab','gate'],['wear','gate'],['ehr','gate'],['life','gate'],
- ['gate','conf'],['conf','band'],['conf','cohort'],['band','mmax'],['cohort','mmax'],['mmax','pers'],
- ['agg','crit'],['crit','score'],['crit','esc'],['score','comp'],['score','nud'],
- ['nud','adh'],['adh','recal'],['recal','gly',1],['recal','score',1]];
-PILLMETA.forEach(function(m){E.push(['pers',m[0]]);E.push([m[0],'agg']);});
-RESMETA.forEach(function(m){E.push([m[0],m[3]]);});  // reservoir → primary pillar
-var STEP=['onb','lab','wear','ehr','life','gate','conf','band','cohort','mmax','pers']
- .concat(RESMETA.map(function(m){return m[0];}))
- .concat(PILLMETA.map(function(m){return m[0];}))
- .concat(['agg','crit','score','esc','comp','nud','adh','recal']);
-
-// ---------------- scorer (12 pillars × 15 reservoirs) ----------------
-var DEF={sbp:110,apob:70,ldl:90,rhr:60,hdl:55,hrv:55,hba1c:5.2,glu:88,tg:100,waist:85,
- egfr:100,uacr:5,k:4.2,alt:22,fib4:0.9,crp:0.6,wbc:6,hb:14.5,plt:250,spo2:98,ferr:80,
- tsh:2.0,vitd:40,bodyfat:18,almi:8.5,tscore:0,b12:450,omega3:9,sleepdur:7.5,sleepeff:90,
- osa:0,vo2:45,steps:10000,mvpa:200,phq:2,gad:1,isi:3};
-var TH={sbp:[120,140,'hi'],apob:[80,100,'hi'],ldl:[100,160,'hi'],rhr:[70,85,'hi'],hdl:[50,40,'lo'],hrv:[40,25,'lo'],
- hba1c:[5.7,6.5,'hi'],glu:[100,126,'hi'],tg:[150,500,'hi'],waist:[94,102,'hi'],
- egfr:[60,45,'lo'],uacr:[30,300,'hi'],k:[5.0,6.0,'hi'],alt:[40,200,'hi'],fib4:[1.3,2.67,'hi'],
- crp:[1,10,'hi'],wbc:[11,20,'hi'],hb:[13,10,'lo'],plt:[150,50,'lo'],spo2:[95,90,'lo'],ferr:[30,15,'lo'],
- tsh:[4.5,10,'hi'],vitd:[30,20,'lo'],bodyfat:[25,32,'hi'],almi:[7,5.5,'lo'],tscore:[-1,-2.5,'lo'],
- b12:[300,200,'lo'],omega3:[8,4,'lo'],sleepdur:[7,6,'lo'],sleepeff:[85,75,'lo'],osa:[0.5,1,'hi'],
- vo2:[40,30,'lo'],steps:[8000,5000,'lo'],mvpa:[150,75,'lo'],phq:[5,20,'hi'],gad:[5,15,'hi'],isi:[8,15,'hi']};
-var PILL={cv:['sbp','apob','ldl','rhr','hdl','hrv'],met:['hba1c','glu','tg','waist'],ren:['egfr','uacr','k'],
- hep:['alt','fib4'],inf:['crp','wbc'],hem:['hb','plt','spo2','ferr'],endo:['tsh','vitd'],
- bcm:['bodyfat','almi','tscore'],nut:['vitd','b12','omega3'],slp:['sleepdur','sleepeff','osa'],
- fit:['vo2','steps','mvpa'],mcs:['phq','gad','isi']};
-var CRIT={cv:['sbp','apob','ldl'],met:['hba1c','glu','tg'],ren:['egfr','uacr','k'],hep:['alt','fib4'],
- inf:['crp'],hem:['hb','plt','spo2'],bcm:['almi','tscore'],slp:['osa'],mcs:['phq']};
-var PRES={cv:['ath','vbp','crf'],met:['gly','adi'],ren:['renr','vbp'],hep:['hepf'],inf:['infl'],
- hem:['oxd','iron'],endo:['allo','micr'],bcm:['mus','bon','adi'],nut:['micr'],slp:['sld','allo'],
- fit:['crf','mus'],mcs:['allo']};
-var PILLS=PILLMETA.map(function(m){return m[0];});
-var W={cv:.14,met:.12,ren:.08,hep:.06,inf:.07,hem:.06,endo:.07,bcm:.08,nut:.06,slp:.08,fit:.08,mcs:.10};
-function clamp(x){return Math.max(0,Math.min(1,x));}
-function avg(){var a=arguments,s=0;for(var i=0;i<a.length;i++)s+=a[i];return s/a.length;}
-function nrm(v,good,bad){if(good===bad)return 0;return clamp((v-good)/(bad-good));}
-function rMark(m,v){var t=TH[m];if(!t)return .1;if(t[2]==='hi'){if(v>=t[1])return .66;if(v>=t[0])return .40;return .10;}else{if(v<=t[1])return .66;if(v<=t[0])return .40;return .10;}}
-function reservoirs(mk){
- var R={};
- R.gly=avg(nrm(mk.hba1c,5.4,7),nrm(mk.glu,90,140),nrm(mk.waist,85,105));
- R.ath=avg(nrm(mk.apob,70,140),nrm(mk.ldl,90,170),nrm(mk.sbp,115,160));
- R.infl=avg(nrm(mk.crp,0.5,8),nrm(mk.bodyfat,18,34));
- R.sld=avg(nrm(mk.sleepdur,8,5),nrm(mk.sleepeff,92,72));
- R.adi=avg(nrm(mk.waist,85,110),nrm(mk.bodyfat,18,34));
- R.hepf=avg(nrm(mk.alt,25,120),nrm(mk.fib4,0.9,3));
- R.allo=avg(nrm(mk.phq,3,20),nrm(mk.gad,3,15),nrm(mk.isi,4,18));
- R.crf=avg(nrm(mk.vo2,45,28),nrm(mk.steps,9000,4000));
- R.mus=nrm(mk.almi,8,5.5);R.bon=nrm(mk.tscore,0,-2.5);
- R.renr=avg(nrm(mk.egfr,90,40),nrm(mk.uacr,10,300));
- R.micr=avg(nrm(mk.vitd,40,18),nrm(mk.b12,400,200));
- R.vbp=nrm(mk.sbp,115,160);R.oxd=avg(nrm(mk.hb,14.5,10),nrm(mk.spo2,98,90));R.iron=nrm(mk.ferr,80,15);
- var c={};for(var key in R)c[key]=R[key];
- c.ath=clamp(R.ath+0.15*R.gly+0.15*R.infl);
- c.infl=clamp(R.infl+0.15*R.sld+0.10*R.adi);
- c.gly=clamp(R.gly+0.10*R.sld-0.08*(1-R.crf));
- c.allo=clamp(R.allo+0.12*R.sld);c.sld=clamp(R.sld+0.12*R.allo);
- return c;
-}
-function scoreProfile(p){
- var mk={};for(var key in DEF)mk[key]=DEF[key];for(var k2 in p.mk)mk[k2]=p.mk[k2];
- var RES=reservoirs(mk),rk={},crit=[];
- PILLS.forEach(function(pk){var ms=PILL[pk],s=0,n=0,cr=false;
-  ms.forEach(function(m){var r=rMark(m,mk[m]);s+=r;n++;if((CRIT[pk]||[]).indexOf(m)>=0&&r>=0.66)cr=true;});
-  var Rm=s/n,res=PRES[pk]||[],bt=0;res.forEach(function(rid){bt+=RES[rid];});bt=res.length?bt/res.length:0;
-  var R=clamp(Rm+0.15*bt);if(cr){R=Math.max(R,0.60);crit.push(pk);}rk[pk]=R;});
- var num=0;PILLS.forEach(function(pk){num+=W[pk]*rk[pk]*rk[pk];});
- var Rtot=Math.sqrt(num);  // ΣW = 1
- return {rk:rk,res:RES,crit:crit,Rtot:Rtot,score:Math.round(100*(1-Rtot)),
-  adher:(p.adh!=null?p.adh:(Rtot>0.4?0.65:0.85)),preg:p.preg,
-  comp:(crit.length?'Confidence high · early-warning ON':'Confidence high · stable'),
-  nudges:(crit.length?('focus: '+crit.join(',').toUpperCase()):'optimization nudges')};
-}
-var P=[
- {id:'healthy',name:'1 · Healthy young (28F)',mk:{}},
- {id:'prediab',name:'2 · Prediabetic (45M)',mk:{sbp:124,apob:95,ldl:120,rhr:72,hba1c:6.0,glu:110,waist:97,bodyfat:26,vo2:38,steps:7000}},
- {id:'metsyn',name:'3 · Metabolic syndrome (52M)',mk:{sbp:138,apob:130,ldl:150,rhr:78,hba1c:6.4,glu:118,tg:260,waist:106,bodyfat:31,crp:3.5,vo2:32,steps:5500,sleepdur:6}},
- {id:'ckd3',name:'4 · CKD stage 3 (60M)',mk:{sbp:146,apob:110,ldl:140,hba1c:6.2,glu:115,egfr:45,uacr:60,k:5.1,waist:101,crp:2.2}},
- {id:'postmi',name:'5 · Post-MI on meds (58M)',mk:{sbp:124,apob:70,ldl:65,rhr:60,hba1c:5.6,bodyfat:24,vo2:34,steps:7000,phq:8,gad:7},adh:0.6},
- {id:'hypothy',name:'6 · Hypothyroid (40F)',mk:{tsh:8.5,vitd:18,ldl:125,apob:95,bodyfat:28,sleepdur:6.5,phq:9,gad:8,b12:260}},
- {id:'preg',name:'7 · Pregnant (31F)',mk:{sbp:112,apob:90,ldl:120,rhr:84,glu:96,hb:11.5,ferr:22,waist:90},preg:1},
- {id:'frail',name:'8 · Elderly frail (78M)',mk:{sbp:142,apob:100,ldl:135,egfr:55,uacr:40,almi:5.8,tscore:-2.6,vo2:22,steps:3500,vitd:22,hb:12,sleepeff:74,bodyfat:20}},
- {id:'deprx',name:'9 · Depression / anxiety (35F)',mk:{phq:22,gad:14,isi:17,sleepdur:5.5,sleepeff:70,crp:1.8}},
- {id:'athlete',name:'10 · Athlete optimizer (33M)',mk:{sbp:108,apob:62,ldl:80,rhr:44,hdl:68,hrv:90,hba1c:4.9,glu:82,waist:80,bodyfat:11,almi:9.4,vo2:58,steps:14000,mvpa:420,sleepdur:8.2,sleepeff:94}}
-];
-function nodeValue(id,R,p){
- var mk={};for(var key in DEF)mk[key]=DEF[key];for(var k2 in p.mk)mk[k2]=p.mk[k2];
- if(id==='score')return R.score+'';
- if(R.rk[id]!=null)return 'R='+R.rk[id].toFixed(2)+(R.crit.indexOf(id)>=0?' ⚑':'');
- if(R.res[id]!=null)return 'L='+R.res[id].toFixed(2);
- if(id==='agg')return 'R_tot='+R.Rtot.toFixed(2);
- if(id==='crit')return R.crit.length?('crit: '+R.crit.join(',')):'none';
- if(id==='gate')return p.preg?'pregnancy gates':'standard set';
- if(id==='esc')return R.crit.length?'review':'none';
- if(id==='comp')return R.comp;
- if(id==='nud')return R.nudges;
- if(id==='adh')return 'adher '+R.adher.toFixed(2);
- if(id==='recal')return 're-score 30d';
- if(id==='conf')return 'conf ok';
- if(id==='band'||id==='cohort'||id==='mmax'||id==='pers')return '—';
- if(id==='onb')return 'intake ✓';
- return '';
-}
-
-// ---------------- layout ----------------
-var COLW=210,ROWH=64,PADX=110,PADY=54,NW=164,NH=44;
-var byId={};N.forEach(function(n){n.x=PADX+n.c*COLW;n.y=PADY+n.r*ROWH;byId[n.id]=n;});
-var maxRow=0,maxCol=0;N.forEach(function(n){maxRow=Math.max(maxRow,n.r);maxCol=Math.max(maxCol,n.c);});
-var W=PADX*2+maxCol*COLW+NW, H=PADY*2+maxRow*ROWH+NH;
-
-var svg=document.getElementById('umSvg'),wrap=document.getElementById('umWrap');
-var NS='http://www.w3.org/2000/svg';
-function el(t,a){var e=document.createElementNS(NS,t);for(var k in a)e.setAttribute(k,a[k]);return e;}
-var scene=el('g',{id:'umScene'});svg.appendChild(scene);
-var areaG=el('g',{});scene.appendChild(areaG);
-(function(){var groups={};N.forEach(function(n){(groups[n.a]=groups[n.a]||[]).push(n);});
- AR.forEach(function(a){var ns=groups[a.k];if(!ns)return;var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
-  ns.forEach(function(n){x0=Math.min(x0,n.x);y0=Math.min(y0,n.y);x1=Math.max(x1,n.x+NW);y1=Math.max(y1,n.y+NH);});
-  var pad=14;areaG.appendChild(el('rect',{x:x0-pad,y:y0-pad-15,width:(x1-x0)+pad*2,height:(y1-y0)+pad*2+15,rx:13,fill:a.c,'fill-opacity':0.06,stroke:a.c,'stroke-opacity':0.30,'class':'um-areabg','data-area':a.k}));
-  var tx=el('text',{x:x0-pad+6,y:y0-pad-3,fill:a.c,'class':'um-arealabel','data-area':a.k});tx.textContent=a.l;areaG.appendChild(tx);});})();
-var edgeG=el('g',{});scene.appendChild(edgeG);var edgeEls={};
-E.forEach(function(e){var s=byId[e[0]],t=byId[e[1]];if(!s||!t)return;
- var x1=s.x+NW,y1=s.y+NH/2,x2=t.x,y2=t.y+NH/2;if(t.x<=s.x){x1=s.x+NW/2;y1=s.y+NH;x2=t.x+NW/2;y2=t.y;}
- var mx=(x1+x2)/2;edgeG.appendChild(el('path',{d:'M'+x1+','+y1+' C'+mx+','+y1+' '+mx+','+y2+' '+x2+','+y2,'class':'um-edge'+(e[2]?' loop':''),'data-from':e[0],'data-to':e[1]}));
- edgeEls[e[0]+'>'+e[1]]=edgeG.lastChild;});
-var nodeG=el('g',{});scene.appendChild(nodeG);var nodeEls={};
-N.forEach(function(n){var g=el('g',{'class':'um-node','data-id':n.id,'data-area':n.a});
- var fill=n.k==='gate'?'#1d1a0c':(n.k==='output'?'#0c1726':(n.k==='store'?'#10151e':(n.k==='pillar'?'#10211a':'#121a26')));
- g.appendChild(el('rect',{x:n.x,y:n.y,width:NW,height:NH,rx:n.k==='gate'?12:8,fill:fill,stroke:ACOL[n.a],'stroke-width':1.5}));
- var t1=el('text',{x:n.x+10,y:n.y+18});t1.textContent=n.l;g.appendChild(t1);
- var tv=el('text',{x:n.x+10,y:n.y+34,'class':'um-val','data-val':n.id});g.appendChild(tv);
- g.addEventListener('click',function(ev){ev.stopPropagation();if(!moved)openModal(n.id);});
- g.addEventListener('dblclick',function(ev){ev.stopPropagation();zoomToNode(n);});
- nodeG.appendChild(g);nodeEls[n.id]=g;});
-
-// ---------------- pan / zoom (no pointer-capture so clicks reach nodes) ----------------
-var tx=0,ty=0,k=1,down=false,moved=false,lx=0,ly=0;
-function apply(){scene.setAttribute('transform','translate('+tx+','+ty+') scale('+k+')');}
-function fit(){var bb=wrap.getBoundingClientRect();k=Math.max(0.18,Math.min(1.3,Math.min(bb.width/W,bb.height/H)*0.96));tx=(bb.width-W*k)/2;ty=(bb.height-H*k)/2;apply();}
-function zoomToNode(n){closeModal();var bb=wrap.getBoundingClientRect();k=1.3;tx=bb.width/2-(n.x+NW/2)*k;ty=bb.height/2-(n.y+NH/2)*k;apply();}
-svg.addEventListener('wheel',function(ev){ev.preventDefault();var bb=svg.getBoundingClientRect();var mx=ev.clientX-bb.left,my=ev.clientY-bb.top;var f=ev.deltaY<0?1.12:1/1.12;var nk=Math.max(0.15,Math.min(3,k*f));tx=mx-(mx-tx)*(nk/k);ty=my-(my-ty)*(nk/k);k=nk;apply();},{passive:false});
-svg.addEventListener('pointerdown',function(ev){down=true;moved=false;lx=ev.clientX;ly=ev.clientY;});
-svg.addEventListener('pointermove',function(ev){if(!down)return;var dx=ev.clientX-lx,dy=ev.clientY-ly;if(!moved&&Math.abs(dx)+Math.abs(dy)>4){moved=true;svg.classList.add('drag');}if(moved){tx+=dx;ty+=dy;lx=ev.clientX;ly=ev.clientY;apply();}});
-window.addEventListener('pointerup',function(){down=false;svg.classList.remove('drag');});
-svg.addEventListener('click',function(){if(!moved)closeModal();});
-
-// ---------------- legend / filters ----------------
-var hidden={};var ab=document.getElementById('umAreas');
-AR.forEach(function(a){var s=document.createElement('span');s.textContent=a.l;s.style.color=a.c;s.style.borderColor=a.c;
- s.onclick=function(){hidden[a.k]=!hidden[a.k];s.classList.toggle('off',hidden[a.k]);applyFilter();};ab.appendChild(s);});
-function applyFilter(){var go=document.getElementById('umGates').checked;
- N.forEach(function(n){nodeEls[n.id].style.display=(hidden[n.a]||(go&&n.k!=='gate'))?'none':'';});
- [].forEach.call(areaG.querySelectorAll('[data-area]'),function(e){e.style.display=hidden[e.getAttribute('data-area')]?'none':'';});
- E.forEach(function(e){var p=edgeEls[e[0]+'>'+e[1]];if(!p)return;p.style.display=(hidden[byId[e[0]].a]||hidden[byId[e[1]].a]||(go&&byId[e[0]].k!=='gate'&&byId[e[1]].k!=='gate'))?'none':'';});}
-document.getElementById('umGates').onchange=applyFilter;
-
-// ---------------- profiles / step-through ----------------
-var sel=document.getElementById('umProfile');
-P.forEach(function(p,i){var o=document.createElement('option');o.value=i;o.textContent=p.name;sel.appendChild(o);});
-var curR=null,curP=null,stepIdx=-1,timer=null;
-function setProfile(i){curP=P[i];curR=scoreProfile(curP);resetAnim();document.getElementById('umScoreBadge').textContent='?';}
-function clearVals(){N.forEach(function(n){nodeEls[n.id].querySelector('[data-val]').textContent='';nodeEls[n.id].classList.remove('on','dim');});E.forEach(function(e){var p=edgeEls[e[0]+'>'+e[1]];if(p)p.classList.remove('on');});}
-function resetAnim(){if(timer){clearInterval(timer);timer=null;}stepIdx=-1;clearVals();document.getElementById('umPlay').innerHTML='&#9654; Play';}
-function showNode(id){nodeEls[id].querySelector('[data-val]').textContent=nodeValue(id,curR,curP);nodeEls[id].classList.add('on');
- E.forEach(function(e){if(e[1]===id&&nodeEls[e[0]]&&nodeEls[e[0]].classList.contains('on')){var p=edgeEls[e[0]+'>'+e[1]];if(p)p.classList.add('on');}});
- if(document.getElementById('umPath').checked)N.forEach(function(m){nodeEls[m.id].classList.toggle('dim',STEP.indexOf(m.id)>stepIdx);});
- if(id==='score')document.getElementById('umScoreBadge').textContent=curR.score;}
-function stepNext(){if(!curR)setProfile(+sel.value);if(stepIdx>=STEP.length-1)return false;stepIdx++;showNode(STEP[stepIdx]);return stepIdx<STEP.length-1;}
-function play(){if(!curR)setProfile(+sel.value);if(timer){resetAnim();return;}document.getElementById('umPlay').innerHTML='&#10073;&#10073; Pause';
- var sp=+document.getElementById('umSpeed').value;timer=setInterval(function(){if(!stepNext()){clearInterval(timer);timer=null;document.getElementById('umPlay').innerHTML='&#9654; Replay';}},sp);}
-sel.onchange=function(){setProfile(+sel.value);};
-document.getElementById('umPlay').onclick=play;
-document.getElementById('umStep').onclick=function(){if(timer){clearInterval(timer);timer=null;document.getElementById('umPlay').innerHTML='&#9654; Play';}stepNext();};
-document.getElementById('umReset').onclick=resetAnim;
-document.getElementById('umPath').onchange=function(){if(stepIdx>=0)showNode(STEP[stepIdx]);if(!this.checked)N.forEach(function(m){nodeEls[m.id].classList.remove('dim');});};
-document.getElementById('umFit').onclick=fit;
-document.getElementById('umFs').onclick=function(){wrap.classList.toggle('fs');setTimeout(fit,60);};
-document.addEventListener('keydown',function(e){if(e.key==='Escape'&&wrap.classList.contains('fs')){wrap.classList.remove('fs');setTimeout(fit,60);}});
-
-// ---------------- modal ----------------
-function openModal(id){var n=byId[id],m=document.getElementById('umModal'),b=document.getElementById('umModalBody');
- var live=curR?('<div class="um-live"><b>'+curP.name+'</b><br>live value: <b>'+(nodeValue(id,curR,curP)||'—')+'</b></div>'):'';
- b.innerHTML='<h3>'+n.l+'</h3> <span class="um-tag" style="color:'+ACOL[n.a]+';border-color:'+ACOL[n.a]+'">'+AR.filter(function(a){return a.k===n.a;})[0].l+'</span>'+
-  '<pre>'+n.f+'</pre><div class="small" style="margin-top:6px;color:#9bb0c5">conditions / gates:</div><ul>'+
-  n.conds.map(function(c){return '<li>'+c+'</li>';}).join('')+'</ul><div class="small" style="margin-top:8px;color:#6b7d92">source: '+n.s+'</div>'+live;
- m.classList.add('show');}
-function closeModal(){document.getElementById('umModal').classList.remove('show');}
-document.getElementById('umX').onclick=closeModal;
-document.getElementById('umModal').onclick=function(e){if(e.target===this)closeModal();};
-
-applyFilter();fit();setProfile(0);
-})();
-</script>"""
+<script src="assets/calc-data.js"></script>
+<script src="assets/engine.js"></script>
+<script src="assets/calc-explorer.js"></script>"""
     return "PureScore uber-map", body
 
 # =================================================================== APPENDIX F — lifestyles & personas
@@ -3369,6 +3175,11 @@ def build_wearable_baselines():
              '<code>μ_i = (n/(n+k))·x̄_personal + (k/(n+k))·μ_cohort</code>; <code>z = (x−μ)/σ</code>. Cold-start '
              'leans on the cohort prior; sensitivity grows with <code>n</code>. Consumer/inferential tiers are '
              'informational-only and never set a red/critical without clinical-grade confirmation (D22).</div>')
+    h.append('<div class="callout note"><div class="ct">Marker pipeline</div>'
+             '<a class="xref" href="appendix-wearables.html">ingest &amp; trust-tier (Appendix B)</a> &rarr; '
+             '<a class="xref" href="appendix-biomarkers.html">bands (Appendix A · Markers)</a> &rarr; '
+             '<b>personal baseline (you are here)</b> &middot; mobile prototype: '
+             '<a class="xref" href="wearable-baselines.html">Wearable baselines (mobile)</a>.</div>')
     return "Baselines (Wearables)", "".join(h)
 
 def _sex_gated(sex):

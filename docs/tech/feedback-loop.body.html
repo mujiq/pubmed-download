@@ -6,8 +6,10 @@ PureScore moves <i>continuously</i> with short-term behaviour. Tap a top-5 actio
 Modifiability) respond with it. Nothing here is discrete: every change is a smooth, personal-baseline-relative
 nudge. Bands stay as safety labels only.</p>
 <div class="callout note"><div class="ct">Illustrative</div>A small synthetic engine (6 pillars, 11 markers) running
-the real Stage-2b math (<code>r = clamp(r_clin + κ·tanh(z/2))</code>, γ-mean pillars, δ-mean overall). Numbers
-are for demonstration, not a validated model.</div>
+the real Stage-2b math (<code>r = clamp(r_clin + κ·tanh(z/2))</code>, γ-mean pillars, δ-mean overall) to show the
+<i>temporal personalisation</i> the static scorer doesn't. Its constants (pillar weights, γ, δ) are sourced from the
+canonical <code>data/*.json</code>, so they can't drift. The full 12-pillar engine is the
+<a class="xref" href="purescore-uber-map.html">Calculation Explorer</a>. Numbers are for demonstration, not a validated model.</div>
 
 <style>
   .fb-top{display:grid;grid-template-columns:300px 1fr;gap:16px;margin:16px 0}
@@ -82,9 +84,19 @@ are for demonstration, not a validated model.</div>
   </div>
 </div>
 
+<script src="assets/calc-data.js"></script>
+<script src="assets/engine.js"></script>
 <script>
 (function(){
-  var PW={SLP:.20,FIT:.18,MET:.20,CV:.22,MCS:.20};
+  // Reduced Stage-2b demo model (its own temporal personalisation), but its CONSTANTS are sourced
+  // from the canonical data/*.json (via window.PURESCORE_DATA) so they can't drift from the engine.
+  var _D=window.PURESCORE_DATA;
+  var PW=(function(){var ids=['SLP','FIT','MET','CV','MCS'],out={},sum=0;
+    if(_D&&_D.pillars){ids.forEach(function(id){var p=_D.pillars[id.toLowerCase()];if(p){out[id]=p.weight;sum+=p.weight;}});}
+    if(sum>0){ids.forEach(function(id){out[id]=out[id]/sum;});return out;}      // canonical weights, renormalised across these 5
+    return {SLP:.20,FIT:.18,MET:.20,CV:.22,MCS:.20};})();                       // fallback if data missing
+  var DELTA=(_D&&_D.const&&_D.const.delta)||2;                                  // PureScore power-mean exponent (constants.json δ)
+  var GAMMA=(function(){var c=_D&&_D._constants_raw;if(c){for(var i=0;i<c.length;i++)if(c[i][0]==='γ')return parseFloat(c[i][2]);}return 3;})();
   var PN={SLP:"Sleep",FIT:"Fitness",MET:"Metabolic",CV:"Cardio",MCS:"Mental"};
   function mk(pillar,label,unit,val,opt,lo,hi,hib,sig,w,fixed){
     return {pillar:pillar,label:label,unit:unit,val:val,base:val,opt:opt,lo:lo,hi:hi,hib:hib,sig:sig,w:w,fixed:!!fixed};
@@ -107,10 +119,10 @@ are for demonstration, not a validated model.</div>
   function badness(m){var d=m.hib?(m.opt-m.val):(m.val-m.opt); return Math.max(0,d)/((m.hi-m.lo)*0.5);}
   function riskOf(m){var rc=1-Math.exp(-2.2*badness(m)); var adv=m.hib?-1:1;
     var z=adv*(m.val-m.base)/m.sig; var rp=m.fixed?0:0.10*Math.tanh(z/2); return clamp(rc+rp,0,1);}
-  function pillarRisk(pid){var num=0,den=0,g=3; for(var k in M){var m=M[k]; if(m.pillar!==pid)continue;
+  function pillarRisk(pid){var num=0,den=0,g=GAMMA; for(var k in M){var m=M[k]; if(m.pillar!==pid)continue;
     num+=m.w*Math.pow(riskOf(m),g); den+=m.w;} return Math.pow(num/den,1/g);}
   function compute(){var R=0,W=0,pil={}; for(var pid in PW){var Rk=pillarRisk(pid); pil[pid]=100*(1-Rk);
-    R+=PW[pid]*Rk*Rk; W+=PW[pid];} return {pure:100*(1-Math.sqrt(R/W)),pil:pil};}
+    R+=PW[pid]*Math.pow(Rk,DELTA); W+=PW[pid];} return {pure:100*(1-Math.pow(R/W,1/DELTA)),pil:pil};}
   function modif(){var mod=0,tot=0; for(var k in M){var m=M[k],r=riskOf(m); tot+=m.w*r; if(!m.fixed)mod+=m.w*r;}
     return tot>0?Math.round(100*mod/tot):100;}
   function applyEff(eff){for(var k in eff){if(M[k]){M[k].val=clamp(M[k].val+eff[k],M[k].lo,M[k].hi); acted[k]=1;}}}
