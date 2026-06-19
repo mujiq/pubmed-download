@@ -1,0 +1,62 @@
+{
+  "meta": {
+    "name": "Onboarding & first-run intake flow",
+    "version": "0.1",
+    "flag": "illustrative — design spec, re-verify before production",
+    "closes": ["F9", "F10", "F11", "F12"],
+    "idea": "The first-run experience the audit found nobody owned: the ordered sequence of screens from install to first score, the full demographic field-set, the question-side cold-start (minimal bootstrap set → progressive profiling), and where consent & device-pairing sit. It hands off to the question bank (Appendix E), persona determination (Appendix I), goals (Appendix J) and the Onboarding sub-machine on the patient state machine.",
+    "links": ["Doc 01", "Doc 11", "Doc 14", "Doc 15", "Doc 18", "Appendix E", "Appendix I", "Appendix J", "states.html"]
+  },
+  "steps": [
+    {"order": 1, "id": "welcome", "phase": "Welcome", "screen": "Value proposition + privacy summary", "captures": "—", "consent": false, "pairs_device": false, "gated_until": "—", "feeds": "—", "why": "Set expectations; surface the privacy posture before any data is asked."},
+    {"order": 2, "id": "account", "phase": "Account", "screen": "Email / SSO + display name", "captures": "identity", "consent": false, "pairs_device": false, "gated_until": "—", "feeds": "account", "why": "Create the account record (Doc 01 Patient)."},
+    {"order": 3, "id": "consent_privacy", "phase": "Consent", "screen": "Privacy & data-use consent", "captures": "consent flags", "consent": true, "pairs_device": false, "gated_until": "blocks all data capture", "feeds": "governance (Doc 11)", "why": "Informed consent precedes any PII/health capture; granular toggles (care vs research vs actuarial-firewalled)."},
+    {"order": 4, "id": "demographics", "phase": "Profile", "screen": "Sex at birth · gender · DOB · height · weight · ethnicity · pregnancy status", "captures": "demographic field-set", "consent": false, "pairs_device": false, "gated_until": "after consent", "feeds": "cohort + reference frames (Doc 01/05/15)", "why": "Drives age/sex frames, cohort stratification and UAE cut-points — the minimum to interpret any marker."},
+    {"order": 5, "id": "goal_seed", "phase": "Goals", "screen": "What brings you here? (pick 1–3)", "captures": "goal intents", "consent": false, "pairs_device": false, "gated_until": "—", "feeds": "goals (Appendix J)", "why": "Seeds the UserGoals stream and tilts the first nudges; warm, motivating first step."},
+    {"order": 6, "id": "bootstrap_pro", "phase": "Quick check-in", "screen": "PHQ-2 · GAD-2 · sleep · activity · alcohol · smoking · diet (≈ 2 min)", "captures": "minimal high-yield PROs", "consent": false, "pairs_device": false, "gated_until": "after consent", "feeds": "cold-start score + persona signals", "why": "The cheapest item set that bootstraps an initial score and resolves a persona (F11)."},
+    {"order": 7, "id": "persona_resolve", "phase": "Personalize", "screen": "(silent) determination-matrix posterior → frame", "captures": "—", "consent": false, "pairs_device": false, "gated_until": "after bootstrap", "feeds": "persona frame (Appendix I)", "why": "Resolve to a coherent persona/archetype so even early scoring is framed, not generic."},
+    {"order": 8, "id": "device_pair", "phase": "Connect", "screen": "Pair a wearable (optional, skippable)", "captures": "device tokens", "consent": false, "pairs_device": true, "gated_until": "gates wearable-derived metrics & wearable early-warning", "feeds": "WEAR stream (Doc 18, D22)", "why": "Position device-pairing explicitly; wearable metrics/trends stay locked until a device is paired (F12)."},
+    {"order": 9, "id": "ehr_connect", "phase": "Records", "screen": "Connect EHR / labs (optional)", "captures": "FHIR auth", "consent": false, "pairs_device": false, "gated_until": "gates Patient360 corroboration & auto-activated check-ins", "feeds": "LAB stream + Patient360 (Doc 01 §1)", "why": "EHR-first activation: known meds/conditions auto-activate the right check-ins instead of re-asking."},
+    {"order": 10, "id": "first_score", "phase": "Your score", "screen": "Cold-start PureScore + companion vector (Confidence shown LOW)", "captures": "—", "consent": false, "pairs_device": false, "gated_until": "after bootstrap", "feeds": "score + companion (Doc 12)", "why": "Show value immediately; honesty via low Confidence + 'measure this' coverage prompts (ignition, Doc 14)."},
+    {"order": 11, "id": "progressive", "phase": "Ongoing", "screen": "Schedule rest of bank by priority over later sessions", "captures": "progressive answers", "consent": false, "pairs_device": false, "gated_until": "post first-run", "feeds": "question bank (Appendix E)", "why": "Progressive profiling: never front-load the whole question bank; deepen coverage as engagement allows (F11)."}
+  ],
+  "demographics": [
+    {"field": "sex_at_birth", "type": "enum {female,male,intersex}", "required": true, "drives": "physiology reference (Doc 05)", "source": "Doc 01 §1.1"},
+    {"field": "gender_identity", "type": "enum {woman,man,non-binary,trans-fem,trans-masc,…}", "required": true, "drives": "affirming frames + gonadal-sex ranges (Doc 05)", "source": "Doc 01 §1.1"},
+    {"field": "date_of_birth", "type": "date", "required": true, "drives": "age bands, J-curve & elderly frames (Doc 12 §3.3)", "source": "Doc 01 §1.1"},
+    {"field": "height_cm", "type": "number", "required": true, "drives": "BMI, anthropometrics (BCM)", "source": "Doc 01 §1.1"},
+    {"field": "weight_kg", "type": "number", "required": true, "drives": "BMI, dosing context", "source": "Doc 01 §1.1"},
+    {"field": "ethnicity", "type": "enum {Emirati,Gulf-Arab,South-Asian,Other-Arab,African,East-Asian,European,…}", "required": false, "drives": "cohort stratification + UAE cut-points (Doc 15)", "source": "Doc 01 §4.2"},
+    {"field": "ancestry", "type": "multi-select", "required": false, "drives": "race-free equations; G6PD/FH/vit-D screening priors (D18)", "source": "Doc 01 §4.2"},
+    {"field": "pregnancy_status", "type": "enum {n/a,possible,pregnant,postpartum,lactating}", "required": false, "drives": "life-stage frame + safety anchors (Doc 05/06)", "source": "Doc 05"},
+    {"field": "emirate_locale", "type": "enum {Abu Dhabi,Dubai,Sharjah,…}", "required": false, "drives": "regional epidemiology & Ramadan defaults (Doc 15)", "source": "Doc 15"},
+    {"field": "preferred_language", "type": "enum {en,ar,…}", "required": false, "drives": "localization of instruments & nudges (Doc 15)", "source": "Doc 15"},
+    {"field": "household_role", "type": "enum {self,caregiver,dependent}", "required": false, "drives": "household accounts & proxy consent (Doc 18 §6)", "source": "Doc 18 §6"}
+  ],
+  "cold_start": {
+    "rule": "Bootstrap with the smallest item set that (a) seeds an initial multi-pillar score and (b) resolves a persona; defer the rest to progressive profiling.",
+    "bootstrap_items": [
+      {"ref": "PHQ-2", "why": "depression screen → MCS + crisis safety", "pillar": "MCS"},
+      {"ref": "GAD-2", "why": "anxiety screen → MCS", "pillar": "MCS"},
+      {"ref": "Sleep duration/regularity", "why": "→ SLP + persona (shift/new-parent)", "pillar": "SLP"},
+      {"ref": "IPAQ-SF (1 item)", "why": "→ FIT + persona (sedentary/athlete)", "pillar": "FIT"},
+      {"ref": "AUDIT-C", "why": "→ HEP/MCS + persona (social-drinker)", "pillar": "HEP"},
+      {"ref": "Smoking status", "why": "→ CV/INF cross-cutting + persona", "pillar": "CV"},
+      {"ref": "Diet-quality (1 item)", "why": "→ NUT/MET + persona", "pillar": "NUT"}
+    ],
+    "progressive_profiling": {
+      "session_1": "demographics + goal seed + bootstrap PROs → first score (low confidence)",
+      "session_2plus": "remaining bank by priority P1→P5, gated by sex/age/life-stage/persona applicability (Appendix E DAG)",
+      "triggered": "out-of-range markers / persona changes unlock targeted deep-dive items",
+      "refresh": "validated PROs re-administered on their cadence (Appendix C); confidence grows with coverage (Doc 14 ignition)"
+    }
+  },
+  "consent_gating": [
+    {"item": "Privacy & data-use consent", "when": "step 3 (before any capture)", "gates": "ALL health/PII capture", "doc": "Doc 11"},
+    {"item": "Personalization consent", "when": "step 3", "gates": "persona inference + nudges", "doc": "Doc 11"},
+    {"item": "Actuarial / insurance consent (separate, firewalled)", "when": "optional, later", "gates": "the actuarial layer — off by default", "doc": "Doc 10/11"},
+    {"item": "Device pairing", "when": "step 8", "gates": "wearable-derived metrics, trends & wearable early-warning", "doc": "Doc 18 · D22"},
+    {"item": "EHR / lab connect", "when": "step 9", "gates": "Patient360 corroboration & EHR-activated check-ins", "doc": "Doc 01 §1"},
+    {"item": "Research data-sharing (optional)", "when": "later", "gates": "cohort contribution — opt-in only", "doc": "Doc 11"}
+  ]
+}

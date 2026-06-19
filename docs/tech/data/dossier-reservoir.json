@@ -1,0 +1,371 @@
+{
+  "classes": {
+    "Reservoir": {
+      "purpose": "Time-series stock of a single physiological burden or asset (B_j per day per reservoir). Accumulates adverse inflows, decays toward a set-point at rate lambda_j, and is clamped to [0, B_max]. Burdens persist through missing data; tanks are never reset on stale input. Asset depletion (reserve falling below B_target) converts to risk via the B_tilde mapping in ReservoirSystem.",
+      "stories": [
+        {
+          "id": "US-RESERVOIR-1",
+          "role": "scoring engine",
+          "want": "accumulate sleep-debt burden across consecutive nights of deficit without resetting when a wearable reading is absent",
+          "soThat": "one good night or a gap in data does not falsely zero out a chronic SLD burden that should persist",
+          "acceptance": [
+            "Given B_SLD > 0 and the nightly wearable reading is stale for 3 days, When the daily tick fires, Then B_SLD remains at its last persisted value minus only lambda_SLD*(B_SLD-B*) decay, never zeroed",
+            "Given a patient has 14 nights of deficit accumulating B_SLD, When one normal sleep night is recorded, Then B_SLD decreases by at most lambda_SLD*delta for that day, remaining significantly elevated",
+            "Given B_SLD is at B_max, When a new adverse inflow arrives, Then B_SLD stays clamped at B_max without overflow"
+          ],
+          "edge": [
+            "Stale marker uses last-known value with decayed confidence; inflow is not zeroed (anti-gaming, D19)"
+          ]
+        },
+        {
+          "id": "US-RESERVOIR-2",
+          "role": "clinician reviewing a managed hypertension patient",
+          "want": "see the VBP (vascular/BP load) reservoir reflect years of historical BP-time exposure even though current BP is controlled",
+          "soThat": "the atherogenic burden is honest about lifetime risk and is not cleared by treatment alone (D3)",
+          "acceptance": [
+            "Given a patient has been on antihypertensives for 5 years with current systolic 125, When the reservoir is queried, Then VBP is > 0 reflecting prior exposure and slow lambda_VBP decay (years timescale)",
+            "Given the VBP reservoir is non-zero and the MANAGED tag is active on systolic BP, When the score is recomputed, Then VBP still contributes B_tilde to CV pillar risk",
+            "Given the patient stops antihypertensives and BP rises, When inflow_VBP reactivates, Then VBP climbs from its persisted non-zero base, not from zero"
+          ],
+          "edge": [
+            "lambda_VBP is near-zero (years scale); a single normal BP reading produces negligible drain relative to accumulated stock"
+          ]
+        },
+        {
+          "id": "US-RESERVOIR-3",
+          "role": "scoring engine",
+          "want": "treat OXD (oxygen-delivery reserve) as an asset so depletion raises risk to HEM and CV pillars",
+          "soThat": "low hemoglobin or iron deficiency translates into elevated pillar risk even when no single marker crosses a critical threshold",
+          "acceptance": [
+            "Given B_OXD drops below 50% of B_target due to low hemoglobin and low SpO2, When B_tilde_k is computed for HEM, Then the depletion term (1 - B_OXD/B_target) is > 0 and raises R_HEM",
+            "Given iron supplementation is started and ferritin rises over 8 weeks, When reservoir ticks daily, Then B_OXD increases toward B_target, reducing depletion risk on HEM and CV",
+            "Given B_OXD is at B_target (full reserve), When SpO2 transiently dips on a consumer wearable, Then inflow does not push B_OXD above B_max"
+          ],
+          "edge": [
+            "Asset polarity: depletion = risk; formula uses (1 - B_j/B_target) for u_{kj} link to pillar"
+          ]
+        },
+        {
+          "id": "US-RESERVOIR-4",
+          "role": "data engineer",
+          "want": "query a paginated daily time series of B_j for a given reservoir and patient over a date range",
+          "soThat": "the clinician dashboard and companion Trajectory dimension can display reservoir trend over time",
+          "acceptance": [
+            "Given patient P has 90 days of SLD records, When GET /v1/patients/P/reservoirs is called, Then response includes B_j values, polarity, and trend direction for SLD",
+            "Given no measurements exist for a reservoir in a date range, When the series is queried, Then persisted prior values are returned with a 'stale_confidence' flag, not nulls",
+            "Given reservoir data is queried across a partition boundary (year), Then the response is contiguous with no missing rows"
+          ],
+          "edge": [
+            "Partition table by patient_id + year; index on (patient_id, reservoir_id, date DESC) for efficient latest-value lookups"
+          ]
+        }
+      ],
+      "table": {
+        "name": "reservoir_stock",
+        "columns": [
+          { "name": "id", "type": "uuid", "key": "PK", "note": "row identity" },
+          { "name": "patient_id", "type": "uuid", "key": "FK -> patient", "note": "partition key" },
+          { "name": "reservoir_id", "type": "varchar(8)", "key": "", "note": "canonical ID: GLY/ATH/INFL/SLD/ADI/HEPF/ALLO/CRF/MUS/BON/RENR/MICR/VBP/OXD/IRON" },
+          { "name": "date", "type": "date", "key": "", "note": "one row per patient per reservoir per day (UTC)" },
+          { "name": "b_j", "type": "numeric(10,6)", "key": "", "note": "stock value in [0, b_max]; clamped on write" },
+          { "name": "b_max", "type": "numeric(10,6)", "key": "", "note": "versioned ceiling from model_version constants" },
+          { "name": "polarity", "type": "varchar(6)", "key": "", "note": "'burden' or 'asset'" },
+          { "name": "inflow", "type": "numeric(10,6)", "key": "", "note": "inflow_j applied this tick (logistic-saturated)" },
+          { "name": "decay", "type": "numeric(10,6)", "key": "", "note": "lambda_j*(B_j - B*) drain applied this tick" },
+          { "name": "interference_in", "type": "numeric(10,6)", "key": "", "note": "sum kappa_jl*sat(B_l) received this tick" },
+          { "name": "confidence", "type": "numeric(5,4)", "key": "", "note": "decayed confidence when input is stale" },
+          { "name": "model_version_id", "type": "uuid", "key": "FK -> model_version", "note": "lambda/kappa/b_max snapshot used" },
+          { "name": "created_at", "type": "timestamptz", "key": "", "note": "" }
+        ],
+        "indexes": [
+          "UNIQUE (patient_id, reservoir_id, date)",
+          "INDEX (patient_id, reservoir_id, date DESC) — latest-value fast path",
+          "PARTITION BY RANGE (date) per year"
+        ],
+        "notes": "Append-only in production; updates only via the daily ReservoirSystem tick. A model-version bump requires a migration plan before backfilling history."
+      },
+      "invariants": [
+        "B_j is always clamped to [0, B_max]; no write may produce a value outside this range",
+        "Burdens persist through missing input data — stale inflow uses last-known value with decayed confidence, never zeros the tank (anti-gaming)",
+        "Asset depletion risk is (1 - B_j/B_target); a full reserve (B_j = B_target) contributes zero depletion risk",
+        "lambda_j is reservoir-specific and immutable within a model_version; slow-decay reservoirs (VBP, ATH, BON) retain stock for years",
+        "Each row is tied to a model_version_id; lambda/kappa/b_max changes require a model-version bump before re-ticking"
+      ],
+      "apiRefs": ["get-reservoirs", "ingest-measurement", "post-response"],
+      "seqRefs": ["reservoir-update", "ingest-recompute", "question-answer"],
+      "decisions": ["D3", "D19", "D22", "D23"]
+    },
+
+    "ReservoirSystem": {
+      "purpose": "State stepper that applies one daily tick to all 15 canonical reservoirs for a patient: computes inflow_j, applies lambda_j decay toward set-point B*, folds in interference kappa_jl from other tanks, clamps results, and emits B_tilde_k for each pillar. Enforces Hurwitz stability (all eigenvalues of -Lambda+K negative) at every calibration. rho_k caps the total reservoir contribution to each pillar.",
+      "stories": [
+        {
+          "id": "US-RESERVOIRSYSTEM-1",
+          "role": "scoring engine",
+          "want": "step all 15 reservoirs forward by one day and propagate the resulting B_tilde_k values to PillarAggregator",
+          "soThat": "cross-pillar contagion (e.g. rising SLD raising INFL via kappa) is reflected in every daily recompute",
+          "acceptance": [
+            "Given B_SLD is elevated and kappa_{INFL,SLD} > 0, When the daily tick fires, Then B_INFL increases by kappa_{INFL,SLD}*sat(B_SLD)*delta in addition to its own inflow",
+            "Given all 15 reservoirs are within [0, B_max], When tick completes, Then no reservoir value exceeds its B_max or falls below 0",
+            "Given calibration produces a (-Lambda+K) matrix with any eigenvalue having positive real part, Then the tick is rejected and an alert is raised to Governance before persisting"
+          ],
+          "edge": [
+            "Bidirectional coupling: kappa_{ALLO,SLD} > 0 and kappa_{SLD,ALLO} > 0; stepper must process all reservoirs in a single vectorized update, not sequentially, to avoid order-dependence"
+          ]
+        },
+        {
+          "id": "US-RESERVOIRSYSTEM-2",
+          "role": "scoring engine",
+          "want": "cap each pillar's reservoir burden contribution at rho_k so a single very high reservoir cannot dominate PureScore",
+          "soThat": "the pillar risk function remains bounded and reservoir contributions remain proportional to other marker inputs",
+          "acceptance": [
+            "Given B_GLY is at B_max and u_{MET,GLY} is high, When B_tilde_MET is computed, Then the contribution is clamped so rho_MET * B_tilde_MET does not exceed the rho_k cap defined in model constants",
+            "Given multiple reservoirs feed CV (ATH, INFL, VBP), When B_tilde_CV is computed, Then the combined u_{CV,j}*normalized(B_j) sum is clamped to [0,1] before rho_k multiplication",
+            "Given rho_k changes in a model-version bump, Then B_tilde for all pillars must be recomputed against the new cap before persisting"
+          ],
+          "edge": [
+            "rho_k is a versioned constant; a change triggers model-version bump and re-validation (D17)"
+          ]
+        },
+        {
+          "id": "US-RESERVOIRSYSTEM-3",
+          "role": "nudge engine",
+          "want": "model a behavioural valve opening (e.g. completing a zone-2 cardio nudge) as a CRF reservoir inflow increase and a SLD drain acceleration",
+          "soThat": "the nudge's projected ΔPureScore@30d is computed honestly through the actual state equations, not a lookup",
+          "acceptance": [
+            "Given an adherence event for 'zone-2 cardio' fires, When the valve is applied, Then B_CRF inflow increases by the valve's delta for that tick, and the projected B_tilde_FIT reduction is computed over 30 forward ticks",
+            "Given a patient with near-permanent ATH burden completes a lifestyle nudge, When the projection runs, Then ΔB_ATH@30d is near-zero (lambda_ATH tiny), and the nudge's ΔPureScore reflects this honest ceiling (D16)",
+            "Given two valves are applied simultaneously, When the stepper ticks, Then interference coupling means combined inflow changes are applied atomically in the same tick"
+          ],
+          "edge": [
+            "Valve efficacy is a signed delta on inflow_j or lambda_j; medication valves may modify lambda directly (e.g. statin reducing ATH inflow), not just behaviour"
+          ]
+        }
+      ],
+      "table": {
+        "name": "reservoir_system_snapshot",
+        "columns": [
+          { "name": "id", "type": "uuid", "key": "PK", "note": "" },
+          { "name": "patient_id", "type": "uuid", "key": "FK -> patient", "note": "" },
+          { "name": "tick_date", "type": "date", "key": "", "note": "date the full 15-reservoir tick was applied" },
+          { "name": "b_tilde", "type": "jsonb", "key": "", "note": "{pillar_code: b_tilde_k} map for all 12 pillars" },
+          { "name": "eigenvalue_min_real", "type": "numeric(12,8)", "key": "", "note": "minimum real part of (-Lambda+K) eigenvalues; must be < 0 (Hurwitz check)" },
+          { "name": "stability_ok", "type": "boolean", "key": "", "note": "true iff all eigenvalues have negative real part" },
+          { "name": "model_version_id", "type": "uuid", "key": "FK -> model_version", "note": "kappa/lambda/u/rho snapshot used" },
+          { "name": "created_at", "type": "timestamptz", "key": "", "note": "" }
+        ],
+        "indexes": [
+          "UNIQUE (patient_id, tick_date)",
+          "INDEX (patient_id, tick_date DESC)"
+        ],
+        "notes": "Snapshot captures the B_tilde output vector for each tick. Individual B_j values live in reservoir_stock. If stability_ok = false, the tick must not be promoted to scoring."
+      },
+      "invariants": [
+        "All 15 canonical reservoirs must be stepped atomically in a single tick; sequential per-reservoir updates that observe partially-updated neighbours are forbidden",
+        "B_tilde_k for assets uses depletion term (1 - B_j/B_target); for burdens uses (B_j/B_max); combined link weight sum is clamped to [0,1]",
+        "rho_k caps the total reservoir contribution to pillar k; this cap is a versioned constant and may not be exceeded",
+        "The linearized system matrix (-Lambda + K) must have all eigenvalues with strictly negative real part (Hurwitz stability) before any tick output is persisted",
+        "kappa and lambda values may only change via a model-version bump followed by stability check and re-validation (D17)",
+        "Valve effects on inflow_j or lambda_j are applied within the tick they are registered; they do not retroactively alter prior stock values"
+      ],
+      "apiRefs": ["get-reservoirs", "get-pillars", "get-score", "admin-constants", "get-model-version"],
+      "seqRefs": ["reservoir-update", "ingest-recompute", "daily-nudge", "acute-event"],
+      "decisions": ["D3", "D16", "D17", "D19", "D22", "D23"]
+    },
+
+    "CompanionVector": {
+      "purpose": "Per-pillar meta-dimension vector shipped alongside every PureScore. Rolls up ten dimensions: Confidence (Cf_k), Data Sufficiency (Su_k), Criticality (Cr), Trajectory/Momentum (Tr_k), Early-warning (Ew_k), Representativeness (Rp_k), Skew/Robustness (Sk_i), Volatility (Vo_k), Modifiability (Mo_k), and Stress-load (St). Stress-load is read-only and carries no PureScore weight (D24). Confidence and Sufficiency are distinct: sufficiency = data present; confidence = data trustworthy and stable.",
+      "stories": [
+        {
+          "id": "US-COMPANIONVECTOR-1",
+          "role": "patient app",
+          "want": "display a Confidence percentage alongside PureScore so users understand how much to trust the current number",
+          "soThat": "a score backed by one stale lab reads differently from a score backed by a full fresh panel, without hiding the number entirely",
+          "acceptance": [
+            "Given a pillar has coverage 0.4, mean input confidence 0.7, and low volatility (stability 0.9), When Cf_k is computed, Then Cf_k = 0.4*0.7*0.9 = 0.252, displayed as 25%",
+            "Given a wearable-only pillar uses a consumer-validated device (tier discount applied), When Cf_k is computed, Then the per-input trust flag from D22 is propagated into meanConf_k, reducing Confidence",
+            "Given Su_k < 0.50 (tau_su threshold), When the companion is returned, Then the response includes an INSUFFICIENT flag on that pillar's sufficiency field"
+          ],
+          "edge": [
+            "A pillar can have Su_k = 1.0 (all data present) but Cf_k < 0.3 (noisy device); the two must be surfaced independently"
+          ]
+        },
+        {
+          "id": "US-COMPANIONVECTOR-2",
+          "role": "patient on a beta-blocker",
+          "want": "see Modifiability correctly distinguish my FH-driven CV risk (fixed) from my lifestyle-driven MET risk (modifiable)",
+          "soThat": "nudges are routed to clinician for fixed risk and to lifestyle actions for modifiable risk, with no false hope (D5, D16)",
+          "acceptance": [
+            "Given CV pillar R_CV is 60% from ATH reservoir (near-permanent, fixed) and 40% from INFL reservoir (lifestyle-modifiable), When Mo_CV is computed, Then Mo_CV reflects the 40% modifiable share",
+            "Given a FH patient with ApoB driven by genetics, When the nudge engine checks Mo, Then ApoB's modifiable flag is false and the lifestyle action gate is closed, routing to a clinical recommendation",
+            "Given a patient improves diet and B_INFL declines, When Mo_CV is recomputed, Then the share of modifiable risk may shift as the relative contributions change"
+          ],
+          "edge": [
+            "Mo_k is a continuous share [0,1] not a binary flag; even near-permanent burdens have a small modifiable fraction from lifestyle coupling via kappa"
+          ]
+        },
+        {
+          "id": "US-COMPANIONVECTOR-3",
+          "role": "clinician dashboard",
+          "want": "see Stress-load displayed prominently as a read-only companion chip without it affecting PureScore",
+          "soThat": "the patient's physiological stress context is visible for clinical interpretation without double-counting ALLO burden already inside CV/SLP/MCS pillars (D24)",
+          "acceptance": [
+            "Given B_ALLO = 0.7*B_ALLO_max and z_auto (HRV depression + RHR elevation) = 1.5, When St is computed, Then St = 100*sigma(a*0.7 + b*1.5) and is returned in the companion vector with a tier label (elevated)",
+            "Given St = 95 (high tier), When PureScore is computed, Then the headline value is unchanged; St does not contribute to any pillar R_k or the gamma-weighted aggregation",
+            "Given the wearable providing HRV is consumer-tier (D22), When z_auto is computed, Then the HRV deviation is down-weighted by its tier factor before entering St, and Confidence on St is reduced"
+          ],
+          "edge": [
+            "St may raise EarlyWarning to Watch/Advisory and re-rank stress-reducing nudges, but it never sets or clears a band or triggers a critical (D24)"
+          ]
+        },
+        {
+          "id": "US-COMPANIONVECTOR-4",
+          "role": "patient app",
+          "want": "receive a Trajectory arrow (improving/stable/worsening) per pillar with an estimated days-to-threshold forecast",
+          "soThat": "a patient whose PureScore is stable but trending down is alerted before a band is crossed, fulfilling the early-detection intent of D23",
+          "acceptance": [
+            "Given S_CV has a robust negative slope of -0.3 units/day over a 14-day window, When Tr_CV is computed, Then the trajectory is 'worsening' and the estimated days to yellow is returned",
+            "Given a volatile pillar (Vo_k high) produces a noisy slope estimate, When Tr_k is computed, Then the slope is dampened by the volatility factor so short-term noise does not produce a misleading trajectory arrow",
+            "Given S_k crosses from yellow back into green over 3 consecutive reads, When Tr_k is updated, Then the direction flips to 'improving' with the rate"
+          ],
+          "edge": [
+            "Trajectory uses robust slope (e.g. Theil-Sen), not OLS, to resist outlier distortion from a single bad measurement"
+          ]
+        }
+      ],
+      "table": {
+        "name": "companion_vector_snapshot",
+        "columns": [
+          { "name": "id", "type": "uuid", "key": "PK", "note": "" },
+          { "name": "patient_id", "type": "uuid", "key": "FK -> patient", "note": "" },
+          { "name": "score_snapshot_id", "type": "uuid", "key": "FK -> purescore_snapshot", "note": "1:1 with the PureScore it accompanies" },
+          { "name": "computed_at", "type": "timestamptz", "key": "", "note": "" },
+          { "name": "confidence_per_pillar", "type": "jsonb", "key": "", "note": "{pillar_code: Cf_k} 0-100" },
+          { "name": "sufficiency_per_pillar", "type": "jsonb", "key": "", "note": "{pillar_code: Su_k} 0-100; INSUFFICIENT if < tau_su" },
+          { "name": "criticality_tier", "type": "varchar(16)", "key": "", "note": "none/urgent/alert + red_count" },
+          { "name": "trajectory_per_pillar", "type": "jsonb", "key": "", "note": "{pillar_code: {direction, rate, days_to_threshold}}" },
+          { "name": "early_warning_per_pillar", "type": "jsonb", "key": "", "note": "{pillar_code: watch|advisory|alert|none}" },
+          { "name": "representativeness_per_pillar", "type": "jsonb", "key": "", "note": "{pillar_code: Rp_k} 0-100" },
+          { "name": "volatility_per_pillar", "type": "jsonb", "key": "", "note": "{pillar_code: Vo_k} 0-100" },
+          { "name": "modifiability_per_pillar", "type": "jsonb", "key": "", "note": "{pillar_code: Mo_k} 0-100 share modifiable" },
+          { "name": "stress_load", "type": "numeric(6,2)", "key": "", "note": "St 0-100; read-only companion, no PureScore weight" },
+          { "name": "stress_tier", "type": "varchar(12)", "key": "", "note": "low/elevated/high" },
+          { "name": "stress_confidence", "type": "numeric(5,4)", "key": "", "note": "propagated from wearable trust tier of autonomic inputs" },
+          { "name": "model_version_id", "type": "uuid", "key": "FK -> model_version", "note": "" }
+        ],
+        "indexes": [
+          "UNIQUE (patient_id, score_snapshot_id)",
+          "INDEX (patient_id, computed_at DESC)"
+        ],
+        "notes": "Written atomically with its paired PureScore snapshot. stress_load and stress_tier are surfaced to the patient app as a read-only chip. Per-pillar jsonb columns allow schema-free addition of new pillars without DDL changes."
+      },
+      "invariants": [
+        "Confidence and Sufficiency are always computed and stored independently; Su_k < tau_su triggers INSUFFICIENT flag regardless of Cf_k",
+        "Stress-load (St) is read-only: it has no weight in any pillar aggregation and cannot set or clear a band or trigger a critical cascade (D24)",
+        "Modifiability Mo_k must reflect the actual proportion of R_k attributable to modifiable inputs; fixed/genetic burden must not be reported as modifiable",
+        "Representativeness Rp_k below its floor suppresses the cohort-percentile blend in scoring and reduces Cf_k; it never adds a penalty",
+        "Volatility Vo_k damps both Cf_k and Tr_k so noisy signals cannot produce high-confidence trending arrows",
+        "The companion vector is always persisted alongside its PureScore snapshot; a score without a companion vector is invalid in production"
+      ],
+      "apiRefs": ["get-companion", "get-score", "get-pillars", "get-explanation"],
+      "seqRefs": ["ingest-recompute", "wearable-critical-gate", "reservoir-update"],
+      "decisions": ["D1", "D2", "D5", "D6", "D7", "D22", "D23", "D24"]
+    },
+
+    "EarlyWarning": {
+      "purpose": "Tiered anomaly ladder (Watch / Advisory / Alert) per pillar, implementing the D2 sensitivity posture. Watch is internal/clinician-only; Advisory is a gentle patient nudge; Alert requires clinical threshold breach or corroborated multivariate anomaly. Single-marker wobble never surfaces to the patient alone — it stays in Watch until multivariate- or multi-measurement-confirmed. Relies on personal-baseline z-scores, D_M (Mahalanobis aggregate), reservoir fill levels, and syndromic detectors.",
+      "stories": [
+        {
+          "id": "US-EARLYWARNING-1",
+          "role": "scoring engine",
+          "want": "route a single isolated anomalous HRV reading from a consumer wearable to Watch only, never directly to Advisory or Alert",
+          "soThat": "normal athlete HRV variability and sensor noise do not generate patient-facing alarms (D2, D22)",
+          "acceptance": [
+            "Given |z_HRV| > 2.0 on a single consumer-tier wearable reading with no corroborating markers, When EarlyWarning is evaluated, Then the tier is Watch (clinician queue only); the patient app receives no alert",
+            "Given the same HRV anomaly persists across 3 consecutive daily readings and is accompanied by elevated RHR z-score, When EarlyWarning is re-evaluated, Then the tier escalates to Advisory and a gentle nudge is surfaced to the patient",
+            "Given a beta-blocker patient has chronically suppressed HRV (confounder down-weighted per D3), When z_HRV is computed, Then the confounder weight c_conf reduces the effective z so the suppressed HRV does not trigger Watch"
+          ],
+          "edge": [
+            "Consumer-tier wearable anomaly alone can never reach Alert regardless of z magnitude; clinical-grade confirmation is required to escalate past Advisory (D22)"
+          ]
+        },
+        {
+          "id": "US-EARLYWARNING-2",
+          "role": "scoring engine",
+          "want": "detect early metabolic syndrome onset from simultaneous small z-score shifts in waist, HOMA-IR, TG, and HDL before any single marker crosses a band",
+          "soThat": "the multivariate Mahalanobis signal catches incubating disease that level-based scoring misses entirely",
+          "acceptance": [
+            "Given waist z=1.4, HOMA-IR z=1.6, TG z=1.5, HDL z=-1.3 (all sub-threshold individually), When D_M = sqrt(sum zi^2) is computed, Then D_M > D_M* threshold and Advisory is triggered with the metabolic-syndrome syndromic detector label",
+            "Given the same patient has Rp_k (representativeness) below threshold for waist percentile (out-of-cohort), When EarlyWarning is computed, Then the suppressed cohort-percentile z for waist is excluded from D_M and Confidence on the Advisory is reduced",
+            "Given a patient's D_M crosses Advisory but all individual markers are within their personal green band, When the Advisory is surfaced, Then the explanation cites 'multivariate pattern' not a single marker breach"
+          ],
+          "edge": [
+            "D_M uses diagonal-covariance approximation in production v1 (D10); full Mahalanobis is deferred to a future model-version bump"
+          ]
+        },
+        {
+          "id": "US-EARLYWARNING-3",
+          "role": "scoring engine",
+          "want": "escalate a rising ALLO reservoir fill past its watch threshold to Advisory even before any questionnaire PSS/PHQ score crosses a clinical band",
+          "soThat": "accumulating allostatic burden is detected before it propagates into CV/MCS/SLP via kappa interference",
+          "acceptance": [
+            "Given B_ALLO/B_ALLO_max > 0.6 over 5 consecutive days and z_auto (HRV + RHR personal deviation) > 1.5, When EarlyWarning evaluates the MCS pillar, Then EW_MCS escalates from none to Watch, and St (Stress-load) tier rises to 'elevated'",
+            "Given the ALLO reservoir Advisory fires, When the nudge engine runs, Then stress-reducing actions (sleep hygiene, mindfulness) receive a ranking boost via the St signal",
+            "Given B_ALLO normalizes over 10 days (PSS improves, HRV recovers), When EarlyWarning is re-evaluated, Then the tier descends back to none; there is no hysteresis lock-in"
+          ],
+          "edge": [
+            "St raising EarlyWarning Watch/Advisory is permitted; St must never set a band, trigger a critical, or move PureScore (D24)"
+          ]
+        },
+        {
+          "id": "US-EARLYWARNING-4",
+          "role": "clinician receiving an SGLT2i-treated patient alert",
+          "want": "see a drug-expected eGFR dip routed to Watch with a reconfirm flag rather than triggering an Alert cascade",
+          "soThat": "anticipatable transient marker shifts from medication do not produce alarm fatigue (D3, D14)",
+          "acceptance": [
+            "Given a patient starts SGLT2i and eGFR drops 8% (within drug-expected envelope), When the confirmation gate evaluates the REN pillar, Then EW_REN = Watch with tag 'drug-expected; reconfirm in 4 weeks', not Alert",
+            "Given the same patient's eGFR drops 25% (outside drug-expected envelope), When the gate evaluates, Then EW_REN escalates to Alert and the critical cascade fires",
+            "Given eGFR is flagged as artifact (hemolysis suspected, D14), When the confirmation gate runs, Then confidence is forced near-zero and the value cannot trigger Alert regardless of magnitude; Watch + reconfirm is surfaced"
+          ],
+          "edge": [
+            "A confirmed critical (high confidence, corroborated by a second marker or symptom) is never delayed by the drug-expected gate — safety dominates (D14)"
+          ]
+        }
+      ],
+      "table": {
+        "name": "early_warning_event",
+        "columns": [
+          { "name": "id", "type": "uuid", "key": "PK", "note": "" },
+          { "name": "patient_id", "type": "uuid", "key": "FK -> patient", "note": "" },
+          { "name": "pillar_code", "type": "varchar(8)", "key": "", "note": "pillar this event is attached to; 'GLOBAL' for multivariate D_M" },
+          { "name": "tier", "type": "varchar(12)", "key": "", "note": "none/watch/advisory/alert" },
+          { "name": "trigger_type", "type": "varchar(32)", "key": "", "note": "single_z/reservoir_fill/d_m/syndromic/drug_expected/artifact" },
+          { "name": "trigger_detail", "type": "jsonb", "key": "", "note": "z scores, D_M value, reservoir_id, syndrome label, etc." },
+          { "name": "patient_visible", "type": "boolean", "key": "", "note": "false for Watch (clinician only); true for Advisory/Alert" },
+          { "name": "reconfirm_required", "type": "boolean", "key": "", "note": "true when artifact or drug-expected gate engaged" },
+          { "name": "reconfirm_by", "type": "date", "key": "", "note": "deadline for reconfirmation measurement" },
+          { "name": "resolved_at", "type": "timestamptz", "key": "", "note": "null if open" },
+          { "name": "companion_snapshot_id", "type": "uuid", "key": "FK -> companion_vector_snapshot", "note": "links to the companion vector that surfaced this event" },
+          { "name": "created_at", "type": "timestamptz", "key": "", "note": "" }
+        ],
+        "indexes": [
+          "INDEX (patient_id, tier, resolved_at) WHERE resolved_at IS NULL — open events fast path",
+          "INDEX (patient_id, created_at DESC)"
+        ],
+        "notes": "Watch events are stored but patient_visible = false; the patient app filters to Advisory and above. Alert events trigger the critical cascade and must be paired with a Governance escalation record."
+      },
+      "invariants": [
+        "A single-marker z-score anomaly alone may only reach Watch; Advisory requires multivariate D_M > threshold OR confirmed trend over >= 2 reads (D2)",
+        "A consumer or inferential wearable anomaly cannot reach Alert without clinical-grade corroboration (D22)",
+        "Drug-expected marker shifts are routed to Watch + reconfirm, never directly to Alert, unless the deviation exceeds the drug-expected envelope (D3, D14)",
+        "An artifact-flagged critical (low-quality, implausible) has confidence forced near-zero and cannot trigger Alert; a confirmed critical with full confidence is never held back by the artifact gate (D14)",
+        "Stress-load (St) may raise EarlyWarning to Watch or Advisory only; St cannot set an Alert or critical (D24)",
+        "Watch events are clinician-queue-only; patient_visible must remain false until the tier is Advisory or higher",
+        "Resolved EarlyWarning tiers descend without hysteresis: when triggering conditions normalize, the tier returns to none on the next evaluation"
+      ],
+      "apiRefs": ["get-companion", "get-score", "get-explanation", "get-nudges"],
+      "seqRefs": ["wearable-critical-gate", "ingest-recompute", "daily-nudge", "reservoir-update"],
+      "decisions": ["D2", "D3", "D6", "D10", "D12", "D14", "D22", "D24"]
+    }
+  }
+}

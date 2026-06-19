@@ -46,7 +46,6 @@ direction**.
 | **Athlete / muscular** | Low RHR/glucose, BMI 28 (muscle), high creatinine → false eGFR drop, BCM penalty | Athlete persona + **cystatin-C-preferred eGFR**; personal baseline; BMI deferred to body-comp |
 | **"Skinny-fat" / TOFI** | Normal BMI → **false green**, missed insulin resistance | Early-warning (§5) on waist/HOMA-IR/visceral; low coverage flags "measure this" |
 | **Normal pregnancy** (flag missing) | Physiologic anemia/eGFR rise/glucose shift → multi-pillar false red | Pregnancy frame (Doc 05); **but pre-eclampsia/GDM never masked** (absolute anchors retained) |
-| **Trans on HRT** | Wrong-sex Hb range → false anemia/polycythemia | Hormone-therapy-aware ranges (Doc 05); confidence-reduced during transition |
 | **Multimorbid / very elderly** | Very low worst-sensitive score; non-actionable; demoralizing | **Dual framing** (§6): absolute + progress-to-attainable; competing-risk weighting mutes irrelevant pillars |
 | **FH / high Lp(a)** | Correct red, but nudges imply lifestyle fixes it | **Modifiability** dimension (§4) marks fixed vs modifiable; nudges route to clinical/med, not blame |
 | **Dialysis (ESRD)** | eGFR ~0 → REN permanently "critical", uninformative | **ESRD-on-RRT reference frame** (§3.3): dialysis-adequacy, not eGFR |

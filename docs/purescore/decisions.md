@@ -27,7 +27,7 @@
 | D12 | Syndromic detector set | LOCKED | auto | 2026-06-14 |
 | D13 | Heavy-tailed markers → log-scale personal baseline | LOCKED | auto | 2026-06-14 |
 | D14 | Critical-value confirmation mechanism in the demo | LOCKED | auto | 2026-06-14 |
-| D15 | Sex/gender reference model (production) | LOCKED | user | 2026-06-15 |
+| D15 | Sex/gender reference model (production) | SUPERSEDED→D27 | user | 2026-06-15 |
 | D16 | Nudge-engine ranking & Modifiability gate | LOCKED | auto | 2026-06-15 |
 | D17 | Validation-harness scope, recalibration & gates | LOCKED | auto | 2026-06-15 |
 | D18 | Race/ethnicity handling (UAE) | LOCKED | user | 2026-06-15 |
@@ -38,6 +38,12 @@
 | D23 | Continuous personalized scoring & feedback loop | LOCKED | user | 2026-06-16 |
 | D24 | Stress as a pillar? → companion Stress-load score | LOCKED | user | 2026-06-18 |
 | D25 | Close the intake loop: adherence, persona-determination, goals | LOCKED | user | 2026-06-19 |
+| D26 | Close the onboarding cluster: first-run flow, demographics, cold-start, consent | LOCKED | user | 2026-06-19 |
+| D27 | Sex-binary scoring; collapse gender→sex; remove trans handling (supersedes D15) | LOCKED | user | 2026-06-19 |
+| D28 | Typed source channel per marker (enforceable source-fusion) | LOCKED | user | 2026-06-19 |
+| D29 | Typed wearable corroboration (question→metric→tolerance) | LOCKED | user | 2026-06-19 |
+| D30 | Close the last P2 audit items: cadence freshness-SLA + HEP/REN symptom items | LOCKED | user | 2026-06-19 |
+| D31 | Wiki navigation: progressive "book" arc, collapsible groups, Connects-to footers | LOCKED | user | 2026-06-19 |
 
 ---
 
@@ -229,6 +235,8 @@ reconfirmation. Mirrors the `exclude`/confidence mechanism already used for dial
 persona.
 
 ## D15 — Sex/gender reference model (production) *(user)*
+> **SUPERSEDED by D27 (2026-06-19).** The production model is now **sex-binary (Male/Female)**;
+> the `gender_identity`/HRT/affirmed-milieu (GAHT) machinery described below has been removed.
 **Question.** For production, how should PureScore select sex-specific reference ranges across the
 whole marker catalogue (so male AND female handling is airtight, including trans/HRT, pregnancy,
 menopause, intersex)?
@@ -446,8 +454,8 @@ three stages: **adherence check-ins** (F1, P0), **input→persona determination*
 - C — Documentation-only prose specs, manual status flip (doesn't feed the engine or auto-close).
 **Decision.** **A.** **Rationale.** Keeps everything in the established `data/*.json` → builder pipeline;
 the artifacts are engine-ready (reservoir inflows, softmax posterior, applicability-keyed targets) and the
-audit *self-verifies* closure from live data rather than by hand. Depth = **comprehensive seed**: 18
-adherence check-ins (one per nudge family), the full 40-persona × 38-signal matrix, 33 goals (≥2/pillar).
+audit *self-verifies* closure from live data rather than by hand. Depth = **comprehensive seed**: 41
+adherence check-ins (one per nudge family), the full 37-persona × 36-signal matrix, 32 goals (≥2/pillar).
 **Design notes.** (1) *Adherence* — each check-in writes `adherence ∈ [0,1]` + a reason-taxonomy code back
 to its reservoir (Doc 04), the engagement/Trajectory dimension (Doc 12), and nudge feasibility (Doc 07 §3).
 (2) *Persona determination* — posterior = softmax over signed per-column evidence; hard sex/age/life-stage
@@ -460,7 +468,127 @@ target + modifiability + linked nudges; drives the UserGoals lifecycle on the st
 `data/persona-matrix.json`, `data/goals.json`; Doc 04 (reservoir inflows), Doc 07/16 (nudge↔adherence),
 the `states.html` UserGoals lifecycle.
 
+## D26 — Close the onboarding cluster (first-run flow · demographics · cold-start · consent) *(user)*
+**Question.** The audit's front-of-loop pass (v4) found nobody owned the first-run experience: no onboarding flow
+(F9), an under-specified demographic field-set (F10), no question-side cold-start / progressive-profiling strategy
+(F11), and consent & device-pairing not sequenced into intake (F12). How to close them?
+**Options.**
+- A ★ **One machine-readable onboarding spec + appendix, auto-closing the audit.** Add `data/onboarding.json`
+  (ordered first-run steps, demographic field-set, cold-start bootstrap + progressive profiling, consent/device
+  gating) surfaced as an **Onboarding & first-run** appendix (+ a spreadsheet grid per the grid rule). Wire the
+  audit's live stats so F9–F12 flip to **Addressed** on rebuild, with dated v5 versions.
+- B — Fold the spec into Doc 01/18 prose (no structured data; manual status flip; doesn't auto-verify or feed the engine).
+- C — Defer; leave the front-of-loop open.
+**Decision.** **A.** **Rationale.** Same proven pattern as D25 (data → builder → audit auto-verifies). The flow is
+engine-ready and integrates the pieces already built — question bank (Appx E), persona matrix (Appx I), goals
+(Appx J) — into a coherent first-run that the **Onboarding sub-machine** on the state machine mirrors.
+**Design notes.** (1) *Flow* — 11 ordered steps: welcome → account → **consent** → demographics → goal-seed →
+bootstrap PROs → persona-resolve → **device-pair** → EHR-connect → first-score → progressive-profiling. (2)
+*Demographics* — 11 enumerated fields, each tagged with what it drives (physiology · cohort stratification · UAE
+cut-points · localization). (3) *Cold-start* — a 7-item bootstrap set seeds a day-0 score + resolves a persona;
+progressive profiling deepens by P1→P5 applicability. (4) *Consent/device* — privacy consent gates all capture;
+device-pairing gates wearable metrics; EHR-connect gates Patient360; actuarial layer firewalled/off by default.
+**Guardrails.** Illustrative — calibrate the bootstrap set & demographic enums before production; consent is
+informed and granular; nothing is captured before consent (Doc 11). **Affects.** Appendix G (auto-close F9–F12, v5
+versions), new Onboarding appendix + grid, `data/onboarding.json`; integrates Doc 01 (demographics), Doc 11
+(consent), Doc 14 (ignition/cold-start), Doc 15 (UAE), Doc 18 (device/household), and the `states.html` Onboarding
+sub-machine.
+
 ---
+
+## D27 — Sex-binary scoring; collapse gender→sex; remove trans handling *(user)*
+**Question.** How should the engine represent sex/gender, given the platform is being scoped to a
+sex-binary physiological model?
+**Options.**
+- A ★ **Sex-binary (Male/Female), gender collapsed into sex** — a single `sex ∈ {male, female}`
+  field drives all physiology; the separate `gender_identity` field, the GAHT/HRT affirmed-milieu
+  ranges, and the trans clinical personas/archetypes are removed.
+- B — Keep the D15 two-attribute (`sex_at_birth` × `gender_identity`) hormonal-milieu model.
+**Decision.** A (supersedes **D15**). **Rationale.** Product scoping decision: PureScore is split and
+presented as **PureScore — Male** and **PureScore — Female**; the engine models sex as a binary
+physiological input. **Affects.** Docs 01 §1, 05 §1 (§1.2 removed), 09 §1, 12 §2, 13 §6.1;
+`Q_CORE_SEX` (now Male/Female, `Q_CORE_GENDER` removed); `wiki_content.PERSONAS` (transfem/transmasc
+removed); `persona-axes.json` (gender_transition archetype removed); question-bank / goals /
+persona-matrix / dossier (rebuilt); the PureScore section's Male & Female pages. Rare intersex/DSD
+remain handled via `organ_inventory` (Doc 05 §1.3).
+
+## D28 — Typed source channel per marker *(user)*
+**Question.** The audit (F7) found markers carry a free-text guideline `source` but no **typed channel**, so the
+per-pillar source-fusion rules (Appendix G §fusion) are illustrative, not enforceable: the engine can't tell which
+channel a value came from. How to fix?
+**Options.**
+- A ★ **Deterministic `marker_channel()` classifier** resolving every marker to one of six typed channels
+  {biomarker-lab · wearable-clinical · wearable-consumer · wearable-inferential · self-report · derived} from its
+  name + source, surfaced as a **Channel** column (Appendix A + filterable on the grid); the audit's `source_typed`
+  stat then auto-closes F7.
+- B — Hand-tag a `channel` field on all 80 PILLARS tuples (most explicit, but 80 invasive edits and drifts from the
+  authored source text).
+- C — Leave as free-text source (status quo; fusion stays illustrative).
+**Decision.** **A.** **Rationale.** Total and deterministic over the catalogue, maintainable (one classifier + clear
+keyword precedence), and consistent with the audit's existing channel enum. Makes the source-fusion hierarchy
+*programmatically enforceable* — the accuracy-weighted rules can read each marker's channel. (While doing this,
+fixed a latent bug: the biomarkers **grid** had a mis-aligned 10-field tuple unpacking.) **Guardrails.** Channels are
+design-time classifications — re-verify edge cases (imaging folded into biomarker-lab; clinical anthropometry) before
+production; the channel never overrides the D22 trust-tier safety rule (consumer/inferential can't drive a red).
+**Affects.** `wiki_content.marker_channel()` + `_CHANNELS`/`_CHAN_META`; Appendix A (Channel column) and the
+biomarkers grid (Channel filter, + tuple-unpacking fix); Appendix G (`source_typed`, F7 auto-close v6, §fusion
+"now typed" note); Doc 01 data model (channel enum).
+
+## D29 — Typed wearable corroboration (question → metric → tolerance) *(user)*
+**Question.** The audit (F4) found the question bank's wearable corroborations were semi-typed (`wearable.<metric>`)
+but not linked to a canonical metric registry and, crucially, carried no **tolerance** — so the wearable-match
+(perceived↔actual) stage couldn't be automated or audited. How to type it?
+**Options.**
+- A ★ **Canonical registry + per-metric tolerance** (`data/wearable-corroboration.json`): map all 23 `wearable.*`
+  refs (normalizing casing/alias variants) to ~17 canonical metrics (Appendix B), each with a source channel and a
+  **per-metric default tolerance** (the agreement band beyond which a perceived↔actual gap is flagged). Surfaced as
+  an appendix + grid; `wear_corr_typed` auto-closes F4.
+- B — Tiered-by-trust tolerance (a rule from the D22 tier, no per-metric values) — coarser.
+- C — Per-question tolerances (278 values) — most precise, heavy to author.
+- D — Edit the source qb-*.json to add typed corroboration — invasive, drifts from authored data.
+**Decision.** **A**, scope **wearable.* only** (F4's stage; `lab.*`/`bcm.*` are a different "does-the-lab-agree"
+semantic). **Rationale.** ~17 metrics × one tolerance is tractable and maintainable, normalizes casing
+(`hrv`=`HRV`, `SpO2`=`spo2`), and makes stage-3 auditable — every wearable corroboration resolves to a metric +
+tolerance the perceived-vs-actual gap engine (Appendix F) applies. **Guardrails.** Tolerances are design defaults
+(calibrate per device/cohort); consumer/inferential metrics never drive a band alone (D22) — only flag gaps / move
+Confidence. **Affects.** `data/wearable-corroboration.json`, new Wearable-corroboration appendix + grid; Appendix G
+(`wear_corr_typed`, F4 auto-close v6); links Appendix B (metrics), E (questions), F (gap engine), Doc 12 (Confidence).
+
+## D30 — Close the last two P2 audit items (cadence freshness-SLA · HEP/REN symptom items) *(user)*
+**Question.** Two P2 findings remained: F8 (no per-provider cadence/freshness SLA — the 'stale wearable' state had no
+threshold) and F5 (HEP/REN self-report thin). How to close them?
+**Decision.** **F8** — add a per-metric **Freshness SLA** beneath the existing cadence matrix (Appendix G §cadence):
+*expected cadence · fresh-within · stale-after · drives*. Provider determines delivery (the matrix); the SLA is the
+clinical staleness bound that fires the `states.html` Wearables→stale state and decays Confidence (Doc 12 §4); a
+metric-level contract (not provider×metric) — cleaner and the clinically-meaningful unit. `cadence_sla` auto-closes F8.
+**F5** — take the documented-optional path and actually add it: **6 symptom/risk self-report items** to
+`data/qb-02-renal-hepatic.json` (3 REN: oedema/foamy-urine/fatigue, NSAID use, urination change; 3 HEP: RUQ/jaundice
+symptoms, fatty-liver/hepatitis history, hepatotoxin exposure), each corroborated by the relevant lab; re-enriched the
+bank. HEP/REN stay lab-led (D28 fusion) but now have symptom/risk context. `hep_ren_symptoms >= 6` auto-closes F5.
+**Guardrails.** SLA windows + symptom-item weights are illustrative — calibrate before production; the new PROs add
+context/early-warning, they don't override lab-led REN/HEP scoring. **Affects.** Appendix G (`_CADENCE_SLA` table +
+`cadence_sla`/`hep_ren_symptoms` stats, F5/F8 auto-close v6); `data/qb-02-renal-hepatic.json` (+6 items) →
+`question-bank.json` re-enriched (now 354 Q) → ripples to Appendices E (question bank + grid), G loop diagram,
+questions-hub / eligibility-gating. **All 12 audit findings now Addressed.**
+
+## D31 — Wiki navigation: progressive "book" arc *(user)*
+**Question.** The sidebar had grown to 13 groups / 70 links, all expanded, with incoherent grouping (appendix
+letters scattered across 4 groups; Question bank & Wearable baselines duplicated) and no learning order. How should
+the whole menu subsystem be redesigned?
+**Decision.** Reorganize into a **progressive "book" arc** a newcomer reads top-to-bottom — order follows how the
+system *connects*, not doc numbers: **Start here → 1 How scoring works → 2 The inputs → 3 Making it personal →
+4 Acting on it → 5 Trust & govern → 6 See the system → 7 Build it → 8 Reference (data tables) → 9 Doctor's board.**
+Appendices A–L live in their topical chapter (not a single dump); duplicates removed; each chapter carries a
+one-line blurb. The sidebar is now **collapsible** — groups collapsed by default, the active group auto-opens,
+state persists in `localStorage`, with expand/collapse-all and search-opens-matches. Every page gets a **"Connects
+to" footer** (Pages · Diagrams · Tables), auto-derived from the content link-graph + chapter siblings + automatic
+appendix↔grid pairing + a curated topic→diagram map, so the wiki is fully navigable like a good book (linear
+prev/next remains the straight-through read).
+**Guardrails.** Single source of truth = `NAV`/`NAV_BLURB` in `build_wiki.py`; cross-links from `_GRID_OF`/
+`_CONNECTS_EXTRA`; the build runs a `[connects]` injection and a `[consistency]` count guard each time.
+**Affects.** `build_wiki.py` (`NAV`, `NAV_BLURB`, `sidebar()`, `_inject_connects()`), `assets/wiki.js` (collapse +
+search), `assets/wiki.css` (`.navgrp`/`.grp-*`/`.connects`); all 70 generated pages. See the `[[wiki-nav-book-arc]]`
+memory.
 
 ### Maintenance notes
 - New decisions append as `D24+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and

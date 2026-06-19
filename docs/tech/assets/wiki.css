@@ -36,7 +36,7 @@ pre.code code{background:none;border:none;padding:0;color:#bcd2f0;font-size:13px
   border-radius:8px;padding:6px 10px;cursor:pointer}
 
 /* ---- layout ---- */
-.shell{display:grid;grid-template-columns:var(--side) minmax(0,1fr);gap:0;max-width:1480px;margin:0 auto}
+.shell{display:grid;grid-template-columns:var(--side) minmax(0,1fr);gap:0;max-width:none;margin:0 auto}
 .side{position:sticky;top:53px;align-self:start;height:calc(100vh - 53px);overflow-y:auto;
   border-right:1px solid var(--line);padding:18px 14px 60px}
 .side h4{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);
@@ -47,8 +47,30 @@ pre.code code{background:none;border:none;padding:0;color:#bcd2f0;font-size:13px
 .side a.active{background:#13203a;color:#fff;border-left-color:var(--teal)}
 .side a .n{color:var(--dim);font-variant-numeric:tabular-nums;margin-right:7px;font-size:12px}
 .side a.active .n{color:var(--teal)}
+/* ---- collapsible nav groups ---- */
+.side-tools{display:flex;gap:6px;margin:0 6px 8px}
+.side-allbtn{flex:1;cursor:pointer;font-size:11px;border:1px solid var(--line);background:#0e1626;color:var(--mut);border-radius:7px;padding:4px 6px}
+.side-allbtn:hover{border-color:var(--acc);color:var(--ink)}
+.navgrp{margin-bottom:2px}
+.grp-h{display:flex;align-items:center;gap:7px;width:100%;cursor:pointer;background:none;border:0;color:var(--dim);
+  font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:7px 8px 5px;text-align:left;font-weight:600}
+.grp-h:hover{color:var(--ink)}
+.grp-car{display:inline-block;font-size:9px;transition:transform .15s;color:var(--dim);flex:none}
+.navgrp.open .grp-car{transform:rotate(90deg);color:var(--teal)}
+.grp-b{display:none}
+.navgrp.open .grp-b{display:block}
+.grp-blurb{font-size:11px;color:var(--dim);padding:0 10px 6px;line-height:1.4}
+/* ---- "Connects to" footer ---- */
+.connects{margin:36px 0 6px;padding:13px 16px;border:1px solid var(--line);border-radius:12px;background:var(--bg2)}
+.connects .cx-h{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin-bottom:8px}
+.cx-row{display:flex;flex-wrap:wrap;gap:7px;align-items:baseline;margin:5px 0}
+.cx-k{font-size:11px;color:var(--mut);min-width:64px;font-weight:600}
+.cx-chip{font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:3px 9px;color:var(--acc);background:#0c1424}
+.cx-chip:hover{border-color:var(--acc);text-decoration:none;background:#10203a}
 
-.main{min-width:0;padding:26px 40px 90px;max-width:var(--maxw)}
+.main{min-width:0;padding:26px 40px 90px;max-width:none}
+/* full-width shell; keep narrative TEXT at a readable measure (tables/diagrams/panels/grids stay full-width) */
+.main p,.main li,.main blockquote,.main .lead{max-width:96ch}
 .crumbs{font-size:12.5px;color:var(--dim);margin-bottom:14px}
 .crumbs a{color:var(--mut)}
 .crumbs b{color:var(--mut)}

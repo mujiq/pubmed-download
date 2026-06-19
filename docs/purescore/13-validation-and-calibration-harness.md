@@ -201,8 +201,7 @@ tolerances; the fairness audit has **veto power** (Doc 09 §5, Doc 11 §8 G7).
 
 ### 6.1 Subgroup slices
 
-Natal sex (`sex_at_birth`, a legitimate physiological input — Doc 09 §5.3); **hormonal status / HRT**
-(per the hormonal-milieu model **D15** and Doc 05); **life stage** (cycle phase, pregnancy,
+Sex (`sex`, a legitimate physiological input — Doc 09 §5.3); **life stage** (cycle phase, pregnancy,
 post-partum, menopause, andropause); age band; ancestry / genetic background; **representativeness /
 OOD bucket** (`Rp` tier, §7); plus their intersections (e.g. menopausal × low-`Rp` × minority).
 

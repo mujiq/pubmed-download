@@ -1,0 +1,87 @@
+{
+  "meta": {
+    "name": "PureScore Engineering Dossier — shared artifacts",
+    "flag": "illustrative-reverify — design documentation, not a validated medical device (README §5.6)",
+    "note": "Sequences, C4 model and API contracts that per-class pages link into. Per-class curation lives in dossier-<area>.json (agent-authored) and is merged with the BEHEMOTH spec by build_dossier.py."
+  },
+  "sequences": [
+    { "id": "ingest-recompute", "title": "Measurement ingest → PureScore recompute",
+      "classes": ["Measurement","InputStream","TrustTier","Marker","CohortStat","PersonalBaseline","Pillar","ReservoirSystem","PureScore","CompanionVector","Explanation"],
+      "mermaid": "sequenceDiagram\n  autonumber\n  participant Src as Lab/Wearable\n  participant API\n  participant Ing as IngestionWorker\n  participant MS as MarkerService\n  participant CB as CohortBlend\n  participant PB as PersonalBaseline\n  participant PA as PillarAggregator\n  participant RS as ReservoirSystem\n  participant SE as ScoringEngine\n  participant DB as Datastore\n  Src->>API: POST /v1/measurements (value, source, tier)\n  API->>Ing: enqueue (idempotency-key)\n  Ing->>MS: r_clin = band penalty (Doc03 s1)\n  MS->>CB: max(r_clin, phi*cohort) (s2)\n  CB->>PB: + kappa_resp*tanh(z/2) (s2b)\n  PB->>RS: update B_j (inflow/leak/kappa_jl)\n  RS->>PA: B_tilde_k\n  PA->>SE: R_k (gamma-mean + rho*B_tilde)\n  SE->>SE: critical cascade (cap<=40)\n  SE->>DB: persist snapshot + CompanionVector\n  SE-->>API: ScoreRecomputed event" },
+    { "id": "wearable-critical-gate", "title": "Wearable anomaly → D22 confirmation → escalation",
+      "classes": ["WearableMetric","TrustTier","EarlyWarning","CriticalCascade","Governance","CompanionVector"],
+      "mermaid": "sequenceDiagram\n  autonumber\n  participant W as Wearable\n  participant API\n  participant G as ConfirmationGate\n  participant EW as EarlyWarning\n  participant CC as CriticalCascade\n  participant GV as Governance\n  W->>API: anomaly (SpO2 88, consumer tier)\n  API->>G: trust-tier check (D22)\n  alt consumer/inferential tier\n    G->>EW: Watch/Advisory only (no cascade)\n  else clinical-grade or corroborated\n    G->>CC: fire critical cascade\n    CC->>GV: escalate (emergency/urgent)\n    GV-->>API: clinician + crisis pathway\n  end" },
+    { "id": "question-answer", "title": "Question answered → pillar & reservoir update",
+      "classes": ["Question","QuestionBank","Response","Dependency","Applicability","Pillar","Reservoir","PureScore","ValidatedPRO"],
+      "mermaid": "sequenceDiagram\n  autonumber\n  participant App\n  participant QS as QuestionService\n  participant DEP as DependencyEngine\n  participant RESP as ResponseScorer\n  participant PA as PillarAggregator\n  participant RS as ReservoirSystem\n  App->>QS: GET /questions/next\n  QS->>DEP: filter by applicability + prerequisites\n  DEP-->>App: next question (ref)\n  App->>RESP: POST /responses (answer)\n  RESP->>PA: signed pillar weights\n  RESP->>RS: signed reservoir inflows\n  RESP-->>App: ScoreRecomputed + maybe validated-PRO trigger" },
+    { "id": "daily-nudge", "title": "Daily top-5 nudge loop",
+      "classes": ["NudgeEngine","Action","Adherence","Valve","ReservoirSystem","PureScore","Goal"],
+      "mermaid": "sequenceDiagram\n  autonumber\n  participant Sch as Scheduler\n  participant NE as NudgeEngine\n  participant AC as ActionCatalogue\n  participant SF as SafetyFilter\n  participant App\n  participant AD as Adherence\n  Sch->>NE: build daily plan\n  NE->>AC: candidate actions (Doc16)\n  AC->>SF: contraindication filter\n  SF->>NE: U_a = impact*adherence*ease (dPureScore@h)\n  NE-->>App: top-5 positive-delta actions\n  App->>AD: action completed\n  AD->>NE: opens valve -> reservoir inflow (loop)" },
+    { "id": "acute-event", "title": "Acute event → weight override → revert",
+      "classes": ["AcuteEvent","PatientState","Pillar","ReservoirSystem","PureScore","CarePlan"],
+      "mermaid": "sequenceDiagram\n  autonumber\n  participant Ev as LifeEvent\n  participant AE as AcuteEvent\n  participant PS as PatientState\n  participant SE as ScoringEngine\n  Ev->>AE: trigger (m_acute spike)\n  AE->>PS: enter AcuteMode\n  AE->>SE: override pillar weights\n  SE->>SE: recompute (acute frame)\n  Note over PS,SE: recovery + hysteresis\n  PS->>SE: revert to Baseline weights" },
+    { "id": "reservoir-update", "title": "Daily reservoir state update (MONIAC)",
+      "classes": ["ReservoirSystem","Reservoir","InterferenceMatrix","Valve","Pillar"],
+      "mermaid": "sequenceDiagram\n  autonumber\n  participant Sch as Scheduler\n  participant RS as ReservoirSystem\n  participant IM as InterferenceMatrix\n  participant PA as PillarAggregator\n  Sch->>RS: tick (delta = 1 day)\n  RS->>RS: inflow_j(markers, behaviours)\n  RS->>RS: leak lambda_j*(B-B*)\n  RS->>IM: coupling kappa_jl*sat(B_l)\n  IM->>RS: clamp [0, B_max]\n  RS->>PA: B_tilde_k -> pillar risk" }
+  ],
+  "c4": {
+    "containers": [
+      { "id": "patient_app", "name": "Patient App (web/mobile)", "tech": "client", "desc": "score, companion vector, daily nudges, questionnaires" },
+      { "id": "clinician_board", "name": "Doctor's Board (admin)", "tech": "client", "desc": "ranges, weights, personas, governance sign-off" },
+      { "id": "api", "name": "API Gateway", "tech": "service", "desc": "auth, idempotency, routing, rate limits" },
+      { "id": "ingestion", "name": "Ingestion Service", "tech": "workers", "desc": "stream normalization, trust-tier tagging, dedup" },
+      { "id": "scoring", "name": "Scoring Engine", "tech": "service", "desc": "marker→pillar→PureScore + companion vector" },
+      { "id": "reservoir", "name": "Reservoir Service", "tech": "service", "desc": "MONIAC stock/flow state, time-stepped" },
+      { "id": "question", "name": "Question Service", "tech": "service", "desc": "question bank, dependency DAG, scheduling" },
+      { "id": "nudge", "name": "Nudge Service", "tech": "service", "desc": "top-5 ranking, safety filter, adherence" },
+      { "id": "registry", "name": "Model Registry", "tech": "service", "desc": "versioned constants, calibration, release gates" },
+      { "id": "datastore", "name": "Datastore", "tech": "postgres + TSDB", "desc": "relational + time-series (markers, reservoirs)" },
+      { "id": "audit", "name": "Audit Store", "tech": "append-only", "desc": "immutable decisions, escalations, model bumps" },
+      { "id": "actuarial", "name": "Actuarial Layer", "tech": "firewalled", "desc": "gated, separate consent, no protected-class proxy" },
+      { "id": "integrations", "name": "Integrations", "tech": "webhooks/feeds", "desc": "wearable webhooks, lab feeds (HL7/FHIR)" }
+    ],
+    "components": {
+      "scoring": ["MarkerRisk","CohortBlend","PersonalBaseline","PillarAggregator","CriticalCascade","CompanionVector","Explainer"],
+      "reservoir": ["StateStepper","InterferenceMatrix","ValveRegistry"],
+      "question": ["DependencyEngine","Applicability","ResponseScorer","PROBridge"],
+      "nudge": ["ActionCatalogue","SafetyFilter","Ranker","AdherenceTracker"],
+      "registry": ["ConstantsStore","Calibrator","ValidationHarness"]
+    },
+    "classMap": {
+      "Patient": "api", "InputStream": "ingestion", "LabStream": "integrations", "WearableStream": "integrations",
+      "GoalStream": "patient_app", "LifeStream": "question", "Measurement": "ingestion", "TrustTier": "ingestion",
+      "WearableMetric": "integrations", "Marker": "scoring/MarkerRisk", "Band": "registry/ConstantsStore",
+      "Modifier": "scoring/MarkerRisk", "CohortStat": "scoring/CohortBlend", "PersonalBaseline": "scoring/PersonalBaseline",
+      "ClinicalScore": "scoring", "Pillar": "scoring/PillarAggregator", "ScoringConstants": "registry/ConstantsStore",
+      "PureScore": "scoring", "CriticalCascade": "scoring/CriticalCascade", "Explanation": "scoring/Explainer",
+      "CompanionVector": "scoring/CompanionVector", "EarlyWarning": "scoring/CompanionVector", "ManagedState": "scoring/MarkerRisk",
+      "ConfounderRule": "scoring/MarkerRisk", "AgeFrame": "registry/ConstantsStore", "ReservoirSystem": "reservoir/StateStepper",
+      "Reservoir": "reservoir/StateStepper", "InterferenceMatrix": "reservoir/InterferenceMatrix", "Valve": "reservoir/ValveRegistry",
+      "HormonalMilieu": "registry/ConstantsStore", "AcuteEvent": "scoring", "CarePlan": "nudge", "PatientState": "scoring",
+      "NudgeEngine": "nudge/Ranker", "Action": "nudge/ActionCatalogue", "Adherence": "nudge/AdherenceTracker", "Goal": "patient_app",
+      "Cohort": "registry/Calibrator", "ValidationHarness": "registry/ValidationHarness", "EvidenceRegistry": "registry",
+      "Governance": "audit", "ModelVersion": "registry", "ActuarialLayer": "actuarial", "UAELocalization": "registry/ConstantsStore",
+      "QuestionBank": "question", "Question": "question", "Response": "question/ResponseScorer", "Dependency": "question/DependencyEngine",
+      "Applicability": "question/Applicability", "QuestionDomain": "question", "Category": "question", "ValidatedPRO": "question/PROBridge",
+      "Persona": "scoring", "ClinicalPersona": "scoring", "LifestyleArchetype": "scoring", "LifestyleAxis": "question",
+      "AxisVector": "scoring", "PerceivedVsActual": "nudge", "WikiGenerator": "clinician_board", "WikiContent": "clinician_board",
+      "WikiAdmin": "clinician_board", "Calculator": "scoring", "DataArtifact": "datastore", "AdminBoard": "clinician_board",
+      "InteractiveDemo": "patient_app"
+    }
+  },
+  "api": [
+    { "id": "ingest-measurement", "method": "POST", "path": "/v1/patients/{id}/measurements", "desc": "Ingest a lab/wearable reading (trust-tier tagged); idempotent.", "auth": "patient|device", "idempotent": true, "returns": "202 {jobId}", "errors": ["400 bad-unit","401","409 duplicate-key","422 implausible"], "classes": ["Measurement","Marker","TrustTier"] },
+    { "id": "get-score", "method": "GET", "path": "/v1/patients/{id}/score", "desc": "Current PureScore + overall status + binding constraint.", "auth": "patient|clinician", "idempotent": true, "returns": "200 {value, status, cappedBy}", "errors": ["401","404"], "classes": ["PureScore","CriticalCascade","Explanation"] },
+    { "id": "get-companion", "method": "GET", "path": "/v1/patients/{id}/companion", "desc": "Companion vector (Confidence, Trajectory, Early-warning, Modifiability...).", "auth": "patient|clinician", "idempotent": true, "returns": "200 {dims}", "errors": ["401","404"], "classes": ["CompanionVector","EarlyWarning"] },
+    { "id": "get-pillars", "method": "GET", "path": "/v1/patients/{id}/pillars", "desc": "Per-pillar S_k, status, coverage, top contributors.", "auth": "patient|clinician", "idempotent": true, "returns": "200 [{code,S_k,status,cov}]", "errors": ["401","404"], "classes": ["Pillar"] },
+    { "id": "get-reservoirs", "method": "GET", "path": "/v1/patients/{id}/reservoirs", "desc": "Reservoir stocks + trajectory (B_j over time).", "auth": "patient|clinician", "idempotent": true, "returns": "200 [{id,B_j,polarity,trend}]", "errors": ["401","404"], "classes": ["Reservoir","ReservoirSystem"] },
+    { "id": "next-question", "method": "GET", "path": "/v1/patients/{id}/questions/next", "desc": "Next eligible question by applicability + prerequisites + cadence.", "auth": "patient", "idempotent": true, "returns": "200 {ref, text, responses}", "errors": ["401","404","204 none-due"], "classes": ["Question","Dependency","Applicability","QuestionBank"] },
+    { "id": "post-response", "method": "POST", "path": "/v1/patients/{id}/responses", "desc": "Record an answer; applies signed pillar/reservoir weights; may trigger a validated PRO.", "auth": "patient", "idempotent": true, "returns": "201 {scoreDelta, triggered}", "errors": ["400","401","409"], "classes": ["Response","Question","ValidatedPRO","Pillar","Reservoir"] },
+    { "id": "get-nudges", "method": "GET", "path": "/v1/patients/{id}/nudges", "desc": "Daily top-5 safe, positive-delta actions.", "auth": "patient", "idempotent": true, "returns": "200 [{actionId,impact,ease}]", "errors": ["401","404"], "classes": ["NudgeEngine","Action"] },
+    { "id": "complete-nudge", "method": "POST", "path": "/v1/patients/{id}/nudges/{nid}/complete", "desc": "Mark a nudge done; feeds adherence + reservoir inflow.", "auth": "patient", "idempotent": true, "returns": "200 {streak}", "errors": ["401","404","409"], "classes": ["Adherence","Action","Valve"] },
+    { "id": "get-explanation", "method": "GET", "path": "/v1/patients/{id}/explanation", "desc": "Full explainability object for a score (contributors, weights, caveats).", "auth": "patient|clinician", "idempotent": true, "returns": "200 {bindingConstraint, contributors, weights}", "errors": ["401","404"], "classes": ["Explanation","Pillar"] },
+    { "id": "post-consent", "method": "POST", "path": "/v1/patients/{id}/consent", "desc": "Capture/withdraw consent scopes (e.g. actuarial firewall).", "auth": "patient", "idempotent": true, "returns": "200 {scopes}", "errors": ["401"], "classes": ["Governance","ActuarialLayer"] },
+    { "id": "get-model-version", "method": "GET", "path": "/v1/model/version", "desc": "Active model version + config hash (audit).", "auth": "clinician|service", "idempotent": true, "returns": "200 {version, hash}", "errors": ["401"], "classes": ["ModelVersion","ScoringConstants"] },
+    { "id": "admin-constants", "method": "POST", "path": "/v1/admin/constants", "desc": "Propose a constants change (gated → model-version bump + re-validation).", "auth": "clinician(admin)", "idempotent": false, "returns": "202 {proposalId}", "errors": ["401","403","409 gate-failed"], "classes": ["ScoringConstants","ModelVersion","ValidationHarness","Governance"] }
+  ]
+}

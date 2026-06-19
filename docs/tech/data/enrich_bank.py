@@ -64,16 +64,14 @@ for q in allq:
         if not ask: continue
         if ask in qById: qById[ask]["_pre"].add(q["id"])
         else: dangling.append((q["id"], "trigger", ask))
-# divergence gating: sex/gender/age-gated questions require the relevant CORE anchor
-ANCH = {"sex": "Q_CORE_SEX", "gender": "Q_CORE_GENDER", "age": "Q_CORE_AGE"}
+# divergence gating: sex/age-gated questions require the relevant CORE anchor (sex-binary model)
+ANCH = {"sex": "Q_CORE_SEX", "age": "Q_CORE_AGE"}
 for q in allq:
     dims = q.get("dimensions", {}) or {}
     if norm_sex(dims) != ["all"] and ANCH["sex"] in qById and q["id"] != ANCH["sex"]:
         q["_pre"].add(ANCH["sex"])
     if age_bounds(dims) != (0, 120) and ANCH["age"] in qById and q["id"] != ANCH["age"]:
         q["_pre"].add(ANCH["age"])
-    if any(p in ("transfem", "transmasc") for p in dims.get("personas", [])) and ANCH["gender"] in qById:
-        q["_pre"].add(ANCH["gender"])
 
 # ---- topological sequence within each domain (priority, then original order as tie-break)
 def topo(domqs):
@@ -117,8 +115,7 @@ for q in allq:
     lo, hi = age_bounds(dims)
     ls = set()
     for p in dims.get("personas", []):
-        ls.update({"pregnancy": ["pregnancy"], "menopause": ["menopause"], "elderly": ["older_adult"],
-                   "transfem": ["gender_transition"], "transmasc": ["gender_transition"]}.get(p, []))
+        ls.update({"pregnancy": ["pregnancy"], "menopause": ["menopause"], "elderly": ["older_adult"]}.get(p, []))
     q["applicability"] = {
         "sex": norm_sex(dims), "age_min": lo, "age_max": hi,
         "life_stage": sorted(ls), "personas": dims.get("personas", ["all"]),

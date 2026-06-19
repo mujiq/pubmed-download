@@ -25,7 +25,7 @@ goals steer weighting; lifestyle fills gaps at lower confidence).
 ### 1.1 Core entities (logical schema)
 
 ```
-Patient(patient_id, sex_at_birth, gender_identity, dob, ...)
+Patient(patient_id, sex, dob, ...)
 Cohort(cohort_id, age_band, sex, disease_flags D, medication_classes Mx)   # README §3.1
 MarkerDef(marker_id, name, unit, pillar_id, tier, two_sided?, w_i,
           loinc_code, optimal_band_fn, yellow_band_fn, red_band_fn,
@@ -39,9 +39,8 @@ Goal(patient_id, goal_type, target, horizon, priority)
 ```
 
 Key rules:
-- **`sex_at_birth` drives physiology** (reference ranges, hormones); **`gender_identity` drives
-  communication and some risk modifiers**. Both are stored; Doc 05 specifies how transgender and
-  intersex patients are handled (hormone-therapy-aware ranges, not a binary fallback).
+- **`sex` (Male/Female) drives physiology** — reference ranges and hormones. Rare intersex/DSD
+  cases are handled by `organ_inventory` per Doc 05, not a binary fallback.
 - Every `Measurement` carries `source` and `confidence`. A literature-fallback value has
   `source = literature_fallback` and reduced `confidence`, which lowers pillar **coverage**
   (README §4) and is surfaced to the patient and clinician.

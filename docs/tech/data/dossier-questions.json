@@ -1,0 +1,318 @@
+{
+  "meta": {
+    "flag": "illustrative-reverify — design documentation, not a validated medical device (README §5.6)",
+    "classes": ["Question", "QuestionBank", "Response"]
+  },
+  "classes": {
+    "Question": {
+      "purpose": "Immutable bank-item definition seeded from question-bank.json. Carries the question text, domain (DOM-NNN ref), response options with signed pillar/reservoir weight vectors, dependency DAG (show_if / skip_if / triggers / validated_by), applicability constraints (sex, age_min/max, life_stage, personas), cadence (Core/quarterly/annual/biennial/once/on-trigger), refresh class (static/slow/periodic/dynamic/event), and priority 1–5. A Question record never changes after publish; breaking changes produce a new version in QuestionBank.",
+      "stories": [
+        {
+          "id": "US-QUESTION-1",
+          "role": "patient",
+          "want": "the app to only show me questions that are relevant to my sex, age, and current persona",
+          "soThat": "I am not asked about female-specific conditions when I am male, or about menopause when I am 28",
+          "acceptance": [
+            "Given a Question with applicability.sex=['female'] and applicability.age_min=40, When the Question Service evaluates eligibility for a 32-year-old male patient, Then the question is excluded from the candidate set",
+            "Given a Question with applicability.personas=['pregnancy'], When a patient with no pregnancy persona is evaluated, Then the question is gated out regardless of other criteria",
+            "Given a COR-001 (age) question with applicability.sex=['all'] and age_min=0, When any patient is evaluated, Then the question is always eligible",
+            "Given a Question with gated=true, When prerequisites are not yet satisfied, Then the question is withheld even if all other applicability filters pass"
+          ],
+          "edge": [
+            "Patient has persona=['menopause','elderly'] — question requires only persona=['elderly']; must be included (partial-set match, not strict equality)",
+            "age_max=120 edge case: question has no effective upper age gate and must serve centenarian users"
+          ]
+        },
+        {
+          "id": "US-QUESTION-2",
+          "role": "scoring engine",
+          "want": "each Response posting to apply the signed pillar and reservoir weight vectors defined on the matching Question response option",
+          "soThat": "answering 'BMI 25–29.9 (overweight)' correctly raises MET, CV, BCM pillar risk scores and inflates the adiposity and glycemic_burden reservoirs by the declared magnitudes",
+          "acceptance": [
+            "Given a Question Q_CORE_BMI and a response label '25–29.9 (overweight)', When POST /responses is called with that answer, Then pillar deltas {MET:+0.12, CV:+0.08, BCM:+0.06} and reservoir inflows {adiposity:+0.10, glycemic_burden:+0.06} are written to the Response record",
+            "Given direction='decrease_risk' and non-empty reservoir delta, When the delta is applied, Then the reservoir level decreases (negative inflow)",
+            "Given a response with empty pillars {} and empty reservoirs {}, When applied, Then no pillar or reservoir record is mutated",
+            "Given the same response posted twice with the same idempotency-key, When the second call arrives, Then it returns HTTP 200 with the original Response and no duplicate deltas are applied"
+          ],
+          "edge": [
+            "Response label not found in the Question's declared options — service must reject with 422 Unprocessable Entity, not silently drop"
+          ]
+        },
+        {
+          "id": "US-QUESTION-3",
+          "role": "clinical governance layer",
+          "want": "a crude item flagging low mood to automatically surface the PHQ-9 validated PRO instrument",
+          "soThat": "a single-item screen ('How often have you felt down, depressed, or hopeless?') triggers a full validated questionnaire that is scored separately and feeds MCS with proper clinical weight",
+          "acceptance": [
+            "Given a Question with dependencies.validated_by pointing to a PRO instrument, When a patient response matches the trigger threshold (e.g. 'More than half the days' or 'Nearly every day'), Then the DependencyEngine enqueues the validated PRO as the next question set",
+            "Given the PHQ-9 is already completed within the current cadence window, When the low-mood crude item fires its trigger, Then the PRO is NOT re-administered (idempotent within cadence)",
+            "Given the trigger fires for a patient on a betablocker persona with HR-confounded metrics, Then the PRO trigger proceeds normally (betablocker confounder applies to wearable HR, not PRO instruments)",
+            "Given the PRO has been administered, When all 9 PHQ-9 items are answered, Then a composite clinical score is computed and written as a single Response with MCS pillar delta and allostatic_load reservoir inflow"
+          ],
+          "edge": [
+            "PRO instrument itself has a validated_by dependency (e.g. PHQ-9 score ≥15 triggers urgent escalation pathway via Governance) — the engine must recurse the dependency DAG one level"
+          ]
+        },
+        {
+          "id": "US-QUESTION-4",
+          "role": "patient",
+          "want": "static answers (sex, date of birth, family history) to never be asked again once recorded",
+          "soThat": "I am not repeatedly prompted for foundational data that cannot change",
+          "acceptance": [
+            "Given a Question with refresh='static' and a Response exists for this patient, When next-question is called, Then that Question is excluded from the candidate set permanently",
+            "Given a Question with refresh='periodic' and cadence='quarterly', When the last Response is older than 90 days, Then the question re-enters the eligible set for re-asking",
+            "Given a Question with refresh='dynamic' (e.g. current weight), When the patient's wearable stream provides an updated value within the cadence window, Then the question is suppressed (auto-answered from wearable, not re-prompted)",
+            "Given a Question with cadence='on-trigger' and its trigger has not fired, When next-question is evaluated, Then the question is not included in the normal rotation"
+          ],
+          "edge": [
+            "Patient explicitly requests to correct a static answer (e.g. a mistyped sex or date of birth) — system must support a supervised override that creates a new Response with a correction_reason field while retaining the audit trail of the original"
+          ]
+        }
+      ],
+      "table": {
+        "name": "question",
+        "columns": [
+          {"name": "id", "type": "uuid", "key": "PK", "note": "internal surrogate"},
+          {"name": "ref", "type": "varchar(12)", "key": "UK", "note": "DOM-NNN e.g. COR-001; stable across bank versions"},
+          {"name": "bank_version_id", "type": "uuid", "key": "FK→question_bank.id", "note": "which bank release defines this question"},
+          {"name": "domain_code", "type": "varchar(4)", "key": "", "note": "3-letter domain code e.g. COR, CMB, MND"},
+          {"name": "seq", "type": "integer", "key": "", "note": "sequence within domain"},
+          {"name": "text", "type": "text", "key": "", "note": "display text (localised copy stored separately)"},
+          {"name": "type", "type": "varchar(20)", "key": "", "note": "numeric | single_select | multi_select | scale | text"},
+          {"name": "category", "type": "varchar(60)", "key": "", "note": "e.g. Demographics, Anthropometrics, Substance"},
+          {"name": "stream", "type": "varchar(10)", "key": "", "note": "LIFE | LAB | WEAR | GOAL"},
+          {"name": "priority", "type": "smallint", "key": "", "note": "1 (highest) – 5; governs next-question ordering"},
+          {"name": "cadence", "type": "varchar(20)", "key": "", "note": "Core | quarterly | annual | biennial | once | on-trigger"},
+          {"name": "refresh", "type": "varchar(20)", "key": "", "note": "static | slow | periodic | dynamic | event"},
+          {"name": "responses_json", "type": "jsonb", "key": "", "note": "array of {label, direction, magnitude, pillars:{}, reservoirs:{}}"},
+          {"name": "dependencies_json", "type": "jsonb", "key": "", "note": "{show_if, skip_if, triggers, validated_by}"},
+          {"name": "applicability_json", "type": "jsonb", "key": "", "note": "{sex[], age_min, age_max, life_stage[], personas[], gated}"},
+          {"name": "prerequisites_json", "type": "jsonb", "key": "", "note": "array of ref strings that must be answered before this question"},
+          {"name": "unlocks_json", "type": "jsonb", "key": "", "note": "array of ref strings this answer may unlock"},
+          {"name": "conditions_json", "type": "jsonb", "key": "", "note": "condition tags this question feeds (or ['all'])"},
+          {"name": "perceived_actual_json", "type": "jsonb", "key": "", "note": "{kind: anchor|perceived|actual, corroborated_by[]}"},
+          {"name": "axis_tags_json", "type": "jsonb", "key": "", "note": "lifestyle axis tags e.g. [activity, sleep, substance]"},
+          {"name": "source", "type": "text", "key": "", "note": "provenance citation"},
+          {"name": "flag", "type": "varchar(40)", "key": "", "note": "illustrative-reverify or validated"},
+          {"name": "prev_ref", "type": "varchar(12)", "key": "", "note": "linked-list navigation"},
+          {"name": "next_ref", "type": "varchar(12)", "key": "", "note": "linked-list navigation"},
+          {"name": "deprecated_at", "type": "timestamptz", "key": "", "note": "null = active; set when superseded by new bank version"}
+        ],
+        "indexes": [
+          "UNIQUE (ref, bank_version_id)",
+          "INDEX (domain_code, seq)",
+          "INDEX (cadence, refresh)",
+          "INDEX (priority)",
+          "GIN (applicability_json)",
+          "GIN (dependencies_json)"
+        ],
+        "notes": "Seeded from question-bank.json on first deploy and on each bank version bump. Records are append-only; deprecation is soft (deprecated_at). The responses_json holds the full weight vector for all options — ResponseScorer reads these at answer-time to compute pillar/reservoir deltas."
+      },
+      "invariants": [
+        "A question is only surfaced when all prerequisite refs have a non-null Response for this patient (prerequisites_json satisfied)",
+        "A question is excluded when any applicability constraint fails: sex mismatch, patient age outside [age_min, age_max], or required persona absent from patient's persona set",
+        "A question with refresh='static' is never re-asked once a Response exists for this patient, except via a supervised correction flow with audit trail",
+        "A question with cadence='on-trigger' is only enqueued when its show_if condition fires or a trigger from another question matches",
+        "validated_by escalation must fire synchronously when the response label matches the trigger predicate — it cannot be silently dropped",
+        "Question records are immutable after publish; pillar/reservoir weights may only change by issuing a new bank version via QuestionBank"
+      ],
+      "apiRefs": ["next-question", "post-response", "get-score", "get-pillars", "get-reservoirs"],
+      "seqRefs": ["question-answer"],
+      "decisions": ["D15", "D17", "D21", "D23", "D25"]
+    },
+
+    "QuestionBank": {
+      "purpose": "Versioned container for the full set of Question definitions. A bank version represents a coherent snapshot of the full question set, their weight calibrations, and the dependency DAG. The active bank version governs which questions are served; multiple versions may coexist during staged rollouts. Version bumps are gated by the validation harness (D17) before promotion to active. Provides the admin surface for clinician/editorial review of question content and weights.",
+      "stories": [
+        {
+          "id": "US-QUESTIONBANK-1",
+          "role": "clinical administrator",
+          "want": "to promote a new bank version through a staging gate before it affects live patients",
+          "soThat": "weight calibration errors or question-text regressions are caught before they alter production scores",
+          "acceptance": [
+            "Given a draft bank version v1.2 with updated MND domain weights, When the validation harness runs the calibration suite, Then the version may only be promoted to status='active' if all harness gates pass",
+            "Given a version is promoted to active, When next-question is called for any patient, Then only questions belonging to the active bank version are candidates",
+            "Given an active version v1.1 and a newly promoted v1.2, When v1.2 is promoted, Then v1.1 status transitions to 'superseded' and is retained for audit replay",
+            "Given a bank version in status='draft', When a clinician edits question text or weights, Then only the draft version is mutated; active version remains unchanged"
+          ],
+          "edge": [
+            "Rollback scenario: if v1.2 is found to produce systematically depressed CV scores post-promotion, admin must be able to reinstate v1.1 as active without data loss"
+          ]
+        },
+        {
+          "id": "US-QUESTIONBANK-2",
+          "role": "scoring engine",
+          "want": "to record which bank version was active when each Response was captured",
+          "soThat": "historical score replay uses the weight calibration that was live at the time, not today's calibration",
+          "acceptance": [
+            "Given a Response is posted, When it is persisted, Then it carries a bank_version_id FK referencing the bank version active at that moment",
+            "Given a score replay is requested for a date 6 months ago, When the engine reconstructs the pillar deltas, Then it uses the bank version that was active on that date, not the current active version",
+            "Given two bank versions with different pillar weights for COR-004 (weight), When a Response from v1.1 is replayed under v1.2, Then the system warns that cross-version replay may diverge from original score",
+            "Given admin-constants API is called, When it returns the active model version, Then it includes the active bank_version_id alongside the scoring constants version"
+          ],
+          "edge": [
+            "A question ref exists in v1.1 but is deprecated (removed) in v1.2; historical Responses referencing that ref must remain valid even though the question is absent from the current bank"
+          ]
+        },
+        {
+          "id": "US-QUESTIONBANK-3",
+          "role": "compliance officer",
+          "want": "a full audit trail of every change made to any bank version",
+          "soThat": "regulatory review can trace exactly which question weights were in effect at any point in time",
+          "acceptance": [
+            "Given any mutation to a draft bank version, When persisted, Then an audit log entry is appended recording the editor identity, timestamp, changed field, old value, and new value",
+            "Given a bank version is promoted, When the promotion event fires, Then an immutable audit record is written with the approver identity and validation-harness run ID",
+            "Given get-model-version is called, When responding, Then it returns the active bank version, its promotion timestamp, and the approver identity",
+            "Given a bank version is superseded, When queried by ID, Then it is still fully retrievable including all question definitions at that version"
+          ],
+          "edge": [
+            "Bank version imported from an external source (e.g. question-bank.json v1.1 seed) must also carry a provenance record with source file hash and import timestamp"
+          ]
+        }
+      ],
+      "table": {
+        "name": "question_bank",
+        "columns": [
+          {"name": "id", "type": "uuid", "key": "PK", "note": ""},
+          {"name": "version_tag", "type": "varchar(20)", "key": "UK", "note": "e.g. 1.1, 1.2-draft; human-readable"},
+          {"name": "status", "type": "varchar(20)", "key": "", "note": "draft | staging | active | superseded | deprecated"},
+          {"name": "total_questions", "type": "integer", "key": "", "note": "denormalized count for quick validation"},
+          {"name": "total_conditions", "type": "integer", "key": "", "note": "condition coverage count"},
+          {"name": "source_file_hash", "type": "varchar(64)", "key": "", "note": "SHA-256 of seed JSON if imported"},
+          {"name": "promoted_at", "type": "timestamptz", "key": "", "note": "null until status=active"},
+          {"name": "promoted_by", "type": "uuid", "key": "FK→user.id", "note": "admin who approved promotion"},
+          {"name": "validation_run_id", "type": "uuid", "key": "", "note": "FK into validation-harness run that gated this version"},
+          {"name": "superseded_at", "type": "timestamptz", "key": "", "note": "set when replaced by a later active version"},
+          {"name": "release_notes", "type": "text", "key": "", "note": "change summary for clinician reviewers"},
+          {"name": "created_at", "type": "timestamptz", "key": "", "note": ""},
+          {"name": "updated_at", "type": "timestamptz", "key": "", "note": ""}
+        ],
+        "indexes": [
+          "UNIQUE (version_tag)",
+          "INDEX (status)",
+          "INDEX (promoted_at DESC)"
+        ],
+        "notes": "At most one row may have status='active' at any time (enforced by partial unique index WHERE status='active'). The question table FKs into this table. Audit mutations are written to the append-only audit store, not this table."
+      },
+      "invariants": [
+        "Exactly one QuestionBank row has status='active' at any point in time; enforced by DB partial unique constraint",
+        "A bank version may only transition draft→staging→active; it may never regress from active to draft (only rollback by re-promoting a prior version)",
+        "Promotion to active requires a passing validation_run_id — the harness gate cannot be bypassed (D17)",
+        "All Question rows referencing this bank_version_id are immutable once the bank version leaves draft status",
+        "Historical Responses retaining a FK to a superseded bank version remain valid and queryable; the superseded version must never be hard-deleted"
+      ],
+      "apiRefs": ["get-model-version", "admin-constants"],
+      "seqRefs": ["question-answer"],
+      "decisions": ["D17", "D19", "D20", "D23"]
+    },
+
+    "Response": {
+      "purpose": "Time-series record of a patient's answer to a single Question at a specific point in time. Stores the raw answer value, the matched response label, and the pillar/reservoir deltas that were applied at the time of posting. Supports idempotent posting (idempotency-key), immutable once written, and carries the bank_version_id that governed weight computation. Forms the primary event log for the LIFE stream; drives score recomputation and may trigger validated PRO enqueuing via the DependencyEngine.",
+      "stories": [
+        {
+          "id": "US-RESPONSE-1",
+          "role": "patient",
+          "want": "my answer to be applied to my PureScore immediately after I submit it",
+          "soThat": "I can see the impact of my lifestyle disclosure on my score in real time",
+          "acceptance": [
+            "Given a POST /responses body with patient_id, question_ref, answer_label, and idempotency-key, When processed, Then a Response row is persisted with applied_pillar_deltas and applied_reservoir_deltas matching the Question's weight vector for that label",
+            "Given the Response is persisted, When the ScoreRecomputed event fires, Then GET /score reflects the updated PureScore within 5 seconds",
+            "Given the answer_label is 'Nearly every day' on a low-mood crude item with validated_by trigger, When the Response is written, Then the DependencyEngine enqueues the PHQ-9 PRO and next-question returns the first PHQ-9 item",
+            "Given the same idempotency-key is sent a second time, When the second POST arrives, Then HTTP 200 is returned with the original Response body and no second delta is applied to pillars or reservoirs"
+          ],
+          "edge": [
+            "Network retry delivers a duplicate POST after the original committed — idempotency-key must prevent double-scoring even under concurrent requests (use SELECT FOR UPDATE or upsert with conflict target)"
+          ]
+        },
+        {
+          "id": "US-RESPONSE-2",
+          "role": "scoring engine",
+          "want": "to replay historical responses using the bank version that was active when each response was captured",
+          "soThat": "a weight-calibration upgrade does not retroactively alter a patient's historical score trajectory",
+          "acceptance": [
+            "Given a Response captured under bank version v1.1, When a score replay is requested for that date, Then the engine reads the pillar/reservoir weight vectors from the v1.1 question definitions, not from the current active version",
+            "Given a Response has applied_pillar_deltas already persisted, When replaying, Then the engine can use the stored deltas directly rather than re-looking up the Question (snapshot fidelity)",
+            "Given a score timeline is requested via get-score with a date range, When returned, Then each data point includes the bank_version_id that governed its computation",
+            "Given a PRO instrument Response (composite score), When posted, Then the Response record stores the composite_score field alongside the individual item answers for audit"
+          ],
+          "edge": [
+            "A bank version bump changes the weight for a question that a patient answered 3 months ago; the historical Response must retain its original deltas unchanged while new Responses use the new weights"
+          ]
+        },
+        {
+          "id": "US-RESPONSE-3",
+          "role": "patient",
+          "want": "periodic and dynamic questions to be refreshed when my answer is stale",
+          "soThat": "my score reflects my current lifestyle rather than answers I gave a year ago",
+          "acceptance": [
+            "Given a Response for a refresh='periodic' cadence='quarterly' question older than 90 days, When next-question is evaluated, Then that question re-enters the eligible candidate set",
+            "Given a Response for a refresh='dynamic' question (e.g. current weight) and a wearable stream provides a fresher value within cadence, When next-question is evaluated, Then the question is auto-answered from the wearable and not re-prompted",
+            "Given a Response for a refresh='static' question (e.g. sex), When next-question is evaluated at any future date, Then that question is never re-prompted except via a supervised correction flow",
+            "Given a refresh='event' question (on-trigger cadence) where the trigger has re-fired (e.g. new pregnancy life-stage detected), When next-question is evaluated, Then the question re-enters the eligible set despite a prior Response existing"
+          ],
+          "edge": [
+            "Patient answers a 'quarterly' question on day 1, then on day 45 a wearable anomaly re-triggers the on-trigger variant of the same underlying question — the system must treat the on-trigger cadence variant as a distinct eligibility path, not blocked by the periodic Response"
+          ]
+        },
+        {
+          "id": "US-RESPONSE-4",
+          "role": "compliance layer",
+          "want": "every Response to carry an immutable audit record of what weight was applied and why",
+          "soThat": "a regulatory audit can reconstruct any patient's score delta from first principles",
+          "acceptance": [
+            "Given any Response is persisted, When queried, Then it exposes patient_id, question_ref, bank_version_id, answer_label, raw_value, applied_pillar_deltas, applied_reservoir_deltas, answered_at, and idempotency_key",
+            "Given a Response is posted, When persisted, Then no field except soft-delete flags may ever be mutated (all changes create new Responses with correction_reason)",
+            "Given a PRO trigger fires alongside a Response, When the audit record is written, Then it includes triggered_pro_ref so the escalation chain is traceable",
+            "Given get-explanation is called for a pillar, When it traces contributing Responses, Then each Response is cited by ref, answered_at, and the delta it contributed"
+          ],
+          "edge": [
+            "Patient withdraws consent mid-session — all Responses must be soft-deleted (anonymised) but the aggregate deltas already applied to the score must remain traceable in the audit store under a pseudonymous token"
+          ]
+        }
+      ],
+      "table": {
+        "name": "response",
+        "columns": [
+          {"name": "id", "type": "uuid", "key": "PK", "note": ""},
+          {"name": "idempotency_key", "type": "varchar(64)", "key": "UK", "note": "client-supplied dedup key; UUID v4 recommended"},
+          {"name": "patient_id", "type": "uuid", "key": "FK→patient.id", "note": ""},
+          {"name": "question_id", "type": "uuid", "key": "FK→question.id", "note": "resolves to the exact bank-versioned question record"},
+          {"name": "question_ref", "type": "varchar(12)", "key": "", "note": "denormalised DOM-NNN for fast query without join"},
+          {"name": "bank_version_id", "type": "uuid", "key": "FK→question_bank.id", "note": "bank version active at answer time"},
+          {"name": "answer_label", "type": "varchar(120)", "key": "", "note": "matched response option label from the Question"},
+          {"name": "raw_value", "type": "text", "key": "", "note": "raw input (numeric string, free text, or option key)"},
+          {"name": "applied_pillar_deltas", "type": "jsonb", "key": "", "note": "snapshot of pillar weight vector applied e.g. {MET:0.12, CV:0.08}"},
+          {"name": "applied_reservoir_deltas", "type": "jsonb", "key": "", "note": "snapshot of reservoir inflow vector applied"},
+          {"name": "composite_score", "type": "numeric(6,2)", "key": "", "note": "for PRO instruments: computed total (e.g. PHQ-9 = 0–27)"},
+          {"name": "triggered_pro_ref", "type": "varchar(12)", "key": "", "note": "ref of PRO enqueued by this response, if any"},
+          {"name": "correction_reason", "type": "text", "key": "", "note": "null unless this Response supersedes a prior static answer"},
+          {"name": "supersedes_response_id", "type": "uuid", "key": "FK→response.id", "note": "audit chain for static-answer corrections"},
+          {"name": "answered_at", "type": "timestamptz", "key": "", "note": "wall-clock time of patient submission"},
+          {"name": "source", "type": "varchar(20)", "key": "", "note": "patient_input | wearable_auto | ai_scribe | import"},
+          {"name": "stream", "type": "varchar(10)", "key": "", "note": "LIFE | LAB | WEAR | GOAL"},
+          {"name": "deleted_at", "type": "timestamptz", "key": "", "note": "soft-delete for consent withdrawal; null = active"}
+        ],
+        "indexes": [
+          "UNIQUE (idempotency_key)",
+          "INDEX (patient_id, question_ref, answered_at DESC)",
+          "INDEX (patient_id, answered_at DESC)",
+          "INDEX (bank_version_id)",
+          "INDEX (triggered_pro_ref) WHERE triggered_pro_ref IS NOT NULL",
+          "INDEX (deleted_at) WHERE deleted_at IS NOT NULL"
+        ],
+        "notes": "TIME-SERIES table — one row per patient answer event; never UPDATE after insert (immutable). For wearable auto-answered questions, source='wearable_auto' and raw_value holds the aggregated metric. applied_pillar_deltas and applied_reservoir_deltas are snapshot-frozen at insert time so historical replay is self-contained. The composite_score column is populated only for validated PRO instruments (PHQ-9, GAD-7, etc.)."
+      },
+      "invariants": [
+        "A Response row is immutable after insert; no UPDATE is permitted except setting deleted_at for consent withdrawal",
+        "idempotency_key must be globally unique; duplicate POSTs with the same key return the existing record without re-applying deltas",
+        "applied_pillar_deltas and applied_reservoir_deltas are frozen at insert time from the Question's weight vector; they must not be recalculated on read",
+        "A Response may only be created for a question_ref that was eligible for this patient at answered_at — the QuestionService validates applicability and prerequisites before accepting a POST",
+        "If validated_by trigger fires, triggered_pro_ref must be set and the PRO must be atomically enqueued in the same transaction as the Response insert",
+        "Static-answer corrections require a non-null correction_reason and supersedes_response_id pointing to the original; the original is never deleted"
+      ],
+      "apiRefs": ["post-response", "next-question", "get-score", "get-pillars", "get-reservoirs", "get-explanation"],
+      "seqRefs": ["question-answer", "ingest-recompute", "reservoir-update"],
+      "decisions": ["D15", "D17", "D23", "D25"]
+    }
+  }
+}

@@ -30,4 +30,24 @@ was lost when the wiki was rebuilt between sessions).
 `NAV` / `ORDER` / `PTITLE` immediately before editing** and integrate *alongside* existing
 groups rather than overwriting — e.g. a "Whole-system map → Behemoth Class Diagram" group
 appeared between tasks and had to be preserved when adding the "State Diagram" and "Visuals"
-groups. A clean run prints `Generated N pages → …` with no errors (currently 39 pages).
+groups. A clean run prints `Generated N pages → …` with no errors.
+
+## Diagrams — keep in sync, evaluate impact on every page change (STANDING RULE)
+Diagrams are **derived artifacts**. On **any** change to a doc, `data/*.json`, or a builder,
+you **must**: (1) consult the dependency map below, (2) update every affected diagram, and
+(3) state the diagram impact in your summary (what you reviewed, what changed, what stayed).
+Do not let a spec change silently desync a diagram. If unsure whether a diagram is affected,
+open it and check.
+
+**Diagram → source dependency map**
+- `purescore-dataflow.html` (PureScore Calculation DFD) ← Docs 01, 02, 03, 04, 05, 06, 11, 12 + admin weights/δ. *Any scoring/gate/reservoir/critical-marker/acute/coverage change → review here first.*
+- `purescore-uber-map.html` (interactive full-lifecycle map + 10 sample profiles) ← the **entire pipeline**: Docs 01–04 (scoring/reservoirs), 06/07/11/12 (lifecycle), Appendix H (adherence), eligibility/onboarding. *Any scoring, gate, pillar, reservoir, lifecycle, or profile change → update this map's node/edge data + profile scorer too.*
+- `behemoth-class-diagram.html` ← the whole object model (Docs 01–04, 07, 12) — data-driven in `wiki_content.py` (`build_behemoth`); also see the `[[behemoth-diagram-keep-in-sync]]` memory.
+- `engagement-state-machines.html` ← Doc 07 (nudge), Appendix H adherence (`data/adherence.json`), Docs 09/11/12.
+- `states.html` (patient life-state machine) ← Docs 05/06 (acute, life-stage), data streams (Doc 18).
+- `index.html` "How the documents connect" flow ← the doc set / NAV.
+- `appendix-coverage-audit.html` loop diagram ← `data/question-bank.json`, `data/adherence.json`.
+- `questions-hub.html` / `eligibility-gating.html` diagrams ← `data/question-bank.json` (sections/phases/gates).
+- Per-doc inline `<pre class="mermaid">` (in `C.MERMAID`) ← that doc's content.
+
+A clean run prints `Generated N pages → …` with no errors and **no `! skip` lines**.

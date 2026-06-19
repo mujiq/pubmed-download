@@ -1,0 +1,288 @@
+{
+  "classes": {
+    "Marker": {
+      "purpose": "Catalogue definition of a single measurable health signal — its LOINC code, canonical unit, within-pillar weight, green/yellow/red clinical band functions, two-sided flag, measurement tier (Core/Peripheral/Comprehensive), decay class, critical-flag, escalation rule, reservoir links, and sex-axis (none | gonadal | natal). Marker is read-only configuration; it owns no patient data. Band functions are parameterised by cohort (age, sex, disease, medication, hormonal milieu) and must be re-verified on each guideline cadence (D19, D20). Weights are defaults, cohort-adjusted at scoring time (Doc 03 §3, Doc 09).",
+      "stories": [
+        {
+          "id": "US-MARKER-1",
+          "role": "Scoring Engine",
+          "want": "look up the band thresholds and within-pillar weight for a given marker resolved to a patient's cohort context",
+          "soThat": "it can compute the correct clinical risk score r_i without embedding band logic in the aggregator",
+          "acceptance": [
+            "Given marker_id='apob' and cohort={age:45,sex:'M',disease:[],medications:[]}, When the engine calls Marker.band(cohort), Then it returns green:<80, yellow:80-99, red:>=100 (mg/dL) per ESC/EAS and weight=0.18",
+            "Given the same marker and cohort={medications:['statin']}, When Marker.band(cohort) is called, Then the returned thresholds are unchanged (band reflects biology, not medication effect — MANAGED state is set separately by ManagedState, D3)",
+            "Given marker_id='hdl' with two_sided=true, When Marker.band(cohort={sex:'F'}) is called, Then both low-adverse (<40 mg/dL red) and high-normal (>=50 green) thresholds are returned",
+            "Given a guideline bump is proposed via admin-constants, When the model-version gate runs, Then the band function for affected markers is updated only after clinician approval and re-validation (D20)"
+          ],
+          "edge": [
+            "Sex-hormone markers (estradiol, FSH) with sex_axis='gonadal' must resolve bands from the patient's life-stage and HRT status (Doc 05, D15); a missing life-stage falls back to natal-sex defaults with confidence penalty",
+            "A marker band using cohort percentiles (HRV, VO2max) that has no reference distribution for the patient's cohort cell must fall back to the nearest super-cohort and lower confidence (D7)"
+          ]
+        },
+        {
+          "id": "US-MARKER-2",
+          "role": "Clinician admin",
+          "want": "flag a marker as critical and specify its escalation rule",
+          "soThat": "the scoring engine can apply a hard pillar-cap and route a confirmed red to the crisis pathway without per-marker special-casing in the aggregator",
+          "acceptance": [
+            "Given Marker.critical=true and a confirmed measurement in the red band, When the CriticalCascade runs, Then the pillar score is capped at <=40 and an escalation event is emitted (Doc 03 §6)",
+            "Given PHQ-9 item-9 suicidality answer > 0, When the marker's escalation_rule='suicidality_override' fires, Then the MCS pillar is forced to red/critical regardless of total PHQ-9 score (Doc 02 §P12 hard safety rule)",
+            "Given Marker.critical=false (e.g. VO2max deficit), When the marker enters red, Then it is classified as a reserve-deficit red (priority-improvement) and does NOT trigger the cascade"
+          ],
+          "edge": [
+            "A marker straddling acute-danger and reserve-deficit semantics (SpO2) must be classified as critical=true; the data-quality layer may lower confidence to reconfirm-pending before cascade (D14)",
+            "Changing critical=true to false requires a model-version bump and governance sign-off (D20, admin-constants)"
+          ]
+        },
+        {
+          "id": "US-MARKER-3",
+          "role": "Ingestion Worker",
+          "want": "validate that an incoming value is within the physiological plausibility range defined on the Marker",
+          "soThat": "out-of-range values are routed to the QA queue rather than silently corrupting the score",
+          "acceptance": [
+            "Given marker_id='potassium' with plausibility_range=[1.5, 9.0] mmol/L, When a value of 12.0 is ingested, Then the measurement is rejected with 422 implausible and enqueued for QA review",
+            "Given marker_id='hba1c' and value=5.2 (within range), When ingested with source='lab' and trust_tier='lab_venous', Then the measurement is persisted with q_source=1.0 and no QA flag"
+          ],
+          "edge": [
+            "A value within plausible range but extreme relative to the patient's personal baseline (z > 4) must be flagged 'reconfirm pending' per D14, not rejected outright — it may be a genuine acute event",
+            "A plausibility range for derived markers (HOMA-IR, FIB-4) depends on the constituent inputs being present; missing inputs must yield 422 with a structured error naming the missing components"
+          ]
+        }
+      ],
+      "table": {
+        "name": "marker_def",
+        "columns": [
+          { "name": "marker_id", "type": "text", "key": "PK", "note": "stable slug e.g. 'apob', 'hba1c'" },
+          { "name": "loinc_code", "type": "text", "key": "", "note": "canonical LOINC; NULL for derived/survey markers" },
+          { "name": "display_name", "type": "text", "key": "", "note": "" },
+          { "name": "unit", "type": "text", "key": "", "note": "canonical unit after ingestion normalisation" },
+          { "name": "pillar_id", "type": "text", "key": "FK → pillar", "note": "one home pillar" },
+          { "name": "tier", "type": "text", "key": "", "note": "C | P | X (Core/Peripheral/Comprehensive)" },
+          { "name": "two_sided", "type": "boolean", "key": "", "note": "true if both low and high are adverse" },
+          { "name": "sex_axis", "type": "text", "key": "", "note": "none | gonadal | natal (D15)" },
+          { "name": "weight_default", "type": "numeric", "key": "", "note": "within-pillar weight w_i (cohort-adjusted at scoring time)" },
+          { "name": "decay_class", "type": "text", "key": "", "note": "short | medium | permanent (τ_i half-life)" },
+          { "name": "critical", "type": "boolean", "key": "", "note": "true => CriticalCascade on confirmed red" },
+          { "name": "escalation_rule", "type": "jsonb", "key": "", "note": "structured escalation spec (threshold, pathway, override condition)" },
+          { "name": "plausibility_range", "type": "numrange", "key": "", "note": "QA gate; outside => 422 + QA queue" },
+          { "name": "skew_transform", "type": "boolean", "key": "", "note": "true => log-scale personal baseline z (D13)" },
+          { "name": "reservoir_links", "type": "text[]", "key": "", "note": "reservoir_ids this marker feeds" },
+          { "name": "band_fn_ref", "type": "text", "key": "FK → evidence_registry", "note": "evidence IDs for green/yellow/red thresholds (D19)" },
+          { "name": "model_version", "type": "text", "key": "FK → model_version", "note": "version that last changed this row" }
+        ],
+        "indexes": [
+          "UNIQUE (marker_id)",
+          "INDEX (pillar_id)",
+          "INDEX (critical) WHERE critical = true",
+          "INDEX (tier)"
+        ],
+        "notes": "Rows are versioned via model_version; no in-place edits to band thresholds — a change creates a new model_version row and requires governance sign-off (D20, admin-constants). Band logic is not stored as raw numbers but as parameterised function references (band_fn_ref → evidence_registry) to allow cohort-contextual resolution at query time."
+      },
+      "invariants": [
+        "Every Marker must reference at least one valid evidence_registry entry for its band thresholds (D19); a Marker without a band_fn_ref cannot be activated in production",
+        "critical=true markers must have a non-null escalation_rule; activating a critical Marker with a null rule is a deploy-time constraint violation",
+        "weight_default values within a pillar must sum to approximately 1.0 (±0.01 tolerance); deviations must be flagged at model-version validation time (D17)",
+        "Changing any band threshold or weight_default requires a model-version bump, clinician approval, and re-running the validation harness before the new values are live (D20)",
+        "A Marker with sex_axis='gonadal' must define band overrides for each applicable life-stage in the band_fn_ref table; missing overrides fall back to natal-sex defaults, not silently to a universal range (D15)",
+        "plausibility_range must be strictly wider than the red band extremes; values inside the red band but outside plausibility_range are a configuration error flagged at load time"
+      ],
+      "apiRefs": ["admin-constants", "get-model-version", "ingest-measurement", "get-explanation"],
+      "seqRefs": ["ingest-recompute", "wearable-critical-gate"],
+      "decisions": ["D3", "D13", "D14", "D15", "D17", "D19", "D20", "D22"]
+    },
+
+    "Measurement": {
+      "purpose": "Immutable time-series record of a single observed value for one patient and one marker at a given effectiveTime. Every reading persists as its own row — the score is always re-derivable from the history. Each Measurement carries: source (lab | wearable | survey | derived | literature_fallback), trust_tier (lab_venous | clinical_grade_device | consumer_validated | inferential | survey), raw q_source (from the trust-tier table, D22), and a computed confidence_i(t) that decays with staleness (Doc 01 §2). Partitioned by (patient_id, effectiveTime) for time-series query patterns. Idempotency is enforced via an idempotency_key (source system + message id); duplicate ingestion returns 409 without creating a second row.",
+      "stories": [
+        {
+          "id": "US-MEASUREMENT-1",
+          "role": "Ingestion Worker",
+          "want": "persist a new wearable SpO2 reading with its trust tier and derive q_source automatically",
+          "soThat": "the scoring engine always has a correct, trust-aware confidence value without manual intervention",
+          "acceptance": [
+            "Given source='wearable', device_grade='consumer_validated', value=95.0, When the measurement is persisted, Then trust_tier='consumer_validated', q_source=0.7 (midpoint of 0.6–0.8 range per Doc 01 §2, D22), and confidence_i(t=now)=0.7",
+            "Given source='wearable', device_grade='inferential', value=72 (readiness score), When persisted, Then trust_tier='inferential', q_source is set to informational-only sentinel (e.g. 0.0 effective band weight), and the measurement cannot contribute to a band classification",
+            "Given source='lab', device_grade=null, When persisted, Then trust_tier='lab_venous', q_source=1.0",
+            "Given the same patient + marker + effectiveTime + idempotency_key already exists, When re-ingested, Then the API returns 409 and no second row is created"
+          ],
+          "edge": [
+            "A wearable SpO2 reading of 88% with trust_tier='consumer_validated' must be stored but must NOT trigger the critical cascade without a clinical-grade confirmation — it may only raise Watch/Advisory (D22, wearable-critical-gate)",
+            "A measurement with source='literature_fallback' must never be written by the ingestion worker; it is synthesised by the scoring engine when no real measurement exists and the patient's cohort median is used as a neutral prior (Doc 01 §4.3)"
+          ]
+        },
+        {
+          "id": "US-MEASUREMENT-2",
+          "role": "Scoring Engine",
+          "want": "retrieve the latest effective confidence-weighted value for each marker at scoring time, with recency decay applied",
+          "soThat": "stale measurements are automatically down-weighted and replaced by the literature fallback once they drop below the stale floor",
+          "acceptance": [
+            "Given a Measurement with effectiveTime=90 days ago and decay_class='medium' (τ≈60 days), When confidence_i(t) is computed, Then confidence_i = q_source * exp(-90/60) ≈ 0.22 for a lab measurement (q_source=1.0)",
+            "Given confidence_i < per-marker stale_floor, When the scoring engine resolves the marker value, Then source is set to literature_fallback, confidence is set to the literature_fallback q_source (0.2–0.4), and the pillar's coverage metric is decremented",
+            "Given a permanent-decay marker (Lp(a), genetics, τ=∞), When confidence_i is computed regardless of age, Then it never decays below q_source (exp(-t/∞) = 1)"
+          ],
+          "edge": [
+            "A CGM-derived time-in-range value (source='derived', tier='comprehensive') must carry the minimum q_source of its constituent raw CGM readings — if any constituent is consumer_validated, the derived value cannot exceed q_source=0.8",
+            "When multiple Measurements exist for the same patient + marker within the same day (e.g., two BP readings), the scoring engine must use the most recent by effectiveTime unless the older reading has significantly higher trust_tier, in which case the implementation-defined blending rule from Doc 03 §3 applies"
+          ]
+        },
+        {
+          "id": "US-MEASUREMENT-3",
+          "role": "Data governance auditor",
+          "want": "reconstruct the exact PureScore at any historical point-in-time using only the Measurement time-series",
+          "soThat": "the system is fully auditable and a score can never be improved by deleting an unfavourable measurement",
+          "acceptance": [
+            "Given all Measurement rows for a patient up to timestamp T, When the scoring engine is replayed at T, Then it produces the same PureScore that was emitted live at T (deterministic replay invariant)",
+            "Given a patient deletes a red Measurement record (or it is soft-deleted), When the score is recomputed, Then coverage drops and the pillar score is not improved — the reservoir layer retains the burden accumulated by that measurement (Doc 01 §5 anti-gaming, Doc 04)"
+          ],
+          "edge": [
+            "A measurement marked with data_quality_flag='artifact' (D14) is retained in the time-series with confidence forced to ~0; it is not deleted, and the QA audit trail records the flag reason",
+            "GDPR right-to-erasure requests must be handled by anonymisation, not deletion, to preserve time-series integrity for clinical audit — a legal hold flag prevents physical deletion until the retention period expires (Doc 11)"
+          ]
+        },
+        {
+          "id": "US-MEASUREMENT-4",
+          "role": "Personal Baseline engine",
+          "want": "query the time-series for a marker to build a personal baseline distribution for early-warning z-score computation",
+          "soThat": "the z-score reflects genuine personal drift rather than population noise",
+          "acceptance": [
+            "Given >=N_min (per-marker) Measurements with confidence above a threshold, When the PersonalBaseline is built, Then mean and std are computed on the log-transformed series for skew-tagged markers (D13) and on the raw series for others",
+            "Given <N_min Measurements, When PersonalBaseline is requested, Then the empirical-Bayes prior (cohort mean and std) is used with full shrinkage weight (D6), and the EarlyWarning layer operates on the population baseline only until sufficient personal data accrues",
+            "Given a Measurement is ingested that is z>3 from the personal baseline, When confidence is full (not artifact-flagged), When the marker is critical=true, Then a confirmed critical cascade is triggered (not merely Watch)"
+          ],
+          "edge": [
+            "If a patient changes their wearable device mid-stream (different calibration), the PersonalBaseline must restart from the device-change date or apply a calibration offset if one is available — the personal mean/std across device generations is not directly comparable",
+            "Seasonal variation in markers (e.g. vitamin D, mood PRO scores) must not be mistaken for a trend — the baseline engine should account for annual cyclicity where flagged on the Marker definition"
+          ]
+        }
+      ],
+      "table": {
+        "name": "measurement",
+        "columns": [
+          { "name": "measurement_id", "type": "uuid", "key": "PK", "note": "" },
+          { "name": "patient_id", "type": "uuid", "key": "FK → patient", "note": "partition key" },
+          { "name": "marker_id", "type": "text", "key": "FK → marker_def", "note": "" },
+          { "name": "effective_time", "type": "timestamptz", "key": "", "note": "partition sort key; when the measurement was taken, not when it was ingested" },
+          { "name": "ingested_at", "type": "timestamptz", "key": "", "note": "server wall-clock ingestion timestamp" },
+          { "name": "value", "type": "numeric", "key": "", "note": "in canonical unit from marker_def; NULL for categorical markers stored in value_text" },
+          { "name": "value_text", "type": "text", "key": "", "note": "for categorical / PRO answers" },
+          { "name": "source", "type": "text", "key": "", "note": "lab | wearable | survey | derived | literature_fallback" },
+          { "name": "trust_tier", "type": "text", "key": "", "note": "lab_venous | clinical_grade_device | consumer_validated | inferential | survey | literature_fallback" },
+          { "name": "q_source", "type": "numeric", "key": "", "note": "base source quality [0,1]; informational-only=0 sentinel for inferential" },
+          { "name": "device_id", "type": "uuid", "key": "FK → device (nullable)", "note": "for wearable readings; enables device-change baseline reset" },
+          { "name": "idempotency_key", "type": "text", "key": "UNIQUE(patient_id,marker_id,idempotency_key)", "note": "source-system message-id to prevent duplicate ingest" },
+          { "name": "data_quality_flag", "type": "text", "key": "", "note": "null | artifact | reconfirm_pending (D14)" },
+          { "name": "confidence_at_ingest", "type": "numeric", "key": "", "note": "q_source (decay=1 at effective_time); decayed value computed at query time" },
+          { "name": "provenance", "type": "jsonb", "key": "", "note": "lab order ref, wearable reading id, survey response id, or fallback cohort citation" },
+          { "name": "model_version", "type": "text", "key": "FK → model_version", "note": "version active at ingest time (for replay)" }
+        ],
+        "indexes": [
+          "PARTITION BY RANGE (effective_time) — monthly or quarterly partitions",
+          "INDEX (patient_id, marker_id, effective_time DESC) — primary time-series access pattern",
+          "UNIQUE (patient_id, marker_id, idempotency_key) — idempotency enforcement",
+          "INDEX (patient_id, data_quality_flag) WHERE data_quality_flag IS NOT NULL — QA queue",
+          "INDEX (patient_id, trust_tier, effective_time DESC) — trust-tier filtered queries"
+        ],
+        "notes": "Append-only by design — no UPDATE or DELETE in the hot path. Soft-deletion via data_quality_flag='deleted' with audit trail. GDPR erasure = anonymisation + legal hold flag, not physical row deletion. literature_fallback rows are written by the ScoringEngine, not the IngestionWorker, and carry provenance pointing to the ReferenceDist row used."
+      },
+      "invariants": [
+        "Rows are immutable once written; corrections are new rows with a supersedes_id foreign key pointing to the corrected row, and the old row retains data_quality_flag='superseded'",
+        "A measurement with trust_tier='inferential' must have q_source=0 (informational sentinel) and must never produce a band classification or trigger a critical cascade (D22)",
+        "A wearable-only anomaly (no clinical-grade corroboration) for a critical marker must produce at most a Watch/Advisory early-warning event — it cannot fire the CriticalCascade (D22)",
+        "Idempotency_key uniqueness per (patient_id, marker_id) is a hard constraint; a duplicate ingest returns 409 without side-effects",
+        "confidence_i(t) is always derived dynamically at query time from q_source and (t − effective_time) / τ_i — it is never stored as a static column to avoid staleness of the stored value",
+        "A measurement cannot improve the PureScore or clear a reservoir burden by being deleted or flagged artifact — the reservoir system retains burden from confirmed historical measurements (Doc 01 §5, Doc 04)"
+      ],
+      "apiRefs": ["ingest-measurement", "get-score", "get-companion", "get-pillars", "get-explanation"],
+      "seqRefs": ["ingest-recompute", "wearable-critical-gate"],
+      "decisions": ["D2", "D6", "D9", "D13", "D14", "D22", "D23"]
+    },
+
+    "InputStream": {
+      "purpose": "Logical envelope for one of the four flagged input domains — LAB (🧪), WEAR (⌚), GOAL (🎯), LIFE (📝) — as defined in Doc 01 §1 and Doc 18 §1. InputStream is not a row-level entity; it is the classification layer that tags every inbound payload before it becomes a Measurement. It resolves the trust tier and q_source floor for the stream, routes to the appropriate ingestion worker, and carries the per-stream confidence ceiling that the scoring engine applies when a patient's data comes predominantly from one stream. For WEAR, InputStream enforces D22 wearable trust tiering: clinical-grade sub-stream (CGM, validated cuff, single-lead ECG) vs consumer-validated vs inferential-only. For LIFE, it applies the survey trust floor (q_source 0.5–0.7). GOAL feeds the weighting/personalisation layer, not measurements directly.",
+      "stories": [
+        {
+          "id": "US-INPUTSTREAM-1",
+          "role": "Ingestion Worker",
+          "want": "classify an inbound wearable payload by its device class and assign the correct D22 trust tier before creating Measurement rows",
+          "soThat": "the downstream scoring engine never needs to re-derive trust from device metadata — it is stamped once at ingestion",
+          "acceptance": [
+            "Given a wearable payload with device_class='clinical_grade_device' (e.g. validated continuous BP cuff), When InputStream.classify() runs, Then all Measurement rows carry trust_tier='clinical_grade_device' and q_source in [0.85, 1.0]",
+            "Given a wearable payload with device_class='consumer_validated' (e.g. consumer smartwatch resting HR), When classified, Then trust_tier='consumer_validated' and q_source in [0.6, 0.8]",
+            "Given a wearable payload with device_class='inferential' (e.g. HRV-derived readiness score), When classified, Then trust_tier='inferential', q_source=0 (informational sentinel), and no Measurement row for this payload may contribute to a band classification or headline score",
+            "Given a lab HL7/FHIR payload from an accredited lab (stream='LAB'), When classified, Then trust_tier='lab_venous' and q_source=1.0 regardless of wearable device rules"
+          ],
+          "edge": [
+            "A device in the device registry that has lost its validation certification (e.g. removed from the validated-device list) must be downgraded from consumer_validated to inferential at the InputStream layer, retroactively flagging all future Measurements from that device — historical Measurements are not retroactively changed but a note is added to the device record",
+            "A mixed payload from a hub that aggregates both clinical-grade CGM and inferential stress scores must split into two InputStream sub-streams and stamp each Measurement row with its own trust_tier — the higher-trust device class must not bleed into the inferential metrics"
+          ]
+        },
+        {
+          "id": "US-INPUTSTREAM-2",
+          "role": "Scoring Engine",
+          "want": "know the q_source confidence ceiling for each stream contributing to a patient's current data mix",
+          "soThat": "it can accurately compute the companion Confidence dimension and suppress over-confident green claims when data is predominantly from low-trust streams",
+          "acceptance": [
+            "Given a patient whose marker coverage is 80% WEAR (consumer_validated) and 20% LAB, When the Confidence companion dimension is computed, Then it reflects the blended q_source ceiling and is labelled 'moderate confidence — limited lab data'",
+            "Given a patient with no LAB data and all markers from LIFE (survey, q_source 0.5–0.7), When a pillar score is 'green', Then it must be labelled 'low-coverage green' and the pillar coverage metric is visibly low (Doc 01 §4.3)",
+            "Given a GOAL stream update (user sets a new weight-loss goal), When processed, Then it does NOT create a Measurement row — it updates the patient's Goal record and re-ranks nudges; q_source is not applicable to GOAL stream events"
+          ],
+          "edge": [
+            "A patient who provides only LIFE (self-reported lifestyle PRO) data and no LAB or WEAR data cannot receive a red/critical classification solely from self-report (survey q_source 0.5–0.7 is insufficient to confirm a critical without clinical corroboration) — the system must issue a 'measure this' nudge and hold the marker at Watch, not cascade",
+            "If the WEAR stream is temporarily unavailable (device offline, consent withdrawn), the affected markers must fall back to their last confirmed Measurement with decayed confidence, not to a literature fallback that could mask a genuine adverse trend already in the personal baseline"
+          ]
+        },
+        {
+          "id": "US-INPUTSTREAM-3",
+          "role": "Compliance officer",
+          "want": "verify that each InputStream type has the correct consent scope active before data is ingested",
+          "soThat": "PHI from genetic, reproductive, or wearable streams is never processed without the patient's active consent for that scope",
+          "acceptance": [
+            "Given a LAB payload containing ApoE genotype (genetic data), When ingested, When the patient lacks an active 'genetic_data' consent scope, Then the payload is rejected with 401 and a consent-required error — not silently dropped",
+            "Given a WEAR payload from a continuous CGM (clinical-grade), When the patient has active consent for 'wearable_clinical' scope, Then ingestion proceeds normally",
+            "Given a consent withdrawal POST /v1/patients/{id}/consent removing the 'wearable' scope, When a subsequent WEAR payload arrives, Then InputStream rejects the payload with 401 and existing Measurement rows from that stream are flagged for retention-policy review"
+          ],
+          "edge": [
+            "Ramadan fasting context (D21) alters the clinical interpretation of glucose readings from the CGM sub-stream — the InputStream must pass a context_flags field alongside the Measurement to allow the scoring engine to apply the IDF-DAR safety rule without modifying the raw value",
+            "A LIFE stream response that triggers a validated PRO (e.g., PHQ-9 score computed from individual item responses) must have the PRO composite written as a derived Measurement with source='derived' and trust_tier inheriting the survey floor, not a new InputStream classification"
+          ]
+        }
+      ],
+      "table": {
+        "name": "input_stream_event",
+        "columns": [
+          { "name": "event_id", "type": "uuid", "key": "PK", "note": "correlates all Measurement rows produced by one inbound payload" },
+          { "name": "patient_id", "type": "uuid", "key": "FK → patient", "note": "" },
+          { "name": "stream_type", "type": "text", "key": "", "note": "LAB | WEAR | GOAL | LIFE" },
+          { "name": "device_class", "type": "text", "key": "", "note": "clinical_grade_device | consumer_validated | inferential | null (for LAB/LIFE/GOAL)" },
+          { "name": "trust_tier_resolved", "type": "text", "key": "", "note": "trust tier stamped onto all Measurement rows from this event (D22)" },
+          { "name": "q_source_ceiling", "type": "numeric", "key": "", "note": "maximum q_source for any Measurement from this event; 0 for inferential" },
+          { "name": "received_at", "type": "timestamptz", "key": "", "note": "server ingestion wall-clock" },
+          { "name": "source_system_id", "type": "text", "key": "", "note": "lab LIS id, wearable platform id, app session id" },
+          { "name": "idempotency_key", "type": "text", "key": "UNIQUE(patient_id,idempotency_key)", "note": "prevents duplicate payload processing" },
+          { "name": "consent_scopes_verified", "type": "text[]", "key": "", "note": "scopes checked at ingest time; rejection logged if missing" },
+          { "name": "context_flags", "type": "jsonb", "key": "", "note": "e.g. {ramadan: true, hrt_active: true} passed to scoring engine alongside Measurement rows" },
+          { "name": "measurement_count", "type": "integer", "key": "", "note": "number of Measurement rows produced by this event" },
+          { "name": "status", "type": "text", "key": "", "note": "accepted | rejected | partial (some rows QA-held)" }
+        ],
+        "indexes": [
+          "INDEX (patient_id, received_at DESC) — recent events per patient",
+          "UNIQUE (patient_id, idempotency_key) — idempotency at event level",
+          "INDEX (patient_id, stream_type, received_at DESC) — stream-type filtered queries",
+          "INDEX (status) WHERE status != 'accepted' — QA / error monitoring"
+        ],
+        "notes": "input_stream_event is an envelope/audit record; the Measurement table is the data of record. GOAL stream events do not produce Measurement rows — they produce Goal updates and are recorded here for consent audit only. Rejected events are retained with status='rejected' and rejection_reason for compliance audit. The trust_tier_resolved and q_source_ceiling columns are the single source of truth for stream trust — they must never be overridden downstream without a new event record."
+      },
+      "invariants": [
+        "Every Measurement row must trace back to exactly one input_stream_event (via event_id); orphan Measurements are a data-integrity violation",
+        "A WEAR stream event with device_class='inferential' must produce Measurement rows with trust_tier='inferential' and q_source=0; no downstream pathway may reclassify these to a higher trust tier without a new corroborating event of clinical_grade_device or lab_venous tier (D22)",
+        "A stream event must be rejected at the consent-scope check before any Measurement rows are written; partial writes after a consent failure are a transaction integrity violation",
+        "Idempotency is enforced at the event level (input_stream_event) and at the Measurement level independently — both uniqueness constraints must be enforced to prevent partial duplicate processing",
+        "A GOAL stream event must never set trust_tier or q_source on any Measurement row — GOAL data feeds the Goal entity and personalisation layer exclusively, not the Measurement time-series",
+        "q_source_ceiling on an event must equal the minimum q_source of all constituent device classes in the payload — a mixed payload cannot inherit the highest trust tier present"
+      ],
+      "apiRefs": ["ingest-measurement", "get-score", "get-companion", "post-consent", "get-model-version"],
+      "seqRefs": ["ingest-recompute", "wearable-critical-gate", "question-answer"],
+      "decisions": ["D2", "D7", "D14", "D15", "D19", "D21", "D22", "D23", "D25"]
+    }
+  }
+}

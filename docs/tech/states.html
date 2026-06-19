@@ -1,591 +1,474 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Patient state machine — PureScore Tech Wiki</title>
+<title>Patient state machine — HikmaEngine Tech Wiki</title>
 <link rel="stylesheet" href="assets/wiki.css">
+<style>.topbar .brand b{color:#2ecc71}</style>
 <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{htmlLabels:true,curve:"basis"},themeVariables:{fontSize:"14px"}});</script></head><body>
 <div class="topbar"><button class="menu-btn" aria-label="menu">☰</button>
-<a class="brand" href="index.html">Pure<b>Score</b> · Tech Wiki</a>
+<a class="brand" href="index.html">Hikma<b>Engine</b> · Tech Wiki</a>
 <span class="tag">design spec — not clinically validated</span><span class="grow"></span>
 <input id="search" type="search" placeholder="Filter pages…  ( / )"></div>
-<div class="shell"><aside class="side"><h4>Start here</h4><a href="index.html">Home</a><a href="conventions.html">Conventions & glossary</a><a href="decisions.html">Decision log</a><h4>Foundations & data</h4><a href="00-vision-principles-and-lessons.html"><span class="n">00</span>Vision & principles</a><a href="01-data-model-and-reference-ranges.html"><span class="n">01</span>Data model & ranges</a><a href="18-data-streams-and-experience.html"><span class="n">18</span>Data streams & experience</a><a href="02-pillars-and-marker-catalog.html"><span class="n">02</span>Pillars & markers</a><h4>Scoring & dynamics</h4><a href="03-scoring-formula.html"><span class="n">03</span>Scoring formula</a><a href="04-moniac-reservoir-dynamics.html"><span class="n">04</span>Reservoir dynamics</a><h4>Interpretation & personalization</h4><a href="05-sex-specific-models.html"><span class="n">05</span>Sex-specific models</a><a href="06-acute-events-and-life-stage-plans.html"><span class="n">06</span>Acute events & life-stage</a><a href="08-clinical-scores-integration.html"><span class="n">08</span>Clinical scores</a><a href="12-critical-review-and-purescore-2.0.html"><span class="n">12</span>PureScore 2.0</a><h4>Action & engagement</h4><a href="07-daily-nudge-engine.html"><span class="n">07</span>Daily nudge engine</a><a href="16-recommended-actions-catalogue.html"><span class="n">16</span>Actions catalogue</a><h4>Validation, governance & localization</h4><a href="09-cohort-percentiles-and-validation.html"><span class="n">09</span>Cohorts & validation</a><a href="13-validation-and-calibration-harness.html"><span class="n">13</span>Validation harness</a><a href="14-evidence-registry-and-provenance.html"><span class="n">14</span>Evidence registry</a><a href="11-safety-governance-and-regulatory.html"><span class="n">11</span>Safety & governance</a><a href="17-clinician-red-team-and-blind-spots.html"><span class="n">17</span>Clinician red-team</a><a href="10-actuarial-pricing-and-insurance.html"><span class="n">10</span>Actuarial & insurance</a><a href="15-uae-localization.html"><span class="n">15</span>UAE localization</a><h4>Reference appendices</h4><a href="appendix-biomarkers.html">A · Biomarkers</a><a href="appendix-wearables.html">B · Wearables</a><a href="appendix-questions.html">C · Questionnaires</a><a href="appendix-personas.html">D · Personas</a><a href="appendix-question-bank.html">E · Question bank</a><a href="appendix-lifestyles.html">F · Lifestyles</a><a href="appendix-coverage-audit.html">G · Coverage audit</a><a href="appendix-adherence.html">H · Adherence</a><a href="appendix-persona-matrix.html">I · Persona matrix</a><a href="appendix-goals.html">J · Goals</a><h4>Doctor's board (admin)</h4><a href="admin-index.html">Dashboard</a><a href="admin-lab-ranges.html">Lab ranges</a><a href="admin-weights.html">Weights & constants</a><a href="admin-lifestyle.html">Lifestyle / PRO</a><a href="admin-personas.html">Personas & frames</a><a href="admin-governance.html">Governance & sign-off</a><h4>Diagrams & system maps</h4><a href="behemoth-class-diagram.html">Behemoth Class Diagram</a><a href="states.html" class="active">Patient state machine</a><a href="engagement-state-machines.html">Engagement state machines</a><h4>Demos & visual prototypes</h4><a href="feedback-loop.html">Live feedback-loop demo</a><a href="wearable-baselines.html">Wearable Baselines</a></aside><main class="main"><div class="crumbs"><a href="index.html">Home</a> › Diagrams & system maps › Patient state machine</div>
-<h1>Patient State Machine — every state a human can be in</h1>
-<p class="lead">A single, live model of <b>all the states</b> the five input streams can occupy for one person —
-<b>Labs / biomarkers</b>, <b>Wearables</b>, the <b>Lifestyle questionnaire (PRO)</b> and <b>User goals</b> — and how those
-four states <i>propagate</i> into the fifth, the <b>AI Recommendations</b>. Each state models a <b>data-lifecycle</b>
-phase (missing → pending → fresh → stale → conflicting) crossed with a <b>clinical-value</b> band
-(green → watch → alert → critical). Click any chip to set that stream's state and watch the recommendation engine
-re-derive — with the reason on every edge. Filter on the left by age, sex, life stage, pillar or persona
-(<a class="xref" href="appendix-personas.html">Appendix D</a>).</p>
+<div class="shell"><aside class="side"><div class="side-tools"><button class="side-allbtn" data-act="expand">expand all</button><button class="side-allbtn" data-act="collapse">collapse all</button></div><div class="navgrp" data-grp="g0"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">Start here</span></button><div class="grp-b"><div class="grp-blurb">Orient yourself — what PureScore is and how the pieces connect.</div><a href="index.html">Home</a><a href="purescore-uber-map.html">How it all connects</a><a href="00-vision-principles-and-lessons.html"><span class="n">00</span>Vision & principles</a><a href="conventions.html">Conventions & glossary</a><a href="decisions.html">Decision log</a></div></div><div class="navgrp" data-grp="g1"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">1 · How scoring works</span></button><div class="grp-b"><div class="grp-blurb">The core engine: pillars → markers → score, reservoirs, and PureScore 2.0.</div><a href="purescore-overview.html">Overview</a><a href="02-pillars-and-marker-catalog.html"><span class="n">02</span>Pillars & markers</a><a href="03-scoring-formula.html"><span class="n">03</span>Scoring formula</a><a href="04-moniac-reservoir-dynamics.html"><span class="n">04</span>Reservoir dynamics</a><a href="12-critical-review-and-purescore-2.0.html"><span class="n">12</span>PureScore 2.0</a></div></div><div class="navgrp" data-grp="g2"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">2 · The inputs (what feeds it)</span></button><div class="grp-b"><div class="grp-blurb">Where the data comes from: labs, wearables, and the question intake.</div><a href="01-data-model-and-reference-ranges.html"><span class="n">01</span>Data model & ranges</a><a href="18-data-streams-and-experience.html"><span class="n">18</span>Data streams & experience</a><a href="appendix-biomarkers.html">A · Biomarkers (C/P/X)</a><a href="appendix-wearables.html">B · Wearables</a><a href="purescore-wearable-baselines.html">Wearable baselines</a><a href="questions-hub.html">Intake — overview</a><a href="appendix-onboarding.html">K · Onboarding & first-run</a><a href="appendix-questions.html">C · Screeners & PROs</a><a href="appendix-question-bank.html">E · Question bank</a><a href="appendix-lifestyles.html">F · Lifestyles</a><a href="appendix-wearable-corroboration.html">L · Wearable corroboration</a><a href="eligibility-gating.html">Eligibility & gating</a></div></div><div class="navgrp" data-grp="g3"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">3 · Making it personal</span></button><div class="grp-b"><div class="grp-blurb">Context that reshapes the score: sex, life-stage, conditions, personas.</div><a href="05-sex-specific-models.html"><span class="n">05</span>Sex-specific models</a><a href="06-acute-events-and-life-stage-plans.html"><span class="n">06</span>Acute events & life-stage</a><a href="08-clinical-scores-integration.html"><span class="n">08</span>Clinical scores</a><a href="appendix-personas.html">D · Personas</a><a href="appendix-persona-matrix.html">I · Persona matrix</a><a href="purescore-male.html">PureScore — Male</a><a href="purescore-female.html">PureScore — Female</a></div></div><div class="navgrp" data-grp="g4"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">4 · Acting on it</span></button><div class="grp-b"><div class="grp-blurb">Turning the score into nudges, actions, adherence and goals.</div><a href="07-daily-nudge-engine.html"><span class="n">07</span>Daily nudge engine</a><a href="16-recommended-actions-catalogue.html"><span class="n">16</span>Actions catalogue</a><a href="appendix-adherence.html">H · Adherence</a><a href="appendix-goals.html">J · Goals</a><a href="feedback-loop.html">Feedback-loop demo</a></div></div><div class="navgrp" data-grp="g5"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">5 · Trust &amp; govern</span></button><div class="grp-b"><div class="grp-blurb">Validation, safety, evidence, fairness, localization and the audit.</div><a href="09-cohort-percentiles-and-validation.html"><span class="n">09</span>Cohorts & validation</a><a href="13-validation-and-calibration-harness.html"><span class="n">13</span>Validation harness</a><a href="14-evidence-registry-and-provenance.html"><span class="n">14</span>Evidence registry</a><a href="11-safety-governance-and-regulatory.html"><span class="n">11</span>Safety & governance</a><a href="17-clinician-red-team-and-blind-spots.html"><span class="n">17</span>Clinician red-team</a><a href="15-uae-localization.html"><span class="n">15</span>UAE localization</a><a href="10-actuarial-pricing-and-insurance.html"><span class="n">10</span>Actuarial & insurance</a><a href="appendix-coverage-audit.html">G · Coverage audit</a></div></div><div class="navgrp open" data-grp="g6"><button class="grp-h" aria-expanded="true"><span class="grp-car">▸</span><span class="grp-t">6 · See the system (maps)</span></button><div class="grp-b"><div class="grp-blurb">Diagrams that show the whole machine end-to-end.</div><a href="purescore-dataflow.html">PureScore calculation DFD</a><a href="states.html" class="active">Patient life-state machine</a><a href="engagement-state-machines.html">Engagement state machines</a><a href="behemoth-class-diagram.html">Behemoth class diagram</a><a href="wearable-baselines.html">Wearable baselines (mobile)</a></div></div><div class="navgrp" data-grp="g7"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">7 · Build it (engineering)</span></button><div class="grp-b"><div class="grp-blurb">The production object model: classes, ERD, C4, API, stories.</div><a href="class-explorer.html">Class explorer</a><a href="dossier-erd.html">Data model (ERD)</a><a href="dossier-c4.html">C4 architecture</a><a href="dossier-api.html">API contracts</a><a href="dossier-sequences.html">Sequences</a><a href="dossier-stories.html">User stories</a></div></div><div class="navgrp" data-grp="g8"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">8 · Reference — data tables</span></button><div class="grp-b"><div class="grp-blurb">Sortable/filterable spreadsheets of every catalogue.</div><a href="grid-questions.html">Question bank</a><a href="grid-biomarkers.html">Biomarkers</a><a href="grid-wearables.html">Wearables</a><a href="grid-personas.html">Personas</a><a href="grid-lifestyles.html">Lifestyles</a><a href="grid-adherence.html">Adherence</a><a href="grid-goals.html">Goals</a><a href="grid-persona-matrix.html">Persona matrix</a><a href="grid-onboarding.html">Onboarding</a><a href="grid-wearable-corroboration.html">Wearable corroboration</a><a href="grid-erd.html">Data model (ERD)</a></div></div><div class="navgrp" data-grp="g9"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">9 · Doctor's board (admin)</span></button><div class="grp-b"><div class="grp-blurb">The clinician configuration &amp; sign-off surfaces.</div><a href="admin-index.html">Dashboard</a><a href="admin-lab-ranges.html">Lab ranges</a><a href="admin-weights.html">Weights & constants</a><a href="admin-lifestyle.html">Lifestyle / PRO</a><a href="admin-personas.html">Personas & frames</a><a href="admin-governance.html">Governance & sign-off</a></div></div></aside><main class="main"><div class="crumbs"><a href="index.html">Home</a> › Diagrams & system maps › Patient life-state machine</div>
+<h1>Patient Life-State Machine — the Uber statechart</h1>
+<p class="lead">One <b>mega nested statechart</b> of every life state a patient can occupy — three concurrent regions
+(<b>Care status</b>, <b>Life stage</b>, <b>Engagement</b>) with all eight sub-machines expanded inline:
+acute-event (<a class="xref" href="06-acute-events-and-life-stage-plans.html">Doc 06</a> A0–A3), chronic management,
+pregnancy/reproductive &amp; menopause &amp; andropause (<a class="xref" href="05-sex-specific-models.html">Doc 05</a>),
+aging/frailty, onboarding, and the crisis pathway (<a class="xref" href="11-safety-governance-and-regulatory.html">Doc 11</a>).
+<b>Wheel = zoom · drag = pan · double-click a box = zoom to that section · ⛶ fullscreen.</b> Pick a persona to light up
+the live state-vector; filter by sex / age / condition to prune impossible states; switch detail level to tame density.</p>
 
-<div class="callout note"><div class="ct">Illustrative</div>A design-spec state model, not a validated engine. The
-propagation rules are the safety/critical-cascade logic of <a class="xref" href="03-scoring-formula.html">Doc 03</a> §3,
-<a class="xref" href="12-critical-review-and-purescore-2.0.html">Doc 12</a> and the nudge gating of
-<a class="xref" href="07-daily-nudge-engine.html">Doc 07</a> — shown as states, not numbers. Bands stay safety labels only.</p></div>
+<div class="callout note"><div class="ct">Illustrative</div>A design-spec statechart, not a validated care pathway
+(re-verify before production, README §5.6). Engagement-<i>artifact</i> machines (nudge, check-in, self-report, adherence)
+are on the <a class="xref" href="engagement-state-machines.html">Engagement state machines</a> page; this page is the <i>human</i>.</div>
 
 <style>
-  .sm-wrap{display:grid;grid-template-columns:240px 1fr;gap:18px;margin:18px 0}
-  .sm-rail{align-self:start;position:sticky;top:74px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
-  .sm-rail h4{margin:0 0 7px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
-  .sm-rail .grp{margin-bottom:14px}
-  .sm-fset{display:flex;flex-wrap:wrap;gap:5px}
-  .sm-f{cursor:pointer;font-size:11.5px;border:1px solid var(--line);background:#0e1626;color:var(--mut);
-        border-radius:7px;padding:4px 8px;line-height:1.15}
-  .sm-f:hover{border-color:var(--acc);color:var(--ink)}
-  .sm-f.on{background:#16335e;border-color:#2b4a86;color:#fff;font-weight:600}
-  .sm-rail select{width:100%;background:#0a1120;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:7px 8px;font-size:13px}
-  .sm-rail .reset{margin-top:4px;width:100%;cursor:pointer;border-radius:8px;padding:7px;font-weight:600;font-size:12.5px;
-        border:1px solid var(--line);background:#0e1626;color:var(--mut)}
-  .sm-rail .reset:hover{border-color:var(--acc);color:var(--ink)}
+  .ps-wrap{display:grid;grid-template-columns:220px 1fr;gap:16px;margin:16px 0}
+  .ps-rail{align-self:start;position:sticky;top:74px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px}
+  .ps-rail h4{margin:0 0 6px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+  .ps-rail .grp{margin-bottom:12px}
+  .ps-fset{display:flex;flex-wrap:wrap;gap:5px}
+  .ps-f{cursor:pointer;font-size:11.5px;border:1px solid var(--line);background:#0e1626;color:var(--mut);border-radius:7px;padding:4px 8px;line-height:1.15}
+  .ps-f:hover{border-color:var(--acc);color:var(--ink)} .ps-f.on{background:#16335e;border-color:#2b4a86;color:#fff;font-weight:600}
+  .ps-rail select{width:100%;background:#0a1120;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:7px 8px;font-size:13px}
+  .ps-legend{font-size:11px;color:var(--mut);line-height:1.85}
+  .ps-legend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
 
-  .sm-scenario{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#0b1322;border:1px solid var(--line);
-        border-radius:12px;padding:11px 14px;margin-bottom:14px;font-size:13px}
-  .sm-scenario b{color:#fff}
-  .sm-scenario .ctx{color:var(--mut)}
+  .ps-vector{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+  .vcard{background:#0b1322;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .vcard .l{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim)}
+  .vcard .v{font-size:14.5px;font-weight:800;color:#fff;margin-top:3px;display:flex;align-items:center;gap:7px}
+  .vdot{width:9px;height:9px;border-radius:50%;flex:none}
+  .vcard .s{font-size:11px;color:var(--mut);margin-top:3px}
 
-  .sm-lanes{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-  .lane{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px;display:flex;flex-direction:column}
-  .lane h5{margin:0 0 2px;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px}
-  .lane .sub{font-size:10.5px;color:var(--dim);margin-bottom:8px;min-height:24px}
-  .lane .chips{display:flex;flex-direction:column;gap:5px}
-  .chip{cursor:pointer;text-align:left;border:1px solid var(--line);background:#0c1322;border-radius:8px;
-        padding:5px 9px;font-size:12px;color:var(--mut);display:flex;align-items:center;gap:7px;transition:.12s}
-  .chip:hover{border-color:var(--acc)}
-  .chip .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--dim)}
-  .chip.green .dot{background:var(--green)} .chip.gold .dot{background:var(--gold)}
-  .chip.red .dot{background:var(--red)} .chip.acc .dot{background:var(--acc)} .chip.mut .dot{background:var(--dim)}
-  .chip.on{color:#fff;font-weight:600;background:#15233e}
-  .chip.on.green{border-color:#2f6b48;background:#0d1c14} .chip.on.gold{border-color:#7a5f24;background:#1c160a}
-  .chip.on.red{border-color:#7a3344;background:#1c0f13} .chip.on.acc{border-color:#2b4a86;background:#0c1424}
-  .chip.on.mut{border-color:var(--line);background:#141d33}
-  .chip.dim{opacity:.4} .chip.sel{outline:2px solid var(--acc);outline-offset:1px}
+  #ps-frame{position:relative;height:74vh;overflow:hidden;border:1px solid var(--line);border-radius:11px;background:#0b0f17;cursor:grab}
+  #ps-frame:fullscreen{height:100vh!important;width:100vw!important;border-radius:0}
+  #ps-overlay{position:absolute;top:0;left:0;right:0;z-index:4;padding:8px 10px;pointer-events:none;
+    background:linear-gradient(180deg,rgba(11,15,23,.94),rgba(11,15,23,0))}
+  .ps-tool{display:flex;gap:6px;flex-wrap:wrap;align-items:center;pointer-events:auto}
+  .ps-tool button{cursor:pointer;border:1px solid var(--line);background:#0e1626;color:var(--ink);border-radius:7px;padding:4px 9px;font-size:12.5px}
+  .ps-tool button:hover{border-color:var(--acc)} .ps-tool button.on{background:var(--acc);color:#04121f;border-color:var(--acc);font-weight:600}
+  #ps-stage{position:absolute;top:0;left:0;transform-origin:0 0}
+  #ps-hud{font-variant-numeric:tabular-nums}
 
-  .sm-flow{margin:12px 0 0;border-top:1px dashed var(--line);padding-top:11px}
-  .sm-flow .ft{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-bottom:6px}
-  .edges{display:flex;flex-wrap:wrap;gap:6px}
-  .edge{font-size:11.5px;border:1px solid var(--line);border-radius:20px;padding:3px 10px;color:var(--mut);background:#0b1322}
-  .edge b{color:var(--ink)}
-  .edge.green{border-color:#2f6b48} .edge.gold{border-color:#7a5f24} .edge.red{border-color:#7a3344} .edge.acc{border-color:#2b4a86}
+  .ps-detail{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 15px;margin-top:12px}
+  .ps-detail .dh{display:flex;align-items:center;gap:9px;margin-bottom:4px}
+  .ps-detail .dh .tag{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+  .ps-detail h3{margin:0;font-size:16px;color:#fff}
+  .ps-detail .notes{margin:8px 0 0;padding-left:18px} .ps-detail .notes li{font-size:12.5px;color:var(--mut);margin:5px 0;line-height:1.5}
+  .ps-detail .notes li b{color:var(--ink)}
 
-  .ailane{margin-top:12px;border:1px solid #2b4a86;background:linear-gradient(160deg,#0e1c34,#0c1322);border-radius:12px;padding:13px 15px}
-  .ailane h5{margin:0;font-size:13px;color:#cfe0ff;display:flex;align-items:center;gap:7px}
-  .ai-state{margin-top:7px;display:flex;align-items:center;gap:10px}
-  .ai-pill{font-size:13px;font-weight:700;border-radius:8px;padding:5px 12px;border:1px solid}
-  .ai-pill.green{color:var(--green);border-color:#2f6b48;background:#0d1c14}
-  .ai-pill.gold{color:var(--gold);border-color:#7a5f24;background:#1c160a}
-  .ai-pill.red{color:#ff9bae;border-color:#7a3344;background:#1c0f13}
-  .ai-pill.acc{color:#9cc0ff;border-color:#2b4a86;background:#0c1424}
-  .ai-pill.mut{color:var(--mut);border-color:var(--line);background:#141d33}
-  .ai-state .txt{font-size:12.5px;color:var(--mut)}
-
-  .sm-detail{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
-  .dcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
-  .dcard .dh{display:flex;align-items:center;gap:8px;margin-bottom:3px}
-  .dcard .dh .tag{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
-  .dcard h3{margin:0;font-size:16px;color:#fff}
-  .dcard .kind{font-size:11.5px;color:var(--mut);margin:2px 0 10px}
-  .mock{background:#0a1120;border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin-bottom:11px;font-size:12.5px}
-  .mock .mh{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);margin-bottom:7px}
-  .mock .scr{font-size:12.5px;line-height:1.5}
-  .mbar{height:7px;border-radius:5px;background:#0c1322;border:1px solid var(--line);overflow:hidden;margin:5px 0}
-  .mbar i{display:block;height:100%}
-  .mrow{display:flex;align-items:center;gap:8px;margin:4px 0}
-  .mrow .lbl{flex:1;color:var(--ink)} .mrow .val{font-variant-numeric:tabular-nums;font-weight:700}
-  .mbadge{font-size:10.5px;font-weight:700;border-radius:5px;padding:1px 7px;border:1px solid}
-  .mbadge.green{color:var(--green);border-color:#2f6b48;background:#0d1c14}
-  .mbadge.gold{color:var(--gold);border-color:#7a5f24;background:#1c160a}
-  .mbadge.red{color:#ff9bae;border-color:#7a3344;background:#1c0f13}
-  .mbadge.acc{color:#9cc0ff;border-color:#2b4a86;background:#0c1424}
-  .mbadge.mut{color:var(--mut);border-color:var(--line);background:#141d33}
-  .empty{color:var(--dim);font-style:italic;padding:6px 0}
-  .notes{margin:0;padding-left:18px} .notes li{font-size:12.5px;color:var(--mut);margin:5px 0;line-height:1.5}
-  .notes li b{color:var(--ink)}
-  .why{margin-top:9px;font-size:11.5px;color:var(--dim)}
-
-  @media(max-width:1000px){.sm-wrap{grid-template-columns:1fr}.sm-rail{position:static}
-    .sm-lanes{grid-template-columns:repeat(2,1fr)}.sm-detail{grid-template-columns:1fr}}
+  .ps-index{margin-top:12px}
+  .ps-grp{margin:8px 0} .ps-grp .gh{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);margin-bottom:5px}
+  .ps-grp .sub{font-size:10.5px;color:var(--dim);margin:6px 0 3px}
+  .ps-chips{display:flex;flex-wrap:wrap;gap:5px}
+  .ps-chip{cursor:pointer;font-size:11.5px;border:1px solid var(--line);background:#0c1322;color:var(--mut);border-radius:7px;padding:4px 9px;display:flex;align-items:center;gap:6px}
+  .ps-chip:hover{border-color:var(--acc);color:var(--ink)} .ps-chip.active{color:#fff;outline:2px solid var(--acc);outline-offset:1px} .ps-chip.sel{background:#15233e;color:#fff}
+  .dot.green{background:var(--green)} .dot.gold{background:var(--gold)} .dot.red{background:var(--red)} .dot.acc{background:var(--acc)} .dot.mut{background:var(--dim)}
+  .ps-chip .dot{width:7px;height:7px;border-radius:50%;flex:none}
+  @media(max-width:980px){.ps-wrap{grid-template-columns:1fr}.ps-rail{position:static}.ps-vector{grid-template-columns:1fr}}
 </style>
 
-<div class="sm-wrap">
-  <!-- ============== left filter rail ============== -->
-  <aside class="sm-rail">
-    <div class="grp"><h4>Persona</h4>
-      <select id="f-persona"></select>
-      <button class="reset" id="f-reset">Custom · reset streams</button>
-    </div>
-    <div class="grp"><h4>Age range</h4><div class="sm-fset" id="f-age"></div></div>
-    <div class="grp"><h4>Sex / gender</h4><div class="sm-fset" id="f-sex"></div></div>
-    <div class="grp"><h4>Life stage</h4><div class="sm-fset" id="f-life"></div></div>
-    <div class="grp"><h4>Pillar (context)</h4><div class="sm-fset" id="f-pillar"></div></div>
+<div class="ps-wrap">
+  <aside class="ps-rail">
+    <div class="grp"><h4>Persona</h4><select id="ps-persona"></select></div>
+    <div class="grp"><h4>Natal sex / gender</h4><div class="ps-fset" id="ps-sex"></div></div>
+    <div class="grp"><h4>Age band</h4><div class="ps-fset" id="ps-age"></div></div>
+    <div class="grp"><h4>Condition</h4><select id="ps-cond"></select></div>
+    <div class="grp"><h4>Legend</h4><div class="ps-legend">
+      <div><span class="dot" style="background:var(--green)"></span>well / stable</div>
+      <div><span class="dot" style="background:var(--gold)"></span>watch / drifting</div>
+      <div><span class="dot" style="background:var(--red)"></span>acute / crisis</div>
+      <div><span class="dot" style="background:var(--acc)"></span>managed / in-progress</div>
+      <div><span class="dot" style="background:var(--dim)"></span>dormant / gated</div>
+    </div></div>
   </aside>
 
-  <!-- ============== machine ============== -->
   <div>
-    <div class="sm-scenario" id="scenario"></div>
-    <div class="sm-lanes" id="lanes"></div>
-    <div class="ailane">
-      <div class="sm-flow" style="border:0;padding-top:0;margin-top:0">
-        <div class="ft">▼ the four input states derive →</div>
-        <div class="edges" id="edges"></div>
+    <div class="ps-vector" id="ps-vector"></div>
+    <div id="ps-frame" tabindex="0">
+      <div id="ps-overlay">
+        <div class="ps-tool">
+          <span class="small muted">detail:</span>
+          <button data-lvl="regions" id="ps-lv-regions">Regions</button>
+          <button data-lvl="expanded" id="ps-lv-expanded">Expanded</button>
+          <button data-lvl="full" id="ps-lv-full">Full</button>
+          <span style="width:10px"></span><span class="small muted">view:</span>
+          <button id="ps-zout">−</button><button id="ps-reset">reset</button><button id="ps-fit">fit</button>
+          <button id="ps-zin">+</button><button id="ps-full">⛶ fullscreen</button>
+          <span id="ps-hud" class="small muted mono" style="margin-left:6px">100%</span>
+          <span class="small muted">double-click a box → zoom to section</span>
+        </div>
       </div>
-      <h5 style="margin-top:11px">🤖 AI Recommendations <span class="muted small" style="font-weight:400">· derived, live</span></h5>
-      <div class="ai-state"><span class="ai-pill" id="ai-pill"></span><span class="txt" id="ai-txt"></span></div>
+      <div id="ps-stage">loading…</div>
     </div>
-
-    <div class="sm-detail">
-      <div class="dcard" id="d-input"></div>
-      <div class="dcard" id="d-ai"></div>
-    </div>
+    <div class="ps-detail" id="ps-detail"></div>
+    <div class="ps-index" id="ps-index"></div>
   </div>
 </div>
 
-<script>
-(function(){
-  "use strict";
-  // ---------- pillar context: a representative example marker per stream ----------
-  var PILLARS = {
-    CV:  {n:"Cardiovascular",  lab:"ApoB 124 mg/dL",      wear:"Resting HR 88 bpm ↑", pro:"—"},
-    MET: {n:"Metabolic",       lab:"Fasting glucose 142", wear:"Overnight glucose drift", pro:"Diet/activity recall"},
-    REN: {n:"Renal",           lab:"eGFR 48 · UACR 38",   wear:"Home BP 148/94",      pro:"—"},
-    HEP: {n:"Hepatic",         lab:"ALT 72 · FIB-4 2.1",  wear:"—",                   pro:"AUDIT-C 6"},
-    INF: {n:"Inflammation",    lab:"hs-CRP 6.2 mg/L",     wear:"Resting HR + temp up", pro:"—"},
-    HEM: {n:"Hematologic",     lab:"Hgb 10.8 · Ferritin 9", wear:"—",                 pro:"Fatigue PRO"},
-    ENDO:{n:"Endocrine",       lab:"TSH 6.8 · E2/FSH",    wear:"Cycle / skin temp",   pro:"Vasomotor PRO"},
-    BCM: {n:"Body composition",lab:"BMD T −2.6 · ALMI",   wear:"Grip / gait speed",   pro:"Falls PRO"},
-    NUT: {n:"Nutrition",       lab:"Vit-D 14 · B12 180",  wear:"—",                   pro:"Diet-quality PRO"},
-    SLP: {n:"Sleep",           lab:"—",                   wear:"Sleep 5.4h · low REM", pro:"ISI 17 (insomnia)"},
-    FIT: {n:"Fitness",         lab:"VO₂max est. p15",     wear:"Steps 3.1k/d · VO₂max", pro:"—"},
-    MCS: {n:"Mental",          lab:"—",                   wear:"HRV 22 ms ↓",          pro:"PHQ-9 / GAD-7"}
-  };
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({startOnLoad:false, theme:"dark", securityLevel:"loose",
+  themeVariables:{fontSize:"12px", primaryColor:"#13233e", primaryBorderColor:"#2b4a86", lineColor:"#5b6b8c", primaryTextColor:"#e8edf6"}});
 
-  // ---------- helpers to build state objects ----------
-  function S(id,label,band,mock,notes){return {id:id,label:label,band:band,mock:mock,notes:notes};}
+/* ============ state catalogue (metadata for the detail panel) ============ */
+function S(id,label,band,d,notes){return {id:id,label:label,band:band,d:d,notes:notes||[]};}
+const CARE=[
+  S("Well","Well / maintenance","green","No active disease; maintenance scoring, longevity nudges.",["<b>Exit:</b> Watch → At-risk; acute detection → Acute."]),
+  S("AtRisk","At-risk / pre-clinical","gold","Sub-clinical drift caught by personal-baseline early-warning before any band crosses.",["<b>Doc 12 §5</b> Watch/Advisory."]),
+  S("Acute","Acute event","red","Composite — optimize→triage&recover; reverts with hysteresis (Doc 06).",["Double-click to zoom into the acute sub-machine (A0–A3)."]),
+  S("Chronic","Chronic / managed","acc","Composite — diagnosed condition(s) under management (MANAGED, Doc 12 §3.1).",["Pillar keeps disease-weight even when controlled."]),
+  S("Crisis","Crisis / emergency","red","Composite — A3 acute-danger / suicidality → immediate human escalation (Doc 11).",["Cascade caps PureScore ≤40."]),
+  S("Palliative","Palliative / end-of-life","mut","Competing-risk weighting mutes longevity pillars; comfort & function goals.",["Dual-framing → progress-to-attainable (Doc 12 §6)."]),
+];
+const LIFE=[
+  S("Pediatric","Pediatric (gated)","mut","Out of v0.1 scope — percentile/Tanner frames; gated, never adult bands.",["Gate: age <18."]),
+  S("Adult","Healthy adult","green","Reference frame; standard pillar bands.",["Branches to reproductive / climacteric / aging tracks."]),
+  S("Reproductive","Reproductive / pregnancy","acc","Composite — cycle→fertility→pregnancy journey (sex-gated, Doc 05).",["Pre-eclampsia/GDM anchors never masked."]),
+  S("Postpartum","Post-partum","gold","Recovery + lactation; mood screening weighted up.",["Reverts to cycling/Adult."]),
+  S("Menopause","Menopause","gold","Composite — peri→post-menopause; estrogen-loss CV & bone risk (Doc 05).",["BMD red sooner; vasomotor sleep impact."]),
+  S("Andropause","Andropause","gold","Composite — age-related testosterone decline; symptom-anchored (Doc 05).",["Lifestyle-first; TRT if confirmed & indicated."]),
+  S("Aging","Aging / frailty","acc","Composite — robust→pre-frail→frail→dependent (Fried phenotype).",["Pre-frail is reversible."]),
+];
+const ENG=[
+  S("Onboarding","Onboarding / cold-start","acc","Composite — new user building a baseline; guideline-frame, low confidence.",["Resolves a persona then → Active."]),
+  S("ActiveE","Active / engaged","green","Full personalized scoring; check-ins & adherence flowing.",["Engagement drop → At-risk-of-churn."]),
+  S("Churn","At risk of churn","gold","Declining engagement; feasibility model adapts.",["Re-engage → Active, or lapse → Dormant."]),
+  S("Dormant","Dormant / lapsed","mut","No data inflow; confidence decays, score stale.",["Reactivate, or Off-board."]),
+  S("Reactivated","Reactivated","acc","Returned after lapse; baseline refreshed.",["→ Active."]),
+  S("Offboarded","Off-boarded","mut","Account closed or deceased — terminal.",["Append-only audit retained (Doc 11)."]),
+];
 
-  // ---------- the four INPUT streams, each a full lifecycle×value state set ----------
-  var STREAMS = [
-    {key:"labs", name:"Labs / biomarkers", icon:"🧪",
-     sub:"venous panel · lifecycle × band", exk:"lab",
-     states:[
-      S("none","Not ordered","mut",
-        "<div class='empty'>No labs on file — only what the panel <em>would</em> reveal is unknown.</div>",
-        ["<b>UI:</b> pillar shows a grey ‘Add labs’ tile; no band colour, no number.",
-         "<b>Score:</b> pillar runs on guideline priors only → <em>low confidence</em>, wide interval.",
-         "<b>Cold-start:</b> contributes to the ignition model (guideline → cohort → personal, Doc 14)."]),
-      S("ordered","Ordered · awaiting draw","acc",
-        "<div class='mrow'><span class='lbl'>Lab order placed</span><span class='mbadge acc'>scheduled</span></div><div class='scr muted'>Patient has a requisition; no sample yet.</div>",
-        ["<b>UI:</b> ‘Test booked’ status chip + prep instructions (fasting, timing).",
-         "<b>Score:</b> unchanged from priors; a ‘result pending’ ribbon prevents premature nudges.",
-         "<b>Nudge:</b> the only action surfaced is ‘complete your draw’."]),
-      S("pending","Drawn · results pending","acc",
-        "<div class='mrow'><span class='lbl'>Sample at lab</span><span class='mbadge acc'>processing</span></div><div class='scr muted'>Specimen received, analyser queue.</div>",
-        ["<b>UI:</b> skeleton card with shimmer; ETA shown.",
-         "<b>Score:</b> frozen; engine will not act on a half-resulted panel.",
-         "<b>Edge:</b> partial panels (some analytes back) render per-marker, pillar waits for the gating marker."]),
-      S("green","Resulted · optimal","green",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge green'>green</span></div><div class='mbar'><i style='width:82%;background:var(--green)'></i></div>",
-        ["<b>UI:</b> green band, ‘in optimal range’, source + draw date.",
-         "<b>Score:</b> full personal scoring (Stage 2b) with high confidence.",
-         "<b>Nudge:</b> maintenance only — no corrective action competes for the top-5."]),
-      S("watch","Resulted · borderline","gold",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge gold'>watch</span></div><div class='mbar'><i style='width:55%;background:var(--gold)'></i></div>",
-        ["<b>UI:</b> amber band, ‘borderline — modifiable’, with the nearest lever.",
-         "<b>Score:</b> personal penalty proportional to distance-into-band.",
-         "<b>Nudge:</b> a positive-ΔPureScore corrective action is generated (Doc 07)."]),
-      S("alert","Resulted · out of range","red",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge red'>alert</span></div><div class='mbar'><i style='width:24%;background:var(--red)'></i></div>",
-        ["<b>UI:</b> red band, plain-language meaning, ‘discuss with clinician’.",
-         "<b>Score:</b> band-clamp floors the pillar; personalization cannot relax it.",
-         "<b>Escalation:</b> routes to clinician review tier; lifestyle nudges de-prioritised under it."]),
-      S("critical","Critical / panic value","red",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge red'>CRITICAL</span></div><div class='scr' style='color:#ff9bae'>Panic threshold breached — immediate pathway.</div>",
-        ["<b>UI:</b> full-screen safety interstitial; non-dismissable acknowledgement.",
-         "<b>Score:</b> criticality meta-flag set; PureScore display de-emphasised vs the action.",
-         "<b>Safety:</b> hard escalation — see the AI lane crossing to <em>Escalate / clinician alert</em>."]),
-      S("improving","Re-test · improving","green",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge green'>↑ better</span></div><div class='scr muted'>Below personal baseline vs last draw.</div>",
-        ["<b>UI:</b> trend arrow + delta-vs-last; ‘keep it up’ reinforcement.",
-         "<b>Score:</b> trajectory dimension turns positive; early-warning clears.",
-         "<b>Nudge:</b> the working action is reinforced, not replaced."]),
-      S("declining","Re-test · worsening","gold",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge gold'>↓ worse</span></div><div class='scr muted'>Adverse drift even if still in-band.</div>",
-        ["<b>UI:</b> personal-baseline early-warning even while the band is still green.",
-         "<b>Score:</b> trajectory negative → surfaced before it crosses a band (Doc 12).",
-         "<b>Nudge:</b> pre-emptive corrective action raised earlier than band-only logic would."]),
-      S("stale","Panel overdue","mut",
-        "<div class='mrow'><span class='lbl'>Last panel 14 mo ago</span><span class='mbadge mut'>stale</span></div>",
-        ["<b>UI:</b> ‘this reading may be out of date’ watermark; band greyed toward neutral.",
-         "<b>Score:</b> confidence decays with age of sample; weight tapers.",
-         "<b>Nudge:</b> ‘re-test’ becomes the highest-value action for that pillar."]),
-      S("conflicting","Implausible / artifact","gold",
-        "<div class='mrow'><span class='lbl'>K⁺ 6.6 (isolated)</span><span class='mbadge gold'>reconfirm</span></div><div class='scr muted'>Hemolysis-pattern, no corroborating signal.</div>",
-        ["<b>UI:</b> ‘unexpected result — let’s reconfirm’, NOT an alarm (Doc 12 §3.4).",
-         "<b>Score:</b> value quarantined; does not move the pillar until corroborated.",
-         "<b>Safety:</b> corroborating evidence would escalate; isolated artifact would not."])
-     ]},
+/* ============ sub-machines: label, substates (detail), body (mermaid inner) ============ */
+const SUB={
+  acute:{label:"Acute event", states:[
+    S("Detected","Detected","gold","Medium+ source suggests an acute event.",[]),
+    S("Provisional","Provisional acute","gold","Single-source, unconfirmed — acute mode opened provisionally.",[]),
+    S("Active","Active acute (A0–A2)","red","Confirmed self-managed acute mode: m_k^acute spike, B_ACU reservoir, recovery nudges.",[]),
+    S("Emergency","Emergency (A3)","red","Acute-danger red — bypasses self-managed mode → human escalation; score ≤40.",[]),
+    S("Recovery","Recovery","gold","Peak passed; recovery plan; B_ACU draining.",[]),
+    S("Reverted","Reverted to baseline","green","Hysteresis cleared → back to longevity goals.",[]),
+    S("Dismissed","Dismissed","mut","Provisional event not corroborated → closed.",[]),
+  ], body:`[*] --> Detected
+Detected --> Provisional : single source
+Detected --> Emergency : A3 red
+Provisional --> Active : confirmed
+Provisional --> Dismissed : no corroboration
+Active --> Emergency : deteriorates
+Active --> Recovery : peak passed
+Emergency --> Recovery : stabilized
+Recovery --> Reverted : hysteresis cleared`},
+  chronic:{label:"Chronic mgmt", states:[
+    S("NewlyDx","Newly diagnosed","gold","Condition identified; pillar gains disease-weight.",[]),
+    S("Titrating","Titrating therapy","acc","Starting/adjusting treatment toward target.",[]),
+    S("Controlled","Controlled (MANAGED)","green","At target on therapy; green but never 'optimal'; burden reservoir not zeroed.",[]),
+    S("Drifting","Drifting","gold","Adverse trend on personal baseline while still in band.",[]),
+    S("Uncontrolled","Uncontrolled","red","Off target / band crossed — escalate therapy.",[]),
+    S("Flare","Flare / decompensation","red","Acute-on-chronic — hands off to the acute sub-machine.",[]),
+    S("Remission","Remission","green","Sustained control off-therapy (where possible).",[]),
+  ], body:`[*] --> NewlyDx
+NewlyDx --> Titrating : start therapy
+Titrating --> Controlled : at target
+Controlled --> Drifting : adverse trend
+Drifting --> Controlled : corrected
+Drifting --> Uncontrolled : band crossed
+Uncontrolled --> Titrating : escalate
+Controlled --> Flare : decompensation
+Uncontrolled --> Flare
+Flare --> Titrating : post-acute
+Controlled --> Remission : sustained off-Rx`},
+  pregnancy:{label:"Reproductive / pregnancy", states:[
+    S("Cycling","Cycling","green","Menstrual-cycle phase frame.",[]),
+    S("Preconception","Preconception / fertility","acc","Trying to conceive; folate/glycemic/BP optimization.",[]),
+    S("T1","Pregnant · T1","gold","First trimester; physiologic shifts begin.",[]),
+    S("T2","Pregnant · T2","gold","Physiologic anemia & eGFR-rise expected (bands shifted).",[]),
+    S("T3","Pregnant · T3","gold","Closest BP/glucose surveillance.",[]),
+    S("Delivery","Delivery","red","Peripartum event.",[]),
+    S("PP","Post-partum","gold","Recovery + lactation; PND screen weighted up.",[]),
+    S("Complication","Complication","red","Pre-eclampsia / GDM / haemorrhage → acute/crisis; never masked.",[]),
+  ], body:`[*] --> Cycling
+Cycling --> Preconception : TTC
+Preconception --> T1 : conception
+T1 --> T2
+T2 --> T3
+T3 --> Delivery
+Delivery --> PP
+PP --> Cycling : revert
+T1 --> Complication
+T2 --> Complication
+T3 --> Complication
+Complication --> PP : resolved`},
+  aging:{label:"Aging / frailty", states:[
+    S("Robust","Robust","green","No frailty criteria; age-adjusted bands.",[]),
+    S("PreFrail","Pre-frail","gold","1–2 Fried criteria; reversible with training + protein.",[]),
+    S("Frail","Frail","red","≥3 Fried criteria; high adverse-event risk.",[]),
+    S("Dependent","Dependent","mut","ADL loss; care-dependent → palliative.",[]),
+  ], body:`[*] --> Robust
+Robust --> PreFrail : 1-2 criteria
+PreFrail --> Robust : reversal
+PreFrail --> Frail : 3+ criteria
+Frail --> PreFrail : reversal
+Frail --> Dependent : ADL loss`},
+  onboarding:{label:"Onboarding", states:[
+    S("SignedUp","Signed up","acc","Account created; nothing known.",[]),
+    S("Intake","Intake questionnaire","acc","Progressive question bank (Appendix E).",[]),
+    S("Baseline","Baseline building","acc","Connecting wearables/labs; ~14 nights for norms.",[]),
+    S("Resolved","Persona resolved","green","Determination-matrix posterior settles (Appendix I).",[]),
+    S("ActiveO","Active","green","Full personalized scoring.",[]),
+    S("ChurnO","At-risk churn","gold","Engagement dropping.",[]),
+    S("DormantO","Dormant","mut","Lapsed; confidence decays.",[]),
+  ], body:`[*] --> SignedUp
+SignedUp --> Intake
+Intake --> Baseline : answered
+Baseline --> Resolved : persona settles
+Resolved --> ActiveO : personalized
+ActiveO --> ChurnO : engagement drop
+ChurnO --> ActiveO : re-engaged
+ChurnO --> DormantO : no activity
+DormantO --> ActiveO : reactivated`},
+  crisis:{label:"Crisis pathway", states:[
+    S("Trigger","Trigger","red","A3 acute-danger red / suicidality endorsed.",["PHQ-9 item 9, sepsis screen, K⁺≥5.6, SpO₂<92, Tn rise…"]),
+    S("Triage","Safety triage","red","Rapid risk assessment + plausibility check.",["Artifact? (Doc 12 §3.4) vs real."]),
+    S("Reassure","Reconfirm / reassure","gold","Implausible/isolated value → reconfirm, not alarm.",["Corroboration would escalate."]),
+    S("Escalation","Human escalation","red","Clinician-in-the-loop safety hand-off (Doc 11).",[]),
+    S("EmergencyServices","Emergency services","red","Imminent danger → 999/ED pathway.",[]),
+    S("UrgentCare","Urgent care","red","Same-day clinical contact.",[]),
+    S("Stabilized","Stabilized","gold","Acute danger handled.",[]),
+    S("Followup","Safety plan / follow-up","acc","Safety plan, warm referral, monitoring.",[]),
+    S("CrisisResolved","Resolved","green","Returns to care-status flow.",[]),
+  ], body:`[*] --> Trigger
+Trigger --> Triage : safety assessment
+Triage --> Reassure : artifact / false-positive
+Triage --> Escalation : human-in-loop
+Escalation --> EmergencyServices : imminent danger
+Escalation --> UrgentCare : same-day clinical
+EmergencyServices --> Stabilized
+UrgentCare --> Stabilized
+Stabilized --> Followup : safety plan
+Followup --> CrisisResolved : recovered
+Reassure --> CrisisResolved`},
+  menopause:{label:"Menopause", states:[
+    S("Premeno","Pre-menopause","green","Regular cycles; pre-climacteric frame.",[]),
+    S("Perimeno","Peri-menopause","gold","Cycle changes, FSH↑, vasomotor symptoms begin.",["HRV/sleep/temp read against transition."]),
+    S("MenoPoint","Menopause","gold","12 months amenorrhea — the menopause point.",[]),
+    S("Postmeno","Post-menopause","gold","Estrogen-loss CV & bone-loss risk frame.",["ApoB drift; BMD red sooner."]),
+    S("HRT","On HRT","acc","Menopausal hormone therapy for symptoms/bone.",["Ranges & risk adjusted on therapy."]),
+    S("BoneRisk","Bone surveillance","red","BMD↓ → osteopenia/osteoporosis pathway.",["Feeds BCM; DEXA cadence."]),
+  ], body:`[*] --> Premeno
+Premeno --> Perimeno : cycle changes, FSH up
+Perimeno --> MenoPoint : 12mo amenorrhea
+MenoPoint --> Postmeno
+Perimeno --> HRT : symptom mgmt
+Postmeno --> HRT
+HRT --> Postmeno : on therapy
+Postmeno --> BoneRisk : BMD surveillance`},
+  andropause:{label:"Andropause", states:[
+    S("Eugonadal","Eugonadal","green","Age-appropriate testosterone; no syndrome.",[]),
+    S("Symptomatic","Symptomatic","gold","Age decline + symptoms (libido, energy, mood).",[]),
+    S("Lifestyle","Lifestyle-first","acc","Sleep/weight/exercise optimization before TRT.",["Often reversible."]),
+    S("Confirmed","Confirmed hypogonadism","gold","Low T on two morning tests.",[]),
+    S("TRT","On TRT","acc","Testosterone therapy where indicated.",[]),
+    S("Monitored","Monitored","acc","Hct/PSA/symptom monitoring on therapy.",[]),
+  ], body:`[*] --> Eugonadal
+Eugonadal --> Symptomatic : age decline + symptoms
+Symptomatic --> Lifestyle : lifestyle first
+Lifestyle --> Eugonadal : reversal
+Symptomatic --> Confirmed : low T x2 AM
+Confirmed --> TRT : therapy if indicated
+TRT --> Monitored : Hct/PSA monitoring`},
+};
+const STATE_BY={}; [CARE,LIFE,ENG].forEach(a=>a.forEach(s=>STATE_BY[s.id]=s));
+for(const k in SUB) SUB[k].states.forEach(s=>STATE_BY[s.id]=s);
 
-    {key:"wear", name:"Wearables", icon:"⌚",
-     sub:"passive stream · trust-tiered (D22)", exk:"wear",
-     states:[
-      S("none","No device connected","mut",
-        "<div class='empty'>No wearable linked — sleep, HR, HRV, activity all unobserved.</div>",
-        ["<b>UI:</b> ‘Connect a watch/ring’ card with a one-tap OAuth.",
-         "<b>Score:</b> wearable-derived markers fall back to questionnaire/cohort priors.",
-         "<b>Coverage:</b> a major contributor to cold-start if labs are also thin."]),
-      S("syncing","Connected · first sync","acc",
-        "<div class='mrow'><span class='lbl'>Importing history…</span><span class='mbadge acc'>syncing</span></div>",
-        ["<b>UI:</b> progress state; ‘baseline building — 14 nights for personal norms’.",
-         "<b>Score:</b> shows population norms until the personal baseline is seeded.",
-         "<b>Nudge:</b> suppressed for this stream until enough wear-time accrues."]),
-      S("fresh","Synced · in range","green",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge green'>fresh</span></div><div class='scr muted'>Synced &lt; 24h · adequate wear-time.</div>",
-        ["<b>UI:</b> live tiles (sleep, HRV, steps) with green status.",
-         "<b>Score:</b> full trust-tier weight; personal baseline active.",
-         "<b>Nudge:</b> behaviour nudges are confidently attributable."]),
-      S("watch","In range · adverse drift","gold",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge gold'>watch</span></div><div class='scr muted'>Trending away from personal baseline.</div>",
-        ["<b>UI:</b> ‘your sleep/HRV is drifting’ with the lever.",
-         "<b>Score:</b> early-warning on personal baseline before any band crossing.",
-         "<b>Nudge:</b> a low-effort behaviour correction enters the top-5."]),
-      S("alert","Adverse signal","red",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge red'>alert</span></div><div class='scr' style='color:#ff9bae'>e.g. irregular-rhythm / sustained tachycardia notification.</div>",
-        ["<b>UI:</b> safety card; consumer-notification framed (‘not a diagnosis — get checked’).",
-         "<b>Score:</b> flags a check; does not by itself set a clinical band (trust tier).",
-         "<b>Escalation:</b> prompts confirmatory measurement / clinician contact."]),
-      S("stale","No sync &gt; 48h · gap","mut",
-        "<div class='mrow'><span class='lbl'>Last sync 3 days ago</span><span class='mbadge mut'>stale</span></div>",
-        ["<b>UI:</b> tiles greyed; ‘reconnect to resume tracking’.",
-         "<b>Score:</b> confidence decays; recent-window metrics paused.",
-         "<b>Nudge:</b> wearable-derived nudges <em>deferred</em> until fresh data returns."]),
-      S("confounded","Signal confounded","gold",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge gold'>confounded</span></div><div class='scr muted'>e.g. β-blocker suppresses HR / illness spikes RHR.</div>",
-        ["<b>UI:</b> ‘affected by your medication/illness’ context note.",
-         "<b>Score:</b> the metric is <em>down-weighted, not scored as fitness</em> (persona: β-blocker).",
-         "<b>Nudge:</b> no fitness-improvement nudge is built on a confounded signal."]),
-      S("lowconf","Low wear-time / out-of-cohort","mut",
-        "<div class='mrow'><span class='lbl'>Wear-time 31% · {EX}</span><span class='mbadge mut'>low conf</span></div>",
-        ["<b>UI:</b> faint tiles + ‘wear it more for reliable trends’.",
-         "<b>Score:</b> out-of-cohort adaptive values (e.g. athlete RHR 42) suppress cohort stats.",
-         "<b>Nudge:</b> confidence lowered; engine prefers questionnaire corroboration."])
-     ]},
+/* ============ filters, personas, gating ============ */
+const SEXES=["Female","Male","Trans fem","Trans masc"];
+const AGES=["<18","18–39","40–59","60–74","75+"];
+const CONDS=["None","Pre-diabetes","Type-2 diabetes","CKD","Hypertension","FH / high Lp(a)","Depression/anxiety","COPD/asthma","Osteoporosis"];
+const PERSONAS=[
+  {id:"custom",name:"Custom (use filters)"},
+  {id:"healthy",name:"Healthy adult",sex:"Male",age:"40–59",cond:"None",vec:{care:"Well",life:"Adult",eng:"ActiveE"}},
+  {id:"newuser",name:"New user (onboarding)",sex:"Female",age:"18–39",cond:"None",vec:{care:"Well",life:"Adult",eng:"Onboarding"}},
+  {id:"prediabetic",name:"Pre-diabetes",sex:"Male",age:"40–59",cond:"Pre-diabetes",vec:{care:"AtRisk",life:"Adult",eng:"ActiveE"}},
+  {id:"ckd",name:"CKD-3 (managed)",sex:"Male",age:"60–74",cond:"CKD",vec:{care:"Chronic",life:"Adult",eng:"ActiveE"}},
+  {id:"t2d_flare",name:"T2D with a flare",sex:"Male",age:"40–59",cond:"Type-2 diabetes",vec:{care:"Acute",life:"Adult",eng:"ActiveE"}},
+  {id:"postop",name:"Post-op recovery",sex:"Female",age:"40–59",cond:"None",vec:{care:"Acute",life:"Adult",eng:"ActiveE"}},
+  {id:"pregnancy",name:"Pregnancy (T2)",sex:"Female",age:"18–39",cond:"None",vec:{care:"Well",life:"Reproductive",eng:"ActiveE"}},
+  {id:"postpartum",name:"Post-partum",sex:"Female",age:"18–39",cond:"Depression/anxiety",vec:{care:"AtRisk",life:"Postpartum",eng:"ActiveE"}},
+  {id:"menopause",name:"Postmenopausal",sex:"Female",age:"40–59",cond:"Osteoporosis",vec:{care:"AtRisk",life:"Menopause",eng:"ActiveE"}},
+  {id:"andropause",name:"Andropause",sex:"Male",age:"60–74",cond:"None",vec:{care:"AtRisk",life:"Andropause",eng:"ActiveE"}},
+  {id:"elderly",name:"Frail elderly",sex:"Female",age:"75+",cond:"Hypertension",vec:{care:"Chronic",life:"Aging",eng:"ActiveE"}},
+  {id:"crisis",name:"Mental-health crisis",sex:"Female",age:"18–39",cond:"Depression/anxiety",vec:{care:"Crisis",life:"Adult",eng:"ActiveE"}},
+  {id:"fh",name:"FH (genetic CV risk)",sex:"Male",age:"18–39",cond:"FH / high Lp(a)",vec:{care:"Chronic",life:"Adult",eng:"ActiveE"}},
+  {id:"lapsed",name:"Lapsed / dormant",sex:"Male",age:"40–59",cond:"None",vec:{care:"Well",life:"Adult",eng:"Dormant"}},
+];
+const PVEC={}; PERSONAS.forEach(p=>{if(p.vec)PVEC[p.id]=p.vec;});
+const cur={persona:"healthy",sex:"Male",age:"40–59",cond:"None",level:"expanded",sel:null};
 
-    {key:"pro", name:"Lifestyle questionnaire", icon:"📝",
-     sub:"PRO instruments · PHQ-9, ISI, AUDIT-C…", exk:"pro",
-     states:[
-      S("none","Not started","mut",
-        "<div class='empty'>No questionnaire completed — mood, sleep, alcohol, diet unrecorded.</div>",
-        ["<b>UI:</b> ‘2-minute check-in’ entry card.",
-         "<b>Score:</b> psychosocial / behavioural pillars run on priors only.",
-         "<b>Coverage:</b> PRO is often the cheapest way out of cold-start."]),
-      S("partial","In progress","acc",
-        "<div class='mrow'><span class='lbl'>4 of 9 items</span><span class='mbadge acc'>resumable</span></div><div class='mbar'><i style='width:44%;background:var(--acc)'></i></div>",
-        ["<b>UI:</b> progress bar; resume where left off; no scoring shown yet.",
-         "<b>Score:</b> incomplete instruments are not scored (validity).",
-         "<b>Nudge:</b> only ‘finish your check-in’."]),
-      S("green","Complete · low burden","green",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge green'>low</span></div><div class='scr muted'>e.g. PHQ-9 3 · ISI 5 · AUDIT-C 1.</div>",
-        ["<b>UI:</b> reassuring summary; ‘nothing flagged’.",
-         "<b>Score:</b> validated instrument feeds its pillar at full weight.",
-         "<b>Nudge:</b> maintenance / habit-reinforcement."]),
-      S("watch","Complete · moderate","gold",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge gold'>moderate</span></div><div class='scr muted'>e.g. PHQ-9 12 · ISI 17 · AUDIT-C 5.</div>",
-        ["<b>UI:</b> ‘moderate symptoms’, psychoeducation + self-help levers.",
-         "<b>Score:</b> proportional penalty; trajectory tracked across re-takes.",
-         "<b>Nudge:</b> behavioural activation / sleep-hygiene actions enter the top-5."]),
-      S("alert","Complete · severe","red",
-        "<div class='mrow'><span class='lbl'>{EX}</span><span class='mbadge red'>severe</span></div><div class='scr' style='color:#ff9bae'>e.g. PHQ-9 ≥20 · GAD-7 ≥15 · AUDIT-C ≥8.</div>",
-        ["<b>UI:</b> ‘these scores suggest professional support’; warm referral.",
-         "<b>Score:</b> band-clamps the mental/behaviour pillar.",
-         "<b>Escalation:</b> routes to clinician review tier."]),
-      S("crisis","Safety item positive","red",
-        "<div class='mrow'><span class='lbl'>PHQ-9 Q9 &gt; 0 · self-harm</span><span class='mbadge red'>CRISIS</span></div><div class='scr' style='color:#ff9bae'>Self-harm / suicidality endorsed.</div>",
-        ["<b>UI:</b> immediate crisis-resources screen; hotline + emergency guidance.",
-         "<b>Score:</b> scoring secondary; the crisis pathway takes over the surface.",
-         "<b>Safety:</b> hard, top-priority escalation regardless of all other streams (Doc 11)."]),
-      S("expired","Due for re-administration","mut",
-        "<div class='mrow'><span class='lbl'>Last taken 6 mo ago</span><span class='mbadge mut'>expired</span></div>",
-        ["<b>UI:</b> ‘time for a re-check’ reminder; prior result shown faded.",
-         "<b>Score:</b> instrument weight decays past its valid recall window.",
-         "<b>Nudge:</b> ‘retake’ surfaces for the affected pillar."])
-     ]},
+function gatedLife(){
+  const g=new Set();
+  const female=cur.sex==="Female"||cur.sex==="Trans masc", male=cur.sex==="Male"||cur.sex==="Trans fem";
+  if(!female){g.add("Reproductive");g.add("Postpartum");g.add("Menopause");}
+  if(!male)g.add("Andropause");
+  const older=(cur.age==="40–59"||cur.age==="60–74"||cur.age==="75+");
+  if(!older){g.add("Menopause");g.add("Andropause");}
+  if(cur.age!=="60–74"&&cur.age!=="75+")g.add("Aging");
+  return g;
+}
+function vector(){
+  if(cur.persona!=="custom"&&PVEC[cur.persona]) return Object.assign({},PVEC[cur.persona]);
+  const g=gatedLife();
+  let life=cur.age==="<18"?"Pediatric":((cur.age==="75+"||cur.age==="60–74")?"Aging":"Adult");
+  if(g.has(life))life="Adult";
+  let care="Well";
+  if(["CKD","Type-2 diabetes","Hypertension","FH / high Lp(a)","COPD/asthma","Osteoporosis"].includes(cur.cond))care="Chronic";
+  else if(["Pre-diabetes","Depression/anxiety"].includes(cur.cond))care="AtRisk";
+  return {care:care,life:life,eng:"ActiveE"};
+}
 
-    {key:"goal", name:"User goals", icon:"🎯",
-     sub:"self-set targets · lifecycle", exk:null,
-     states:[
-      S("none","No goal set","mut",
-        "<div class='empty'>No active goal — engine optimises PureScore generically.</div>",
-        ["<b>UI:</b> ‘set a goal’ prompt seeded from the biggest modifiable gap.",
-         "<b>Score:</b> unaffected; nudge ranking uses default impact×ease.",
-         "<b>Nudge:</b> top-5 chosen purely on ΔPureScore."]),
-      S("set","Set · baseline captured","acc",
-        "<div class='mrow'><span class='lbl'>Goal: −5% ApoB in 12 wk</span><span class='mbadge acc'>active</span></div>",
-        ["<b>UI:</b> goal card with target, baseline, deadline.",
-         "<b>Score:</b> unchanged; goal re-weights which nudges are surfaced.",
-         "<b>Nudge:</b> ranking tilts toward goal-relevant actions."]),
-      S("ontrack","On track","green",
-        "<div class='mrow'><span class='lbl'>62% to target · ahead</span><span class='mbadge green'>on track</span></div><div class='mbar'><i style='width:62%;background:var(--green)'></i></div>",
-        ["<b>UI:</b> progress ring ahead of pace; streak reinforcement.",
-         "<b>Score:</b> engagement dimension up; positive trajectory.",
-         "<b>Nudge:</b> sustain the working actions."]),
-      S("atrisk","At risk · slipping","gold",
-        "<div class='mrow'><span class='lbl'>Behind pace · 3 wk left</span><span class='mbadge gold'>at risk</span></div><div class='mbar'><i style='width:38%;background:var(--gold)'></i></div>",
-        ["<b>UI:</b> gentle ‘let’s adjust’; re-plan options offered.",
-         "<b>Score:</b> unaffected; recommendations re-prioritise toward the goal.",
-         "<b>Nudge:</b> engine swaps in higher-impact goal-relevant actions."]),
-      S("offtrack","Off track","red",
-        "<div class='mrow'><span class='lbl'>No progress · deadline passed pace</span><span class='mbadge red'>off track</span></div>",
-        ["<b>UI:</b> non-judgemental reset; ‘shrink the goal?’ options.",
-         "<b>Score:</b> unaffected; avoids false hope on non-modifiable targets (e.g. FH/Lp(a)).",
-         "<b>Nudge:</b> re-scopes to an achievable next step."]),
-      S("achieved","Achieved","green",
-        "<div class='mrow'><span class='lbl'>Target met 🎉</span><span class='mbadge green'>done</span></div><div class='mbar'><i style='width:100%;background:var(--green)'></i></div>",
-        ["<b>UI:</b> celebration; ‘set the next goal’.",
-         "<b>Score:</b> reflected in the relevant pillar/trajectory.",
-         "<b>Nudge:</b> offers a maintenance goal or a new frontier."]),
-      S("abandoned","Stalled / abandoned","mut",
-        "<div class='mrow'><span class='lbl'>No activity 30d</span><span class='mbadge mut'>dormant</span></div>",
-        ["<b>UI:</b> low-pressure re-engagement; option to archive.",
-         "<b>Score:</b> goal weighting removed; back to generic ranking.",
-         "<b>Nudge:</b> avoids nagging; one soft re-entry prompt."])
-     ]}
-  ];
-
-  // ---------- the DERIVED AI-recommendation states ----------
-  var AI = {
-    crisis:      {band:"red", label:"Crisis pathway", txt:"Human-escalation surface takes over — crisis resources, hotline, emergency guidance. All other nudges suspended.", note:"Doc 11 — safety overrides everything."},
-    escalate:    {band:"red", label:"Escalate / clinician alert", txt:"An out-of-range or critical value routes to the clinician-review tier. Lifestyle nudges are de-prioritised beneath ‘get this checked’.", note:"Band-clamp + critical cascade, Doc 03 §3."},
-    reconfirm:   {band:"gold", label:"Reconfirm, not alarm", txt:"An implausible/isolated value is quarantined. The recommendation is to re-test, not to act — corroboration would escalate.", note:"Doc 12 §3.4 — artifact handling."},
-    coldstart:   {band:"acc", label:"Cold-start · guideline frame", txt:"Too little fresh data to personalise. Generic, guideline-anchored education and the cheapest data-completing actions; confidence shown low.", note:"Ignition model, Doc 14."},
-    deferred:    {band:"acc", label:"Defer · awaiting fresh data", txt:"A key stream is stale. Wearable/lab-derived nudges are held; the surfaced action is to refresh the data.", note:"Confidence decay, Doc 18."},
-    tempered:    {band:"gold", label:"Tempered · lowered confidence", txt:"A confounded or low-confidence input softens the recommendation — fewer, gentler, well-hedged nudges rather than a confident push.", note:"Trust-tiering D22."},
-    goalfocused: {band:"acc", label:"Goal-focused re-prioritisation", txt:"Inputs are usable and a user goal is slipping — the top-5 re-orders toward higher-impact, goal-relevant actions.", note:"Doc 07 ranking."},
-    personalized:{band:"green", label:"Personalised top-5", txt:"Full personal scoring with good coverage — impact-attributed, ease-weighted, diverse, safe nudges; every one a positive ΔPureScore.", note:"Doc 07 — the normal operating state."},
-    suppressed:  {band:"green", label:"Maintenance · nothing to push", txt:"Everything green / on-track. No corrective nudge is manufactured; surface shows maintenance habits and due-date screening reminders only.", note:"No false urgency."}
-  };
-
-  // ---------- live propagation: 4 input states -> AI state + explained edges ----------
-  function present(stream,id){
-    if(stream==="labs") return ["green","watch","alert","critical","improving","declining","conflicting"].indexOf(id)>=0;
-    if(stream==="wear") return ["fresh","watch","alert","confounded","lowconf"].indexOf(id)>=0;
-    if(stream==="pro")  return ["green","watch","alert","crisis"].indexOf(id)>=0;
-    if(stream==="goal") return ["set","ontrack","atrisk","offtrack","achieved"].indexOf(id)>=0;
-    return false;
-  }
-  function deriveAI(cur){
-    var e=[]; // edges: {from, band, label}
-    var push=function(from,band,label){e.push({from:from,band:band,label:label});};
-    // 1. crisis dominates absolutely
-    if(cur.pro==="crisis"){ push("pro","red","self-harm endorsed → crisis"); return {id:"crisis",edges:e}; }
-    // 2. critical lab
-    if(cur.labs==="critical"){ push("labs","red","panic value → clinician alert"); return {id:"escalate",edges:e}; }
-    // 3. implausible/artifact
-    if(cur.labs==="conflicting"){ push("labs","gold","implausible → reconfirm"); return {id:"reconfirm",edges:e}; }
-    // 4. any out-of-range alert
-    var sev=false;
-    if(cur.labs==="alert"){ push("labs","red","out of range → escalate"); sev=true; }
-    if(cur.pro==="alert"){ push("pro","red","severe PRO → referral"); sev=true; }
-    if(cur.wear==="alert"){ push("wear","red","adverse signal → get checked"); sev=true; }
-    if(sev) return {id:"escalate",edges:e};
-    // 5. coverage / cold-start
-    var fresh=0;["labs","wear","pro","goal"].forEach(function(s){ if(present(s,cur[s])) fresh++; });
-    if(fresh<2){
-      ["labs","wear","pro"].forEach(function(s){ if(!present(s,cur[s])) push(s,"acc","no usable data"); });
-      return {id:"coldstart",edges:e};
+/* ============ mega-diagram source generator ============ */
+const STYLE2=`classDef active fill:#16335e,stroke:#4f8cff,color:#fff,stroke-width:2px;
+classDef crit fill:#1c0f13,stroke:#e0556b,color:#ffb9c6;`;
+const CARE_TX=["[*] --> Well","Well --> AtRisk","AtRisk --> Well","AtRisk --> Acute","AtRisk --> Chronic","Acute --> Well","Chronic --> Acute","Well --> Crisis","Acute --> Crisis","Chronic --> Palliative"];
+const ENG_TX=["[*] --> Onboarding","Onboarding --> ActiveE","ActiveE --> Churn","Churn --> ActiveE","Churn --> Dormant","Dormant --> Reactivated","Reactivated --> ActiveE","Dormant --> Offboarded"];
+const CRIT=["Crisis","Emergency","Complication","Delivery","Escalation","EmergencyServices","UrgentCare","Trigger","Flare","Uncontrolled","Frail","Dependent","BoneRisk"];
+function lifeTx(g){
+  if(cur.age==="<18")return ["[*] --> Pediatric"];
+  let t=["[*] --> Adult"];
+  if(!g.has("Reproductive"))t.push("Adult --> Reproductive","Reproductive --> Postpartum","Postpartum --> Adult");
+  if(!g.has("Menopause"))t.push("Adult --> Menopause");
+  if(!g.has("Andropause"))t.push("Adult --> Andropause");
+  if(!g.has("Aging"))t.push("Adult --> Aging");
+  return t;
+}
+function regionBlock(name,id,tx,comps,level,g){
+  let out='state "'+name+'" as '+id+' {\n';
+  out+=tx.map(l=>"  "+l).join("\n")+"\n";
+  for(const [cid,key,label] of comps){
+    if(g.has(cid))continue;
+    if(level==="regions"){ out+='  state "'+label+' ▸" as '+cid+'\n'; }
+    else{
+      let body=SUB[key].body.trim();
+      if(level==="expanded")body=body.replace(/\s*:\s*[^\n]*/g,"");
+      body=body.split("\n").map(l=>"    "+l.trim()).join("\n");
+      out+='  state "'+label+'" as '+cid+' {\n'+body+'\n  }\n';
     }
-    // 6. staleness -> defer
-    var deferred=false;
-    if(cur.wear==="stale"){ push("wear","acc","stale >48h → defer"); deferred=true; }
-    if(cur.labs==="stale"){ push("labs","acc","panel overdue → re-test"); deferred=true; }
-    if(deferred) return {id:"deferred",edges:e};
-    // 7. confounded / low-confidence -> temper
-    var temper=false;
-    if(cur.wear==="confounded"){ push("wear","gold","confounded → down-weight"); temper=true; }
-    if(cur.wear==="lowconf"){ push("wear","gold","low wear-time → hedge"); temper=true; }
-    if(temper) return {id:"tempered",edges:e};
-    // 8. goal slipping
-    if(cur.goal==="atrisk"||cur.goal==="offtrack"){ push("goal","acc","goal slipping → re-prioritise"); return {id:"goalfocused",edges:e}; }
-    // 9. anything actionable (a watch/declining) -> personalised push; else maintenance
-    var actionable=["watch","declining"].indexOf(cur.labs)>=0 || cur.wear==="watch" || cur.pro==="watch";
-    if(actionable){
-      if(cur.labs==="watch"||cur.labs==="declining") push("labs","gold","borderline → corrective nudge");
-      if(cur.wear==="watch") push("wear","gold","drift → behaviour nudge");
-      if(cur.pro==="watch") push("pro","gold","moderate → self-help");
-      return {id:"personalized",edges:e};
-    }
-    push("labs","green","all green → maintain"); push("goal","green","on track");
-    return {id:"suppressed",edges:e};
   }
+  return out+"}\n";
+}
+function megaSource(level){
+  const g=gatedLife(), v=vector();
+  let out="stateDiagram-v2\n";
+  out+=regionBlock("Care status","Care",CARE_TX,[["Acute","acute","Acute event"],["Chronic","chronic","Chronic mgmt"],["Crisis","crisis","Crisis pathway"]],level,g);
+  out+=regionBlock("Life stage","Life",lifeTx(g),[["Reproductive","pregnancy","Reproductive / pregnancy"],["Menopause","menopause","Menopause"],["Andropause","andropause","Andropause"],["Aging","aging","Aging / frailty"]],level,g);
+  out+=regionBlock("Engagement","Eng",ENG_TX,[["Onboarding","onboarding","Onboarding"]],level,g);
+  out+=STYLE2+"\n";
+  const inOut=(x)=>new RegExp("(^|[^A-Za-z])"+x+"([^A-Za-z]|$)").test(out);
+  const crit=CRIT.filter(inOut); if(crit.length)out+="class "+crit.join(",")+" crit\n";
+  const act=[v.care,v.life,v.eng].filter(inOut); if(act.length)out+="class "+act.join(",")+" active\n";
+  return out;
+}
 
-  // ---------- filters & personas ----------
-  var AGES=["18–39","40–59","60–74","75+"];
-  var SEXES=["Male","Female","Trans fem (E2)","Trans masc (T)"];
-  var LIFE=["Healthy adult","Cycling","Pregnancy","Post-partum","Menopause","Andropause","Elderly"];
-  var PILLAR_KEYS=Object.keys(PILLARS);
-  // persona presets: stream states + filter context (Appendix D / live calculator)
-  var PERSONAS=[
-    {id:"custom",   name:"Custom (set manually)"},
-    {id:"healthy",  name:"Healthy adult", age:"40–59",sex:"Male",life:"Healthy adult",pillar:"CV",
-       set:{labs:"green",wear:"fresh",pro:"green",goal:"ontrack"}},
-    {id:"prediabetic",name:"Pre-diabetes", age:"40–59",sex:"Male",life:"Healthy adult",pillar:"MET",
-       set:{labs:"watch",wear:"watch",pro:"green",goal:"atrisk"}},
-    {id:"ckd",      name:"CKD-3 on ACE-i", age:"60–74",sex:"Male",life:"Healthy adult",pillar:"REN",
-       set:{labs:"alert",wear:"fresh",pro:"green",goal:"set"}},
-    {id:"athlete",  name:"Endurance athlete", age:"18–39",sex:"Male",life:"Healthy adult",pillar:"FIT",
-       set:{labs:"green",wear:"lowconf",pro:"green",goal:"ontrack"}},
-    {id:"betablocker",name:"On β-blocker", age:"40–59",sex:"Male",life:"Healthy adult",pillar:"CV",
-       set:{labs:"green",wear:"confounded",pro:"green",goal:"set"}},
-    {id:"elderly",  name:"Older adult (84)", age:"75+",sex:"Female",life:"Elderly",pillar:"BCM",
-       set:{labs:"watch",wear:"lowconf",pro:"watch",goal:"set"}},
-    {id:"dialysis", name:"ESRD on dialysis", age:"60–74",sex:"Male",life:"Healthy adult",pillar:"REN",
-       set:{labs:"alert",wear:"fresh",pro:"watch",goal:"set"}},
-    {id:"pregnancy",name:"Pregnancy (T2)", age:"18–39",sex:"Female",life:"Pregnancy",pillar:"ENDO",
-       set:{labs:"watch",wear:"fresh",pro:"green",goal:"set"}},
-    {id:"transfem", name:"Trans woman (E2)", age:"18–39",sex:"Trans fem (E2)",life:"Healthy adult",pillar:"HEM",
-       set:{labs:"green",wear:"fresh",pro:"green",goal:"set"}},
-    {id:"transmasc",name:"Trans man (T)", age:"18–39",sex:"Trans masc (T)",life:"Healthy adult",pillar:"REN",
-       set:{labs:"green",wear:"fresh",pro:"green",goal:"set"}},
-    {id:"menopause",name:"Postmenopausal", age:"40–59",sex:"Female",life:"Menopause",pillar:"BCM",
-       set:{labs:"watch",wear:"watch",pro:"watch",goal:"set"}},
-    {id:"southasian",name:"South-Asian male", age:"40–59",sex:"Male",life:"Healthy adult",pillar:"MET",
-       set:{labs:"watch",wear:"fresh",pro:"green",goal:"atrisk"}},
-    {id:"ramadan_dm",name:"Gulf-Arab T2D · Ramadan", age:"40–59",sex:"Male",life:"Healthy adult",pillar:"MET",
-       set:{labs:"watch",wear:"watch",pro:"green",goal:"set"}},
-    {id:"fh",       name:"Familial hypercholesterolemia", age:"18–39",sex:"Male",life:"Healthy adult",pillar:"CV",
-       set:{labs:"alert",wear:"fresh",pro:"green",goal:"offtrack"}},
-    {id:"labartifact",name:"Lab artifact (hemolysis)", age:"40–59",sex:"Male",life:"Healthy adult",pillar:"REN",
-       set:{labs:"conflicting",wear:"fresh",pro:"green",goal:"set"}},
-    {id:"crisis",   name:"PRO crisis flag", age:"18–39",sex:"Female",life:"Healthy adult",pillar:"MCS",
-       set:{labs:"green",wear:"fresh",pro:"crisis",goal:"set"}}
-  ];
-  // life-stage / sex context notes appended to the AI card
-  var CTX={
-    "Pregnancy":"Pregnancy frame: physiologic anemia & eGFR-rise expected (bands shifted); pre-eclampsia/GDM absolute anchors retained.",
-    "Menopause":"Menopause frame: estrogen-loss CV & bone-loss risk (BMD red sooner); vasomotor sleep impact.",
-    "Post-partum":"Post-partum frame: recovery trajectories; mood screening weighted up.",
-    "Elderly":"Elderly frame: age-adjusted BMI/BP(J-curve)/eGFR/VO₂max; low-yield flags de-prioritised; sarcopenia watched.",
-    "Cycling":"Cycle-phase frame: hormone/skin-temp/HRV read against current phase (Doc 05).",
-    "Andropause":"Andropause frame: age-adjusted testosterone; symptom-anchored.",
-    "Trans fem (E2)":"Gonadal-sex frame: Hgb/lipids/urate/E2 read against female reference; natal-sex organ baseline retained; confidence lowered.",
-    "Trans masc (T)":"Gonadal-sex frame: Hgb/creatinine-eGFR/urate/T read against male reference."
-  };
-
-  // ---------- live state ----------
-  var cur={labs:"green",wear:"fresh",pro:"green",goal:"ontrack",
-           age:"40–59",sex:"Male",life:"Healthy adult",pillar:"CV",persona:"healthy"};
-  var sel={stream:"labs"}; // selected input node for the detail card
-
-  // ---------- rendering ----------
-  var $=function(id){return document.getElementById(id);};
-  function exFor(stream){var p=PILLARS[cur.pillar];var k=({labs:"lab",wear:"wear",pro:"pro"})[stream];
-    var v=p&&k?p[k]:null; return (v&&v!=="—")?v:null;}
-  function fillEX(html,stream){var ex=exFor(stream);
-    return html.replace(/\{EX\}/g, ex?ex:"<span class='muted'>(no "+stream+" marker for "+cur.pillar+")</span>");}
-
-  function chipset(elId,arr,key){
-    var el=$(elId); el.innerHTML="";
-    arr.forEach(function(v){
-      var b=document.createElement("button"); b.className="sm-f"+(cur[key]===v?" on":"");
-      b.textContent=v; b.onclick=function(){ cur[key]=v; if(key!=="pillar") cur.persona="custom"; syncPersonaSelect(); render(); };
-      el.appendChild(b);
-    });
+/* ============ Uber viewer (zoom/pan/fullscreen/double-click) ============ */
+const $=(i)=>document.getElementById(i);
+const frame=$("ps-frame"), stage=$("ps-stage"), hud=$("ps-hud");
+let z=1,tx=0,ty=0,natW=0,natH=0,RID=0,RTOK=0;
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function apply(){stage.style.transform="translate("+tx+"px,"+ty+"px) scale("+z+")";if(hud)hud.textContent=Math.round(z*100)+"%";}
+function fit(){if(!natW||!natH)return;const fw=frame.clientWidth-24,fh=frame.clientHeight-24;
+  z=clamp(Math.min(fw/natW,(fh-54)/natH),0.05,4);tx=Math.max(8,(frame.clientWidth-natW*z)/2);ty=56;apply();}
+function zoomAt(cx,cy,f){const nz=clamp(z*f,0.06,6);tx=cx-((cx-tx)/z)*nz;ty=cy-((cy-ty)/z)*nz;z=nz;apply();}
+function zoomToEl(el){
+  const fr=frame.getBoundingClientRect(), r=el.getBoundingClientRect(); if(!r.width||!r.height)return;
+  const pad=46, nz=clamp(Math.min((fr.width-pad)/r.width,(fr.height-pad)/r.height)*z,0.06,6);
+  const ux=((r.left+r.width/2)-fr.left-tx)/z, uy=((r.top+r.height/2)-fr.top-ty)/z;
+  z=nz; tx=frame.clientWidth/2-ux*z; ty=frame.clientHeight/2-uy*z; apply();
+}
+async function draw(){
+  const tok=++RTOK, lvl=cur.level;
+  try{
+    const {svg}=await mermaid.render("psU"+(++RID), megaSource(lvl));
+    if(tok!==RTOK)return;
+    stage.innerHTML=svg;
+    const s=stage.querySelector("svg");
+    if(s){const vb=s.viewBox&&s.viewBox.baseVal?s.viewBox.baseVal:null;
+      if(vb&&vb.width){natW=vb.width;natH=vb.height;} else {try{const bb=s.getBBox();natW=bb.width;natH=bb.height;}catch(e){natW=1400;natH=900;}}
+      s.removeAttribute("style");s.setAttribute("width",natW);s.setAttribute("height",natH);s.style.maxWidth="none";}
+    fit(); wireSvg();
+  }catch(e){
+    if(tok!==RTOK)return;
+    if(lvl!=="regions"){ cur.level="regions"; setLvlButtons(); return draw(); }   // safe fallback
+    stage.innerHTML='<pre style="color:#ff9bae;padding:14px;white-space:pre-wrap">'+(e&&e.message||e)+'</pre>';
   }
-  function syncPersonaSelect(){ $("f-persona").value=cur.persona; }
+}
+function wireSvg(){
+  const s=stage.querySelector("svg"); if(!s)return;
+  s.querySelectorAll("g.cluster, g.node").forEach(g=>{
+    g.style.cursor="zoom-in";
+    g.addEventListener("dblclick",(e)=>{e.stopPropagation();const c=g.closest("g.cluster")||g;zoomToEl(c);});
+  });
+}
+/* ---- controls ---- */
+function setLvlButtons(){["regions","expanded","full"].forEach(k=>{const b=$("ps-lv-"+k);if(b)b.classList.toggle("on",k===cur.level);});}
+["regions","expanded","full"].forEach(k=>{const b=$("ps-lv-"+k);if(b)b.addEventListener("click",()=>{cur.level=k;setLvlButtons();draw();});});
+$("ps-zin").addEventListener("click",()=>zoomAt(frame.clientWidth/2,frame.clientHeight/2,1.2));
+$("ps-zout").addEventListener("click",()=>zoomAt(frame.clientWidth/2,frame.clientHeight/2,1/1.2));
+$("ps-reset").addEventListener("click",()=>{z=1;tx=0;ty=0;apply();});
+$("ps-fit").addEventListener("click",fit);
+$("ps-full").addEventListener("click",()=>{try{if(!document.fullscreenElement){const p=frame.requestFullscreen&&frame.requestFullscreen();if(p&&p.catch)p.catch(()=>{});}else document.exitFullscreen&&document.exitFullscreen();}catch(_){}});
+document.addEventListener("fullscreenchange",()=>setTimeout(fit,90));
+frame.addEventListener("wheel",(e)=>{e.preventDefault();const r=frame.getBoundingClientRect();zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY<0?1.1:1/1.1);},{passive:false});
+let gx=0,gy=0,drag=false;
+frame.addEventListener("pointerdown",(e)=>{if(e.target.closest&&e.target.closest("#ps-overlay"))return;drag=true;gx=e.clientX-tx;gy=e.clientY-ty;try{frame.setPointerCapture(e.pointerId);}catch(_){}frame.style.cursor="grabbing";});
+frame.addEventListener("pointermove",(e)=>{if(!drag)return;tx=e.clientX-gx;ty=e.clientY-gy;apply();});
+frame.addEventListener("pointerup",()=>{drag=false;frame.style.cursor="grab";});
 
-  function streamByKey(k){return STREAMS.filter(function(s){return s.key===k;})[0];}
-  function stateById(stream,id){return stream.states.filter(function(s){return s.id===id;})[0];}
-
-  function renderLanes(){
-    var host=$("lanes"); host.innerHTML="";
-    STREAMS.forEach(function(st){
-      var lane=document.createElement("div"); lane.className="lane";
-      var subEx=(st.exk?("<span class='muted'>e.g. "+(exFor(st.key)||"—")+"</span>"):"");
-      lane.innerHTML="<h5>"+st.icon+" "+st.name+"</h5><div class='sub'>"+st.sub+"<br>"+subEx+"</div>";
-      var chips=document.createElement("div"); chips.className="chips";
-      st.states.forEach(function(state){
-        var c=document.createElement("button");
-        var on=cur[st.key]===state.id, isSel=(sel.stream===st.key&&on);
-        c.className="chip "+state.band+(on?" on":"")+(isSel?" sel":"");
-        c.innerHTML="<span class='dot'></span>"+state.label;
-        c.onclick=function(){ cur[st.key]=state.id; cur.persona="custom"; sel={stream:st.key};
-          syncPersonaSelect(); render(); };
-        chips.appendChild(c);
-      });
-      lane.appendChild(chips); host.appendChild(lane);
-    });
+/* ============ vector bar, detail, index ============ */
+function bandDot(b){return '<span class="vdot" style="background:var(--'+({green:"green",gold:"gold",red:"red",acc:"acc",mut:"dim"}[b]||"dim")+')"></span>';}
+function renderVector(){
+  const v=vector(); const map=[["Care status",v.care],["Life stage",v.life],["Engagement",v.eng]];
+  $("ps-vector").innerHTML=map.map(([rn,sid])=>{const st=STATE_BY[sid]||{label:sid,band:"mut",d:""};
+    return '<div class="vcard"><div class="l">'+rn+'</div><div class="v">'+bandDot(st.band)+(st.label||sid)+'</div><div class="s">'+(st.d||"").slice(0,72)+'</div></div>';}).join("");
+}
+function renderDetail(){
+  const s=STATE_BY[cur.sel], host=$("ps-detail");
+  if(!s){host.innerHTML='<div class="small muted">Click a state in the index below (or double-click a box in the diagram to zoom to its section).</div>';return;}
+  const reg=CARE.includes(s)?"Care status":LIFE.includes(s)?"Life stage":ENG.includes(s)?"Engagement":"Sub-state";
+  host.innerHTML='<div class="dh"><span class="tag">'+reg+'</span><h3>'+bandDot(s.band)+' '+s.label+'</h3></div>'+
+    '<div class="small" style="color:var(--mut)">'+s.d+'</div>'+(s.notes.length?'<ul class="notes">'+s.notes.map(n=>'<li>'+n+'</li>').join("")+'</ul>':'');
+}
+function chip(s,act){const cl="ps-chip"+(act&&act.has(s.id)?" active":"")+(cur.sel===s.id?" sel":"");
+  return '<button class="'+cl+'" data-id="'+s.id+'"><span class="dot '+({green:"green",gold:"gold",red:"red",acc:"acc",mut:"mut"}[s.band]||"mut")+'"></span>'+s.label+'</button>';}
+function renderIndex(){
+  const v=vector(), act=new Set([v.care,v.life,v.eng]), g=gatedLife();
+  const groups=[["Care status",CARE,[["Acute","acute"],["Chronic","chronic"],["Crisis","crisis"]]],
+                ["Life stage",LIFE,[["Reproductive","pregnancy"],["Menopause","menopause"],["Andropause","andropause"],["Aging","aging"]]],
+                ["Engagement",ENG,[["Onboarding","onboarding"]]]];
+  let html="";
+  for(const [gn,leaves,comps] of groups){
+    html+='<div class="ps-grp"><div class="gh">'+gn+'</div><div class="ps-chips">'+leaves.filter(s=>!g.has(s.id)).map(s=>chip(s,act)).join("")+'</div>';
+    for(const [cid,key] of comps){ if(g.has(cid))continue;
+      html+='<div class="sub">▸ '+SUB[key].label+'</div><div class="ps-chips">'+SUB[key].states.map(s=>chip(s,act)).join("")+'</div>'; }
+    html+='</div>';
   }
+  const host=$("ps-index"); host.innerHTML=html;
+  host.querySelectorAll(".ps-chip").forEach(b=>b.addEventListener("click",()=>{cur.sel=b.getAttribute("data-id");renderDetail();renderIndex();}));
+}
+function fchips(elId,arr,key){
+  const host=$(elId); host.innerHTML="";
+  arr.forEach(v=>{const b=document.createElement("button");b.className="ps-f"+(cur[key]===v?" on":"");b.textContent=v;
+    b.addEventListener("click",()=>{cur[key]=v;cur.persona="custom";$("ps-persona").value="custom";refresh();});host.appendChild(b);});
+}
+function refresh(){ renderVector(); renderIndex(); draw(); fchips("ps-sex",SEXES,"sex"); fchips("ps-age",AGES,"age"); }
 
-  function renderAI(){
-    var d=deriveAI(cur), a=AI[d.id];
-    $("ai-pill").className="ai-pill "+a.band; $("ai-pill").textContent=a.label;
-    $("ai-txt").textContent=a.txt;
-    var eh=$("edges"); eh.innerHTML="";
-    if(!d.edges.length){ eh.innerHTML="<span class='edge'>no contributing edges</span>"; }
-    d.edges.forEach(function(ed){
-      var s=streamByKey(ed.from);
-      var el=document.createElement("span"); el.className="edge "+ed.band;
-      el.innerHTML="<b>"+s.icon+" "+s.name.split(" ")[0]+"</b> · "+ed.label;
-      eh.appendChild(el);
-    });
-    return d;
-  }
-
-  function renderDetail(aiId){
-    // selected input card
-    var st=streamByKey(sel.stream), state=stateById(st,cur[sel.stream]);
-    $("d-input").innerHTML=
-      "<div class='dh'><span class='tag'>"+st.icon+" "+st.name+"</span></div>"+
-      "<h3>"+state.label+"</h3>"+
-      "<div class='kind'>data state · band: "+state.band.toUpperCase()+" · pillar context: <b>"+cur.pillar+"</b> "+PILLARS[cur.pillar].n+"</div>"+
-      "<div class='mock'><div class='mh'>What the user sees</div><div class='scr'>"+fillEX(state.mock,st.key)+"</div></div>"+
-      "<ul class='notes'>"+state.notes.map(function(n){return "<li>"+n+"</li>";}).join("")+"</ul>";
-    // AI card
-    var a=AI[aiId];
-    var ctxNote=CTX[cur.life]||CTX[cur.sex]||"";
-    $("d-ai").innerHTML=
-      "<div class='dh'><span class='tag'>🤖 AI Recommendations</span></div>"+
-      "<h3>"+a.label+"</h3>"+
-      "<div class='kind'>derived live from the four input states</div>"+
-      "<div class='mock'><div class='mh'>Recommendation surface</div><div class='scr'>"+a.txt+"</div></div>"+
-      "<ul class='notes'><li><b>Logic:</b> "+a.note+"</li>"+
-        (ctxNote?"<li><b>"+(cur.life!=="Healthy adult"?cur.life:cur.sex)+" context:</b> "+ctxNote+"</li>":"")+
-        "<li><b>Inputs:</b> 🧪 "+labelOf("labs")+" · ⌚ "+labelOf("wear")+" · 📝 "+labelOf("pro")+" · 🎯 "+labelOf("goal")+"</li>"+
-      "</ul>";
-  }
-  function labelOf(k){return stateById(streamByKey(k),cur[k]).label;}
-
-  function renderScenario(){
-    var p=PERSONAS.filter(function(x){return x.id===cur.persona;})[0];
-    $("scenario").innerHTML=
-      "<b>"+(p?p.name:"Custom")+"</b>"+
-      "<span class='ctx'>· "+cur.age+" · "+cur.sex+" · "+cur.life+" · pillar "+cur.pillar+" ("+PILLARS[cur.pillar].n+")</span>"+
-      "<span class='ctx' style='margin-left:auto'>click any chip to change a state →</span>";
-  }
-
-  function render(){
-    renderScenario(); renderLanes(); var d=renderAI(); renderDetail(d.id);
-  }
-
-  // ---------- persona select + filter chips wiring ----------
-  function applyPersona(pid){
-    var p=PERSONAS.filter(function(x){return x.id===pid;})[0];
-    cur.persona=pid;
-    if(p&&p.set){ cur.labs=p.set.labs;cur.wear=p.set.wear;cur.pro=p.set.pro;cur.goal=p.set.goal;
-      cur.age=p.age;cur.sex=p.sex;cur.life=p.life;cur.pillar=p.pillar; sel={stream:"labs"}; }
-    rebuildFilterChips(); render();
-  }
-  function rebuildFilterChips(){
-    chipset("f-age",AGES,"age"); chipset("f-sex",SEXES,"sex");
-    chipset("f-life",LIFE,"life"); chipset("f-pillar",PILLAR_KEYS,"pillar");
-  }
-
-  // persona dropdown
-  var psel=$("f-persona");
-  PERSONAS.forEach(function(p){var o=document.createElement("option");o.value=p.id;o.textContent=p.name;psel.appendChild(o);});
-  psel.onchange=function(){ applyPersona(psel.value); };
-  $("f-reset").onclick=function(){ cur.labs="none";cur.wear="none";cur.pro="none";cur.goal="none";
-    cur.persona="custom"; sel={stream:"labs"}; syncPersonaSelect(); render(); };
-
-  // init
-  rebuildFilterChips(); syncPersonaSelect(); render();
+/* ============ init ============ */
+(function init(){
+  const ps=$("ps-persona"); PERSONAS.forEach(p=>{const o=document.createElement("option");o.value=p.id;o.textContent=p.name;ps.appendChild(o);});
+  ps.addEventListener("change",()=>{cur.persona=ps.value;const p=PERSONAS.find(x=>x.id===cur.persona);if(p&&p.vec){cur.sex=p.sex;cur.age=p.age;cur.cond=p.cond;}cur.sel=null;refresh();});
+  const cs=$("ps-cond"); CONDS.forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;cs.appendChild(o);});
+  cs.addEventListener("change",()=>{cur.cond=cs.value;cur.persona="custom";ps.value="custom";refresh();});
+  cs.value=cur.cond; setLvlButtons(); renderDetail(); refresh();
 })();
 </script>
-<nav class="pn"><a class="prev" href="behemoth-class-diagram.html"><div class="lbl">← Previous</div><div class="ttl">Behemoth Class Diagram</div></a><a class="next" href="engagement-state-machines.html"><div class="lbl">Next →</div><div class="ttl">Engagement state machines</div></a></nav><footer class="wf">PureScore Tech Wiki · generated from <code>docs/purescore</code> · illustrative design, re-verify before production (README §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
+<div class="connects"><div class="cx-h">Connects to</div><div class="cx-row"><span class="cx-k">Pages</span><a class="cx-chip" href="06-acute-events-and-life-stage-plans.html">Acute events &amp; life-stage</a> <a class="cx-chip" href="appendix-goals.html">J · Goals</a> <a class="cx-chip" href="12-critical-review-and-purescore-2.0.html">PureScore 2.0</a> <a class="cx-chip" href="index.html">Home</a> <a class="cx-chip" href="11-safety-governance-and-regulatory.html">Safety &amp; governance</a> <a class="cx-chip" href="05-sex-specific-models.html">Sex-specific models</a></div><div class="cx-row"><span class="cx-k">Diagrams</span><a class="cx-chip" href="engagement-state-machines.html">Engagement state machines</a> <a class="cx-chip" href="purescore-dataflow.html">PureScore calculation DFD</a> <a class="cx-chip" href="behemoth-class-diagram.html">Behemoth class diagram</a> <a class="cx-chip" href="wearable-baselines.html">Wearable baselines (mobile)</a></div></div><nav class="pn"><a class="prev" href="purescore-dataflow.html"><div class="lbl">← Previous</div><div class="ttl">PureScore calculation — data flow</div></a><a class="next" href="engagement-state-machines.html"><div class="lbl">Next →</div><div class="ttl">Engagement state machines</div></a></nav><footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · illustrative design, re-verify before production (README §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
 <script src="assets/wiki.js"></script></body></html>

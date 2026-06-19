@@ -1012,6 +1012,445 @@
       "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.ALP", "lab.bilirubin", "lab.abdominal_ultrasound"] },
       "source": "Portincasa et al. Lancet 2006; Trowbridge et al. JAMA 2003",
       "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_REN_SYMPTOMS",
+      "text": "In the past month, how often have you noticed swelling in your ankles or legs, foamy/bubbly urine, or unexplained tiredness?",
+      "category": "Renal Symptoms",
+      "domain": "RENAL_HEPATIC",
+      "conditions": [
+        "chronic_kidney_disease"
+      ],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Never",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Occasionally",
+          "direction": "increase_risk",
+          "magnitude": "mild",
+          "pillars": {
+            "REN": 0.06
+          },
+          "reservoirs": {
+            "renal_reserve": -0.05
+          }
+        },
+        {
+          "label": "Often / most days",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": {
+            "REN": 0.18,
+            "CV": 0.06
+          },
+          "reservoirs": {
+            "renal_reserve": -0.12,
+            "vascular_bp_load": 0.05
+          }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": [
+          "all"
+        ],
+        "axis_tags": [
+          "condition_load"
+        ],
+        "personas": [
+          "ckd",
+          "elderly",
+          "dialysis"
+        ]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": {
+        "kind": "perceived",
+        "corroborated_by": [
+          "lab.UACR",
+          "lab.eGFR"
+        ]
+      },
+      "source": "KDIGO 2024 uraemic/oedema symptom screen (illustrative)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_REN_NSAID",
+      "text": "How often do you take NSAID painkillers (ibuprofen, diclofenac, naproxen)?",
+      "category": "Renal Risk",
+      "domain": "RENAL_HEPATIC",
+      "conditions": [
+        "nsaid_nephrotoxicity"
+      ],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Never / rarely",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "A few times a month",
+          "direction": "increase_risk",
+          "magnitude": "mild",
+          "pillars": {
+            "REN": 0.05
+          },
+          "reservoirs": {
+            "renal_reserve": -0.04
+          }
+        },
+        {
+          "label": "Weekly or more",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": {
+            "REN": 0.12
+          },
+          "reservoirs": {
+            "renal_reserve": -0.09
+          }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": [
+          "all"
+        ],
+        "axis_tags": [
+          "substance",
+          "condition_load"
+        ],
+        "personas": [
+          "ckd",
+          "elderly"
+        ]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": {
+        "kind": "perceived",
+        "corroborated_by": [
+          "lab.eGFR",
+          "lab.creatinine"
+        ]
+      },
+      "source": "KDIGO nephrotoxin avoidance (illustrative)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_REN_URINE",
+      "text": "Have you noticed changes in urination — waking more than once a night to urinate, or much more/less than usual?",
+      "category": "Renal Symptoms",
+      "domain": "RENAL_HEPATIC",
+      "conditions": [
+        "chronic_kidney_disease"
+      ],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No change",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Mild change",
+          "direction": "increase_risk",
+          "magnitude": "mild",
+          "pillars": {
+            "REN": 0.06
+          },
+          "reservoirs": {}
+        },
+        {
+          "label": "Marked change",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": {
+            "REN": 0.14
+          },
+          "reservoirs": {
+            "renal_reserve": -0.08
+          }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": [
+          "all"
+        ],
+        "axis_tags": [
+          "condition_load"
+        ],
+        "personas": [
+          "ckd",
+          "elderly"
+        ]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": {
+        "kind": "perceived",
+        "corroborated_by": [
+          "lab.eGFR",
+          "lab.UACR"
+        ]
+      },
+      "source": "KDIGO symptom screen (illustrative)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_HEP_SYMPTOMS",
+      "text": "In the past month, have you had right-upper-abdominal discomfort, unusual fatigue, yellowing of the eyes/skin, or itching?",
+      "category": "Hepatic Symptoms",
+      "domain": "RENAL_HEPATIC",
+      "conditions": [
+        "liver_disease"
+      ],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "None",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Some discomfort / fatigue",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": {
+            "HEP": 0.12
+          },
+          "reservoirs": {
+            "hepatic_fat": 0.06,
+            "inflammatory_load": 0.05
+          }
+        },
+        {
+          "label": "Jaundice / itching (yellowing)",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": {
+            "HEP": 0.22,
+            "INF": 0.08
+          },
+          "reservoirs": {
+            "inflammatory_load": 0.1
+          }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": [
+          "all"
+        ],
+        "axis_tags": [
+          "condition_load"
+        ],
+        "personas": []
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": {
+        "kind": "perceived",
+        "corroborated_by": [
+          "lab.ALT",
+          "lab.bilirubin"
+        ]
+      },
+      "source": "AASLD jaundice/cholestasis symptom screen (illustrative)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_HEP_RISK",
+      "text": "Do you have known fatty liver, hepatitis, or a family history of liver disease?",
+      "category": "Hepatic History",
+      "domain": "RENAL_HEPATIC",
+      "conditions": [
+        "masld",
+        "hepatitis"
+      ],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Fatty liver (MASLD)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": {
+            "HEP": 0.14,
+            "MET": 0.06
+          },
+          "reservoirs": {
+            "hepatic_fat": 0.12
+          }
+        },
+        {
+          "label": "Hepatitis / family history",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": {
+            "HEP": 0.2
+          },
+          "reservoirs": {
+            "inflammatory_load": 0.08,
+            "hepatic_fat": 0.06
+          }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": [
+          "all"
+        ],
+        "axis_tags": [
+          "condition_load",
+          "genetic_familial"
+        ],
+        "personas": [
+          "prediabetic"
+        ]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": {
+        "kind": "perceived",
+        "corroborated_by": [
+          "lab.ALT",
+          "lab.FIB-4"
+        ]
+      },
+      "source": "AASLD MASLD/viral-hepatitis history (illustrative)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_RENHEP_HEP_TOXIN",
+      "text": "How often do you use high-dose paracetamol/acetaminophen (>3 g/day), anabolic steroids, or herbal 'liver/detox' supplements?",
+      "category": "Hepatic Risk",
+      "domain": "RENAL_HEPATIC",
+      "conditions": [
+        "hepatotoxicity"
+      ],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Never",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Occasionally",
+          "direction": "increase_risk",
+          "magnitude": "mild",
+          "pillars": {
+            "HEP": 0.06
+          },
+          "reservoirs": {}
+        },
+        {
+          "label": "Regularly",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": {
+            "HEP": 0.14,
+            "INF": 0.05
+          },
+          "reservoirs": {
+            "hepatic_fat": 0.05
+          }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": [
+          "all"
+        ],
+        "axis_tags": [
+          "substance",
+          "condition_load"
+        ],
+        "personas": []
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": {
+        "kind": "perceived",
+        "corroborated_by": [
+          "lab.ALT",
+          "lab.GGT"
+        ]
+      },
+      "source": "AASLD hepatotoxin exposure (illustrative)",
+      "flag": "illustrative-reverify"
     }
   ]
 }

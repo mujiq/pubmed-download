@@ -1,724 +1,2731 @@
 {
-  "domain": "DERM_AESTHETIC_PAIN",
-  "questions": [
+ "domain": "DERM_AESTHETIC_PAIN",
+ "questions": [
+  {
+   "id": "Q_DERM_ACNE_DIET_DAIRY",
+   "text": "How often do you consume dairy products (milk, cheese, yoghurt)?",
+   "category": "Acne & Skin Inflammation",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "acne"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
     {
-      "id": "Q_DERM_ACNE_DIET_DAIRY",
-      "text": "How often do you consume dairy products (milk, cheese, yoghurt)?",
-      "category": "Acne & Skin Inflammation",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["acne"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "Rarely / never", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "INF": -0.05 }, "reservoirs": { "inflammatory_load": -0.05 } },
-        { "label": "1–3 servings/week", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Daily (1–2 servings)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.06, "ENDO": 0.05 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "Daily (3+ servings)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.12, "ENDO": 0.08 }, "reservoirs": { "inflammatory_load": 0.10 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet", "aesthetic"], "personas": ["all"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [], "validated_by": "DIET" },
-      "priority": 3,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
-      "source": "OMICS Acne Report; Adebamowo CA et al. JAAD 2008 (dairy-acne IGF-1 pathway)",
-      "flag": "illustrative-reverify"
+     "label": "Rarely / never",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": -0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": -0.05
+     }
     },
     {
-      "id": "Q_DERM_ACNE_DIET_SUGAR",
-      "text": "How often do you eat high-glycaemic foods (sugary drinks, white bread, sweets, pastries)?",
-      "category": "Acne & Skin Inflammation",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["acne"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "Rarely / never", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "INF": -0.05, "MET": -0.05 }, "reservoirs": { "inflammatory_load": -0.05, "glycemic_burden": -0.05 } },
-        { "label": "A few times/week", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Daily", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.12, "MET": 0.10, "ENDO": 0.08 }, "reservoirs": { "inflammatory_load": 0.10, "glycemic_burden": 0.08 } },
-        { "label": "Multiple times/day", "direction": "increase_risk", "magnitude": "strong", "pillars": { "INF": 0.20, "MET": 0.15, "ENDO": 0.12 }, "reservoirs": { "inflammatory_load": 0.18, "glycemic_burden": 0.14 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet", "aesthetic"], "personas": ["all"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [], "validated_by": "DIET" },
-      "priority": 3,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.HbA1c", "lab.fasting_glucose"] },
-      "source": "OMICS Acne Report; Smith RN et al. Am J Clin Nutr 2007 (low-GI diet reduces acne)",
-      "flag": "illustrative-reverify"
+     "label": "1–3 servings/week",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
     },
     {
-      "id": "Q_DERM_ACNE_HORMONAL_F",
-      "text": "Do your acne breakouts worsen in the week before your period?",
-      "category": "Acne & Skin Inflammation",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["acne"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No / not applicable", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Mild worsening", "direction": "increase_risk", "magnitude": "weak", "pillars": { "ENDO": 0.06, "INF": 0.05 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "Significant worsening", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "ENDO": 0.14, "INF": 0.10 }, "reservoirs": { "inflammatory_load": 0.08 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["female"], "axis_tags": ["aesthetic", "reproductive"], "personas": ["menopause"] },
-      "dependencies": {
-        "show_if": [{ "q": "Q_CORE_SEX", "in": ["Female"] }],
-        "skip_if": [],
-        "triggers": []
-      },
-      "priority": 3,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.LH", "lab.FSH", "lab.testosterone_free"] },
-      "source": "OMICS Acne Report; Goulden V et al. Br J Dermatol 1997 (hormonal acne females)",
-      "flag": "illustrative-reverify"
+     "label": "Daily (1–2 servings)",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.06,
+      "ENDO": 0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
     },
     {
-      "id": "Q_DERM_SKIN_TYPE",
-      "text": "What is your skin type (Fitzpatrick scale)?",
-      "category": "Skin Characteristics",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["acne", "facial_wrinkles", "skin_aging", "rosacea"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "Type I – always burns, never tans (very fair)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.12 }, "reservoirs": { "inflammatory_load": 0.08 } },
-        { "label": "Type II – usually burns, tans minimally (fair)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.06 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "Type III – sometimes burns, tans uniformly (medium)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Type IV – rarely burns, tans easily (olive)", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "INF": -0.05 }, "reservoirs": { "inflammatory_load": -0.05 } },
-        { "label": "Type V–VI – very rarely burns, deeply pigmented", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "INF": -0.05 }, "reservoirs": { "inflammatory_load": -0.05 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["aesthetic", "environment"], "personas": ["southasian", "elderly"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
-      "priority": 3,
-      "cadence": "once",
-      "refresh": "static",
-      "perceived_actual": { "kind": "anchor", "corroborated_by": [] },
-      "source": "OMICS Skin Aging/Wrinkles Report; Fitzpatrick TB. Arch Dermatol 1988",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_SUN_UV_EXPOSURE",
-      "text": "On average, how much unprotected sun or UV exposure do you get?",
-      "category": "Skin Characteristics",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["facial_wrinkles", "skin_aging", "rosacea"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "Minimal – mostly indoors, always use SPF 30+", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "INF": -0.10 }, "reservoirs": { "inflammatory_load": -0.10 } },
-        { "label": "Moderate – some outdoor time, SPF occasionally", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "High – frequent outdoor exposure, SPF rarely", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.14 }, "reservoirs": { "inflammatory_load": 0.12 } },
-        { "label": "Very high – outdoor work / tanning, no SPF", "direction": "increase_risk", "magnitude": "strong", "pillars": { "INF": 0.22 }, "reservoirs": { "inflammatory_load": 0.20 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["environment", "aesthetic", "occupation"], "personas": ["all"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
-      "priority": 3,
-      "cadence": "annual",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
-      "source": "OMICS Wrinkles Report; Vierkotter A et al. J Invest Dermatol 2010 (UV + pollution skin aging)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_URBAN_POLLUTION_YEARS",
-      "text": "How many years in total have you lived in a city with significant air pollution?",
-      "category": "Skin Characteristics",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["facial_wrinkles", "skin_aging", "acne", "rosacea"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "Less than 5 years", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "5–10 years", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.06 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "More than 10 years", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.12 }, "reservoirs": { "inflammatory_load": 0.10 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["environment", "aesthetic"], "personas": ["all"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
-      "priority": 4,
-      "cadence": "annual",
-      "refresh": "slow",
-      "perceived_actual": { "kind": "actual", "corroborated_by": [] },
-      "source": "OMICS Wrinkles Report; Vierkotter A et al. J Invest Dermatol 2010 (pollution skin aging)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_RETINOID_SKINCARE",
-      "text": "Do you use any of the following evidence-based skin-care ingredients consistently?",
-      "category": "Skin Characteristics",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["facial_wrinkles", "skin_aging", "acne"],
-      "stream": "LIFE",
-      "type": "multi_select",
-      "responses": [
-        { "label": "None", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.05 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "Retinoid / retinol (prescription or OTC)", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "INF": -0.10 }, "reservoirs": { "inflammatory_load": -0.08 } },
-        { "label": "SPF 30+ daily sunscreen", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "INF": -0.12 }, "reservoirs": { "inflammatory_load": -0.10 } },
-        { "label": "Vitamin C serum / antioxidant", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "INF": -0.06, "NUT": -0.05 }, "reservoirs": { "inflammatory_load": -0.05 } },
-        { "label": "AHA / BHA exfoliant", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "INF": -0.05 }, "reservoirs": { "inflammatory_load": -0.05 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["aesthetic"], "personas": ["elderly", "menopause"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
-      "priority": 4,
-      "cadence": "annual",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
-      "source": "OMICS Wrinkles Report; Mukherjee S et al. Clin Interv Aging 2006 (topical retinoid evidence)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_HAIR_LOSS_MALE_PATTERN",
-      "text": "How would you describe your current hair loss pattern?",
-      "category": "Hair Loss – Male",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["hair_loss_male"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No notable hair loss", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Mild – receding hairline or slight thinning at crown", "direction": "increase_risk", "magnitude": "weak", "pillars": { "ENDO": 0.06, "MET": 0.05 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "Moderate – significant recession or bald patch at crown", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "ENDO": 0.12, "MET": 0.08, "INF": 0.06 }, "reservoirs": { "inflammatory_load": 0.08 } },
-        { "label": "Severe – large bald areas, little hair remaining on top", "direction": "increase_risk", "magnitude": "strong", "pillars": { "ENDO": 0.20, "MET": 0.14, "INF": 0.08 }, "reservoirs": { "inflammatory_load": 0.10 } }
-      ],
-      "dimensions": { "age": { "min": 18, "max": 120 }, "sex": ["male"], "axis_tags": ["aesthetic", "genetic_familial"], "personas": ["transmasc"] },
-      "dependencies": {
-        "show_if": [{ "q": "Q_CORE_SEX", "in": ["Male"] }],
-        "skip_if": [],
-        "triggers": [{ "if_response": "Moderate – significant recession or bald patch at crown", "ask": "Q_CORE_FAMHX" }, { "if_response": "Severe – large bald areas, little hair remaining on top", "ask": "Q_CORE_FAMHX" }]
-      },
-      "priority": 4,
-      "cadence": "annual",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.testosterone_free", "lab.DHT"] },
-      "source": "OMICS Hair Loss Male Report; Hamilton JB. Ann N Y Acad Sci 1951 (MPB grading)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_HAIR_LOSS_FEMALE_PATTERN",
-      "text": "How would you describe your current hair thinning or shedding pattern?",
-      "category": "Hair Loss – Female",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["hair_loss_female"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No notable thinning or excess shedding", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Mild – slightly wider part, slightly reduced volume", "direction": "increase_risk", "magnitude": "weak", "pillars": { "ENDO": 0.08, "NUT": 0.06 }, "reservoirs": { "inflammatory_load": 0.05, "micronutrient_reserve": -0.05 } },
-        { "label": "Moderate – clearly thinner crown/part, visible scalp", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "ENDO": 0.14, "NUT": 0.10, "INF": 0.08 }, "reservoirs": { "inflammatory_load": 0.08, "micronutrient_reserve": -0.08 } },
-        { "label": "Severe – diffuse thinning across entire scalp", "direction": "increase_risk", "magnitude": "strong", "pillars": { "ENDO": 0.22, "NUT": 0.15, "INF": 0.10 }, "reservoirs": { "inflammatory_load": 0.10, "micronutrient_reserve": -0.12 } }
-      ],
-      "dimensions": { "age": { "min": 18, "max": 120 }, "sex": ["female"], "axis_tags": ["aesthetic", "reproductive"], "personas": ["menopause", "transfem"] },
-      "dependencies": {
-        "show_if": [{ "q": "Q_CORE_SEX", "in": ["Female"] }],
-        "skip_if": [],
-        "triggers": []
-      },
-      "priority": 3,
-      "cadence": "annual",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.ferritin", "lab.TSH", "lab.testosterone_free"] },
-      "source": "OMICS Hair Loss Female Report; Trost LB et al. J Am Acad Dermatol 2006 (FPHL, iron/thyroid)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_ALOPECIA_PATCHES",
-      "text": "Have you ever noticed discrete circular patches of hair loss on your scalp or body?",
-      "category": "Alopecia Areata",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["alopecia_areata"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Yes – single patch, resolved", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.08 }, "reservoirs": { "inflammatory_load": 0.06 } },
-        { "label": "Yes – multiple patches or recurring", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.16, "ENDO": 0.08, "MCS": 0.06 }, "reservoirs": { "inflammatory_load": 0.14 } },
-        { "label": "Yes – extensive loss (scalp/eyebrows/body)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "INF": 0.25, "ENDO": 0.10, "MCS": 0.10 }, "reservoirs": { "inflammatory_load": 0.20 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["aesthetic", "condition_load"], "personas": ["all"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
-      "priority": 3,
-      "cadence": "annual",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.ANA", "lab.thyroid_ab"] },
-      "source": "OMICS Alopecia Areata assessment; Pratt CH et al. Nat Rev Dis Primers 2017",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_SKIN_NUT_FISH",
-      "text": "How often do you eat oily fish (salmon, mackerel, sardines, trout)?",
-      "category": "Skin & Hair Nutrition",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["acne", "skin_aging", "hair_loss_female", "rosacea", "dry_eyes"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "Never / rarely", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.14, "NUT": 0.12 }, "reservoirs": { "inflammatory_load": 0.10, "micronutrient_reserve": -0.08 } },
-        { "label": "1–2×/week", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "3+×/week", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "INF": -0.12, "NUT": -0.10 }, "reservoirs": { "inflammatory_load": -0.10, "micronutrient_reserve": 0.08 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet", "aesthetic"], "personas": ["all"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [], "validated_by": "DIET" },
-      "priority": 3,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.omega3_index"] },
-      "source": "OMICS Acne/Skin Report; Simopoulos AP. Biomedicine 2016 (omega-3 skin/hair)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_SKIN_VIT_SUPPLEMENTS",
-      "text": "Do you regularly take any of the following supplements for skin or hair health?",
-      "category": "Skin & Hair Nutrition",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["skin_aging", "hair_loss_female", "hair_loss_male", "acne"],
-      "stream": "LIFE",
-      "type": "multi_select",
-      "responses": [
-        { "label": "None", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Biotin / B-complex", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "NUT": -0.05 }, "reservoirs": { "micronutrient_reserve": 0.05 } },
-        { "label": "Vitamin D 1000+ IU/day", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "INF": -0.10, "NUT": -0.08 }, "reservoirs": { "micronutrient_reserve": 0.10, "inflammatory_load": -0.06 } },
-        { "label": "Zinc", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "INF": -0.06, "NUT": -0.05 }, "reservoirs": { "micronutrient_reserve": 0.06 } },
-        { "label": "Collagen peptides", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "NUT": -0.05 }, "reservoirs": { "micronutrient_reserve": 0.05 } },
-        { "label": "Iron supplement", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "NUT": -0.10 }, "reservoirs": { "micronutrient_reserve": 0.08, "iron_reserve": 0.10 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet", "aesthetic"], "personas": ["menopause", "southasian"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
-      "priority": 4,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.vitamin_D", "lab.ferritin", "lab.zinc"] },
-      "source": "OMICS Skin/Hair Nutrition Report; Guo EL & Katta R. Dermatol Pract Concept 2017",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_ROSACEA_TRIGGERS",
-      "text": "Do you experience recurrent facial redness, flushing, or visible broken capillaries that worsen with any of the following? (select all that apply)",
-      "category": "Rosacea",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["rosacea"],
-      "stream": "LIFE",
-      "type": "multi_select",
-      "responses": [
-        { "label": "None – no recurrent facial redness", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Sun / heat / spicy food / hot drinks", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.14 }, "reservoirs": { "inflammatory_load": 0.10 } },
-        { "label": "Alcohol (especially red wine)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.12 }, "reservoirs": { "inflammatory_load": 0.10 } },
-        { "label": "Stress / emotions", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.08, "MCS": 0.06 }, "reservoirs": { "inflammatory_load": 0.06, "allostatic_load": 0.05 } },
-        { "label": "Skincare products / cosmetics", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.06 }, "reservoirs": { "inflammatory_load": 0.05 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["aesthetic", "diet", "stress"], "personas": ["all"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
-      "priority": 3,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
-      "source": "OMICS Rosacea assessment; Steinhoff M et al. J Invest Dermatol 2011",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_DRY_EYES_SCREEN",
-      "text": "How many hours per day do you spend looking at screens (phone, computer, TV)?",
-      "category": "Dry Eyes",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["dry_eyes"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "Less than 4 hours", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "4–8 hours", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.06, "MCS": 0.05 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "More than 8 hours", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.12, "MCS": 0.08 }, "reservoirs": { "inflammatory_load": 0.10, "allostatic_load": 0.06 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["aesthetic", "environment", "occupation"], "personas": ["all"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
-      "priority": 3,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sedentary_time"] },
-      "source": "OMICS Dry Eye assessment; Tsubota K & Nakamori K. N Engl J Med 1993 (screen reduced blink)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_DRY_EYES_SYMPTOMS",
-      "text": "How often do you experience dry, gritty, burning, or irritated eyes?",
-      "category": "Dry Eyes",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["dry_eyes"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "Never or very rarely", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Occasionally (a few times/month)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.06 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "Frequently (several times/week)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.12, "NUT": 0.08 }, "reservoirs": { "inflammatory_load": 0.10, "micronutrient_reserve": -0.06 } },
-        { "label": "Most days / constant", "direction": "increase_risk", "magnitude": "strong", "pillars": { "INF": 0.20, "NUT": 0.12 }, "reservoirs": { "inflammatory_load": 0.16, "micronutrient_reserve": -0.10 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["aesthetic", "condition_load"], "personas": ["menopause", "elderly"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
-      "priority": 3,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.omega3_index"] },
-      "source": "OMICS Dry Eye assessment; Craig JP et al. TFOS DEWS II 2017",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_CHRONIC_PAIN_WIDESPREAD",
-      "text": "Do you experience widespread body pain (affecting multiple regions) most days?",
-      "category": "Chronic Pain",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["chronic_pain", "fibromyalgia"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No widespread pain", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Occasional / mild (does not limit activity)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06, "BCM": 0.05 }, "reservoirs": { "allostatic_load": 0.05 } },
-        { "label": "Moderate (limits some activities)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14, "BCM": 0.10, "INF": 0.08 }, "reservoirs": { "allostatic_load": 0.12, "inflammatory_load": 0.08 } },
-        { "label": "Severe / daily (significantly limits life)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.22, "BCM": 0.18, "INF": 0.14 }, "reservoirs": { "allostatic_load": 0.20, "inflammatory_load": 0.14 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["pain", "condition_load", "stress"], "personas": ["elderly", "menopause"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [{ "if_response": "Moderate (limits some activities)", "ask": "Q_DERM_FIBRO_TRIAD" }, { "if_response": "Severe / daily (significantly limits life)", "ask": "Q_DERM_FIBRO_TRIAD" }], "validated_by": "PHQ-9" },
-      "priority": 2,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.CRP", "lab.ESR"] },
-      "source": "OMICS Chronic Pain assessment; Wolfe F et al. Arthritis Care Res 2010 (fibromyalgia criteria)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_FIBRO_TRIAD",
-      "text": "Over the past month, have you experienced all three of the following most days: widespread pain AND fatigue AND unrefreshing sleep?",
-      "category": "Fibromyalgia",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["fibromyalgia", "chronic_pain"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Yes – mild / intermittent", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.16, "BCM": 0.10, "INF": 0.08 }, "reservoirs": { "allostatic_load": 0.14, "sleep_debt": 0.10, "inflammatory_load": 0.08 } },
-        { "label": "Yes – moderate to severe / most days", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.25, "BCM": 0.18, "INF": 0.14 }, "reservoirs": { "allostatic_load": 0.22, "sleep_debt": 0.16, "inflammatory_load": 0.14 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["pain", "condition_load", "sleep", "stress"], "personas": ["menopause", "elderly"] },
-      "dependencies": {
-        "show_if": [{ "q": "Q_DERM_CHRONIC_PAIN_WIDESPREAD", "in": ["Moderate (limits some activities)", "Severe / daily (significantly limits life)"] }],
-        "skip_if": [],
-        "triggers": [],
-        "validated_by": "PHQ-9"
-      },
-      "priority": 2,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep_duration", "wearable.HRV", "lab.cortisol_rhythm"] },
-      "source": "OMICS Fibromyalgia assessment; Wolfe F et al. Arthritis Care Res 2010",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_PAIN_MOOD_LINK",
-      "text": "Would you say your pain level significantly affects your mood, motivation, or enjoyment of life?",
-      "category": "Chronic Pain",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["chronic_pain", "fibromyalgia"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No notable effect on mood", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Mild effect – occasionally low mood", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.08 }, "reservoirs": { "allostatic_load": 0.06 } },
-        { "label": "Moderate – frequently low mood / frustration", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.16 }, "reservoirs": { "allostatic_load": 0.14 } },
-        { "label": "Severe – constant impact, feel hopeless at times", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.25 }, "reservoirs": { "allostatic_load": 0.20 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["pain", "stress", "condition_load"], "personas": ["all"] },
-      "dependencies": {
-        "show_if": [{ "q": "Q_DERM_CHRONIC_PAIN_WIDESPREAD", "in": ["Moderate (limits some activities)", "Severe / daily (significantly limits life)"] }],
-        "skip_if": [],
-        "triggers": [],
-        "validated_by": "PHQ-9"
-      },
-      "priority": 2,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
-      "source": "OMICS Chronic Pain assessment; Fishbain DA et al. Pain Med 1997 (pain-depression comorbidity)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_MIGRAINE_FREQUENCY",
-      "text": "How often do you experience migraines or severe headaches?",
-      "category": "Migraine",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["migraine"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "Never / very rarely", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "1–3 per month", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.12, "INF": 0.08 }, "reservoirs": { "allostatic_load": 0.10, "inflammatory_load": 0.06 } },
-        { "label": "4–8 per month (episodic)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.16, "INF": 0.12 }, "reservoirs": { "allostatic_load": 0.14, "inflammatory_load": 0.10 } },
-        { "label": "9+ per month (chronic)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.24, "INF": 0.16, "BCM": 0.06 }, "reservoirs": { "allostatic_load": 0.20, "inflammatory_load": 0.14 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["pain", "condition_load"], "personas": ["menopause"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [{ "if_response": "1–3 per month", "ask": "Q_DERM_MIGRAINE_TRIGGERS" }, { "if_response": "4–8 per month (episodic)", "ask": "Q_DERM_MIGRAINE_TRIGGERS" }, { "if_response": "9+ per month (chronic)", "ask": "Q_DERM_MIGRAINE_TRIGGERS" }], "validated_by": "PHQ-9" },
-      "priority": 2,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
-      "source": "OMICS Migraine assessment; GBD 2016 Headache Collaborators. Lancet Neurol 2018",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_MIGRAINE_TRIGGERS",
-      "text": "Which factors most reliably trigger your migraines? (select all that apply)",
-      "category": "Migraine",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["migraine"],
-      "stream": "LIFE",
-      "type": "multi_select",
-      "responses": [
-        { "label": "Stress / emotional upset", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14 }, "reservoirs": { "allostatic_load": 0.12 } },
-        { "label": "Hormonal changes (menstrual cycle)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "ENDO": 0.14, "MCS": 0.10 }, "reservoirs": { "allostatic_load": 0.10 } },
-        { "label": "Poor sleep or irregular sleep", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.12 }, "reservoirs": { "sleep_debt": 0.10, "allostatic_load": 0.08 } },
-        { "label": "Skipping meals / dehydration", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MET": 0.06, "NUT": 0.06 }, "reservoirs": { "micronutrient_reserve": -0.05 } },
-        { "label": "Bright light / noise / strong odour", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.05 } },
-        { "label": "Caffeine withdrawal or excess", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.05 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["pain", "stress", "diet"], "personas": ["menopause"] },
-      "dependencies": {
-        "show_if": [{ "q": "Q_DERM_MIGRAINE_FREQUENCY", "in": ["1–3 per month", "4–8 per month (episodic)", "9+ per month (chronic)"] }],
-        "skip_if": [],
-        "triggers": [],
-        "validated_by": "PSS-4"
-      },
-      "priority": 2,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
-      "source": "OMICS Migraine Triggers assessment; Lipton RB et al. Neurology 2002",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_WRINKLES_CONCERN",
-      "text": "How concerned are you about facial wrinkles, skin laxity, or visible signs of ageing?",
-      "category": "Skin Aging & Wrinkles",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["facial_wrinkles", "skin_aging"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "Not concerned", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Mildly concerned", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Moderately concerned (noticed clear changes)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.05 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "Very concerned (significant ageing visible)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.10 }, "reservoirs": { "inflammatory_load": 0.08 } }
-      ],
-      "dimensions": { "age": { "min": 30, "max": 120 }, "sex": ["all"], "axis_tags": ["aesthetic", "stress"], "personas": ["elderly", "menopause"] },
-      "dependencies": {
-        "show_if": [{ "q": "Q_CORE_AGE", "in": ["40–59", "60–74", "75+"] }],
-        "skip_if": [],
-        "triggers": []
-      },
-      "priority": 4,
-      "cadence": "annual",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
-      "source": "OMICS Wrinkles/Skin Aging Report; Farage MA et al. Adv Wound Care 2013",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_SKIN_HYDRATION",
-      "text": "How would you describe your baseline skin condition?",
-      "category": "Skin Aging & Wrinkles",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["skin_aging", "facial_wrinkles", "rosacea"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "Normal – balanced, few issues", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Oily – enlarged pores, prone to breakouts", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.06, "ENDO": 0.05 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "Dry / dehydrated – flaky, tight, easily irritated", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.10, "NUT": 0.08 }, "reservoirs": { "inflammatory_load": 0.08, "micronutrient_reserve": -0.06 } },
-        { "label": "Combination – oily T-zone, dry cheeks", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.05 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "Sensitive – reacts to many products/weather", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.12 }, "reservoirs": { "inflammatory_load": 0.10 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["aesthetic"], "personas": ["menopause", "elderly"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
-      "priority": 4,
-      "cadence": "annual",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
-      "source": "OMICS Skin Type assessment; Baumann L. Br J Dermatol 2008",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_STRESS_SKIN_FLARE",
-      "text": "Do you notice your skin conditions (acne, redness, rashes, itching) significantly worsen during periods of high stress?",
-      "category": "Stress-Skin Axis",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["acne", "rosacea", "alopecia_areata"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No notable stress-linked flares", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Mild – occasional minor flares during stress", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.06, "MCS": 0.05 }, "reservoirs": { "inflammatory_load": 0.06, "allostatic_load": 0.05 } },
-        { "label": "Moderate – clear link, notable flares", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.14, "MCS": 0.12 }, "reservoirs": { "inflammatory_load": 0.12, "allostatic_load": 0.10 } },
-        { "label": "Strong – almost always flares with stress", "direction": "increase_risk", "magnitude": "strong", "pillars": { "INF": 0.22, "MCS": 0.18 }, "reservoirs": { "inflammatory_load": 0.18, "allostatic_load": 0.16 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "aesthetic", "condition_load"], "personas": ["all"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [], "validated_by": "PSS-4" },
-      "priority": 3,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.cortisol_rhythm"] },
-      "source": "OMICS Acne/Rosacea Report; Chen Y & Lyga J. Inflamm Allergy Drug Targets 2014 (brain-skin axis)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_PAIN_DURATION",
-      "text": "How long have you been living with your main chronic pain condition?",
-      "category": "Chronic Pain",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["chronic_pain", "fibromyalgia"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No chronic pain", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Less than 3 months", "direction": "increase_risk", "magnitude": "weak", "pillars": { "BCM": 0.06, "MCS": 0.05 }, "reservoirs": { "allostatic_load": 0.05 } },
-        { "label": "3–12 months", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "BCM": 0.12, "MCS": 0.10, "INF": 0.06 }, "reservoirs": { "allostatic_load": 0.10, "muscle_reserve": -0.05 } },
-        { "label": "More than 1 year", "direction": "increase_risk", "magnitude": "strong", "pillars": { "BCM": 0.18, "MCS": 0.16, "INF": 0.10 }, "reservoirs": { "allostatic_load": 0.16, "inflammatory_load": 0.10, "muscle_reserve": -0.10 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["pain", "condition_load"], "personas": ["elderly"] },
-      "dependencies": {
-        "show_if": [{ "q": "Q_DERM_CHRONIC_PAIN_WIDESPREAD", "in": ["Occasional / mild (does not limit activity)", "Moderate (limits some activities)", "Severe / daily (significantly limits life)"] }],
-        "skip_if": [],
-        "triggers": [],
-        "validated_by": "PHQ-9"
-      },
-      "priority": 2,
-      "cadence": "annual",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.CRP", "lab.ESR"] },
-      "source": "OMICS Chronic Pain assessment; IASP chronic pain classification 2019",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_PAIN_MEDICATION",
-      "text": "Do you regularly use pain medications or treatments for chronic pain or headaches?",
-      "category": "Chronic Pain",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["chronic_pain", "fibromyalgia", "migraine"],
-      "stream": "LIFE",
-      "type": "multi_select",
-      "responses": [
-        { "label": "None", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "OTC analgesics (paracetamol, ibuprofen) regularly", "direction": "increase_risk", "magnitude": "weak", "pillars": { "HEP": 0.06, "REN": 0.05 }, "reservoirs": {} },
-        { "label": "Prescription NSAIDs", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.08, "REN": 0.08, "HEP": 0.06 }, "reservoirs": { "renal_reserve": -0.06 } },
-        { "label": "Opioids (tramadol, codeine, etc.)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.18, "HEP": 0.10 }, "reservoirs": { "allostatic_load": 0.12 } },
-        { "label": "Tricyclics / SNRIs / gabapentinoids for pain", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Physiotherapy / cognitive behavioural therapy", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "MCS": -0.12, "BCM": -0.08 }, "reservoirs": { "allostatic_load": -0.10 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["pain", "condition_load"], "personas": ["elderly"] },
-      "dependencies": {
-        "show_if": [{ "q": "Q_DERM_CHRONIC_PAIN_WIDESPREAD", "in": ["Occasional / mild (does not limit activity)", "Moderate (limits some activities)", "Severe / daily (significantly limits life)"] }],
-        "skip_if": [],
-        "triggers": []
-      },
-      "priority": 2,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.ALT", "lab.creatinine"] },
-      "source": "OMICS Chronic Pain assessment; Chou R et al. Ann Intern Med 2017 (opioid risk)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_ACNE_CURRENT_SEVERITY",
-      "text": "How would you describe your current acne?",
-      "category": "Acne & Skin Inflammation",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["acne"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No acne", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Mild – a few whiteheads or blackheads, rare spots", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.05 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "Moderate – several inflamed pimples, multiple areas", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.14, "ENDO": 0.08 }, "reservoirs": { "inflammatory_load": 0.12 } },
-        { "label": "Severe – cysts, nodules, scarring, widespread", "direction": "increase_risk", "magnitude": "strong", "pillars": { "INF": 0.24, "ENDO": 0.14, "MCS": 0.08 }, "reservoirs": { "inflammatory_load": 0.20 } }
-      ],
-      "dimensions": { "age": { "min": 12, "max": 60 }, "sex": ["all"], "axis_tags": ["aesthetic", "condition_load"], "personas": ["all"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
-      "priority": 3,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
-      "source": "OMICS Acne Assessment; Poli F et al. J Eur Acad Dermatol Venereol 2007 (GEA grading)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_HAIR_IRON_DEFICIENCY_F",
-      "text": "Have you been diagnosed with iron deficiency or anaemia in the past 2 years?",
-      "category": "Hair Loss – Female",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["hair_loss_female", "alopecia_areata"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Yes – borderline low, not treated", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "NUT": 0.14, "HEM": 0.10 }, "reservoirs": { "micronutrient_reserve": -0.12, "iron_reserve": -0.14, "oxygen_delivery_reserve": -0.08 } },
-        { "label": "Yes – diagnosed and currently treating", "direction": "increase_risk", "magnitude": "weak", "pillars": { "NUT": 0.06 }, "reservoirs": { "micronutrient_reserve": -0.05, "iron_reserve": -0.05 } }
-      ],
-      "dimensions": { "age": { "min": 14, "max": 60 }, "sex": ["female"], "axis_tags": ["diet", "aesthetic", "reproductive"], "personas": ["menopause"] },
-      "dependencies": {
-        "show_if": [{ "q": "Q_CORE_SEX", "in": ["Female"] }],
-        "skip_if": [],
-        "triggers": []
-      },
-      "priority": 3,
-      "cadence": "annual",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.ferritin", "lab.haemoglobin"] },
-      "source": "OMICS Hair Loss Female; Trost LB et al. JAAD 2006 (ferritin < 70 threshold female hair loss)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_THYROID_HAIR_SKIN",
-      "text": "Have you been diagnosed with a thyroid condition (hypothyroidism, hyperthyroidism, Hashimoto's)?",
-      "category": "Endocrine – Hair & Skin",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["hair_loss_female", "skin_aging", "dry_eyes", "alopecia_areata"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No thyroid condition", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Yes – hypothyroid (underactive), medicated", "direction": "increase_risk", "magnitude": "weak", "pillars": { "ENDO": 0.08, "MET": 0.06 }, "reservoirs": { "inflammatory_load": 0.05 } },
-        { "label": "Yes – hypothyroid, untreated or uncontrolled", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "ENDO": 0.16, "MET": 0.10, "INF": 0.08 }, "reservoirs": { "inflammatory_load": 0.10, "micronutrient_reserve": -0.06 } },
-        { "label": "Yes – Hashimoto's / autoimmune thyroid", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.16, "ENDO": 0.12 }, "reservoirs": { "inflammatory_load": 0.14 } },
-        { "label": "Yes – hyperthyroid", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "ENDO": 0.14, "BCM": 0.08 }, "reservoirs": { "muscle_reserve": -0.08 } }
-      ],
-      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["condition_load", "aesthetic"], "personas": ["menopause", "transfem"] },
-      "dependencies": { "show_if": [], "skip_if": [], "triggers": [] },
-      "priority": 3,
-      "cadence": "annual",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.TSH", "lab.fT4", "lab.thyroid_ab"] },
-      "source": "OMICS Hair Loss / Skin Aging assessments; Safer JD. Thyroid 2011 (thyroid dermopathy)",
-      "flag": "illustrative-reverify"
-    },
-    {
-      "id": "Q_DERM_MIGRAINE_HORMONAL_F",
-      "text": "Are your migraines most frequent around your menstrual period or when hormones shift (e.g. at ovulation, with hormonal contraceptives, or in perimenopause)?",
-      "category": "Migraine",
-      "domain": "DERM_AESTHETIC_PAIN",
-      "conditions": ["migraine"],
-      "stream": "LIFE",
-      "type": "single_select",
-      "responses": [
-        { "label": "No clear hormonal link", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
-        { "label": "Mild link – migraines slightly worse around period", "direction": "increase_risk", "magnitude": "weak", "pillars": { "ENDO": 0.08, "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.06 } },
-        { "label": "Strong link – menstrual migraines clearly predictable", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "ENDO": 0.16, "MCS": 0.12 }, "reservoirs": { "allostatic_load": 0.12 } }
-      ],
-      "dimensions": { "age": { "min": 14, "max": 65 }, "sex": ["female"], "axis_tags": ["pain", "reproductive"], "personas": ["menopause"] },
-      "dependencies": {
-        "show_if": [{ "q": "Q_CORE_SEX", "in": ["Female"] }, { "q": "Q_DERM_MIGRAINE_FREQUENCY", "in": ["1–3 per month", "4–8 per month (episodic)", "9+ per month (chronic)"] }],
-        "skip_if": [],
-        "triggers": []
-      },
-      "priority": 2,
-      "cadence": "quarterly",
-      "refresh": "periodic",
-      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.E2", "lab.LH", "lab.FSH"] },
-      "source": "OMICS Migraine assessment; Pavlovic JM et al. Cephalalgia 2018 (menstrual migraine)",
-      "flag": "illustrative-reverify"
+     "label": "Daily (3+ servings)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.12,
+      "ENDO": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1
+     }
     }
-  ]
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "diet",
+     "aesthetic"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "DIET"
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": []
+   },
+   "source": "OMICS Acne Report; Adebamowo CA et al. JAAD 2008 (dairy-acne IGF-1 pathway)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_ACNE_DIET_SUGAR",
+   "text": "How often do you eat high-glycaemic foods (sugary drinks, white bread, sweets, pastries)?",
+   "category": "Acne & Skin Inflammation",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "acne"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Rarely / never",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": -0.05,
+      "MET": -0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": -0.05,
+      "glycemic_burden": -0.05
+     }
+    },
+    {
+     "label": "A few times/week",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Daily",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.12,
+      "MET": 0.1,
+      "ENDO": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1,
+      "glycemic_burden": 0.08
+     }
+    },
+    {
+     "label": "Multiple times/day",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "INF": 0.2,
+      "MET": 0.15,
+      "ENDO": 0.12
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.18,
+      "glycemic_burden": 0.14
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "diet",
+     "aesthetic"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "DIET"
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.HbA1c",
+     "lab.fasting_glucose"
+    ]
+   },
+   "source": "OMICS Acne Report; Smith RN et al. Am J Clin Nutr 2007 (low-GI diet reduces acne)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_ACNE_HORMONAL_F",
+   "text": "Do your acne breakouts worsen in the week before your period?",
+   "category": "Acne & Skin Inflammation",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "acne"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No / not applicable",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mild worsening",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.06,
+      "INF": 0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    },
+    {
+     "label": "Significant worsening",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "INF": 0.1
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "female"
+    ],
+    "axis_tags": [
+     "aesthetic",
+     "reproductive"
+    ],
+    "personas": [
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Female"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.LH",
+     "lab.FSH",
+     "lab.testosterone_free"
+    ]
+   },
+   "source": "OMICS Acne Report; Goulden V et al. Br J Dermatol 1997 (hormonal acne females)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_SKIN_TYPE",
+   "text": "What is your skin type (Fitzpatrick scale)?",
+   "category": "Skin Characteristics",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "acne",
+    "facial_wrinkles",
+    "skin_aging",
+    "rosacea"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Type I – always burns, never tans (very fair)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.12
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.08
+     }
+    },
+    {
+     "label": "Type II – usually burns, tans minimally (fair)",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.06
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    },
+    {
+     "label": "Type III – sometimes burns, tans uniformly (medium)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Type IV – rarely burns, tans easily (olive)",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": -0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": -0.05
+     }
+    },
+    {
+     "label": "Type V–VI – very rarely burns, deeply pigmented",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": -0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": -0.05
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "aesthetic",
+     "environment"
+    ],
+    "personas": [
+     "southasian",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "once",
+   "refresh": "static",
+   "perceived_actual": {
+    "kind": "anchor",
+    "corroborated_by": []
+   },
+   "source": "OMICS Skin Aging/Wrinkles Report; Fitzpatrick TB. Arch Dermatol 1988",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_SUN_UV_EXPOSURE",
+   "text": "On average, how much unprotected sun or UV exposure do you get?",
+   "category": "Skin Characteristics",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "facial_wrinkles",
+    "skin_aging",
+    "rosacea"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Minimal – mostly indoors, always use SPF 30+",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": -0.1
+     },
+     "reservoirs": {
+      "inflammatory_load": -0.1
+     }
+    },
+    {
+     "label": "Moderate – some outdoor time, SPF occasionally",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "High – frequent outdoor exposure, SPF rarely",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.14
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.12
+     }
+    },
+    {
+     "label": "Very high – outdoor work / tanning, no SPF",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "INF": 0.22
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.2
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "environment",
+     "aesthetic",
+     "occupation"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": []
+   },
+   "source": "OMICS Wrinkles Report; Vierkotter A et al. J Invest Dermatol 2010 (UV + pollution skin aging)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_URBAN_POLLUTION_YEARS",
+   "text": "How many years in total have you lived in a city with significant air pollution?",
+   "category": "Skin Characteristics",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "facial_wrinkles",
+    "skin_aging",
+    "acne",
+    "rosacea"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Less than 5 years",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "5–10 years",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.06
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    },
+    {
+     "label": "More than 10 years",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.12
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "environment",
+     "aesthetic"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 4,
+   "cadence": "annual",
+   "refresh": "slow",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": []
+   },
+   "source": "OMICS Wrinkles Report; Vierkotter A et al. J Invest Dermatol 2010 (pollution skin aging)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_RETINOID_SKINCARE",
+   "text": "Do you use any of the following evidence-based skin-care ingredients consistently?",
+   "category": "Skin Characteristics",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "facial_wrinkles",
+    "skin_aging",
+    "acne"
+   ],
+   "stream": "LIFE",
+   "type": "multi_select",
+   "responses": [
+    {
+     "label": "None",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    },
+    {
+     "label": "Retinoid / retinol (prescription or OTC)",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": -0.1
+     },
+     "reservoirs": {
+      "inflammatory_load": -0.08
+     }
+    },
+    {
+     "label": "SPF 30+ daily sunscreen",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": -0.12
+     },
+     "reservoirs": {
+      "inflammatory_load": -0.1
+     }
+    },
+    {
+     "label": "Vitamin C serum / antioxidant",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": -0.06,
+      "NUT": -0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": -0.05
+     }
+    },
+    {
+     "label": "AHA / BHA exfoliant",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": -0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": -0.05
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "aesthetic"
+    ],
+    "personas": [
+     "elderly",
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 4,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": []
+   },
+   "source": "OMICS Wrinkles Report; Mukherjee S et al. Clin Interv Aging 2006 (topical retinoid evidence)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_HAIR_LOSS_MALE_PATTERN",
+   "text": "How would you describe your current hair loss pattern?",
+   "category": "Hair Loss – Male",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "hair_loss_male"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No notable hair loss",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mild – receding hairline or slight thinning at crown",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.06,
+      "MET": 0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    },
+    {
+     "label": "Moderate – significant recession or bald patch at crown",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.12,
+      "MET": 0.08,
+      "INF": 0.06
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.08
+     }
+    },
+    {
+     "label": "Severe – large bald areas, little hair remaining on top",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.2,
+      "MET": 0.14,
+      "INF": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": {
+     "min": 18,
+     "max": 120
+    },
+    "sex": [
+     "male"
+    ],
+    "axis_tags": [
+     "aesthetic",
+     "genetic_familial"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Male"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [
+     {
+      "if_response": "Moderate – significant recession or bald patch at crown",
+      "ask": "Q_CORE_FAMHX"
+     },
+     {
+      "if_response": "Severe – large bald areas, little hair remaining on top",
+      "ask": "Q_CORE_FAMHX"
+     }
+    ]
+   },
+   "priority": 4,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.testosterone_free",
+     "lab.DHT"
+    ]
+   },
+   "source": "OMICS Hair Loss Male Report; Hamilton JB. Ann N Y Acad Sci 1951 (MPB grading)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_HAIR_LOSS_FEMALE_PATTERN",
+   "text": "How would you describe your current hair thinning or shedding pattern?",
+   "category": "Hair Loss – Female",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "hair_loss_female"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No notable thinning or excess shedding",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mild – slightly wider part, slightly reduced volume",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08,
+      "NUT": 0.06
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05,
+      "micronutrient_reserve": -0.05
+     }
+    },
+    {
+     "label": "Moderate – clearly thinner crown/part, visible scalp",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "NUT": 0.1,
+      "INF": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.08,
+      "micronutrient_reserve": -0.08
+     }
+    },
+    {
+     "label": "Severe – diffuse thinning across entire scalp",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.22,
+      "NUT": 0.15,
+      "INF": 0.1
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1,
+      "micronutrient_reserve": -0.12
+     }
+    }
+   ],
+   "dimensions": {
+    "age": {
+     "min": 18,
+     "max": 120
+    },
+    "sex": [
+     "female"
+    ],
+    "axis_tags": [
+     "aesthetic",
+     "reproductive"
+    ],
+    "personas": [
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Female"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.ferritin",
+     "lab.TSH",
+     "lab.testosterone_free"
+    ]
+   },
+   "source": "OMICS Hair Loss Female Report; Trost LB et al. J Am Acad Dermatol 2006 (FPHL, iron/thyroid)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_ALOPECIA_PATCHES",
+   "text": "Have you ever noticed discrete circular patches of hair loss on your scalp or body?",
+   "category": "Alopecia Areata",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "alopecia_areata"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Yes – single patch, resolved",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.06
+     }
+    },
+    {
+     "label": "Yes – multiple patches or recurring",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.16,
+      "ENDO": 0.08,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.14
+     }
+    },
+    {
+     "label": "Yes – extensive loss (scalp/eyebrows/body)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "INF": 0.25,
+      "ENDO": 0.1,
+      "MCS": 0.1
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.2
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "aesthetic",
+     "condition_load"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.ANA",
+     "lab.thyroid_ab"
+    ]
+   },
+   "source": "OMICS Alopecia Areata assessment; Pratt CH et al. Nat Rev Dis Primers 2017",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_SKIN_NUT_FISH",
+   "text": "How often do you eat oily fish (salmon, mackerel, sardines, trout)?",
+   "category": "Skin & Hair Nutrition",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "acne",
+    "skin_aging",
+    "hair_loss_female",
+    "rosacea",
+    "dry_eyes"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Never / rarely",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.14,
+      "NUT": 0.12
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1,
+      "micronutrient_reserve": -0.08
+     }
+    },
+    {
+     "label": "1–2×/week",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "3+×/week",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": -0.12,
+      "NUT": -0.1
+     },
+     "reservoirs": {
+      "inflammatory_load": -0.1,
+      "micronutrient_reserve": 0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "diet",
+     "aesthetic"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "DIET"
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.omega3_index"
+    ]
+   },
+   "source": "OMICS Acne/Skin Report; Simopoulos AP. Biomedicine 2016 (omega-3 skin/hair)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_SKIN_VIT_SUPPLEMENTS",
+   "text": "Do you regularly take any of the following supplements for skin or hair health?",
+   "category": "Skin & Hair Nutrition",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "skin_aging",
+    "hair_loss_female",
+    "hair_loss_male",
+    "acne"
+   ],
+   "stream": "LIFE",
+   "type": "multi_select",
+   "responses": [
+    {
+     "label": "None",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Biotin / B-complex",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "NUT": -0.05
+     },
+     "reservoirs": {
+      "micronutrient_reserve": 0.05
+     }
+    },
+    {
+     "label": "Vitamin D 1000+ IU/day",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": -0.1,
+      "NUT": -0.08
+     },
+     "reservoirs": {
+      "micronutrient_reserve": 0.1,
+      "inflammatory_load": -0.06
+     }
+    },
+    {
+     "label": "Zinc",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": -0.06,
+      "NUT": -0.05
+     },
+     "reservoirs": {
+      "micronutrient_reserve": 0.06
+     }
+    },
+    {
+     "label": "Collagen peptides",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "NUT": -0.05
+     },
+     "reservoirs": {
+      "micronutrient_reserve": 0.05
+     }
+    },
+    {
+     "label": "Iron supplement",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "NUT": -0.1
+     },
+     "reservoirs": {
+      "micronutrient_reserve": 0.08,
+      "iron_reserve": 0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "diet",
+     "aesthetic"
+    ],
+    "personas": [
+     "menopause",
+     "southasian"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 4,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.vitamin_D",
+     "lab.ferritin",
+     "lab.zinc"
+    ]
+   },
+   "source": "OMICS Skin/Hair Nutrition Report; Guo EL & Katta R. Dermatol Pract Concept 2017",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_ROSACEA_TRIGGERS",
+   "text": "Do you experience recurrent facial redness, flushing, or visible broken capillaries that worsen with any of the following? (select all that apply)",
+   "category": "Rosacea",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "rosacea"
+   ],
+   "stream": "LIFE",
+   "type": "multi_select",
+   "responses": [
+    {
+     "label": "None – no recurrent facial redness",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Sun / heat / spicy food / hot drinks",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.14
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1
+     }
+    },
+    {
+     "label": "Alcohol (especially red wine)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.12
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1
+     }
+    },
+    {
+     "label": "Stress / emotions",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.08,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.06,
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Skincare products / cosmetics",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.06
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "aesthetic",
+     "diet",
+     "stress"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": []
+   },
+   "source": "OMICS Rosacea assessment; Steinhoff M et al. J Invest Dermatol 2011",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_DRY_EYES_SCREEN",
+   "text": "How many hours per day do you spend looking at screens (phone, computer, TV)?",
+   "category": "Dry Eyes",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "dry_eyes"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Less than 4 hours",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "4–8 hours",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.06,
+      "MCS": 0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    },
+    {
+     "label": "More than 8 hours",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.12,
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1,
+      "allostatic_load": 0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "aesthetic",
+     "environment",
+     "occupation"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.sedentary_time"
+    ]
+   },
+   "source": "OMICS Dry Eye assessment; Tsubota K & Nakamori K. N Engl J Med 1993 (screen reduced blink)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_DRY_EYES_SYMPTOMS",
+   "text": "How often do you experience dry, gritty, burning, or irritated eyes?",
+   "category": "Dry Eyes",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "dry_eyes"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Never or very rarely",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Occasionally (a few times/month)",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.06
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    },
+    {
+     "label": "Frequently (several times/week)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.12,
+      "NUT": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1,
+      "micronutrient_reserve": -0.06
+     }
+    },
+    {
+     "label": "Most days / constant",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "INF": 0.2,
+      "NUT": 0.12
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.16,
+      "micronutrient_reserve": -0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "aesthetic",
+     "condition_load"
+    ],
+    "personas": [
+     "menopause",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.omega3_index"
+    ]
+   },
+   "source": "OMICS Dry Eye assessment; Craig JP et al. TFOS DEWS II 2017",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_CHRONIC_PAIN_WIDESPREAD",
+   "text": "Do you experience widespread body pain (affecting multiple regions) most days?",
+   "category": "Chronic Pain",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "chronic_pain",
+    "fibromyalgia"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No widespread pain",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Occasional / mild (does not limit activity)",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "MCS": 0.06,
+      "BCM": 0.05
+     },
+     "reservoirs": {
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Moderate (limits some activities)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "MCS": 0.14,
+      "BCM": 0.1,
+      "INF": 0.08
+     },
+     "reservoirs": {
+      "allostatic_load": 0.12,
+      "inflammatory_load": 0.08
+     }
+    },
+    {
+     "label": "Severe / daily (significantly limits life)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "MCS": 0.22,
+      "BCM": 0.18,
+      "INF": 0.14
+     },
+     "reservoirs": {
+      "allostatic_load": 0.2,
+      "inflammatory_load": 0.14
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "pain",
+     "condition_load",
+     "stress"
+    ],
+    "personas": [
+     "elderly",
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [
+     {
+      "if_response": "Moderate (limits some activities)",
+      "ask": "Q_DERM_FIBRO_TRIAD"
+     },
+     {
+      "if_response": "Severe / daily (significantly limits life)",
+      "ask": "Q_DERM_FIBRO_TRIAD"
+     }
+    ],
+    "validated_by": "PHQ-9"
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.CRP",
+     "lab.ESR"
+    ]
+   },
+   "source": "OMICS Chronic Pain assessment; Wolfe F et al. Arthritis Care Res 2010 (fibromyalgia criteria)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_FIBRO_TRIAD",
+   "text": "Over the past month, have you experienced all three of the following most days: widespread pain AND fatigue AND unrefreshing sleep?",
+   "category": "Fibromyalgia",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "fibromyalgia",
+    "chronic_pain"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Yes – mild / intermittent",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "MCS": 0.16,
+      "BCM": 0.1,
+      "INF": 0.08
+     },
+     "reservoirs": {
+      "allostatic_load": 0.14,
+      "sleep_debt": 0.1,
+      "inflammatory_load": 0.08
+     }
+    },
+    {
+     "label": "Yes – moderate to severe / most days",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "MCS": 0.25,
+      "BCM": 0.18,
+      "INF": 0.14
+     },
+     "reservoirs": {
+      "allostatic_load": 0.22,
+      "sleep_debt": 0.16,
+      "inflammatory_load": 0.14
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "pain",
+     "condition_load",
+     "sleep",
+     "stress"
+    ],
+    "personas": [
+     "menopause",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_DERM_CHRONIC_PAIN_WIDESPREAD",
+      "in": [
+       "Moderate (limits some activities)",
+       "Severe / daily (significantly limits life)"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "PHQ-9"
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "wearable.sleep_duration",
+     "wearable.HRV",
+     "lab.cortisol_rhythm"
+    ]
+   },
+   "source": "OMICS Fibromyalgia assessment; Wolfe F et al. Arthritis Care Res 2010",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_PAIN_MOOD_LINK",
+   "text": "Would you say your pain level significantly affects your mood, motivation, or enjoyment of life?",
+   "category": "Chronic Pain",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "chronic_pain",
+    "fibromyalgia"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No notable effect on mood",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mild effect – occasionally low mood",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "allostatic_load": 0.06
+     }
+    },
+    {
+     "label": "Moderate – frequently low mood / frustration",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "MCS": 0.16
+     },
+     "reservoirs": {
+      "allostatic_load": 0.14
+     }
+    },
+    {
+     "label": "Severe – constant impact, feel hopeless at times",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "MCS": 0.25
+     },
+     "reservoirs": {
+      "allostatic_load": 0.2
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "pain",
+     "stress",
+     "condition_load"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_DERM_CHRONIC_PAIN_WIDESPREAD",
+      "in": [
+       "Moderate (limits some activities)",
+       "Severe / daily (significantly limits life)"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "PHQ-9"
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": []
+   },
+   "source": "OMICS Chronic Pain assessment; Fishbain DA et al. Pain Med 1997 (pain-depression comorbidity)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_MIGRAINE_FREQUENCY",
+   "text": "How often do you experience migraines or severe headaches?",
+   "category": "Migraine",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "migraine"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Never / very rarely",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "1–3 per month",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "MCS": 0.12,
+      "INF": 0.08
+     },
+     "reservoirs": {
+      "allostatic_load": 0.1,
+      "inflammatory_load": 0.06
+     }
+    },
+    {
+     "label": "4–8 per month (episodic)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "MCS": 0.16,
+      "INF": 0.12
+     },
+     "reservoirs": {
+      "allostatic_load": 0.14,
+      "inflammatory_load": 0.1
+     }
+    },
+    {
+     "label": "9+ per month (chronic)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "MCS": 0.24,
+      "INF": 0.16,
+      "BCM": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.2,
+      "inflammatory_load": 0.14
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "pain",
+     "condition_load"
+    ],
+    "personas": [
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [
+     {
+      "if_response": "1–3 per month",
+      "ask": "Q_DERM_MIGRAINE_TRIGGERS"
+     },
+     {
+      "if_response": "4–8 per month (episodic)",
+      "ask": "Q_DERM_MIGRAINE_TRIGGERS"
+     },
+     {
+      "if_response": "9+ per month (chronic)",
+      "ask": "Q_DERM_MIGRAINE_TRIGGERS"
+     }
+    ],
+    "validated_by": "PHQ-9"
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": []
+   },
+   "source": "OMICS Migraine assessment; GBD 2016 Headache Collaborators. Lancet Neurol 2018",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_MIGRAINE_TRIGGERS",
+   "text": "Which factors most reliably trigger your migraines? (select all that apply)",
+   "category": "Migraine",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "migraine"
+   ],
+   "stream": "LIFE",
+   "type": "multi_select",
+   "responses": [
+    {
+     "label": "Stress / emotional upset",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "MCS": 0.14
+     },
+     "reservoirs": {
+      "allostatic_load": 0.12
+     }
+    },
+    {
+     "label": "Hormonal changes (menstrual cycle)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "MCS": 0.1
+     },
+     "reservoirs": {
+      "allostatic_load": 0.1
+     }
+    },
+    {
+     "label": "Poor sleep or irregular sleep",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "MCS": 0.12
+     },
+     "reservoirs": {
+      "sleep_debt": 0.1,
+      "allostatic_load": 0.08
+     }
+    },
+    {
+     "label": "Skipping meals / dehydration",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "MET": 0.06,
+      "NUT": 0.06
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.05
+     }
+    },
+    {
+     "label": "Bright light / noise / strong odour",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Caffeine withdrawal or excess",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.05
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "pain",
+     "stress",
+     "diet"
+    ],
+    "personas": [
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_DERM_MIGRAINE_FREQUENCY",
+      "in": [
+       "1–3 per month",
+       "4–8 per month (episodic)",
+       "9+ per month (chronic)"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "PSS-4"
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": []
+   },
+   "source": "OMICS Migraine Triggers assessment; Lipton RB et al. Neurology 2002",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_WRINKLES_CONCERN",
+   "text": "How concerned are you about facial wrinkles, skin laxity, or visible signs of ageing?",
+   "category": "Skin Aging & Wrinkles",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "facial_wrinkles",
+    "skin_aging"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Not concerned",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mildly concerned",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Moderately concerned (noticed clear changes)",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    },
+    {
+     "label": "Very concerned (significant ageing visible)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.1
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": {
+     "min": 30,
+     "max": 120
+    },
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "aesthetic",
+     "stress"
+    ],
+    "personas": [
+     "elderly",
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_AGE",
+      "in": [
+       "40–59",
+       "60–74",
+       "75+"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 4,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": []
+   },
+   "source": "OMICS Wrinkles/Skin Aging Report; Farage MA et al. Adv Wound Care 2013",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_SKIN_HYDRATION",
+   "text": "How would you describe your baseline skin condition?",
+   "category": "Skin Aging & Wrinkles",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "skin_aging",
+    "facial_wrinkles",
+    "rosacea"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Normal – balanced, few issues",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Oily – enlarged pores, prone to breakouts",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.06,
+      "ENDO": 0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    },
+    {
+     "label": "Dry / dehydrated – flaky, tight, easily irritated",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.1,
+      "NUT": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.08,
+      "micronutrient_reserve": -0.06
+     }
+    },
+    {
+     "label": "Combination – oily T-zone, dry cheeks",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    },
+    {
+     "label": "Sensitive – reacts to many products/weather",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.12
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "aesthetic"
+    ],
+    "personas": [
+     "menopause",
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 4,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": []
+   },
+   "source": "OMICS Skin Type assessment; Baumann L. Br J Dermatol 2008",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_STRESS_SKIN_FLARE",
+   "text": "Do you notice your skin conditions (acne, redness, rashes, itching) significantly worsen during periods of high stress?",
+   "category": "Stress-Skin Axis",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "acne",
+    "rosacea",
+    "alopecia_areata"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No notable stress-linked flares",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mild – occasional minor flares during stress",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.06,
+      "MCS": 0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.06,
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Moderate – clear link, notable flares",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.14,
+      "MCS": 0.12
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.12,
+      "allostatic_load": 0.1
+     }
+    },
+    {
+     "label": "Strong – almost always flares with stress",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "INF": 0.22,
+      "MCS": 0.18
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.18,
+      "allostatic_load": 0.16
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "stress",
+     "aesthetic",
+     "condition_load"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "PSS-4"
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.cortisol_rhythm"
+    ]
+   },
+   "source": "OMICS Acne/Rosacea Report; Chen Y & Lyga J. Inflamm Allergy Drug Targets 2014 (brain-skin axis)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_PAIN_DURATION",
+   "text": "How long have you been living with your main chronic pain condition?",
+   "category": "Chronic Pain",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "chronic_pain",
+    "fibromyalgia"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No chronic pain",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Less than 3 months",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "BCM": 0.06,
+      "MCS": 0.05
+     },
+     "reservoirs": {
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "3–12 months",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "BCM": 0.12,
+      "MCS": 0.1,
+      "INF": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.1,
+      "muscle_reserve": -0.05
+     }
+    },
+    {
+     "label": "More than 1 year",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "BCM": 0.18,
+      "MCS": 0.16,
+      "INF": 0.1
+     },
+     "reservoirs": {
+      "allostatic_load": 0.16,
+      "inflammatory_load": 0.1,
+      "muscle_reserve": -0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "pain",
+     "condition_load"
+    ],
+    "personas": [
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_DERM_CHRONIC_PAIN_WIDESPREAD",
+      "in": [
+       "Occasional / mild (does not limit activity)",
+       "Moderate (limits some activities)",
+       "Severe / daily (significantly limits life)"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "PHQ-9"
+   },
+   "priority": 2,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.CRP",
+     "lab.ESR"
+    ]
+   },
+   "source": "OMICS Chronic Pain assessment; IASP chronic pain classification 2019",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_PAIN_MEDICATION",
+   "text": "Do you regularly use pain medications or treatments for chronic pain or headaches?",
+   "category": "Chronic Pain",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "chronic_pain",
+    "fibromyalgia",
+    "migraine"
+   ],
+   "stream": "LIFE",
+   "type": "multi_select",
+   "responses": [
+    {
+     "label": "None",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "OTC analgesics (paracetamol, ibuprofen) regularly",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "HEP": 0.06,
+      "REN": 0.05
+     },
+     "reservoirs": {}
+    },
+    {
+     "label": "Prescription NSAIDs",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "CV": 0.08,
+      "REN": 0.08,
+      "HEP": 0.06
+     },
+     "reservoirs": {
+      "renal_reserve": -0.06
+     }
+    },
+    {
+     "label": "Opioids (tramadol, codeine, etc.)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "MCS": 0.18,
+      "HEP": 0.1
+     },
+     "reservoirs": {
+      "allostatic_load": 0.12
+     }
+    },
+    {
+     "label": "Tricyclics / SNRIs / gabapentinoids for pain",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Physiotherapy / cognitive behavioural therapy",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "MCS": -0.12,
+      "BCM": -0.08
+     },
+     "reservoirs": {
+      "allostatic_load": -0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "pain",
+     "condition_load"
+    ],
+    "personas": [
+     "elderly"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_DERM_CHRONIC_PAIN_WIDESPREAD",
+      "in": [
+       "Occasional / mild (does not limit activity)",
+       "Moderate (limits some activities)",
+       "Severe / daily (significantly limits life)"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.ALT",
+     "lab.creatinine"
+    ]
+   },
+   "source": "OMICS Chronic Pain assessment; Chou R et al. Ann Intern Med 2017 (opioid risk)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_ACNE_CURRENT_SEVERITY",
+   "text": "How would you describe your current acne?",
+   "category": "Acne & Skin Inflammation",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "acne"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No acne",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mild – a few whiteheads or blackheads, rare spots",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "INF": 0.05
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    },
+    {
+     "label": "Moderate – several inflamed pimples, multiple areas",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.14,
+      "ENDO": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.12
+     }
+    },
+    {
+     "label": "Severe – cysts, nodules, scarring, widespread",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "INF": 0.24,
+      "ENDO": 0.14,
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.2
+     }
+    }
+   ],
+   "dimensions": {
+    "age": {
+     "min": 12,
+     "max": 60
+    },
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "aesthetic",
+     "condition_load"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": []
+   },
+   "source": "OMICS Acne Assessment; Poli F et al. J Eur Acad Dermatol Venereol 2007 (GEA grading)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_HAIR_IRON_DEFICIENCY_F",
+   "text": "Have you been diagnosed with iron deficiency or anaemia in the past 2 years?",
+   "category": "Hair Loss – Female",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "hair_loss_female",
+    "alopecia_areata"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Yes – borderline low, not treated",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "NUT": 0.14,
+      "HEM": 0.1
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.12,
+      "iron_reserve": -0.14,
+      "oxygen_delivery_reserve": -0.08
+     }
+    },
+    {
+     "label": "Yes – diagnosed and currently treating",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "NUT": 0.06
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.05,
+      "iron_reserve": -0.05
+     }
+    }
+   ],
+   "dimensions": {
+    "age": {
+     "min": 14,
+     "max": 60
+    },
+    "sex": [
+     "female"
+    ],
+    "axis_tags": [
+     "diet",
+     "aesthetic",
+     "reproductive"
+    ],
+    "personas": [
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Female"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.ferritin",
+     "lab.haemoglobin"
+    ]
+   },
+   "source": "OMICS Hair Loss Female; Trost LB et al. JAAD 2006 (ferritin < 70 threshold female hair loss)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_THYROID_HAIR_SKIN",
+   "text": "Have you been diagnosed with a thyroid condition (hypothyroidism, hyperthyroidism, Hashimoto's)?",
+   "category": "Endocrine – Hair & Skin",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "hair_loss_female",
+    "skin_aging",
+    "dry_eyes",
+    "alopecia_areata"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No thyroid condition",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Yes – hypothyroid (underactive), medicated",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08,
+      "MET": 0.06
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.05
+     }
+    },
+    {
+     "label": "Yes – hypothyroid, untreated or uncontrolled",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.16,
+      "MET": 0.1,
+      "INF": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1,
+      "micronutrient_reserve": -0.06
+     }
+    },
+    {
+     "label": "Yes – Hashimoto's / autoimmune thyroid",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "INF": 0.16,
+      "ENDO": 0.12
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.14
+     }
+    },
+    {
+     "label": "Yes – hyperthyroid",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "BCM": 0.08
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "condition_load",
+     "aesthetic"
+    ],
+    "personas": [
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 3,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.TSH",
+     "lab.fT4",
+     "lab.thyroid_ab"
+    ]
+   },
+   "source": "OMICS Hair Loss / Skin Aging assessments; Safer JD. Thyroid 2011 (thyroid dermopathy)",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_DERM_MIGRAINE_HORMONAL_F",
+   "text": "Are your migraines most frequent around your menstrual period or when hormones shift (e.g. at ovulation, with hormonal contraceptives, or in perimenopause)?",
+   "category": "Migraine",
+   "domain": "DERM_AESTHETIC_PAIN",
+   "conditions": [
+    "migraine"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No clear hormonal link",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mild link – migraines slightly worse around period",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.06
+     }
+    },
+    {
+     "label": "Strong link – menstrual migraines clearly predictable",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.16,
+      "MCS": 0.12
+     },
+     "reservoirs": {
+      "allostatic_load": 0.12
+     }
+    }
+   ],
+   "dimensions": {
+    "age": {
+     "min": 14,
+     "max": 65
+    },
+    "sex": [
+     "female"
+    ],
+    "axis_tags": [
+     "pain",
+     "reproductive"
+    ],
+    "personas": [
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Female"
+      ]
+     },
+     {
+      "q": "Q_DERM_MIGRAINE_FREQUENCY",
+      "in": [
+       "1–3 per month",
+       "4–8 per month (episodic)",
+       "9+ per month (chronic)"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": []
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.E2",
+     "lab.LH",
+     "lab.FSH"
+    ]
+   },
+   "source": "OMICS Migraine assessment; Pavlovic JM et al. Cephalalgia 2018 (menstrual migraine)",
+   "flag": "illustrative-reverify"
+  }
+ ]
 }

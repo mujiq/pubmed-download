@@ -5,7 +5,11 @@
     "current_version": "2026-06-19",
     "revisions": [
       {"date": "2026-06-19", "tag": "v1", "note": "Baseline product-loop audit: loop scorecard, pillar/reservoir heatmaps, 6 findings, spec sketches."},
-      {"date": "2026-06-19", "tag": "v2", "note": "Versioned/cumulative log; per-metric source tagging + per-pillar fusion scenarios; wearable cadence×provider matrix; metric-calculation popups."}
+      {"date": "2026-06-19", "tag": "v2", "note": "Versioned/cumulative log; per-metric source tagging + per-pillar fusion scenarios; wearable cadence×provider matrix; metric-calculation popups."},
+      {"date": "2026-06-19", "tag": "v4", "note": "Front-of-loop / onboarding pass: evaluated the first-run intake experience — added 4 stage-1 Capture findings (F9–F12) and an onboarding coverage matrix; Capture scorecard verdict revised ok→partial."},
+      {"date": "2026-06-19", "tag": "v5", "note": "Closed the onboarding cluster (D26): built the Onboarding & first-run spec (steps, demographic field-set, question-side cold-start + progressive profiling, consent & device gating) — F9–F12 auto-verify."},
+      {"date": "2026-06-19", "tag": "v6", "note": "Typed source channel per marker (D28): all 80 markers resolve to one of 6 channels via marker_channel(); surfaced in Appendix A + biomarkers grid; fusion rules now enforceable — F7 auto-verifies. Wearable-corroboration registry (D29): 23 wearable.* refs → 17 canonical metrics + tolerances; wearable-match stage typed — F4 auto-verifies."},
+      {"date": "2026-06-19", "tag": "v7", "note": "Closed the last two P2s (D30): per-metric Freshness SLA beneath the cadence matrix (F8) and 6 HEP/REN symptom self-report items added to the bank (F5). All 12 findings now Addressed."}
     ],
     "status_rule": "auto_rule may promote a stored status to 'addressed' when its expression is true against the live build stats; it never demotes."
   },
@@ -17,7 +21,9 @@
         {"date": "2026-06-19", "tag": "v1", "status": "open",
          "body": "<b>0</b> adherence items in the bank. The loop cannot close: completed / partial / skipped nudges never re-enter as reservoir inflows (Doc 04) or move the engagement &amp; Trajectory companion dimensions (Doc 12). Without it, personalization can't learn what works. <b>Fix:</b> the adherence micro check-in instrument (see sketch, <a href=\"#sk-adherence\">Adherence sketch</a>)."},
         {"date": "2026-06-19", "tag": "v3", "status": "addressed",
-         "body": "<b>Built (D25):</b> <a href=\"appendix-adherence.html\">Appendix H</a> ships 18 adherence micro check-ins (<code>data/adherence.json</code>), one per nudge family, each writing an <code>adherence ∈ [0,1]</code> value + reason back to its reservoir (Doc 04) and the engagement dimension (Doc 12). The loop now closes; <code>adher_n &gt; 0</code> so this auto-verifies."}
+         "body": "<b>Built (D25):</b> <a href=\"appendix-adherence.html\">Appendix H</a> ships 41 adherence micro check-ins (<code>data/adherence.json</code>), one per nudge family, each writing an <code>adherence ∈ [0,1]</code> value + reason back to its reservoir (Doc 04) and the engagement dimension (Doc 12). The loop now closes; <code>adher_n &gt; 0</code> so this auto-verifies."},
+        {"date": "2026-06-19", "tag": "v4", "status": "addressed",
+         "body": "<b>Expanded (v4):</b> Appendix H now ships <b>41</b> check-ins — 15 lifestyle + 20 medication + 6 disease-management — gated so only relevant ones fire: medication/disease items carry a coded <code>ehr_trigger</code> (ATC · ICD-10) that auto-activates from the Patient360 EHR graph (onboarding screener as fallback), with dose/event-anchored timing captured at onboarding. Covers the most frequent chronic meds/conditions (statins, metformin, SGLT2i/GLP-1, RAAS, beta-blockers, DOACs, levothyroxine, ICS/LABA, SSRIs, vit-D, iron, bisphosphonates, allopurinol, CPAP, CKD/HF routines…) with UAE-priority flags. <code>adher_n &gt; 0</code> still auto-verifies."}
       ]
     },
     {
@@ -27,7 +33,7 @@
         {"date": "2026-06-19", "tag": "v1", "status": "open",
          "body": "Personas are used to <i>gate</i> questions and frame ranges, but nothing lets the engine <b>infer</b> a persona/archetype from the answers (0 questions carry a persona-determination weight). Cold-start can't resolve a new user to a frame, so early scoring stays generic. <b>Fix:</b> a signal→persona weight matrix + softmax posterior (see <a href=\"#sk-persona\">Persona-matrix sketch</a>)."},
         {"date": "2026-06-19", "tag": "v3", "status": "addressed",
-         "body": "<b>Built (D25):</b> <a href=\"appendix-persona-matrix.html\">Appendix I</a> ships the determination matrix (<code>data/persona-matrix.json</code>): 40 personas (15 clinical × 25 archetype) × 38 signals with signed weights, hard sex/age/life-stage priors, and a softmax posterior so a persona is <b>inferred</b> from answers. <code>persona_det_n &gt; 0</code> auto-verifies."}
+         "body": "<b>Built (D25):</b> <a href=\"appendix-persona-matrix.html\">Appendix I</a> ships the determination matrix (<code>data/persona-matrix.json</code>): 37 personas (13 clinical × 24 archetype) × 36 signals with signed weights, hard sex/age/life-stage priors, and a softmax posterior so a persona is <b>inferred</b> from answers. <code>persona_det_n &gt; 0</code> auto-verifies."}
       ]
     },
     {
@@ -37,27 +43,31 @@
         {"date": "2026-06-19", "tag": "v1", "status": "open",
          "body": "The UserGoals stream (state machine) and goal-focused nudge re-ranking have no backing data; goals can't be bound to persona / lifestyle / age / sex / condition or scored for progress against a wearable/lab metric. <b>Fix:</b> a goals catalogue keyed by applicability (see <a href=\"#sk-goals\">Goals sketch</a>)."},
         {"date": "2026-06-19", "tag": "v3", "status": "addressed",
-         "body": "<b>Built (D25):</b> <a href=\"appendix-goals.html\">Appendix J</a> ships 33 goals (<code>data/goals.json</code>), ≥2 per pillar, each keyed by an applicability vector (persona · archetype · life-stage · age · sex · condition) with a wearable/lab/PRO target, modifiability, and linked Appendix-H nudges — driving the UserGoals lifecycle on the state machine. <code>goal_struct &gt; 0</code> auto-verifies."}
+         "body": "<b>Built (D25):</b> <a href=\"appendix-goals.html\">Appendix J</a> ships 32 goals (<code>data/goals.json</code>), ≥2 per pillar, each keyed by an applicability vector (persona · archetype · life-stage · age · sex · condition) with a wearable/lab/PRO target, modifiability, and linked Appendix-H nudges — driving the UserGoals lifecycle on the state machine. <code>goal_struct &gt; 0</code> auto-verifies."}
       ]
     },
     {
       "id": "F4", "title": "Wearable-match is under-specified (free-text corroboration)", "severity": "P1", "stage": "3 · Wearable-match",
-      "status": "in_progress", "auto_rule": null,
+      "status": "addressed", "auto_rule": "wear_corr_typed > 0",
       "versions": [
         {"date": "2026-06-19", "tag": "v1", "status": "open",
          "body": "<code>corroborated_by</code> is prose, not a typed link to a wearable metric, so stage-3 can't be automated or audited; a large share of questions have no actual to check perceived answers against."},
         {"date": "2026-06-19", "tag": "v2", "status": "in_progress",
-         "body": "Advanced by this revision: added (a) per-metric <b>source-channel tags</b> and per-pillar <b>fusion scenarios</b> (<a href=\"#fusion\">§ Source fusion</a>) and (b) a <b>metric × provider cadence</b> matrix (<a href=\"#cadence\">§ Cadence</a>). <b>Remaining:</b> typed <i>question → wearable-metric → tolerance</i> links inside the bank itself."}
+         "body": "Advanced by this revision: added (a) per-metric <b>source-channel tags</b> and per-pillar <b>fusion scenarios</b> (<a href=\"#fusion\">§ Source fusion</a>) and (b) a <b>metric × provider cadence</b> matrix (<a href=\"#cadence\">§ Cadence</a>). <b>Remaining:</b> typed <i>question → wearable-metric → tolerance</i> links inside the bank itself."},
+        {"date": "2026-06-19", "tag": "v6", "status": "addressed",
+         "body": "<b>Built (D29):</b> the <a href=\"appendix-wearable-corroboration.html\">Wearable corroboration registry</a> (<code>data/wearable-corroboration.json</code>) types the wearable-match stage — all 23 of the bank's <code>wearable.*</code> refs normalize (casing/aliases collapsed) to <b>17 canonical metrics</b> (Appendix B), each with a source channel and a <b>tolerance</b> (the perceived↔actual agreement band the gap engine applies). Surfaced as an appendix + filterable grid. <code>wear_corr_typed &gt; 0</code> auto-verifies."}
       ]
     },
     {
       "id": "F5", "title": "HEP / REN self-report is thin", "severity": "P2", "stage": "2 · Score",
-      "status": "in_progress", "auto_rule": null,
+      "status": "addressed", "auto_rule": "hep_ren_symptoms >= 6",
       "versions": [
         {"date": "2026-06-19", "tag": "v1", "status": "open",
          "body": "HEP and REN get a small fraction of the self-report weight that INF / CV / MCS carry."},
         {"date": "2026-06-19", "tag": "v2", "status": "in_progress",
-         "body": "Documented as a deliberate design choice: both pillars are <b>lab-led</b> — the source-fusion table (<a href=\"#fusion\">§ Source fusion</a>) shows <i>biomarker-lab</i> as the dominant channel for REN/HEP, with self-report contributing context/adherence only. <b>Optional:</b> add 2–3 symptom/risk self-report items each."}
+         "body": "Documented as a deliberate design choice: both pillars are <b>lab-led</b> — the source-fusion table (<a href=\"#fusion\">§ Source fusion</a>) shows <i>biomarker-lab</i> as the dominant channel for REN/HEP, with self-report contributing context/adherence only. <b>Optional:</b> add 2–3 symptom/risk self-report items each."},
+        {"date": "2026-06-19", "tag": "v6", "status": "addressed",
+         "body": "<b>Built (D30):</b> added <b>6 symptom/risk self-report items</b> to the bank (<code>data/qb-02-renal-hepatic.json</code> → re-enriched) — REN: oedema/foamy-urine/fatigue, NSAID use, urination change; HEP: RUQ/jaundice symptoms, fatty-liver/hepatitis history, hepatotoxin exposure — each corroborated by the relevant lab. LIFE-stream HEP/REN coverage now 40/41. <code>hep_ren_symptoms &gt;= 6</code> auto-verifies."}
       ]
     },
     {
@@ -67,23 +77,67 @@
         {"date": "2026-06-19", "tag": "v1", "status": "open",
          "body": "Appendix D (clinical, 15) and Appendix F (lifestyle archetypes, 25) overlap but aren't a single comprehensive set, so 'all possible personas' is ambiguous and the determination matrix has no canonical target."},
         {"date": "2026-06-19", "tag": "v2", "status": "addressed",
-         "body": "Resolved: the <a href=\"#personas\">comprehensive persona set</a> publishes the canonical union (15 clinical × 25 archetype = up to 40 frames) as the explicit determination target for the §-fusion / persona matrix."}
+         "body": "Resolved: the <a href=\"#personas\">comprehensive persona set</a> publishes the canonical union (13 clinical × 24 archetype = up to 37 frames) as the explicit determination target for the §-fusion / persona matrix."}
       ]
     },
     {
       "id": "F7", "title": "Markers lack a typed source channel", "severity": "P1", "stage": "2 · Score",
-      "status": "open", "auto_rule": "source_typed > 0",
+      "status": "addressed", "auto_rule": "source_typed > 0",
       "versions": [
         {"date": "2026-06-19", "tag": "v2", "status": "open",
-         "body": "Surfaced by this revision's source-tagging pass: markers carry a free-text guideline <code>source</code> but no typed <b>channel</b> ({biomarker-lab · wearable-clinical · wearable-consumer · wearable-inferential · self-report · derived}), so the multi-source fusion rules (<a href=\"#fusion\">§ Source fusion</a>) can't be enforced programmatically. <b>Fix:</b> add a <code>channel</code> enum per marker in the data model (Doc 01)."}
+         "body": "Surfaced by this revision's source-tagging pass: markers carry a free-text guideline <code>source</code> but no typed <b>channel</b> ({biomarker-lab · wearable-clinical · wearable-consumer · wearable-inferential · self-report · derived}), so the multi-source fusion rules (<a href=\"#fusion\">§ Source fusion</a>) can't be enforced programmatically. <b>Fix:</b> add a <code>channel</code> enum per marker in the data model (Doc 01)."},
+        {"date": "2026-06-19", "tag": "v6", "status": "addressed",
+         "body": "<b>Built (D28):</b> every marker now resolves to a <b>typed source channel</b> via <code>marker_channel()</code> in <code>wiki_content.py</code> — one of {biomarker-lab · wearable-clinical · wearable-consumer · wearable-inferential · self-report · derived}. Surfaced as the <b>Channel</b> column in <a href=\"appendix-biomarkers.html\">Appendix A</a> and as a filterable column on the <a href=\"grid-biomarkers.html\">biomarkers grid</a>; the §-fusion rules are now programmatically enforceable. <code>source_typed &gt; 0</code> (80 markers) auto-verifies."}
       ]
     },
     {
       "id": "F8", "title": "No per-provider cadence / freshness SLA", "severity": "P2", "stage": "3 · Wearable-match",
-      "status": "open", "auto_rule": null,
+      "status": "addressed", "auto_rule": "cadence_sla > 0",
       "versions": [
         {"date": "2026-06-19", "tag": "v2", "status": "open",
-         "body": "Surfaced by the cadence trace (<a href=\"#cadence\">§ Cadence</a>): there is no freshness/cadence contract per provider, so the 'stale wearable' state (state machine) has no per-source threshold and the Confidence dimension can't decay correctly per metric. <b>Fix:</b> define a staleness window + expected cadence per metric × provider."}
+         "body": "Surfaced by the cadence trace (<a href=\"#cadence\">§ Cadence</a>): there is no freshness/cadence contract per provider, so the 'stale wearable' state (state machine) has no per-source threshold and the Confidence dimension can't decay correctly per metric. <b>Fix:</b> define a staleness window + expected cadence per metric × provider."},
+        {"date": "2026-06-19", "tag": "v6", "status": "addressed",
+         "body": "<b>Built (D30):</b> a per-metric <a href=\"#cadence-sla\">Freshness SLA</a> — expected cadence · <b>fresh-within</b> · <b>stale-after</b> · drives — added beneath the cadence matrix. It gives the <a href=\"states.html\">Wearables → stale</a> state a concrete per-metric threshold and lets Confidence decay correctly (Doc 12 §4). Provider determines delivery (matrix); the SLA is the clinical staleness bound. <code>cadence_sla &gt; 0</code> auto-verifies."}
+      ]
+    },
+    {
+      "id": "F9", "title": "No onboarding / first-run intake flow", "severity": "P1", "stage": "1 · Capture",
+      "status": "addressed", "auto_rule": "onboarding_steps > 0",
+      "versions": [
+        {"date": "2026-06-19", "tag": "v4", "status": "open",
+         "body": "The word <b>onboarding</b> appears on <b>0</b> wiki pages. The question <i>content</i> is broad (validated PROs <a href=\"appendix-questions.html\">Appx C</a>, the question bank <a href=\"appendix-question-bank.html\">Appx E</a>, axes/archetypes <a href=\"appendix-lifestyles.html\">Appx F</a>) and persona/goals inference now exist (F2/F3), but <b>no document owns the first-run experience</b>: the sequence of demographic + lifestyle/PRO + goals + consent + device-pairing capture, what is asked when, and how the score bootstraps on day-0. <a href=\"18-data-streams-and-experience.html\">Doc 18</a> describes effortless surfaces (scribe/chat/scheduling) and the 📝 LIFE / 🎯 GOAL streams; <a href=\"01-data-model-and-reference-ranges.html\">Doc 01</a> the data schema — neither narrates intake. <b>Fix:</b> an onboarding/intake spec (an owning doc, or a Doc 01/18 section) wiring the existing catalogue, persona matrix (Appx I) and goals (Appx J) into a first-run flow. See the <a href=\"#onboarding\">onboarding coverage matrix</a>."},
+        {"date": "2026-06-19", "tag": "v5", "status": "addressed",
+         "body": "<b>Built (D26):</b> <a href=\"appendix-onboarding.html\">Onboarding &amp; first-run</a> (<code>data/onboarding.json</code>) now owns the first-run experience — 11 ordered steps from welcome → consent → demographics → goal-seed → bootstrap PROs → persona resolution → device/EHR connect → first score → progressive profiling, wiring the question bank (Appx E), persona matrix (Appx I) and goals (Appx J) into one flow. <code>onboarding_steps &gt; 0</code> auto-verifies."}
+      ]
+    },
+    {
+      "id": "F10", "title": "Demographic capture is under-specified", "severity": "P1", "stage": "1 · Capture",
+      "status": "addressed", "auto_rule": "demographics_n > 0",
+      "versions": [
+        {"date": "2026-06-19", "tag": "v4", "status": "open",
+         "body": "<code>Patient(… sex_at_birth, gender_identity, dob, …)</code> in <a href=\"01-data-model-and-reference-ranges.html\">Doc 01 §1.1</a> defines sex/gender/age but leaves the rest of the demographic field-set implicit (the trailing <code>…</code>). <b>Ethnicity</b> drives cohort stratification (NHANES, Doc 01 §4.2) and UAE cut-points (<a href=\"15-uae-localization.html\">Doc 15</a>) yet is never enumerated as a captured intake item; <b>region/locale, occupation, language, household role</b> are absent (occupation surfaces only in Appx F). The literal term <i>demographic</i> occurs on a single wiki page. <b>Fix:</b> enumerate the demographic intake set in Doc 01 with each field's use — physiology · stratification · localization · communication."},
+        {"date": "2026-06-19", "tag": "v5", "status": "addressed",
+         "body": "<b>Built (D26):</b> the <a href=\"appendix-onboarding.html#demographics\">demographic field-set</a> is now enumerated (11 fields: sex-at-birth, gender, DOB, height, weight, <b>ethnicity</b>, ancestry, pregnancy-status, emirate/locale, language, household-role) — each tagged with what it drives (physiology · cohort stratification · UAE cut-points · localization). <code>demographics_n &gt; 0</code> auto-verifies."}
+      ]
+    },
+    {
+      "id": "F11", "title": "No cold-start / progressive-profiling strategy", "severity": "P1", "stage": "1 · Capture",
+      "status": "addressed", "auto_rule": "coldstart_items > 0",
+      "versions": [
+        {"date": "2026-06-19", "tag": "v4", "status": "open",
+         "body": "Marker-side cold-start is handled — cohort-median fallback (<a href=\"01-data-model-and-reference-ranges.html\">Doc 01 §4.3</a>) and the guideline→cohort→personal <i>ignition</i> model (<a href=\"14-evidence-registry-and-provenance.html\">Doc 14</a>) — and a new user can now be resolved to a persona (F2, Appx I). But the <b>question-side</b> cold-start is undocumented: which minimal item set bootstraps day-0 scoring, the order items are surfaced, and how coverage/Confidence ramps as labs and wearables arrive. <b>Fix:</b> a progressive-profiling schedule — minimal first-run set → expand by leverage/persona."},
+        {"date": "2026-06-19", "tag": "v5", "status": "addressed",
+         "body": "<b>Built (D26):</b> the <a href=\"appendix-onboarding.html#cold-start\">question-side cold-start</a> is specified — a 7-item bootstrap set (PHQ-2, GAD-2, sleep, activity, AUDIT-C, smoking, diet) that seeds a day-0 score and resolves a persona, plus a progressive-profiling schedule (session-1 bootstrap → remaining bank by P1→P5 applicability → triggered deep-dives → cadence refresh). <code>coldstart_items &gt; 0</code> auto-verifies."}
+      ]
+    },
+    {
+      "id": "F12", "title": "Consent & device-pairing not placed in the intake flow", "severity": "P2", "stage": "1 · Capture",
+      "status": "addressed", "auto_rule": "consent_gates > 0",
+      "versions": [
+        {"date": "2026-06-19", "tag": "v4", "status": "open",
+         "body": "Consent/privacy is owned by <a href=\"11-safety-governance-and-regulatory.html\">Doc 11</a> and device surfaces + household accounts by <a href=\"18-data-streams-and-experience.html\">Doc 18 §2/§4/§6</a>, but neither sequences <b>when</b> consent is taken or <b>what is gated</b> until a wearable is paired during first-run. <b>Fix:</b> position consent capture and device-pairing as explicit, ordered onboarding steps with their gating rules."},
+        {"date": "2026-06-19", "tag": "v5", "status": "addressed",
+         "body": "<b>Built (D26):</b> <a href=\"appendix-onboarding.html#consent\">consent &amp; device-pairing</a> are now ordered first-run steps with explicit gating — privacy consent (step 3) blocks all capture; device-pairing (step 8) gates wearable metrics/early-warning; EHR-connect (step 9) gates Patient360 corroboration; the actuarial layer stays firewalled/off by default. <code>consent_gates &gt; 0</code> auto-verifies."}
       ]
     }
   ]

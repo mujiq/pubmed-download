@@ -14,45 +14,23 @@
 
 ---
 
-## 1. Two orthogonal attributes: `sex_at_birth` vs `gender_identity`
+## 1. Sex drives physiology
 
-PureScore separates **physiology** from **communication**. Conflating them is both a safety bug
-(wrong reference ranges) and a dignity failure.
+PureScore is scored on **`sex ∈ {male, female}`**, which selects reference ranges, organ-specific
+markers (e.g. PSA, AMH), the reservoir set, the eGFR sex coefficient and hemoglobin/ferritin bands.
+A separate **`organ_inventory`** (uterus, ovaries, prostate, …) governs *which* sex-specific markers
+are applicable — post-surgical/absent organs set a marker to `not-applicable` (Doc 03 §3).
 
-| Field | Type | Drives | Never drives |
-|-------|------|--------|--------------|
-| `sex_at_birth ∈ {female, male, intersex, unknown}` | physiological | reference-range selection, organ-specific markers (e.g. PSA, AMH), reservoir set, eGFR sex coefficient, hemoglobin/ferritin bands | pronouns, tone, framing |
-| `gender_identity` (free/standard list) | social | pronouns, addressing the patient, nudge tone, imagery (Doc 07) | any band, threshold, or weight |
-| `organ_inventory` (set: uterus, ovaries, prostate, …) | physiological | *which* sex-specific markers are even applicable | communication |
-| `hormone_therapy` (class, dose, route, start date) | physiological | **range shifting** (see §1.2) | — |
-
-**No crude binary fallback.** When `sex_at_birth = unknown` the engine does **not** guess from
-gender, name, or any proxy (README §5.5). It instead (a) uses sex-neutral bands where they exist,
-(b) marks affected ENDO/HEM/REN markers low-confidence (Doc 03 §3 `confidence_i`), and (c) raises a
-clinician prompt to capture `sex_at_birth` and `organ_inventory`. Uncertainty defaults to caution
-(README §5.4), never to a reassuring "in range."
+**When `sex` is unknown** the engine does **not** guess from any proxy (README §5.5): it uses
+sex-neutral bands where they exist, marks affected ENDO/HEM/REN markers low-confidence
+(Doc 03 §3 `confidence_i`), and prompts the clinician to capture `sex` and `organ_inventory`.
+Uncertainty defaults to caution (README §5.4), never to a reassuring "in range."
 
 ### 1.1 Organ-inventory gating
 A marker is scored only if the relevant organ/axis is present. PSA is omitted (not scored as
 "green") for a patient without a prostate; AMH/antral context is omitted without ovaries. This
 prevents both false reassurance and irrelevant red flags. Post-surgical/absent organs set the
 marker to `not-applicable`, excluded from `cov_k` denominators (Doc 03 §3).
-
-### 1.2 Hormone-therapy-aware ranges (transgender & gender-diverse patients)
-For a patient on gender-affirming hormone therapy (GAHT), the **target reference range follows the
-affirmed hormonal milieu**, anchored to Endocrine Society 2017 GAHT guidance (illustrative,
-re-verify):
-
-| Scenario | Markers shifted toward | Notes |
-|----------|------------------------|-------|
-| Transfeminine on estradiol ± anti-androgen | estradiol → premenopausal-female target ~100–200 pg/mL; total T → <50 ng/dL suppressed | Hemoglobin/hematocrit, creatinine/eGFR drift toward **female** reference over months; lipid/VTE surveillance up |
-| Transmasculine on testosterone | total T → male physiologic 320–1000 ng/dL trough-dependent; estradiol low | Hemoglobin/hematocrit drift toward **male** reference; monitor erythrocytosis (HEM red if Hct high); pelvic organs if retained still need stage logic |
-| Post-gonadectomy, on stable GAHT | gonadotropins (FSH/LH) **not** interpreted as menopausal | flag only if HT interrupted |
-
-Implementation: `effective_endocrine_profile = f(sex_at_birth, GAHT class, time-on-therapy,
-organ_inventory)`. Hematologic and renal bands **transition gradually** (use time-on-therapy to
-interpolate, not a step change), because erythropoiesis and creatinine generation track the
-dominant sex steroid over 6–12 months. Communication always uses `gender_identity`.
 
 ### 1.3 Intersex / DSD handling
 Intersex / differences of sex development are **not** forced into a binary. The engine uses the
@@ -261,8 +239,7 @@ Stage-driven interpretation and surveillance (illustrative, re-verify):
 
 ## 3. Male model
 
-Driven by `sex_at_birth = male` (and GAHT logic §1.2 for transmasculine patients with male
-hormonal target).
+Driven by `sex = male`.
 
 ### 3.1 Testosterone / SHBG / free-T with age decline (illustrative, re-verify; Endocrine Society 2018)
 
@@ -392,9 +369,8 @@ Doc 02 Pillar 7.
    from the actuarial/payer layer (Doc 10) and from any pricing/access decision, and are never used
    to *worsen* access, pricing, or care (README §5.5). Granular consent and revocation are
    honored per Doc 11.
-3. **Gender dignity.** `gender_identity` controls all communication; misgendering is treated as a
-   defect. Physiological bands are explained in clinical terms tied to `organ_inventory`/hormonal
-   milieu, never as a verdict on identity.
+3. **Respectful communication.** Physiological bands are explained in clinical terms tied to
+   `organ_inventory` and life stage, never as a verdict on the person.
 4. **No autonomous reproductive diagnosis.** PCOS, FHA, hypogonadism, pre-eclampsia, GDM, thyroid
    disease, and prostate concerns are **flagged with explanation and escalated**, never diagnosed by
    the score (README §5.1). Uncertainty defaults to caution (README §5.4).
@@ -415,16 +391,12 @@ behaviour is inspectable. Mapping to the spec above:
 
 | Spec concept (this doc) | Calculator realization |
 |---|---|
-| `sex_at_birth` × `gender_identity` × `hormone_therapy` × stage (§1) | `CTX = {natal, hrt, stage}` + header selectors (Natal sex · Hormones · Life stage) |
-| Hormone-therapy-aware ranges (§1.2); affirmed-milieu resolution | `gsex()` (governing milieu) drives `bySex` band selection; established-HRT assumed for the demo |
+| `sex` × stage (§1) | `CTX = {sex, stage}` + header selectors (Sex · Life stage) |
 | Trimester / menopause / andropause modifiers (§2.3, §2.5, §3) | `STAGE_MODS` (preg T1/T2/T3, postpartum, peri/postmenopause, andropause) applied in `band()` |
-| Per-marker axis {none, gonadal, natal} (§1) | `bySex` presence marks gonadal markers (Hgb, waist, grip, VO₂max, sex hormones in the subset) |
+| Per-marker axis {none, gonadal} (§1) | `bySex` presence marks gonadal markers (Hgb, waist, grip, VO₂max, sex hormones in the subset) |
 | Pre-eclampsia/GDM **absolute anchors** (§2.3.4) | acute-danger anchors enforced in `pillarRisk` regardless of stage |
-| Confidence reduction for under-represented cohorts (§1.2, §6) | `rep` lowers Confidence for trans/intersex/pregnancy personas (D7) |
+| Confidence reduction for under-represented cohorts (§6) | `rep` lowers Confidence for under-represented personas, e.g. pregnancy (D7) |
 
-**Demonstration personas:** `pregnancy` (T2 frame), `transfem` (feminizing HRT → female gonadal
-ranges; Hgb 12.8 reads normal-female but a binary-male toggle would false-flag it anemic),
-`transmasc` (masculinizing HRT → male ranges; erythrocytosis watch), `menopause` (postmenopausal
-CV/bone up-weight, BMD red sooner). The full production system applies the §3 classification and
+**Demonstration personas:** `pregnancy` (T2 frame), `menopause` (postmenopausal CV/bone up-weight, BMD red sooner). The full production system applies the §3 classification and
 §4–5 tables across the entire Doc 02 catalogue. Every numeric band remains **illustrative pending
 clinical sign-off and Doc 13 validation** — the Babylon lesson (Doc 00).

@@ -47,9 +47,8 @@ tree is built coarse→fine so that every leaf has a chain of ancestors to borro
 
 - **Age banding** is marker-specific: renal and bone markers need finer age resolution than, say,
   vitamin D. Bands are stored per `MarkerDef`, not globally.
-- **Sex** is `sex_at_birth` for physiology (Doc 01 §1.1); hormone-therapy-aware and intersex
-  handling follows Doc 05 (a transgender patient on cross-sex hormones maps to a hormone-aware
-  sub-stratum, not a binary fallback).
+- **Sex** is `sex` (Male/Female) for physiology (Doc 01 §1.1); rare intersex/DSD handling follows
+  Doc 05 via organ inventory.
 - **Disease flags `D`** and **medication classes `Mx`** are sets; the leaf is their full
   conjunction. Most patients carry 0–3 flags, so leaves are sparse — hence pooling (§1.3).
 
