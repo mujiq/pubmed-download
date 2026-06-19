@@ -11,6 +11,11 @@ clinicians and payers and are *gated* behind separate access and governance.
 
 ## 1. What PureScore is
 
+![PureScore architecture and scoring formula](assets/purescore-architecture.png)
+
+*Overall architecture + formula at a glance (source: `assets/render_diagram.py`; interactive
+version: `purescore-architecture.html`).*
+
 PureScore is a single 0–100 number, decomposed into **12 health pillars**, each built from a
 tiered catalogue of **biomarkers, wearable signals, and lifestyle/persona inputs**. It is
 personalized to a patient's **cohort** (age band × sex × disease flags × medication flags) and
@@ -45,6 +50,7 @@ Three properties make PureScore more than a weighted average of lab values:
 | # | Document | Owner-authored spine? | Contents |
 |---|----------|:--:|----------|
 | — | `README.md` | ✔ | This index, conventions, glossary |
+| — | `decisions.md` | ✔ | **Decision log** — every material design question, all options, and the selected one (maintained from 2026-06-14) |
 | 00 | `00-vision-principles-and-lessons.md` | ✔ | Vision, design principles, lessons from Babylon Health, Kaiser Permanente, Mayo Clinic |
 | 01 | `01-data-model-and-reference-ranges.md` | ✔ | Canonical data model (FHIR-aligned), tier definitions, literature reference-range strategy |
 | 02 | `02-pillars-and-marker-catalog.md` | ✔ | The 12 pillars; full marker catalogue with tiers and green/yellow/red bands |
@@ -57,8 +63,20 @@ Three properties make PureScore more than a weighted average of lab values:
 | 09 | `09-cohort-percentiles-and-validation.md` |  | Cohort construction, empirical-Bayes shrinkage, calibration, fairness, drift |
 | 10 | `10-actuarial-pricing-and-insurance.md` |  | Full pricing engine **with heavy regulatory/fairness risk flags** |
 | 11 | `11-safety-governance-and-regulatory.md` |  | Clinician-in-loop, escalation, equity, privacy, model governance |
+| 12 | `12-critical-review-and-purescore-2.0.md` | ✔ | Edge-case critique + PureScore 2.0: context-aware interpretation, companion meta-vector, personal-baseline early-warning, dual framing, bias handling |
+| 13 | `13-validation-and-calibration-harness.md` | ✔ | Validation/calibration **gates** for 2.0 (score + companion vector + early-warning): discrimination, calibration/recalibration, early-warning PPV/lead-time, fairness slices, drift, release gates. Executable: `assets/validation_harness.js` |
+| 14 | `14-evidence-registry-and-provenance.md` | ✔ | Machine-readable evidence registry, per-band provenance, the cold-start **"ignition" model** (guideline→cohort→personal baseline), external-crawler change-control. Registry: `assets/evidence-registry.json` |
+| 15 | `15-uae-localization.md` | ✔ | **UAE localization**: ethnicity-aware cut-points & screening (context, never penalty; D18), regional epidemiology, heritable-condition screening (G6PD/thalassemia/FH), vitamin-D, **Ramadan (IDF-DAR)** safety |
+| 16 | `16-recommended-actions-catalogue.md` | ✔ | **Exhaustive UAE-prioritized** action/nudge catalogue by condition (diabetes, CVD, CKD, NAFLD, vit-D, hemoglobinopathy/G6PD, mental health, respiratory, bone, Ramadan…), medication-adherence & screening, evidence-tagged |
+| 17 | `17-clinician-red-team-and-blind-spots.md` | ✔ | **Adversarial self-review**: every clinician/statistician/ethicist/regulator objection → how handled → honest residual; consolidated blind-spot register |
+| 18 | `18-data-streams-and-experience.md` | ✔ | **Input taxonomy** (lab/wearable/goal/lifestyle, flagged), **wearable trust-tiering** (D22), wearables×pillars, product surfaces (AI scribe/chat/scheduling/in-home/insurance-auth), household accounts, goals→actions |
 
 Read 00 → 04 first; they define everything the later documents depend on.
+
+> **Browsable wiki.** A navigable, interlinked HTML rendering of all these documents — with
+> per-document diagrams, exhaustive reference appendices (biomarkers, wearables, questionnaires,
+> personas), the Doctor's-board configuration screens, and a live continuous-scoring feedback-loop
+> demo — is generated under [`../tech/`](../tech/index.html) (`python3 ../tech/build_wiki.py`).
 
 ---
 

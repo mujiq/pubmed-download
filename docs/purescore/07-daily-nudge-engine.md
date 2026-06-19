@@ -227,7 +227,10 @@ For each safety-passing action (§5), define the daily utility
   low-effort actions, satisfying the brief literally.
 - `α, β` default `1.0`; raising `β` and `η` over `α` is the *ease-first* posture. All versioned (§7).
 - `ν_a` — novelty/timing factor: small bonus for an action that closes the binding constraint or a
-  care-gap, small penalty for one shown-and-ignored many times (anti-nag; §4.4).
+  care-gap, small penalty for one shown-and-ignored many times (anti-nag; §4.4). It **also carries a
+  goal-alignment bonus**: the patient's declared **GOAL stream** (Doc 18 §1, §7) sets `h*` and lifts
+  actions that advance the goal (e.g. "lower HbA1c" → glycemic actions rank up), within the safety
+  rails — the goal steers ranking but never overrides a critical or a contraindication (§1).
 
 **Why multiplicative:** if either expected impact or adherence is ~0, `U_a→0`. We never surface a
 high-impact action nobody will do, nor a trivially-easy action that does nothing.
@@ -271,6 +274,21 @@ greedy submodular pick (a small facility-location / determinantal flavour):
 - **Constraint-aware override:** if a pillar is *binding/critical-adjacent* (large `(a)·(b)` gradient,
   §2.1), one slot is reserved for the highest-leverage **safe** action on it, even at higher effort,
   flagged as "biggest lever" — so ease-first never buries the one thing that matters most.
+- **Positive-`Δ` guarantee.** Every action admitted to the top-5 must have a **strictly positive
+  expected `ΔPureScore@h`** on the continuous score (Doc 03 §2b/§6.1) — selection filters out
+  zero-impact actions (e.g. an already-optimal managed marker, D16). So *acting on the list always
+  moves the number up*; the patient gets immediate, honest feedback. If no positive-`Δ` modifiable
+  action exists (everything green/at-optimum, or all remaining risk is fixed), the engine says so
+  rather than inventing a nudge (Doc 12 Modifiability; D5).
+
+### 3.4 Negative feedback (the other direction)
+The loop is symmetric. Regression — a missed-sleep streak, a sedentary week, rising stress, a
+worsening wearable trend — pushes the personal z-score adverse (Doc 03 §2b), so PureScore **trends
+down** and the affected pillars show **↓ Trajectory**, escalating to an **Early-warning** flag if it
+accelerates (Doc 12 §4–§5). The engine surfaces this as a *gentle, non-alarming* "slipping" signal
+with the single easiest recovery action — never a scold, never a discrete cliff, and never masking a
+real clinical change behind "you're improving vs your own bad week" (safety dominates, Doc 03 §2b
+`band_clamp`).
 
 ---
 
@@ -438,3 +456,23 @@ Headline: *"Do these 5 — about +3.5 PureScore over 90 days. Most of it is slee
 Nothing here is urgent; your numbers are not in the danger zone, and the one number we're guessing
 (ApoB) is easy to measure."* — diverse (SLEEP/ACT/MEASURE/NUTR/STRESS), ease-weighted, attributed,
 honest about horizon and uncertainty, no overpromise.
+
+---
+
+## 8. Implementation status (interactive calculator) — decision D16
+
+The calculator implements the daily-nudge pipeline live:
+
+| Spec concept | Calculator realization |
+|---|---|
+| Action library §1 (typed records: class, valve/marker targets, effort `E_a`, evidence `ε_a`, safety) | `NUDGES[]` (SLEEP/NUTR/ACT/STRESS/ADHERE/CLINICAL) |
+| Impact §2 — exact recompute, not lookup (§2.5 honesty bound) | `nudgeImpact()` = finite-difference `uncapped()` after applying the action's marker moves + reservoir deltas (30-day horizon) |
+| Diminishing returns in green; no false hope on fixed burdens | `improveToward()` yields 0 for an already-optimal marker; **Modifiability gate** zeroes lifestyle effect on a fixed/genetic marker (D5/D11) |
+| Ranking §3.1 — `U=[ΔPure·ε]^α·p̂^β·(1−E)^η·ν` | `nudgeRank()` (α=β=1, η=1.5; `p̂` cold-start cohort proxy from effort; `ν` bonus for the binding/worst pillar — Trajectory-aware) |
+| Safety/contraindication §5; diversity | CKD protein cap, pregnancy/lactation no-deficit caveat, anticoagulant ω-3 caveat; per-class cap of 2 |
+| Adherence-only / clinical-gap nudges first-class | `MED-*` shown only when prescribed (`rx`); **fixed/medication-responsive red routes to a clinician referral** instead of a fabricated lifestyle fix |
+
+Demonstrated: prediabetic → "cut refined carbs +5.7" on the binding MET pillar; elderly → resistance +
+protein (sarcopenia); CKD → BP-adherence + sodium (protein gated out); **FH → lifestyle cannot move
+genetic ApoB (gated to ~0) → clinician referral surfaces.** All ΔPureScore values are illustrative
+(synthetic engine), pending Doc 13 validation of realized-vs-predicted impact (the §6 feedback loop).

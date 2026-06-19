@@ -1,0 +1,842 @@
+{
+  "domain": "MENTAL_COGNITIVE_SOCIAL",
+  "questions": [
+    {
+      "id": "Q_MIND_LOWMOOD_FREQ",
+      "text": "Over the past 2 weeks, how often have you felt down, depressed, or hopeless?",
+      "category": "Mood & Depression",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["depression", "low_mood", "anxiety"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Not at all", "direction": "decrease_risk", "magnitude": "weak", "pillars": {}, "reservoirs": {} },
+        { "label": "Several days", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.08, "SLP": 0.05 }, "reservoirs": { "allostatic_load": 0.06 } },
+        { "label": "More than half the days", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.16, "SLP": 0.08, "ENDO": 0.06 }, "reservoirs": { "allostatic_load": 0.12, "sleep_debt": 0.08 } },
+        { "label": "Nearly every day", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.25, "SLP": 0.12, "ENDO": 0.10, "CV": 0.06 }, "reservoirs": { "allostatic_load": 0.20, "sleep_debt": 0.14 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "sleep"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "More than half the days", "ask": "Q_MIND_PHQ9_TRIGGER" },
+          { "if_response": "Nearly every day", "ask": "Q_MIND_PHQ9_TRIGGER" },
+          { "if_response": "Nearly every day", "ask": "Q_MIND_SELFHARM_SCREEN" }
+        ],
+        "validated_by": "PHQ-2",
+        "corroborated_by": ["wearable.hrv", "wearable.stress_score", "wearable.sleep"]
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.hrv", "wearable.stress_score"] },
+      "source": "PHQ-2 item 1 (Kroenke & Spitzer 2003); safety: positive screen → PHQ-9 full instrument",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_ANHEDONIA",
+      "text": "Over the past 2 weeks, how often have you had little interest or pleasure in doing things?",
+      "category": "Mood & Depression",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["depression", "low_mood", "adhd"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Not at all", "direction": "decrease_risk", "magnitude": "weak", "pillars": {}, "reservoirs": {} },
+        { "label": "Several days", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.08 }, "reservoirs": { "allostatic_load": 0.05 } },
+        { "label": "More than half the days", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.16, "ENDO": 0.06 }, "reservoirs": { "allostatic_load": 0.12 } },
+        { "label": "Nearly every day", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.24, "ENDO": 0.08, "SLP": 0.08 }, "reservoirs": { "allostatic_load": 0.18 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "social"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "More than half the days", "ask": "Q_MIND_PHQ9_TRIGGER" },
+          { "if_response": "Nearly every day", "ask": "Q_MIND_PHQ9_TRIGGER" }
+        ],
+        "validated_by": "PHQ-2",
+        "corroborated_by": ["wearable.hrv", "wearable.sleep"]
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.hrv"] },
+      "source": "PHQ-2 item 2 (Kroenke & Spitzer 2003); PHQ-2 sum ≥3 → administer PHQ-9",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_PHQ9_TRIGGER",
+      "text": "[SYSTEM: PHQ-2 positive — administer full PHQ-9. Do not score this item; defer to PHQ-9 validated PRO.]",
+      "category": "Mood & Depression",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["depression", "low_mood"],
+      "stream": "LIFE",
+      "type": "composite",
+      "responses": [
+        { "label": "PHQ-9 administered", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_MIND_LOWMOOD_FREQ", "in": ["More than half the days", "Nearly every day"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "PHQ-9"
+      },
+      "priority": 1,
+      "cadence": "on-trigger",
+      "refresh": "event",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "PHQ-9 (Kroenke et al 2001); SAFETY NOTE: PHQ-9 item 9 (self-harm) must be reviewed by clinician when score >0",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_SELFHARM_SCREEN",
+      "text": "Have you had any thoughts that you would be better off dead, or thoughts of hurting yourself?",
+      "category": "Safety Screen",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["depression", "low_mood"],
+      "stream": "LIFE",
+      "type": "boolean",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.30 }, "reservoirs": { "allostatic_load": 0.20 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_MIND_LOWMOOD_FREQ", "in": ["Nearly every day"] }],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes", "ask": "Q_MIND_PHQ9_TRIGGER" }
+        ],
+        "validated_by": "PHQ-9"
+      },
+      "priority": 1,
+      "cadence": "on-trigger",
+      "refresh": "event",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "SAFETY ITEM — PHQ-9 item 9; any positive response must route to crisis pathway / clinician review immediately. Do not use for autonomous scoring.",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_ANXIETY_FREQ",
+      "text": "Over the past 2 weeks, how often have you felt nervous, anxious, or on edge?",
+      "category": "Anxiety",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["anxiety", "worry", "social_anxiety"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Not at all", "direction": "decrease_risk", "magnitude": "weak", "pillars": {}, "reservoirs": {} },
+        { "label": "Several days", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.08, "CV": 0.04 }, "reservoirs": { "allostatic_load": 0.06 } },
+        { "label": "More than half the days", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.15, "CV": 0.08, "ENDO": 0.06 }, "reservoirs": { "allostatic_load": 0.12, "sleep_debt": 0.06 } },
+        { "label": "Nearly every day", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.24, "CV": 0.10, "ENDO": 0.10, "SLP": 0.08 }, "reservoirs": { "allostatic_load": 0.20, "sleep_debt": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "sleep"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "More than half the days", "ask": "Q_MIND_GAD7_TRIGGER" },
+          { "if_response": "Nearly every day", "ask": "Q_MIND_GAD7_TRIGGER" }
+        ],
+        "validated_by": "GAD-2",
+        "corroborated_by": ["wearable.hrv", "wearable.stress_score"]
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.hrv", "wearable.stress_score"] },
+      "source": "GAD-2 item 1 (Kroenke et al 2007); GAD-2 ≥3 → administer GAD-7",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_WORRY_CONTROL",
+      "text": "Over the past 2 weeks, how often have you been unable to stop or control worrying?",
+      "category": "Anxiety",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["anxiety", "worry", "ocd"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Not at all", "direction": "decrease_risk", "magnitude": "weak", "pillars": {}, "reservoirs": {} },
+        { "label": "Several days", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.08 }, "reservoirs": { "allostatic_load": 0.06 } },
+        { "label": "More than half the days", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.15, "SLP": 0.06 }, "reservoirs": { "allostatic_load": 0.12, "sleep_debt": 0.06 } },
+        { "label": "Nearly every day", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.24, "SLP": 0.10, "ENDO": 0.08 }, "reservoirs": { "allostatic_load": 0.18, "sleep_debt": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "sleep"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "More than half the days", "ask": "Q_MIND_GAD7_TRIGGER" },
+          { "if_response": "Nearly every day", "ask": "Q_MIND_GAD7_TRIGGER" }
+        ],
+        "validated_by": "GAD-2",
+        "corroborated_by": ["wearable.hrv", "wearable.stress_score"]
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.hrv"] },
+      "source": "GAD-2 item 2 (Kroenke et al 2007); GAD-2 positive → administer GAD-7",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_GAD7_TRIGGER",
+      "text": "[SYSTEM: GAD-2 positive — administer full GAD-7. Do not score this item; defer to GAD-7 validated PRO.]",
+      "category": "Anxiety",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["anxiety", "worry", "social_anxiety"],
+      "stream": "LIFE",
+      "type": "composite",
+      "responses": [
+        { "label": "GAD-7 administered", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_MIND_ANXIETY_FREQ", "in": ["More than half the days", "Nearly every day"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "GAD-7"
+      },
+      "priority": 1,
+      "cadence": "on-trigger",
+      "refresh": "event",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "GAD-7 (Spitzer et al 2006)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_STRESS_RATING",
+      "text": "On a scale of 1–5, how stressed do you feel in your daily life right now? (1 = very low, 5 = very high)",
+      "category": "Stress",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["perceived_stress", "anxiety", "depression", "ocd", "brain_fog"],
+      "stream": "LIFE",
+      "type": "scale",
+      "responses": [
+        { "label": "1 — Very low", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "MCS": -0.05 }, "reservoirs": { "allostatic_load": -0.05 } },
+        { "label": "2 — Low", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "3 — Moderate", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06, "ENDO": 0.04 }, "reservoirs": { "allostatic_load": 0.05 } },
+        { "label": "4 — High", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14, "ENDO": 0.08, "CV": 0.06, "SLP": 0.06 }, "reservoirs": { "allostatic_load": 0.12, "sleep_debt": 0.08 } },
+        { "label": "5 — Very high", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.22, "ENDO": 0.14, "CV": 0.10, "SLP": 0.10 }, "reservoirs": { "allostatic_load": 0.20, "sleep_debt": 0.14 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "sleep"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "4 — High", "ask": "Q_MIND_PSS4_TRIGGER" },
+          { "if_response": "5 — Very high", "ask": "Q_MIND_PSS4_TRIGGER" }
+        ],
+        "validated_by": "PSS-4",
+        "corroborated_by": ["wearable.stress_score", "wearable.hrv"]
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.stress_score", "wearable.hrv", "lab.cortisol_rhythm"] },
+      "source": "PSS-4 proxy (Cohen 1983); high score → administer PSS-4",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_PSS4_TRIGGER",
+      "text": "[SYSTEM: Perceived stress elevated — administer PSS-4. Do not score this item; defer to PSS-4 validated PRO.]",
+      "category": "Stress",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["perceived_stress"],
+      "stream": "LIFE",
+      "type": "composite",
+      "responses": [
+        { "label": "PSS-4 administered", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_MIND_STRESS_RATING", "in": ["4 — High", "5 — Very high"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "PSS-4"
+      },
+      "priority": 1,
+      "cadence": "on-trigger",
+      "refresh": "event",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.cortisol_rhythm"] },
+      "source": "PSS-4 (Cohen, Kamarck & Mermelstein 1983)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_LIFE_EVENT",
+      "text": "In the past 6 months, have you experienced a major stressful life event? (e.g. bereavement, job loss, divorce, serious illness, relocation)",
+      "category": "Stress",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["perceived_stress", "depression", "anxiety", "addiction"],
+      "stream": "LIFE",
+      "type": "boolean",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14, "ENDO": 0.08, "CV": 0.06 }, "reservoirs": { "allostatic_load": 0.14 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "social"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes", "ask": "Q_MIND_STRESS_RATING" }
+        ],
+        "validated_by": "PSS-4"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.stress_score"] },
+      "source": "Life Events and Coping Checklist (Holmes & Rahe 1967 adaptation)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_LONELINESS",
+      "text": "How often do you feel lonely or lack companionship?",
+      "category": "Social Connection",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["loneliness_social_isolation", "depression", "cognitive_decline"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Hardly ever", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "MCS": -0.06 }, "reservoirs": { "allostatic_load": -0.05 } },
+        { "label": "Some of the time", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.08 }, "reservoirs": { "allostatic_load": 0.06 } },
+        { "label": "Often", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.16, "CV": 0.06 }, "reservoirs": { "allostatic_load": 0.12 } },
+        { "label": "Most of the time", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.24, "CV": 0.08, "ENDO": 0.06 }, "reservoirs": { "allostatic_load": 0.18 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["social", "stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Often", "ask": "Q_MIND_UCLA3_TRIGGER" },
+          { "if_response": "Most of the time", "ask": "Q_MIND_UCLA3_TRIGGER" }
+        ],
+        "validated_by": "UCLA-3",
+        "corroborated_by": ["wearable.stress_score"]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "UCLA Loneliness Scale item 1 (Hughes et al 2004 3-item version)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_SOCIAL_CONTACT",
+      "text": "How often do you feel left out of activities or conversations in your social circle?",
+      "category": "Social Connection",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["loneliness_social_isolation", "social_anxiety", "depression"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Hardly ever", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "MCS": -0.05 }, "reservoirs": { "allostatic_load": -0.05 } },
+        { "label": "Some of the time", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.08 }, "reservoirs": { "allostatic_load": 0.05 } },
+        { "label": "Often", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.16 }, "reservoirs": { "allostatic_load": 0.10 } },
+        { "label": "Most of the time", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.22 }, "reservoirs": { "allostatic_load": 0.16 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["social", "stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Often", "ask": "Q_MIND_UCLA3_TRIGGER" },
+          { "if_response": "Most of the time", "ask": "Q_MIND_UCLA3_TRIGGER" }
+        ],
+        "validated_by": "UCLA-3"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "UCLA Loneliness Scale item 2 (Hughes et al 2004); also references Q_CORE_MARITAL",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_UCLA3_TRIGGER",
+      "text": "[SYSTEM: Loneliness screen positive — administer UCLA Loneliness Scale 3-item. Defer to UCLA-3 validated PRO.]",
+      "category": "Social Connection",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["loneliness_social_isolation"],
+      "stream": "LIFE",
+      "type": "composite",
+      "responses": [
+        { "label": "UCLA-3 administered", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["social"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_MIND_LONELINESS", "in": ["Often", "Most of the time"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "UCLA-3"
+      },
+      "priority": 2,
+      "cadence": "on-trigger",
+      "refresh": "event",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "UCLA Loneliness Scale-3 (Hughes et al 2004)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_SOCIAL_ANXIETY",
+      "text": "How anxious or uncomfortable do you feel in social situations (meetings, parties, public speaking)?",
+      "category": "Social Anxiety",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["social_anxiety", "anxiety"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Not at all / comfortable", "direction": "decrease_risk", "magnitude": "weak", "pillars": {}, "reservoirs": {} },
+        { "label": "Mildly uncomfortable", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.05 }, "reservoirs": { "allostatic_load": 0.03 } },
+        { "label": "Moderately — I avoid some situations", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14 }, "reservoirs": { "allostatic_load": 0.10 } },
+        { "label": "Severely — significantly limits daily life", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.24, "CV": 0.06 }, "reservoirs": { "allostatic_load": 0.18 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["social", "stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Severely — significantly limits daily life", "ask": "Q_MIND_GAD7_TRIGGER" }
+        ],
+        "validated_by": "GAD-7"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.hrv"] },
+      "source": "Social Anxiety screener (Liebowitz Social Anxiety Scale shortform proxy)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_OCD_INTRUSIVE",
+      "text": "Do you experience repetitive, unwanted thoughts or compulsive behaviours that you feel driven to perform (e.g. checking, counting, washing)?",
+      "category": "OCD",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["ocd", "anxiety"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Never / rarely", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Occasionally — minor interference", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.05 } },
+        { "label": "Often — noticeable distress or time loss", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14, "SLP": 0.06 }, "reservoirs": { "allostatic_load": 0.12 } },
+        { "label": "Most days — significantly impairs functioning", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.24, "SLP": 0.08 }, "reservoirs": { "allostatic_load": 0.18 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "GAD-7"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OCD screener proxy (Y-BOCS; DSM-5 criteria); refer to clinician for formal diagnosis",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_SLEEP_MOOD",
+      "text": "How often does poor or insufficient sleep make your mood noticeably worse the next day?",
+      "category": "Sleep–Mood Interplay",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["depression", "anxiety", "brain_fog", "low_mood"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely or never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Sometimes (a few times/month)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06, "SLP": 0.06 }, "reservoirs": { "allostatic_load": 0.05, "sleep_debt": 0.05 } },
+        { "label": "Often (weekly)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14, "SLP": 0.12, "ENDO": 0.06 }, "reservoirs": { "allostatic_load": 0.10, "sleep_debt": 0.12 } },
+        { "label": "Almost always", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.20, "SLP": 0.18, "ENDO": 0.10 }, "reservoirs": { "allostatic_load": 0.16, "sleep_debt": 0.18 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "corroborated_by": ["wearable.sleep", "wearable.hrv"]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep", "wearable.hrv"] },
+      "source": "Sleep–mood bidirectional link (Harvey 2001; Ford & Kamerow 1989)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_PURPOSE",
+      "text": "How often do you feel that your daily activities have a sense of purpose or meaning?",
+      "category": "Wellbeing",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["depression", "low_mood", "cognitive_decline"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Most of the time", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "MCS": -0.12 }, "reservoirs": { "allostatic_load": -0.10 } },
+        { "label": "Some of the time", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Rarely", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14 }, "reservoirs": { "allostatic_load": 0.10 } },
+        { "label": "Almost never", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.22, "ENDO": 0.06 }, "reservoirs": { "allostatic_load": 0.16 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "social", "lifestage"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Almost never", "ask": "Q_MIND_PHQ9_TRIGGER" }
+        ],
+        "validated_by": "WHO-5"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "WHO-5 Wellbeing Index proxy (WHO 1998); eudaimonic wellbeing literature (Ryff 1989)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_WELLBEING_ENERGY",
+      "text": "Over the past 2 weeks, how often have you felt active, vigorous, and full of energy?",
+      "category": "Wellbeing",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["depression", "low_mood", "brain_fog"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Most of the time", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "MCS": -0.10 }, "reservoirs": { "allostatic_load": -0.08 } },
+        { "label": "More than half the time", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "MCS": -0.05 }, "reservoirs": { "allostatic_load": -0.03 } },
+        { "label": "Less than half the time", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.12, "SLP": 0.08 }, "reservoirs": { "allostatic_load": 0.10, "sleep_debt": 0.08 } },
+        { "label": "At no time", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.22, "SLP": 0.14, "ENDO": 0.08 }, "reservoirs": { "allostatic_load": 0.18, "sleep_debt": 0.14 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "sleep"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "At no time", "ask": "Q_MIND_PHQ9_TRIGGER" }
+        ],
+        "validated_by": "WHO-5"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.hrv", "wearable.sleep"] },
+      "source": "WHO-5 Wellbeing Index item 3 (WHO 1998)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_CONCENTRATION",
+      "text": "How often do you have difficulty concentrating or sustaining focus on tasks?",
+      "category": "Cognition",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["adhd", "brain_fog", "cognitive_decline", "depression"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely or never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Sometimes (a few times/month)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.03 } },
+        { "label": "Often (weekly)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14, "SLP": 0.06 }, "reservoirs": { "allostatic_load": 0.08, "sleep_debt": 0.06 } },
+        { "label": "Almost always", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.22, "SLP": 0.10 }, "reservoirs": { "allostatic_load": 0.14, "sleep_debt": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["cognition", "stress", "sleep"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "corroborated_by": ["wearable.sleep", "wearable.hrv"]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep", "wearable.hrv"] },
+      "source": "ADHD concentration screen; also proxies depression cognitive symptom (PHQ-9 item 7)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_ADHD_SCREEN",
+      "text": "How often have you had trouble finishing tasks once the challenging parts are done, or found it hard to organise activities?",
+      "category": "ADHD",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["adhd", "brain_fog"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Never / rarely", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Sometimes", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.03 } },
+        { "label": "Often", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.12, "SLP": 0.06 }, "reservoirs": { "allostatic_load": 0.08 } },
+        { "label": "Very often", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.20 }, "reservoirs": { "allostatic_load": 0.12 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["cognition", "stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "Adult ADHD Self-Report Scale (ASRS v1.1) item proxy (Kessler et al 2005)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_MEMORY_CONCERN",
+      "text": "How concerned are you about your memory or forgetfulness?",
+      "category": "Memory & Cognition",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["memory_complaints", "cognitive_decline", "dementia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Not at all concerned", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Mildly — age-expected lapses", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.05 }, "reservoirs": {} },
+        { "label": "Moderately — more than peers my age", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14 }, "reservoirs": { "allostatic_load": 0.06 } },
+        { "label": "Very / significantly impairs daily life", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.24 }, "reservoirs": { "allostatic_load": 0.10 } }
+      ],
+      "dimensions": { "age": { "min": 40, "max": 120 }, "sex": ["all"], "axis_tags": ["cognition", "lifestage"], "personas": ["elderly"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Very / significantly impairs daily life", "ask": "Q_MIND_COGNITIVE_LAPSES" }
+        ]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "Subjective Cognitive Decline Initiative (SCD-I) framework (Jessen et al 2014); reference Q_CORE_EDUCATION (cognitive reserve)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_COGNITIVE_LAPSES",
+      "text": "How often do you experience noticeable memory lapses, such as forgetting appointments, familiar words, or where you placed things?",
+      "category": "Memory & Cognition",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["cognitive_decline", "dementia", "memory_complaints", "brain_fog"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely or never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Occasionally (a few times/month)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": {} },
+        { "label": "Frequently (weekly)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.16 }, "reservoirs": { "allostatic_load": 0.08 } },
+        { "label": "Constantly / causes daily problems", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.26 }, "reservoirs": { "allostatic_load": 0.14 } }
+      ],
+      "dimensions": { "age": { "min": 40, "max": 120 }, "sex": ["all"], "axis_tags": ["cognition", "lifestage"], "personas": ["elderly"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "corroborated_by": ["wearable.sleep", "wearable.hrv"]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep"] },
+      "source": "Everyday Cognitive Questionnaire (ECog) items (Saykin et al 2006); reference Q_CORE_EDUCATION",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_BRAIN_FOG",
+      "text": "How often do you experience 'brain fog' — a feeling of mental cloudiness, sluggishness, or difficulty thinking clearly?",
+      "category": "Brain Fog",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["brain_fog", "cognitive_decline", "depression", "adhd"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely or never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Sometimes (a few times/month)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06, "SLP": 0.05 }, "reservoirs": { "sleep_debt": 0.05, "allostatic_load": 0.03 } },
+        { "label": "Often (multiple days/week)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14, "SLP": 0.10, "ENDO": 0.06 }, "reservoirs": { "sleep_debt": 0.10, "allostatic_load": 0.08 } },
+        { "label": "Almost every day", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.22, "SLP": 0.16, "ENDO": 0.10 }, "reservoirs": { "sleep_debt": 0.16, "allostatic_load": 0.14 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["cognition", "sleep", "stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "corroborated_by": ["wearable.sleep", "wearable.hrv", "wearable.stress_score"]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep", "wearable.hrv"] },
+      "source": "Cognitive symptoms screener; overlaps depression, ADHD, hypothyroid, sleep debt",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_HEAD_INJURY",
+      "text": "Have you ever had a significant head injury, concussion, or traumatic brain injury?",
+      "category": "Dementia Risk",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["dementia", "cognitive_decline"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes — one concussion, fully recovered", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": {} },
+        { "label": "Yes — multiple concussions or slow recovery", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.24 }, "reservoirs": { "allostatic_load": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["cognition", "lifestage"], "personas": ["elderly", "all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "once",
+      "refresh": "static",
+      "perceived_actual": { "kind": "actual", "corroborated_by": [] },
+      "source": "Lancet Commission on dementia prevention 2020 (TBI as modifiable risk factor); reference Q_CORE_EDUCATION",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_ADDICTION_COMPULSIVE",
+      "text": "Do you feel that you have difficulty controlling use of any of the following? (select all that apply)",
+      "category": "Addiction",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["addiction", "ocd"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "None", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Gambling", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14 }, "reservoirs": { "allostatic_load": 0.12 } },
+        { "label": "Gaming or social media", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.08, "SLP": 0.06 }, "reservoirs": { "allostatic_load": 0.06, "sleep_debt": 0.06 } },
+        { "label": "Food / eating patterns", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.10, "MET": 0.06 }, "reservoirs": { "allostatic_load": 0.08 } },
+        { "label": "Pornography", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.08 }, "reservoirs": { "allostatic_load": 0.05 } },
+        { "label": "Shopping / spending", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.05 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "substance", "social"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "Behavioural addiction screen (DSM-5-TR criteria for gambling disorder; ICD-11 gaming disorder)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_SCREEN_DOOMSCROLL",
+      "text": "On a typical evening, how many hours do you spend passively scrolling social media or news feeds?",
+      "category": "Digital Habits",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["brain_fog", "anxiety", "depression", "low_mood", "addiction"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "< 30 minutes", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "30–60 minutes", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.05, "SLP": 0.05 }, "reservoirs": { "sleep_debt": 0.03 } },
+        { "label": "1–2 hours", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.12, "SLP": 0.10 }, "reservoirs": { "sleep_debt": 0.08, "allostatic_load": 0.06 } },
+        { "label": "2+ hours", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.20, "SLP": 0.16 }, "reservoirs": { "sleep_debt": 0.14, "allostatic_load": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "sleep", "social"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "corroborated_by": ["wearable.sleep"]
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep"] },
+      "source": "Social media and mental health (Twenge & Campbell 2018; Riehm et al 2019); sleep hygiene",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_CHRONIC_PAIN_MOOD",
+      "text": "If you experience chronic pain, how much does it affect your mood or mental wellbeing?",
+      "category": "Pain–Mood Interplay",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["depression", "anxiety", "low_mood"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "I have no chronic pain", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "I have pain but it does not affect my mood", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Pain moderately affects my mood", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.14, "ENDO": 0.06 }, "reservoirs": { "allostatic_load": 0.12 } },
+        { "label": "Pain severely undermines my mental wellbeing", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MCS": 0.22, "ENDO": 0.10, "CV": 0.06 }, "reservoirs": { "allostatic_load": 0.18 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["pain", "stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Pain severely undermines my mental wellbeing", "ask": "Q_MIND_PHQ9_TRIGGER" }
+        ],
+        "validated_by": "PHQ-9"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "Chronic pain–depression comorbidity (Bair et al 2003; Turk 2002)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_MINDFULNESS_COPING",
+      "text": "Which of the following best describes how you cope with stress? (select all that apply)",
+      "category": "Stress",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["perceived_stress", "anxiety", "depression"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "Exercise or physical activity", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "MCS": -0.12, "CV": -0.06 }, "reservoirs": { "allostatic_load": -0.10 } },
+        { "label": "Meditation, mindfulness, or breathing", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "MCS": -0.12 }, "reservoirs": { "allostatic_load": -0.10 } },
+        { "label": "Social support / talking to others", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "MCS": -0.08 }, "reservoirs": { "allostatic_load": -0.06 } },
+        { "label": "Alcohol or substance use", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MCS": 0.12, "HEP": 0.06 }, "reservoirs": { "allostatic_load": 0.10 } },
+        { "label": "Overworking or avoidance", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.08 }, "reservoirs": { "allostatic_load": 0.06 } },
+        { "label": "No consistent strategy", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.05 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "social", "substance"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "corroborated_by": ["wearable.hrv", "wearable.stress_score"]
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.hrv"] },
+      "source": "Coping strategies literature (Folkman & Lazarus 1988); modifiable MCS interventions",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_MIND_THERAPY_SUPPORT",
+      "text": "Are you currently working with a mental health professional (therapist, psychologist, psychiatrist)?",
+      "category": "Mental Health Support",
+      "domain": "MENTAL_COGNITIVE_SOCIAL",
+      "conditions": ["anxiety", "depression", "ocd", "addiction"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Yes, actively engaged", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "MCS": -0.12 }, "reservoirs": { "allostatic_load": -0.10 } },
+        { "label": "Previously, not currently", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "No, but I would benefit from support", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MCS": 0.06 }, "reservoirs": { "allostatic_load": 0.05 } },
+        { "label": "No, not needed", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "social"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": [] },
+      "source": "Treatment engagement as protective factor (Cuijpers et al 2019 meta-analysis)",
+      "flag": "illustrative-reverify"
+    }
+  ]
+}

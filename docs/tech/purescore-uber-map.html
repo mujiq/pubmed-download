@@ -1,0 +1,300 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PureScore uber-map — HikmaEngine Tech Wiki</title>
+<link rel="stylesheet" href="assets/wiki.css">
+<style>.topbar .brand b{color:#2ecc71}</style>
+<script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{htmlLabels:true,curve:"basis"},themeVariables:{fontSize:"14px"}});</script></head><body>
+<div class="topbar"><button class="menu-btn" aria-label="menu">☰</button>
+<a class="brand" href="index.html">Hikma<b>Engine</b> · Tech Wiki</a>
+<span class="tag">design spec — not clinically validated</span><span class="grow"></span>
+<input id="search" type="search" placeholder="Filter pages…  ( / )"></div>
+<div class="shell"><aside class="side"><div class="side-tools"><button class="side-allbtn" data-act="expand">expand all</button><button class="side-allbtn" data-act="collapse">collapse all</button></div><div class="navgrp open" data-grp="g0"><button class="grp-h" aria-expanded="true"><span class="grp-car">▸</span><span class="grp-t">Start here</span></button><div class="grp-b"><div class="grp-blurb">Orient yourself — what PureScore is and how the pieces connect.</div><a href="index.html">Home</a><a href="purescore-uber-map.html" class="active">How it all connects</a><a href="00-vision-principles-and-lessons.html"><span class="n">00</span>Vision & principles</a><a href="conventions.html">Conventions & glossary</a><a href="decisions.html">Decision log</a></div></div><div class="navgrp" data-grp="g1"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">1 · How scoring works</span></button><div class="grp-b"><div class="grp-blurb">The core engine: pillars → markers → score, reservoirs, and PureScore 2.0.</div><a href="purescore-overview.html">Overview</a><a href="02-pillars-and-marker-catalog.html"><span class="n">02</span>Pillars & markers</a><a href="03-scoring-formula.html"><span class="n">03</span>Scoring formula</a><a href="04-moniac-reservoir-dynamics.html"><span class="n">04</span>Reservoir dynamics</a><a href="12-critical-review-and-purescore-2.0.html"><span class="n">12</span>PureScore 2.0</a></div></div><div class="navgrp" data-grp="g2"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">2 · The inputs (what feeds it)</span></button><div class="grp-b"><div class="grp-blurb">Where the data comes from: labs, wearables, and the question intake.</div><a href="01-data-model-and-reference-ranges.html"><span class="n">01</span>Data model & ranges</a><a href="18-data-streams-and-experience.html"><span class="n">18</span>Data streams & experience</a><a href="appendix-biomarkers.html">A · Markers (all channels)</a><a href="appendix-wearables.html">B · Wearables</a><a href="purescore-wearable-baselines.html">Baselines (Wearables)</a><a href="questions-hub.html">Intake — overview</a><a href="appendix-onboarding.html">K · Onboarding & first-run</a><a href="appendix-questions.html">C · Screeners & PROs</a><a href="appendix-question-bank.html">E · Question bank</a><a href="appendix-lifestyles.html">F · Lifestyles</a><a href="appendix-wearable-corroboration.html">L · Wearable corroboration</a><a href="eligibility-gating.html">Eligibility & gating</a></div></div><div class="navgrp" data-grp="g3"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">3 · Making it personal</span></button><div class="grp-b"><div class="grp-blurb">Context that reshapes the score: sex, life-stage, conditions, personas.</div><a href="05-sex-specific-models.html"><span class="n">05</span>Sex-specific models</a><a href="06-acute-events-and-life-stage-plans.html"><span class="n">06</span>Acute events & life-stage</a><a href="08-clinical-scores-integration.html"><span class="n">08</span>Clinical scores</a><a href="appendix-personas.html">D · Personas</a><a href="appendix-persona-matrix.html">I · Persona matrix</a><a href="purescore-male.html">PureScore — Male</a><a href="purescore-female.html">PureScore — Female</a></div></div><div class="navgrp" data-grp="g4"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">4 · Acting on it</span></button><div class="grp-b"><div class="grp-blurb">Turning the score into nudges, actions, adherence and goals.</div><a href="07-daily-nudge-engine.html"><span class="n">07</span>Daily nudge engine</a><a href="16-recommended-actions-catalogue.html"><span class="n">16</span>Actions catalogue</a><a href="appendix-adherence.html">H · Adherence</a><a href="appendix-goals.html">J · Goals</a><a href="feedback-loop.html">Feedback-loop demo</a></div></div><div class="navgrp" data-grp="g5"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">5 · Trust &amp; govern</span></button><div class="grp-b"><div class="grp-blurb">Validation, safety, evidence, fairness, localization and the audit.</div><a href="09-cohort-percentiles-and-validation.html"><span class="n">09</span>Cohorts & validation</a><a href="13-validation-and-calibration-harness.html"><span class="n">13</span>Validation harness</a><a href="14-evidence-registry-and-provenance.html"><span class="n">14</span>Evidence registry</a><a href="11-safety-governance-and-regulatory.html"><span class="n">11</span>Safety & governance</a><a href="17-clinician-red-team-and-blind-spots.html"><span class="n">17</span>Clinician red-team</a><a href="15-uae-localization.html"><span class="n">15</span>UAE localization</a><a href="10-actuarial-pricing-and-insurance.html"><span class="n">10</span>Actuarial & insurance</a><a href="appendix-coverage-audit.html">G · Coverage audit</a></div></div><div class="navgrp" data-grp="g6"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">6 · See the system (maps)</span></button><div class="grp-b"><div class="grp-blurb">Diagrams that show the whole machine end-to-end.</div><a href="purescore-dataflow.html">PureScore calculation DFD</a><a href="states.html">Patient life-state machine</a><a href="engagement-state-machines.html">Engagement state machines</a><a href="behemoth-class-diagram.html">Behemoth class diagram</a><a href="wearable-baselines.html">Wearable baselines (mobile)</a></div></div><div class="navgrp" data-grp="g7"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">7 · Build it (engineering)</span></button><div class="grp-b"><div class="grp-blurb">The production object model: classes, ERD, C4, API, stories.</div><a href="class-explorer.html">Class explorer</a><a href="dossier-erd.html">Data model (ERD)</a><a href="dossier-c4.html">C4 architecture</a><a href="dossier-api.html">API contracts</a><a href="dossier-sequences.html">Sequences</a><a href="dossier-stories.html">User stories</a></div></div><div class="navgrp" data-grp="g8"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">8 · Reference — data tables</span></button><div class="grp-b"><div class="grp-blurb">Sortable/filterable spreadsheets of every catalogue.</div><a href="grid-questions.html">Question bank</a><a href="grid-biomarkers.html">Biomarkers</a><a href="grid-wearables.html">Wearables</a><a href="grid-personas.html">Personas</a><a href="grid-lifestyles.html">Lifestyles</a><a href="grid-adherence.html">Adherence</a><a href="grid-goals.html">Goals</a><a href="grid-persona-matrix.html">Persona matrix</a><a href="grid-onboarding.html">Onboarding</a><a href="grid-wearable-corroboration.html">Wearable corroboration</a><a href="grid-erd.html">Data model (ERD)</a></div></div><div class="navgrp" data-grp="g9"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">9 · Doctor's board (admin)</span></button><div class="grp-b"><div class="grp-blurb">The clinician configuration &amp; sign-off surfaces.</div><a href="admin-index.html">Dashboard</a><a href="admin-lab-ranges.html">Lab ranges</a><a href="admin-weights.html">Weights & constants</a><a href="admin-lifestyle.html">Lifestyle / PRO</a><a href="admin-personas.html">Personas & frames</a><a href="admin-governance.html">Governance & sign-off</a></div></div></aside><main class="main"><div class="chapter-ctx"><div class="chx-top"><span class="chx-name">Start here</span><span class="chx-blurb">Orient yourself — what PureScore is and how the pieces connect.</span></div><details class="chx-d"><summary>5 pages in this chapter</summary><nav class="chx-list"><a class="chx-l" href="index.html">Home</a><a class="chx-l cur" href="purescore-uber-map.html">How it all connects</a><a class="chx-l" href="00-vision-principles-and-lessons.html">Vision &amp; principles</a><a class="chx-l" href="conventions.html">Conventions &amp; glossary</a><a class="chx-l" href="decisions.html">Decision log</a></nav></details></div><div class="crumbs"><a href="index.html">Home</a> &rsaquo; Diagrams &amp; system maps &rsaquo; PureScore calculation explorer</div>
+<h1>PureScore Calculation Explorer <span class="small muted">&middot; cockpit &middot; one engine, one JSON</span></h1>
+<div id="fdConfig" class="fd-config"></div>
+
+<div class="ce-tabs">
+  <button class="ce-tab active" data-view="tree">&#9636; Cockpit</button>
+  <button class="ce-tab" data-view="map">&#9638; Flow map</button>
+  <label class="um-lab" style="margin-left:8px">profile <select id="ceProfile" class="um-sel"></select></label>
+  <span class="ce-grow"></span>
+  <button class="um-btn" id="ceFocus" title="hide the wiki chrome for a full-width cockpit">&#10530; focus</button>
+</div>
+
+<div id="ceCockpit">
+  <div class="fd-band">
+    <div class="fd-scorebox"><div class="n" id="fdScoreN">&mdash;</div><div class="ci" id="fdScoreCI"></div><div class="b" id="fdScoreB">PURESCORE</div></div>
+    <div class="fd-companion" id="fdComp"></div>
+    <div class="fd-pillwrap"><div class="fd-seclabel">12 pillars &middot; R_k (click to trace)</div><div class="fd-pillgrid" id="fdPillars"></div></div>
+    <div class="fd-reswrap"><div class="fd-seclabel">15 reservoirs &middot; load</div><div class="fd-restanks" id="fdRes"></div></div>
+  </div>
+
+  <div class="ce-tools ce-treeonly">
+    <label class="um-lab">root <select id="ceRoot" class="um-sel"></select></label>
+    <input id="ceSearch" class="ce-search" type="search" placeholder="&#128269; filter the tree &mdash; marker, formula, constant, gate&hellip;">
+    <span class="um-lab">missing&rarr;</span>
+    <button class="um-btn ce-strm" data-src="lab">labs</button>
+    <button class="um-btn ce-strm" data-src="wearable">wearable</button>
+    <button class="um-btn ce-strm" data-src="pro">PRO</button>
+    <button class="um-btn ce-strm" data-src="clinical">clinical</button>
+    <button class="um-btn" id="ceExpand">expand</button>
+    <button class="um-btn" id="ceCollapse">collapse</button>
+    <button class="um-btn" id="ceResetMk">reset</button>
+    <span class="um-grow"></span>
+    <span id="ceCoverage" class="um-lab"></span>
+  </div>
+
+  <div class="fd-main ce-treeonly">
+    <div class="ce-tree" id="ceTree"></div>
+    <aside class="fd-trace" id="ceTrace"><div class="fd-trace-h">execution trace</div>
+      <div id="ceTraceBody" class="fd-trace-b"><p class="muted small">Click any node (tree, pillar dial, or reservoir tank) to trace its complete execution path &mdash; formula, conditions, actual values and contribution at every level.</p></div></aside>
+  </div>
+
+  <div class="fd-strip ce-treeonly">
+    <div class="fd-card"><div class="fd-card-h">Companion vector</div><div id="fdCompPanel"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Patient action queue &middot; next 5</div><div id="fdQueue"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Adherence check-ins to ask</div><div id="fdCheckins"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Adherence history &middot; 12 wk</div><div id="fdAdhHist"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Wearable baselines &middot; tap to drill <a href="wearable-baselines.html" style="float:right;color:#9cc7f0;text-decoration:none">full app &rsaquo;</a></div><div id="fdWearBase"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Top nudges &middot; &Delta;PureScore</div><div id="fdNudge"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Forecast trajectory</div><div id="fdForecast"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Critical annunciator</div><div id="fdCrit"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Pillar contribution &middot; where points go</div><div id="fdWaterfall"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Data freshness &middot; systems check</div><div id="fdSystems"></div></div>
+    <div class="fd-card"><div class="fd-card-h">What-if vs baseline</div><div id="fdWhatif"></div></div>
+    <div class="fd-card" style="grid-column:1/-1"><div class="fd-card-h">Trends &middot; PureScore &amp; pillars <span id="fdRangeBtns" class="fd-range"></span></div><div id="fdTrend"></div></div>
+  </div>
+</div>
+
+<div class="ce-tools ce-maponly" style="display:none">
+  <label class="um-lab"><input type="checkbox" id="umGates"> firing gates only</label>
+  <button class="um-btn" id="umFit">Fit</button>
+  <button class="um-btn" id="umFs">&#10530; Fullscreen</button>
+</div>
+<div id="umAreas" class="um-areas ce-maponly" style="display:none"></div>
+<div class="um-wrap ce-maponly" id="umWrap" style="display:none"><svg id="umSvg" width="100%" height="100%"></svg>
+  <div class="um-hint">drag = pan &middot; scroll = zoom &middot; click = trace</div></div>
+<div id="ceTip" class="ce-tip"></div>
+
+<style>
+/* ---- shared (map) ---- */
+.um-sel,.um-btn{font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid var(--line,#2a3340);background:var(--bg2,#0c1320);color:inherit;cursor:pointer}
+.um-btn:hover{background:var(--line,#1a2230)}
+.um-lab{font-size:12px;color:var(--dim,#9bb0c5);display:flex;align-items:center;gap:5px}
+.um-grow{flex:1}
+.um-score{font-weight:800;font-size:18px;padding:4px 12px;border-radius:9px;background:#0c1726;border:1px solid #2b5a86;min-width:46px;text-align:center}
+.um-areas{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.um-areas span{font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid;cursor:pointer;user-select:none}
+.um-areas span.off{opacity:.32}
+.um-wrap{position:relative;width:100%;height:600px;border:1px solid var(--line,#222c3a);border-radius:14px;overflow:hidden;background:radial-gradient(1200px 700px at 30% 0,#0e1726,#080d16)}
+.um-wrap.fs{position:fixed;inset:0;height:100vh;width:100vw;z-index:9999;border-radius:0}
+.um-hint{position:absolute;left:12px;bottom:10px;font-size:11px;color:#6b7d92;pointer-events:none}
+#umSvg{display:block;cursor:grab;touch-action:none}
+#umSvg.drag{cursor:grabbing}
+.um-node{cursor:pointer}
+.um-node text{font:600 11.5px Inter,system-ui,sans-serif;fill:#e8eef6;pointer-events:none}
+.um-node .um-val{font-weight:800;font-size:11px;fill:#fff}
+.um-node.on rect{stroke-width:3}
+.um-edge{fill:none;stroke:#36424f;stroke-width:1.3}
+.um-edge.loop{stroke-dasharray:5 4}
+.um-areabg{opacity:.5}
+.um-arealabel{font:700 11px Inter,sans-serif;letter-spacing:.04em;text-transform:uppercase}
+/* ---- tabs / tools ---- */
+.ce-tabs{display:flex;gap:8px;align-items:center;margin:14px 0 8px;border-bottom:1px solid var(--line,#222c3a);padding-bottom:8px}
+.ce-tab{font:inherit;font-size:13px;font-weight:700;padding:7px 14px;border-radius:9px 9px 0 0;border:1px solid transparent;background:none;color:var(--dim,#9bb0c5);cursor:pointer}
+.ce-tab.active{background:#0c1726;border-color:#2b5a86;color:#e8eef6}
+.ce-grow{flex:1}
+.ce-tools{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:8px 0}
+/* ---- flight-deck band ---- */
+.fd-band{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;padding:9px 11px;border:1px solid var(--line,#222c3a);border-radius:14px;background:linear-gradient(180deg,#0c1422,#0a0f18);position:sticky;top:52px;z-index:30}
+/* condensed (pinned) band on scroll */
+.fd-band.cond{padding:5px 9px;gap:8px;box-shadow:0 6px 18px rgba(2,6,12,.5)}
+.fd-band.cond .fd-companion,.fd-band.cond .fd-seclabel{display:none}
+.fd-band.cond .fd-scorebox{min-width:64px;padding:2px 8px}
+.fd-band.cond .fd-scorebox .n{font-size:26px}
+.fd-band.cond .fd-pillgrid{grid-template-columns:repeat(12,1fr);gap:2px}
+.fd-band.cond .fd-pill{padding:1px 2px}
+.fd-band.cond .fd-pill .id span:first-child{display:none}
+.fd-band.cond .fd-pill .r{font-size:10px}
+.fd-band.cond .fd-restanks{height:30px}
+.fd-band.cond .fd-tank{width:9px}
+/* config / weights bar */
+.fd-config{margin:10px 0;border:1px solid var(--line,#222c3a);border-radius:12px;background:#0a1018}
+.fd-cfg-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 11px;cursor:pointer;font-size:11.5px;color:#cfe0f5}
+.fd-cfg-head .k{font-family:ui-monospace,Menlo,monospace;color:#9bb0c5}
+.fd-cfg-head .k b{color:#e8eef6}
+.fd-cfg-head .sp{flex:1}
+.fd-cfg-head .ed{font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid #2b5a86;color:#9cc7f0}
+.fd-cfg-body{display:none;padding:4px 11px 11px;border-top:1px solid #1c2636}
+.fd-config.open .fd-cfg-body{display:block}
+.fd-cfg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:5px 14px;margin:6px 0}
+.fd-knob{display:flex;align-items:center;gap:6px;font-size:11px;color:#9bb0c5}
+.fd-knob label{width:62px;flex:none}
+.fd-knob input[type=range]{flex:1;accent-color:#2ee6c9}
+.fd-knob .vv{width:42px;text-align:right;font-weight:700;color:#e8eef6;font-variant-numeric:tabular-nums}
+.fd-cfg-sub{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#6b7d92;margin:9px 0 3px}
+.fd-cfg-res{font-size:11px;color:#9bb0c5;line-height:1.7}
+.fd-cfg-res b{color:#cfe0f5}
+.fd-cfg-actions{display:flex;gap:8px;align-items:center;margin-top:8px}
+.fd-cfg-warn{font-size:10.5px;color:#edc14a}
+/* focus mode (hide wiki chrome) */
+body.cefocus .topbar,body.cefocus .side,body.cefocus .chapter-ctx,body.cefocus .crumbs,body.cefocus .pn,body.cefocus .wf,body.cefocus .connects{display:none!important}
+body.cefocus .shell{display:block}
+body.cefocus .main{max-width:none;width:100%;padding:8px 14px}
+body.cefocus .fd-band{top:0}
+.fd-scorebox{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:92px;padding:4px 12px;border-radius:12px;background:#0a1726;border:1px solid #2b5a86}
+.fd-scorebox .n{font-size:40px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums}
+.fd-scorebox .b{font-size:9px;letter-spacing:.1em;margin-top:4px;font-weight:700}
+.fd-companion{display:grid;grid-template-columns:repeat(2,auto);gap:4px 12px;align-content:center;padding:2px 10px;border-left:1px solid #1c2636;border-right:1px solid #1c2636}
+.fd-gauge{font-size:11px;color:#9bb0c5;white-space:nowrap}
+.fd-gauge b{color:#e8eef6;font-weight:700;font-variant-numeric:tabular-nums}
+.fd-seclabel{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#6b7d92;margin-bottom:4px}
+.fd-pillwrap{flex:1;min-width:250px}
+.fd-pillgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.fd-pill{border:1px solid #243042;border-radius:8px;padding:3px 5px;background:#0c1320;cursor:pointer}
+.fd-pill:hover{border-color:#3a6ea5}
+.fd-pill .id{font-size:9.5px;font-weight:800;color:#cfe0f5;display:flex;justify-content:space-between}
+.fd-pill .r{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.fd-pill .bar{height:4px;border-radius:3px;background:#1c2636;margin-top:2px;overflow:hidden}
+.fd-pill .bar i{display:block;height:100%}
+.fd-pill.crit{box-shadow:0 0 0 1px #f0606e inset}
+.fd-pill.lowcov{border-style:dashed;opacity:.78}
+.fd-reswrap{min-width:236px}
+.fd-restanks{display:flex;gap:3px;align-items:flex-end;height:52px}
+.fd-tank{width:12px;background:#0c1320;border:1px solid #243042;border-radius:3px;height:100%;display:flex;flex-direction:column-reverse;cursor:pointer}
+.fd-tank i{display:block;width:100%}
+.fd-tank.asset i{background:#3ad6a0}.fd-tank.burden i{background:#e0796b}
+.fd-tank:hover{border-color:#3a6ea5}
+/* ---- main: tree | trace ---- */
+.fd-main{display:grid;grid-template-columns:1fr 360px;gap:10px;margin-top:8px;align-items:start}
+.ce-tree{min-width:0;border:1px solid var(--line,#222c3a);border-radius:14px;background:#0a1018;padding:8px 6px;overflow:auto;max-height:72vh}
+.fd-trace{border:1px solid var(--line,#222c3a);border-radius:14px;background:#0a1018;max-height:72vh;overflow:auto;position:sticky;top:8px}
+.fd-trace-h{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#9bb0c5;padding:9px 12px;border-bottom:1px solid #1c2636;position:sticky;top:0;background:#0c1422;z-index:2}
+.fd-trace-b{padding:11px 13px;font-size:12.5px;color:#cdd9e8}
+.fd-trace-b pre{background:#080d18;border:1px solid #1c2636;border-radius:8px;padding:8px 10px;font-size:11.5px;overflow:auto;color:#bcd2f0;white-space:pre-wrap;margin:5px 0}
+.fd-k{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#6b7d92;margin:11px 0 3px}
+.fd-path{list-style:none;margin:0;padding:0}
+.fd-path li{padding:4px 8px;border-left:2px solid #243042;margin:2px 0;font-size:12px;font-variant-numeric:tabular-nums}
+.fd-path li b{color:#fff}
+.fd-live{margin-top:8px;padding:8px 10px;border-radius:8px;background:#0c1726;border:1px solid #2b5a86}
+/* ---- bottom strip ---- */
+.fd-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:10px;margin-top:10px}
+.fd-card{border:1px solid var(--line,#222c3a);border-radius:12px;background:#0a1018;padding:8px 11px;min-height:104px}
+.fd-card-h{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#6b7d92;margin-bottom:6px}
+.fd-nud{display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0}
+.fd-nud .d{margin-left:auto;font-weight:800;color:#3ad6a0;font-variant-numeric:tabular-nums}
+.fd-ping{display:inline-block;font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid #2a3a4d;margin:2px 3px 0 0;color:#cfe0f5}
+/* companion vector bars */
+.fd-cv{display:flex;align-items:center;gap:7px;font-size:11px;margin:3px 0}
+.fd-cv .l{width:78px;color:#9bb0c5;flex:none}
+.fd-cv .t{width:100%;height:6px;border-radius:4px;background:#1c2636;overflow:hidden}
+.fd-cv .t i{display:block;height:100%;background:#49c6d8}
+.fd-cv .v{width:54px;text-align:right;font-weight:700;color:#e8eef6;font-variant-numeric:tabular-nums;flex:none}
+/* patient action queue */
+.fd-q{border:1px solid #1c2636;border-radius:8px;padding:5px 8px;margin:4px 0;background:#0c1320}
+.fd-q .t{font-size:12px;font-weight:700;color:#e8eef6}
+.fd-q .m{font-size:10.5px;color:#9bb0c5;margin-top:1px}
+.fd-q .tag{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;border:1px solid #2b5a86;color:#9cc7f0;margin-right:5px}
+.fd-q .d{float:right;font-weight:800;color:#3ad6a0;font-size:11px}
+/* check-in questions */
+.fd-ci{margin:5px 0;font-size:12px}
+.fd-ci .s{color:#dbe6f3}
+.fd-ci .o{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px}
+.fd-ci .o span{font-size:10px;padding:1px 6px;border-radius:5px;border:1px solid #2a3a4d;color:#9bb0c5}
+/* adherence history */
+.fd-hist-wk{display:flex;gap:3px;margin:4px 0}
+.fd-hist-wk i{width:12px;height:12px;border-radius:3px;display:block}
+.fd-hrow{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#9bb0c5;margin:2px 0}
+.fd-hrow .nm{width:84px;flex:none}
+.fd-hrow .cells{display:flex;gap:2px}
+.fd-hrow .cells i{width:10px;height:10px;border-radius:2px;display:block}
+/* score ± CI */
+.fd-scorebox .ci{font-size:10px;color:#9bb0c5;margin-top:2px;font-weight:700}
+.fd-scorebox .ci .prov{color:#edc14a}
+/* waterfall */
+.fd-wf{display:flex;align-items:center;gap:6px;font-size:11px;margin:2px 0;cursor:pointer}
+.fd-wf:hover{background:#101a28;border-radius:5px}
+.fd-wf .id{width:34px;font-weight:800;color:#cfe0f5;flex:none}
+.fd-wf .t{flex:1;height:9px;background:#1c2636;border-radius:4px;overflow:hidden}
+.fd-wf .t i{display:block;height:100%}
+.fd-wf .v{width:34px;text-align:right;color:#e8eef6;font-weight:700;font-variant-numeric:tabular-nums;flex:none}
+/* systems check */
+.fd-sys{display:flex;align-items:center;gap:7px;font-size:11px;margin:3px 0}
+.fd-sys .ch{width:74px;flex:none;color:#cfe0f5;font-weight:600}
+.fd-sys .st{font-weight:800}
+.fd-sys .meta{margin-left:auto;color:#9bb0c5;font-variant-numeric:tabular-nums}
+/* what-if */
+.fd-wi{display:flex;align-items:center;gap:6px;font-size:11.5px;margin:2px 0;font-variant-numeric:tabular-nums}
+.fd-wi .m{flex:1;color:#dbe6f3}
+.fd-wi .d{font-weight:800}
+.fd-wi .net{border-top:1px solid #1c2636;margin-top:4px;padding-top:4px;font-weight:800}
+/* critical annunciator */
+.fd-crit{border:1px solid #7a3344;border-radius:8px;background:#1a0c12;padding:6px 9px;margin:4px 0;font-size:11.5px}
+.fd-crit .h{font-weight:800;color:#ffb9c6}
+.fd-crit .x{color:#e8c7cf;margin-top:2px}
+.fd-crit .sm{margin-top:3px;color:#cdd9e8}
+.fd-crit .sm b{color:#fff}
+.fd-ok{font-size:12px;color:#3ad6a0}
+/* trend + range */
+.fd-range{float:right}
+.fd-range button{font:inherit;font-size:10px;padding:1px 7px;border-radius:6px;border:1px solid #2a3a4d;background:#0c1622;color:#9bb0c5;cursor:pointer;margin-left:3px}
+.fd-range button.on{background:#16335e;border-color:#3a6ea5;color:#fff}
+.fd-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:10.5px;margin-top:4px;color:#9bb0c5}
+.fd-legend span i{display:inline-block;width:10px;height:3px;vertical-align:middle;margin-right:3px}
+/* wearable baselines */
+.fd-wb{display:flex;align-items:center;gap:7px;font-size:11.5px;padding:3px 4px;border-radius:6px;cursor:pointer}
+.fd-wb:hover{background:#101a28}
+.fd-wb.off{opacity:.45;cursor:default}
+.fd-wb .nm{width:96px;flex:none;color:#cfe0f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fd-wb svg{flex:none}
+.fd-wb .tv{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;color:#e8eef6}
+.fd-wb .zc{width:44px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.fd-wb .meta{margin-left:auto;color:#6b7d92}
+.fd-band-viz{position:relative;height:14px;background:#1c2636;border-radius:7px;margin:6px 0}
+.fd-band-viz .b1{position:absolute;top:0;bottom:0;left:25%;right:25%;background:rgba(58,214,160,.22);border-left:1px solid rgba(58,214,160,.6);border-right:1px solid rgba(58,214,160,.6)}
+.fd-band-viz .mk{position:absolute;top:-3px;width:3px;height:20px;background:#fff;border-radius:2px}
+/* ---- tree rows ---- */
+.ce-row{display:flex;align-items:center;gap:7px;padding:2px 8px;margin:1px 0;border-left:3px solid #2a3340;border-radius:0 7px 7px 0;cursor:pointer;font-size:13px}
+.ce-row:hover{background:#101a28}
+.ce-row.sel{background:#11233a;outline:1px solid #2b5a86}
+.ce-row.has>.ce-lab{font-weight:600}
+.ce-car{width:12px;color:#6b7d92;font-size:10px;flex:none}
+.ce-car.open{color:#2ee6c9}
+.ce-lab{color:#dbe6f3}
+.ce-val{margin-left:auto;font-weight:700;font-size:12px;color:#cfe0f5;font-family:ui-monospace,Menlo,monospace;white-space:nowrap}
+.ce-val.z-green{color:#3ad6a0}.ce-val.z-yellow{color:#edc14a}.ce-val.z-red{color:#f0606e}
+.ce-rng{width:108px;accent-color:#2ee6c9;margin-left:auto}
+.ce-rng+.ce-val{margin-left:8px;min-width:70px;text-align:right}
+.ce-rng:disabled{opacity:.3}
+.ce-i{flex:none;background:none;border:none;color:#5b7790;cursor:pointer;font-size:13px;padding:0 2px}
+.ce-i:hover{color:#2ee6c9}
+.ce-cap{font-size:10px;color:#6b7d92;margin-left:6px;white-space:nowrap}
+/* ---- decision branches ---- */
+.ce-row.ce-active{background:rgba(58,214,160,.08)}
+.ce-row.ce-active>.ce-car{color:#3ad6a0}.ce-row.ce-active>.ce-val{color:#3ad6a0}
+.ce-row.ce-inactive{opacity:.4}.ce-row.ce-inactive>.ce-car{color:#6b7d92}
+/* ---- data-state ---- */
+.ce-state{flex:none;width:20px;height:18px;border-radius:5px;border:1px solid #2a3a4d;background:#0c1622;color:#9bb0c5;font-size:10px;font-weight:800;cursor:pointer;padding:0}
+.ce-state.s-present{border-color:#2f6b48;color:#3ad6a0}
+.ce-state.s-stale{border-color:#7a5f24;color:#edc14a;background:#1d1a0c}
+.ce-state.s-missing{border-color:#7a3344;color:#f0606e;background:#2a1118}
+/* ---- PRO questionnaire ---- */
+.ce-qitem{display:flex;align-items:center;gap:6px;padding:2px 8px 2px 26px;font-size:12px}
+.ce-qitem .q{flex:1;color:#c5d3e6}
+.ce-qopt{display:flex;gap:2px}
+.ce-qopt button{width:18px;height:18px;border-radius:4px;border:1px solid #2a3a4d;background:#0c1622;color:#9bb0c5;font-size:10px;cursor:pointer;padding:0}
+.ce-qopt button.on{background:#16335e;border-color:#3a6ea5;color:#fff}
+/* ---- search + streams ---- */
+.ce-search{flex:1;min-width:200px;font:inherit;font-size:13px;padding:6px 10px;border-radius:9px;border:1px solid var(--line,#2a3340);background:var(--bg2,#0c1320);color:inherit}
+.ce-strm.on{background:#2a1118;border-color:#7a3344;color:#ffb9c6}
+/* ---- chips + tip ---- */
+.ce-chip{font-size:11px;padding:2px 8px;border-radius:7px;border:1px solid #2a3a4d;background:#0c1622;color:#cfe0f5;text-decoration:none}
+a.ce-chip:hover{border-color:#2ee6c9;color:#fff}
+.ce-chips{display:flex;flex-wrap:wrap;gap:5px}
+.ce-tip{position:fixed;z-index:9999;pointer-events:none;background:#0d1422;border:1px solid #2b5a86;border-radius:8px;padding:7px 10px;font-size:11.5px;color:#cfe0f5;max-width:260px;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.ce-tip b{color:#fff}
+@media(max-width:900px){.fd-main{grid-template-columns:1fr}.fd-strip{grid-template-columns:1fr}.fd-pillgrid{grid-template-columns:repeat(4,1fr)}}
+</style>
+<script src="assets/calc-data.js"></script>
+<script src="assets/engine.js"></script>
+<script src="assets/calc-explorer.js"></script><div class="connects"><div class="cx-h">Connects to</div><div class="cx-row"><span class="cx-k">Pages</span><a class="cx-chip" href="index.html">Home</a> <a class="cx-chip" href="conventions.html">Conventions &amp; glossary</a> <a class="cx-chip" href="00-vision-principles-and-lessons.html">Vision &amp; principles</a> <a class="cx-chip" href="decisions.html">Decision log</a></div><div class="cx-row"><span class="cx-k">Diagrams</span><a class="cx-chip" href="wearable-baselines.html">Wearable baselines (mobile)</a></div></div><nav class="pn"><a class="prev" href="index.html"><div class="lbl">← Previous</div><div class="ttl">Home</div></a><a class="next" href="00-vision-principles-and-lessons.html"><div class="lbl">Next →</div><div class="ttl">Doc 00 · Vision & principles</div></a></nav><footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · illustrative design, re-verify before production (README §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
+<script src="assets/wiki.js"></script></body></html>

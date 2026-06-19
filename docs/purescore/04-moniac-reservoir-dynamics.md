@@ -21,9 +21,10 @@ leakage (taxes/savings draining a tank). PureScore models the body the same way:
 
 Two reservoir polarities:
 - **Burden** (water you don't want): glycemic burden, atherogenic burden, inflammatory load,
-  sleep debt, adiposity, hepatic fat, allostatic/stress load. High = bad.
+  sleep debt, adiposity, hepatic fat, allostatic/stress load, vascular/BP load. High = bad.
 - **Reserve / asset** (water you *do* want): cardiorespiratory reserve, muscle/strength reserve,
-  bone reserve, renal reserve, micronutrient reserve. High = good; depletion = risk.
+  bone reserve, renal reserve, micronutrient reserve, oxygen-delivery reserve, iron reserve.
+  High = good; depletion = risk.
 
 This is the "biomoniac asset reservoir and burdens" the brief asked for, connected to
 cohort-specific lifestyle goals (Doc 06).
@@ -44,8 +45,13 @@ cohort-specific lifestyle goals (Doc 06).
 | BON | Bone reserve | **asset** | weight-bearing, vit D/Ca, hormones | very slow (years) | BCM |
 | RENR | Renal reserve | **asset** | inverse of GLY/BP/UACR damage | slow, partly irreversible | REN |
 | MICR | Micronutrient reserve | **asset** | vit D/B12/iron/omega-3 intake | weeks–months | NUT, HEM, MCS |
+| VBP | Vascular / BP load | burden | systolic/diastolic BP·time, arterial stiffness | months–years (partly structural) | CV, REN |
+| OXD | Oxygen-delivery reserve | **asset** | hemoglobin, SpO₂, iron sufficiency, cardiorespiratory fitness | weeks–months | HEM, CV, FIT |
+| IRON | Iron reserve | **asset** | dietary iron, ferritin / transferrin-sat, menstrual/GI losses | weeks–months | HEM, NUT |
 
-(IDs are stable; the table is extensible per cohort — e.g., a pregnancy reservoir set in Doc 05.)
+(IDs are stable; the table is extensible per cohort — e.g., a pregnancy reservoir set in Doc 05.
+VBP/OXD/IRON were promoted from the Appendix E question-bank mapping so the LIFE-stream weights
+target a single canonical reservoir set.)
 
 ## 3. State equation (discrete stock-and-flow)
 

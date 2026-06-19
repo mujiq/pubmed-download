@@ -1,0 +1,799 @@
+{
+  "domain": "SLEEP_FATIGUE",
+  "questions": [
+    {
+      "id": "Q_SLEEP_DURATION",
+      "text": "On a typical weeknight, how many hours of sleep do you actually get (not just time in bed)?",
+      "category": "Sleep Quantity",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["insomnia", "chronic_fatigue_syndrome", "excessive_daytime_sleepiness", "poor_sleep_quality"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Less than 5 hours", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.28, "MCS": 0.14, "CV": 0.10, "MET": 0.08, "INF": 0.10 }, "reservoirs": { "sleep_debt": 0.20, "allostatic_load": 0.14, "inflammatory_load": 0.10, "glycemic_burden": 0.08 } },
+        { "label": "5–6 hours", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.18, "MCS": 0.08, "CV": 0.06, "MET": 0.06, "INF": 0.06 }, "reservoirs": { "sleep_debt": 0.14, "allostatic_load": 0.08, "inflammatory_load": 0.06 } },
+        { "label": "7–8 hours", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "SLP": -0.05 }, "reservoirs": { "sleep_debt": -0.10 } },
+        { "label": "9+ hours", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.06, "MCS": 0.05 }, "reservoirs": { "sleep_debt": 0.05, "allostatic_load": 0.05 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep"], "personas": ["athlete", "menopause", "elderly", "ramadan_dm"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Less than 5 hours", "ask": "Q_SLEEP_INSOMNIA_DX" },
+          { "if_response": "5–6 hours", "ask": "Q_SLEEP_ONSET_LATENCY" }
+        ],
+        "validated_by": "ISI"
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep_duration"] },
+      "source": "Cappuccio et al. 2010 Sleep meta-analysis; Xie et al. 2013 glymphatic; ISI item proxy",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_ONSET_LATENCY",
+      "text": "On most nights, how long does it take you to fall asleep after getting into bed?",
+      "category": "Sleep Quality",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["insomnia", "poor_sleep_quality", "circadian_disruption_shift_work"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Under 15 minutes", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "SLP": -0.05 }, "reservoirs": { "sleep_debt": -0.05 } },
+        { "label": "15–30 minutes", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "31–60 minutes", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.14, "MCS": 0.08 }, "reservoirs": { "sleep_debt": 0.10, "allostatic_load": 0.08 } },
+        { "label": "More than 60 minutes", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.24, "MCS": 0.12 }, "reservoirs": { "sleep_debt": 0.16, "allostatic_load": 0.12 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "More than 60 minutes", "ask": "Q_SLEEP_INSOMNIA_DX" }
+        ],
+        "validated_by": "ISI"
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep_duration"] },
+      "source": "ISI item 1; Morin et al. 2011 Insomnia Severity Index validation",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_NIGHT_WAKING",
+      "text": "How often do you wake up during the night and have difficulty getting back to sleep?",
+      "category": "Sleep Quality",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["insomnia", "poor_sleep_quality", "obstructive_sleep_apnea"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely or never", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "SLP": -0.05 }, "reservoirs": { "sleep_debt": -0.05 } },
+        { "label": "1–2 nights/week", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08, "MCS": 0.05 }, "reservoirs": { "sleep_debt": 0.06, "allostatic_load": 0.05 } },
+        { "label": "3–4 nights/week", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.16, "MCS": 0.08 }, "reservoirs": { "sleep_debt": 0.12, "allostatic_load": 0.08 } },
+        { "label": "5+ nights/week", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.24, "MCS": 0.12, "CV": 0.06 }, "reservoirs": { "sleep_debt": 0.18, "allostatic_load": 0.12, "inflammatory_load": 0.06 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep"], "personas": ["menopause", "elderly"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "5+ nights/week", "ask": "Q_SLEEP_SNORING" }
+        ],
+        "validated_by": "ISI"
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep_duration"] },
+      "source": "ISI item 2; Buysse PSQI item; Ohayon 2002 epidemiology",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_EARLY_WAKING",
+      "text": "Do you wake up earlier than intended and cannot get back to sleep?",
+      "category": "Sleep Quality",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["insomnia", "poor_sleep_quality"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Never or rarely", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Sometimes (1–2×/week)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08, "MCS": 0.06 }, "reservoirs": { "sleep_debt": 0.08, "allostatic_load": 0.06 } },
+        { "label": "Often (3–4×/week)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.16, "MCS": 0.10 }, "reservoirs": { "sleep_debt": 0.12, "allostatic_load": 0.08 } },
+        { "label": "Every night or almost every night", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.22, "MCS": 0.14 }, "reservoirs": { "sleep_debt": 0.16, "allostatic_load": 0.12 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "stress"], "personas": ["menopause", "elderly"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "ISI"
+      },
+      "priority": 2,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep_duration"] },
+      "source": "ISI item 3; Riemann et al. 2017 ESS insomnia guideline",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_INSOMNIA_DX",
+      "text": "Have you ever been diagnosed with insomnia or prescribed sleep medication?",
+      "category": "Diagnosed Conditions",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["insomnia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes, diagnosed but not currently medicated", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.16, "MCS": 0.08 }, "reservoirs": { "sleep_debt": 0.12, "allostatic_load": 0.08 } },
+        { "label": "Yes, currently taking sleep medication", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.18, "MCS": 0.10 }, "reservoirs": { "sleep_debt": 0.14, "allostatic_load": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "condition_load"], "personas": ["elderly", "menopause"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "ISI"
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": [] },
+      "source": "Morin & Benca 2012 Lancet insomnia review; ISI clinical threshold",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_SNORING",
+      "text": "Has a bed partner or family member reported that you snore loudly, gasp, or stop breathing during sleep?",
+      "category": "Sleep-Disordered Breathing",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["obstructive_sleep_apnea", "excessive_daytime_sleepiness"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No / no bed partner to ask", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Snores loudly but no pauses reported", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08, "CV": 0.06 }, "reservoirs": { "sleep_debt": 0.06, "vascular_bp_load": 0.05 } },
+        { "label": "Witnessed gasping or choking (no confirmed apneas)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.16, "CV": 0.10 }, "reservoirs": { "sleep_debt": 0.10, "vascular_bp_load": 0.08, "inflammatory_load": 0.06 } },
+        { "label": "Witnessed breathing pauses / confirmed apneas", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.26, "CV": 0.18, "MET": 0.08, "INF": 0.08 }, "reservoirs": { "sleep_debt": 0.16, "vascular_bp_load": 0.14, "inflammatory_load": 0.10, "glycemic_burden": 0.06 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep"], "personas": ["elderly"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Witnessed gasping or choking (no confirmed apneas)", "ask": "Q_SLEEP_OSA_DX" },
+          { "if_response": "Witnessed breathing pauses / confirmed apneas", "ask": "Q_SLEEP_OSA_DX" }
+        ]
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.spo2"] },
+      "source": "STOP-BANG questionnaire items S+T; Peppard et al. 2013 NEJM OSA epidemiology",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_OSA_DX",
+      "text": "Have you been diagnosed with obstructive sleep apnea (OSA), and if so, are you currently on CPAP or other treatment?",
+      "category": "Diagnosed Conditions",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["obstructive_sleep_apnea", "excessive_daytime_sleepiness"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No diagnosis", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Diagnosed, on CPAP / treatment (adherent)", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "SLP": -0.10, "CV": -0.08 }, "reservoirs": { "sleep_debt": -0.08, "vascular_bp_load": -0.06 } },
+        { "label": "Diagnosed, not currently treated", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.26, "CV": 0.18, "MET": 0.08, "INF": 0.08 }, "reservoirs": { "sleep_debt": 0.18, "vascular_bp_load": 0.14, "inflammatory_load": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "condition_load"], "personas": ["elderly"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_SLEEP_SNORING", "in": ["Witnessed gasping or choking (no confirmed apneas)", "Witnessed breathing pauses / confirmed apneas"] }],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["wearable.spo2"] },
+      "source": "Young et al. 2002 OSA prevalence NEJM; CPAP adherence outcomes Weaver 2008",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_EPWORTH",
+      "text": "How likely are you to doze off or fall asleep in the following situations? — sitting and reading, watching TV, sitting quietly in a public place. Rate overall tendency (0=no chance, 3=high chance each; sum).",
+      "category": "Daytime Sleepiness",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["excessive_daytime_sleepiness", "obstructive_sleep_apnea", "chronic_fatigue_syndrome"],
+      "stream": "LIFE",
+      "type": "scale",
+      "responses": [
+        { "label": "0–4 (low sleepiness)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "5–8 (mild sleepiness)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08, "MCS": 0.05 }, "reservoirs": { "sleep_debt": 0.06, "allostatic_load": 0.05 } },
+        { "label": "9–14 (moderate sleepiness)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.16, "MCS": 0.08, "CV": 0.05 }, "reservoirs": { "sleep_debt": 0.12, "allostatic_load": 0.08 } },
+        { "label": "15–24 (severe sleepiness)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.26, "MCS": 0.12, "CV": 0.08 }, "reservoirs": { "sleep_debt": 0.18, "allostatic_load": 0.12, "vascular_bp_load": 0.06 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "occupation"], "personas": ["athlete", "elderly"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "9–14 (moderate sleepiness)", "ask": "Q_SLEEP_OSA_DX" },
+          { "if_response": "15–24 (severe sleepiness)", "ask": "Q_SLEEP_OSA_DX" }
+        ],
+        "validated_by": "ISI"
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep_duration"] },
+      "source": "Epworth Sleepiness Scale (Johns 1991/1993) — shortened proxy 3-item version",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_SATISFACTION",
+      "text": "Overall, how satisfied are you with your sleep?",
+      "category": "Sleep Quality",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["insomnia", "poor_sleep_quality"],
+      "stream": "LIFE",
+      "type": "scale",
+      "responses": [
+        { "label": "Very satisfied", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "SLP": -0.06 }, "reservoirs": { "sleep_debt": -0.05, "allostatic_load": -0.05 } },
+        { "label": "Satisfied", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Moderately dissatisfied", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.14, "MCS": 0.08 }, "reservoirs": { "sleep_debt": 0.10, "allostatic_load": 0.08 } },
+        { "label": "Very / extremely dissatisfied", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.24, "MCS": 0.14 }, "reservoirs": { "sleep_debt": 0.16, "allostatic_load": 0.12 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "ISI"
+      },
+      "priority": 2,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep_duration"] },
+      "source": "ISI item 4 (sleep satisfaction domain); Bastien et al. 2001 ISI validation",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_DAYTIME_IMPAIRMENT",
+      "text": "How much does your sleep problem interfere with your daily functioning (concentration, mood, performance)?",
+      "category": "Sleep Quality",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["insomnia", "chronic_fatigue_syndrome", "excessive_daytime_sleepiness"],
+      "stream": "LIFE",
+      "type": "scale",
+      "responses": [
+        { "label": "Not at all", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Slightly", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.06, "MCS": 0.05 }, "reservoirs": { "sleep_debt": 0.05, "allostatic_load": 0.05 } },
+        { "label": "Somewhat", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.14, "MCS": 0.10 }, "reservoirs": { "sleep_debt": 0.10, "allostatic_load": 0.08 } },
+        { "label": "Much", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.22, "MCS": 0.16 }, "reservoirs": { "sleep_debt": 0.14, "allostatic_load": 0.12 } },
+        { "label": "Very much", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.28, "MCS": 0.18 }, "reservoirs": { "sleep_debt": 0.18, "allostatic_load": 0.16 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "cognition", "occupation"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "ISI"
+      },
+      "priority": 2,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "ISI items 5–7 (daytime functioning domain); Morin et al. 2011",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_CAFFEINE_TIMING",
+      "text": "What is the latest time of day you typically have caffeinated drinks (coffee, tea, energy drinks)?",
+      "category": "Sleep Hygiene",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["insomnia", "poor_sleep_quality", "circadian_disruption_shift_work"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Before noon only", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "SLP": -0.05 }, "reservoirs": { "sleep_debt": -0.05 } },
+        { "label": "Up to 2 pm", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "2–5 pm", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08 }, "reservoirs": { "sleep_debt": 0.06 } },
+        { "label": "After 5 pm", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.14, "MCS": 0.06 }, "reservoirs": { "sleep_debt": 0.10, "allostatic_load": 0.05 } },
+        { "label": "I don't consume caffeine", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "SLP": -0.03 }, "reservoirs": { "sleep_debt": -0.03 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "diet", "substance"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "Drake et al. 2013 JCSM caffeine half-life sleep disruption; SCRD sleep hygiene guidance",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_SCREEN_LIGHT",
+      "text": "How often do you use screens (phone, tablet, computer, TV) within 1 hour of bedtime?",
+      "category": "Sleep Hygiene",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["insomnia", "poor_sleep_quality", "circadian_disruption_shift_work"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely or never", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "SLP": -0.05 }, "reservoirs": { "sleep_debt": -0.05 } },
+        { "label": "1–2 nights/week", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "3–5 nights/week", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08, "MCS": 0.05 }, "reservoirs": { "sleep_debt": 0.06, "allostatic_load": 0.05 } },
+        { "label": "Every night", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.14, "MCS": 0.08 }, "reservoirs": { "sleep_debt": 0.10, "allostatic_load": 0.06 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "environment"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "ISI"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "Chang et al. 2015 PNAS blue-light melatonin suppression; Exelmans & Van den Bulck 2017",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_SHIFT_WORK",
+      "text": "Do you currently work shift work, rotating shifts, or night shifts?",
+      "category": "Circadian Disruption",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["circadian_disruption_shift_work", "insomnia", "excessive_daytime_sleepiness"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No, regular daytime schedule", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Rotating shifts (not nights)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08, "MET": 0.06, "ENDO": 0.05 }, "reservoirs": { "sleep_debt": 0.06, "glycemic_burden": 0.05, "allostatic_load": 0.05 } },
+        { "label": "Fixed night shifts", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.18, "MET": 0.10, "CV": 0.08, "ENDO": 0.08, "INF": 0.06 }, "reservoirs": { "sleep_debt": 0.14, "glycemic_burden": 0.10, "allostatic_load": 0.10, "inflammatory_load": 0.06 } },
+        { "label": "Irregular / on-call schedule", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.16, "MET": 0.08, "MCS": 0.06 }, "reservoirs": { "sleep_debt": 0.12, "allostatic_load": 0.10, "glycemic_burden": 0.06 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "occupation"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Fixed night shifts", "ask": "Q_SLEEP_SHIFT_DURATION" },
+          { "if_response": "Rotating shifts (not nights)", "ask": "Q_SLEEP_SHIFT_DURATION" }
+        ]
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["wearable.sleep_duration"] },
+      "source": "Knutsson 2003 Occup Med shift work metabolic review; Garde et al. 2020 circadian disruption",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_SHIFT_DURATION",
+      "text": "For how many years have you been doing shift work or night shifts?",
+      "category": "Circadian Disruption",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["circadian_disruption_shift_work"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Less than 1 year", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.06, "MET": 0.05 }, "reservoirs": { "sleep_debt": 0.05, "glycemic_burden": 0.05 } },
+        { "label": "1–5 years", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.12, "MET": 0.08, "CV": 0.06 }, "reservoirs": { "sleep_debt": 0.10, "glycemic_burden": 0.08, "allostatic_load": 0.06 } },
+        { "label": "More than 5 years", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.20, "MET": 0.14, "CV": 0.10, "INF": 0.08 }, "reservoirs": { "sleep_debt": 0.14, "glycemic_burden": 0.12, "allostatic_load": 0.10, "inflammatory_load": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "occupation"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_SLEEP_SHIFT_WORK", "in": ["Fixed night shifts", "Rotating shifts (not nights)", "Irregular / on-call schedule"] }],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": [] },
+      "source": "Vyas et al. 2012 BMJ shift work duration cardiovascular meta-analysis",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_BEDTIME_REGULARITY",
+      "text": "How consistent is your bedtime across weekdays and weekends?",
+      "category": "Circadian Disruption",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["circadian_disruption_shift_work", "insomnia", "poor_sleep_quality"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Very consistent (within 30 min)", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "SLP": -0.12 }, "reservoirs": { "sleep_debt": -0.10, "allostatic_load": -0.06 } },
+        { "label": "Somewhat consistent (30–60 min variation)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Variable (1–2 hours different)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08, "MET": 0.05 }, "reservoirs": { "sleep_debt": 0.06, "glycemic_burden": 0.05 } },
+        { "label": "Highly variable (2+ hours)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.16, "MET": 0.08, "MCS": 0.06 }, "reservoirs": { "sleep_debt": 0.12, "glycemic_burden": 0.08, "allostatic_load": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep_duration"] },
+      "source": "Phillips et al. 2017 sleep regularity index; social jetlag Wittmann et al. 2006",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_NAPPING",
+      "text": "How often do you nap during the day, and for how long?",
+      "category": "Sleep Patterns",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["excessive_daytime_sleepiness", "poor_sleep_quality", "insomnia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely or never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Short nap (<30 min) a few times a week", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "SLP": -0.05, "MCS": -0.03 }, "reservoirs": { "sleep_debt": -0.05, "allostatic_load": -0.03 } },
+        { "label": "Long nap (30–90 min) daily", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.06, "CV": 0.05 }, "reservoirs": { "sleep_debt": 0.05, "vascular_bp_load": 0.03 } },
+        { "label": "Multiple long naps or >90 min daily", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.14, "CV": 0.08, "MCS": 0.06 }, "reservoirs": { "sleep_debt": 0.10, "allostatic_load": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep"], "personas": ["elderly", "ramadan_dm"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Multiple long naps or >90 min daily", "ask": "Q_SLEEP_EPWORTH" }
+        ]
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep_duration"] },
+      "source": "Leng et al. 2019 napping mortality meta-analysis; Mantua & Spencer 2017 cognitive review",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_RESTLESS_LEGS",
+      "text": "Do you experience uncomfortable sensations in your legs at rest (urge to move, creeping, crawling feelings) that are worse in the evening or at night and relieved by movement?",
+      "category": "Restless Legs",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["restless_legs", "poor_sleep_quality", "insomnia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Occasionally (< once a week)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08, "MCS": 0.05 }, "reservoirs": { "sleep_debt": 0.06, "allostatic_load": 0.05 } },
+        { "label": "Frequently (1–3 times a week)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.16, "MCS": 0.08 }, "reservoirs": { "sleep_debt": 0.12, "allostatic_load": 0.08 } },
+        { "label": "Most nights or every night", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.24, "MCS": 0.10, "INF": 0.06 }, "reservoirs": { "sleep_debt": 0.16, "allostatic_load": 0.10, "iron_reserve": -0.06 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "pain"], "personas": ["elderly", "menopause"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Most nights or every night", "ask": "Q_SLEEP_RLS_IRON" }
+        ]
+      },
+      "priority": 2,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "IRLSSG diagnostic criteria; Allen et al. 2014 IRLSS validation; prevalence 5–15%",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_RLS_IRON",
+      "text": "Have you been told you have low iron stores (ferritin) or anaemia?",
+      "category": "Restless Legs",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["restless_legs"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No / not tested", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Low ferritin only (no anaemia)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.12, "HEM": 0.10 }, "reservoirs": { "iron_reserve": -0.10, "sleep_debt": 0.08 } },
+        { "label": "Iron-deficiency anaemia diagnosed", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.18, "HEM": 0.16 }, "reservoirs": { "iron_reserve": -0.16, "oxygen_delivery_reserve": -0.10, "sleep_debt": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "condition_load"], "personas": ["menopause"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_SLEEP_RESTLESS_LEGS", "in": ["Most nights or every night"] }],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.ferritin", "lab.Hb"] },
+      "source": "Trotti & Becker 2019 low ferritin RLS; serum ferritin <50 mcg/L threshold",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_FATIGUE_SEVERITY",
+      "text": "In the past month, how would you rate your overall fatigue / energy level on a typical day?",
+      "category": "Fatigue & Energy",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["chronic_fatigue_syndrome", "excessive_daytime_sleepiness", "poor_sleep_quality"],
+      "stream": "LIFE",
+      "type": "scale",
+      "responses": [
+        { "label": "High energy — rarely fatigued", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "SLP": -0.06, "MCS": -0.05 }, "reservoirs": { "sleep_debt": -0.06, "allostatic_load": -0.05 } },
+        { "label": "Moderate energy — some afternoon dips", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Low energy — fatigued most of the day", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.16, "MCS": 0.10, "ENDO": 0.06 }, "reservoirs": { "sleep_debt": 0.12, "allostatic_load": 0.10, "glycemic_burden": 0.06 } },
+        { "label": "Exhausted — barely functional", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.26, "MCS": 0.14, "ENDO": 0.08, "INF": 0.08 }, "reservoirs": { "sleep_debt": 0.18, "allostatic_load": 0.16, "glycemic_burden": 0.08, "inflammatory_load": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "stress"], "personas": ["athlete", "menopause", "elderly"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Exhausted — barely functional", "ask": "Q_SLEEP_CFS_DURATION" }
+        ]
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.resting_hr", "wearable.HRV"] },
+      "source": "Fatigue Severity Scale (FSS) Krupp 1989; WHO-5 fatigue domain overlap",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_CFS_DURATION",
+      "text": "How long have you been experiencing persistent fatigue that is not explained by rest or sleep?",
+      "category": "Chronic Fatigue",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["chronic_fatigue_syndrome"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Less than 1 month", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08, "MCS": 0.06 }, "reservoirs": { "sleep_debt": 0.06, "allostatic_load": 0.06 } },
+        { "label": "1–6 months", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.14, "MCS": 0.10, "INF": 0.06 }, "reservoirs": { "sleep_debt": 0.10, "allostatic_load": 0.10, "inflammatory_load": 0.06 } },
+        { "label": "More than 6 months", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.22, "MCS": 0.16, "INF": 0.10, "ENDO": 0.08 }, "reservoirs": { "sleep_debt": 0.14, "allostatic_load": 0.16, "inflammatory_load": 0.12, "glycemic_burden": 0.06 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "stress", "condition_load"], "personas": ["menopause"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_SLEEP_FATIGUE_SEVERITY", "in": ["Exhausted — barely functional", "Low energy — fatigued most of the day"] }],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "More than 6 months", "ask": "Q_SLEEP_CFS_PEM" }
+        ]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "IOM 2015 ME/CFS criteria; Fukuda 1994 CDC CFS definition (>6 months threshold)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_CFS_PEM",
+      "text": "After physical or mental exertion, do you experience a significant worsening of symptoms (fatigue, pain, cognitive difficulties) that lasts more than 24 hours?",
+      "category": "Chronic Fatigue",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["chronic_fatigue_syndrome"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Mild — noticeable but manageable next day", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.14, "MCS": 0.10, "INF": 0.08 }, "reservoirs": { "sleep_debt": 0.10, "allostatic_load": 0.10, "inflammatory_load": 0.08 } },
+        { "label": "Severe — bedridden or housebound for days", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.24, "MCS": 0.18, "INF": 0.14, "ENDO": 0.08 }, "reservoirs": { "sleep_debt": 0.16, "allostatic_load": 0.18, "inflammatory_load": 0.14, "glycemic_burden": 0.06 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "stress", "condition_load"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_SLEEP_CFS_DURATION", "in": ["More than 6 months"] }],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "IOM 2015 ME/CFS — post-exertional malaise as hallmark criterion; Jason et al. 2015",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_FREQUENT_ILLNESS",
+      "text": "Over the past 12 months, how often have you had colds, flu, or infections?",
+      "category": "Immune & Fatigue",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["chronic_fatigue_syndrome", "poor_sleep_quality"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "0–1 times (rarely)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "2–3 times", "direction": "increase_risk", "magnitude": "weak", "pillars": { "INF": 0.06, "SLP": 0.05 }, "reservoirs": { "inflammatory_load": 0.05, "sleep_debt": 0.05 } },
+        { "label": "4–6 times", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "INF": 0.12, "SLP": 0.08, "MCS": 0.06 }, "reservoirs": { "inflammatory_load": 0.10, "sleep_debt": 0.08, "allostatic_load": 0.06 } },
+        { "label": "More than 6 times or recurrent infections", "direction": "increase_risk", "magnitude": "strong", "pillars": { "INF": 0.20, "SLP": 0.12, "MCS": 0.08 }, "reservoirs": { "inflammatory_load": 0.16, "sleep_debt": 0.10, "allostatic_load": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "stress"], "personas": ["athlete"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "More than 6 times or recurrent infections", "ask": "Q_SLEEP_CFS_DURATION" }
+        ]
+      },
+      "priority": 3,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.CRP", "lab.WBC"] },
+      "source": "Prather et al. 2015 JAMA sleep immunity RCT; Cohen 2009 sleep & common cold",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_STRESS_RUMINATION",
+      "text": "How often do you lie awake worrying, ruminating, or unable to switch off your thoughts?",
+      "category": "Sleep Hygiene",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["insomnia", "poor_sleep_quality"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely or never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Occasionally (1–2 nights/week)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08, "MCS": 0.08 }, "reservoirs": { "sleep_debt": 0.06, "allostatic_load": 0.06 } },
+        { "label": "Often (3–5 nights/week)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.16, "MCS": 0.14 }, "reservoirs": { "sleep_debt": 0.12, "allostatic_load": 0.12 } },
+        { "label": "Almost every night", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.24, "MCS": 0.20 }, "reservoirs": { "sleep_debt": 0.16, "allostatic_load": 0.18 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "ISI"
+      },
+      "priority": 2,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "Harvey 2002 cognitive model insomnia; ISI/PSS-4 overlap; PSQI item 5f",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_SLEEP_ENV",
+      "text": "How would you describe your sleep environment (bedroom darkness, noise, temperature)?",
+      "category": "Sleep Hygiene",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["insomnia", "poor_sleep_quality", "circadian_disruption_shift_work"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Dark, quiet, cool — optimal", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "SLP": -0.06 }, "reservoirs": { "sleep_debt": -0.05 } },
+        { "label": "Mostly good with minor issues", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Suboptimal — light, noise or temperature problems", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08 }, "reservoirs": { "sleep_debt": 0.06 } },
+        { "label": "Poor — significant disruption (shift worker bedroom, shared room)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.14, "MCS": 0.06 }, "reservoirs": { "sleep_debt": 0.10, "allostatic_load": 0.06 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "environment", "occupation"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "Hale et al. 2020 sleep hygiene review; Leproult & Van Cauter 2010 light exposure",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_MENOPAUSE_NIGHT_SWEATS",
+      "text": "Do you experience night sweats or hot flushes that wake you from sleep?",
+      "category": "Sleep Hormonal",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["insomnia", "poor_sleep_quality", "circadian_disruption_shift_work"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Occasionally (< twice a week)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08, "ENDO": 0.06 }, "reservoirs": { "sleep_debt": 0.06, "allostatic_load": 0.05 } },
+        { "label": "Several nights a week", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.16, "ENDO": 0.10, "MCS": 0.06 }, "reservoirs": { "sleep_debt": 0.12, "allostatic_load": 0.08 } },
+        { "label": "Every night — severely disruptive", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.24, "ENDO": 0.16, "MCS": 0.10 }, "reservoirs": { "sleep_debt": 0.16, "allostatic_load": 0.12 } }
+      ],
+      "dimensions": { "age": { "min": 35, "max": 120 }, "sex": ["female"], "axis_tags": ["sleep", "stress"], "personas": ["menopause"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_CORE_SEX", "in": ["Female"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "ISI"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.skin_temp"] },
+      "source": "Polo-Kantola 2011 menopause sleep review; Freeman et al. 2015 longitudinal vasomotor-sleep",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_WEARABLE_SPO2",
+      "text": "Have you ever noticed on a wearable or been told that your blood oxygen drops below 90% during sleep?",
+      "category": "Sleep-Disordered Breathing",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["obstructive_sleep_apnea"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No or not monitored", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Occasional dips (90–94%)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.14, "CV": 0.10, "HEM": 0.08 }, "reservoirs": { "sleep_debt": 0.10, "vascular_bp_load": 0.08, "oxygen_delivery_reserve": -0.08 } },
+        { "label": "Frequent / sustained dips below 90%", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.24, "CV": 0.18, "HEM": 0.14 }, "reservoirs": { "sleep_debt": 0.14, "vascular_bp_load": 0.14, "oxygen_delivery_reserve": -0.14, "inflammatory_load": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "condition_load"], "personas": ["elderly"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Occasional dips (90–94%)", "ask": "Q_SLEEP_OSA_DX" },
+          { "if_response": "Frequent / sustained dips below 90%", "ask": "Q_SLEEP_OSA_DX" }
+        ]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.spo2"] },
+      "source": "Somers et al. 2008 AHA OSA position statement; Punjabi et al. 2009 SHHS",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_UNREFRESHING",
+      "text": "Even when you sleep a full night, do you wake up feeling unrefreshed or still tired?",
+      "category": "Sleep Quality",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["chronic_fatigue_syndrome", "poor_sleep_quality", "obstructive_sleep_apnea", "insomnia"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely or never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Occasionally (1–2 times/week)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "SLP": 0.08, "MCS": 0.06 }, "reservoirs": { "sleep_debt": 0.06, "allostatic_load": 0.06 } },
+        { "label": "Most mornings", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.16, "MCS": 0.10, "INF": 0.06 }, "reservoirs": { "sleep_debt": 0.12, "allostatic_load": 0.10, "inflammatory_load": 0.06 } },
+        { "label": "Every morning — chronic", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.24, "MCS": 0.14, "INF": 0.08, "ENDO": 0.06 }, "reservoirs": { "sleep_debt": 0.18, "allostatic_load": 0.14, "inflammatory_load": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "stress"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Every morning — chronic", "ask": "Q_SLEEP_CFS_DURATION" }
+        ],
+        "validated_by": "ISI"
+      },
+      "priority": 1,
+      "cadence": "Core",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.HRV"] },
+      "source": "IOM 2015 ME/CFS unrefreshing sleep criterion; PSQI component 1; ISI functional impact",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_SLEEP_CIRCADIAN_CHRONOTYPE",
+      "text": "Are you naturally a morning person or a night owl, and does your schedule match your natural rhythm?",
+      "category": "Circadian Disruption",
+      "domain": "SLEEP_FATIGUE",
+      "conditions": ["circadian_disruption_shift_work", "insomnia", "poor_sleep_quality"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Morning type — schedule matches", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "SLP": -0.05 }, "reservoirs": { "sleep_debt": -0.05 } },
+        { "label": "Evening type — schedule matches", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Evening type forced to wake early (social jetlag)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "SLP": 0.14, "MET": 0.08, "MCS": 0.06 }, "reservoirs": { "sleep_debt": 0.12, "glycemic_burden": 0.06, "allostatic_load": 0.06 } },
+        { "label": "Severely delayed/advanced sleep phase", "direction": "increase_risk", "magnitude": "strong", "pillars": { "SLP": 0.22, "MET": 0.10, "MCS": 0.08 }, "reservoirs": { "sleep_debt": 0.16, "allostatic_load": 0.10, "glycemic_burden": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "occupation"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep_duration"] },
+      "source": "Roenneberg 2012 social jetlag BMI link; Archer & Oster 2015 chronotype metabolic review",
+      "flag": "illustrative-reverify"
+    }
+  ]
+}

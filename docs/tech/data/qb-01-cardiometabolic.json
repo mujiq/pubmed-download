@@ -1,0 +1,896 @@
+{
+  "domain": "CARDIOMETABOLIC",
+  "questions": [
+    {
+      "id": "Q_CARDIOMET_WAIST",
+      "text": "What is your waist circumference (measured at the level of your navel)?",
+      "category": "Anthropometrics",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["metabolic_syndrome", "obesity", "type_2_diabetes", "insulin_resistance", "coronary_artery_disease", "hypertension", "high_triglycerides"],
+      "stream": "LIFE",
+      "type": "numeric",
+      "responses": [
+        { "label": "Male <94 cm / Female <80 cm (low)", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "MET": -0.06, "CV": -0.05 }, "reservoirs": { "adiposity": -0.06, "glycemic_burden": -0.05 } },
+        { "label": "Male 94–101 cm / Female 80–87 cm (elevated)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.14, "CV": 0.10, "HEP": 0.08 }, "reservoirs": { "adiposity": 0.12, "glycemic_burden": 0.10, "atherogenic_burden": 0.08, "hepatic_fat": 0.08 } },
+        { "label": "Male ≥102 cm / Female ≥88 cm (high)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.24, "CV": 0.18, "HEP": 0.14, "REN": 0.08 }, "reservoirs": { "adiposity": 0.22, "glycemic_burden": 0.18, "atherogenic_burden": 0.14, "hepatic_fat": 0.12, "inflammatory_load": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["anthropometric", "metabolic"], "personas": ["prediabetic", "southasian", "ckd", "menopause"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_CORE_BMI", "in": ["25–29.9 (overweight)", "30+ (obese)"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["bcm.waist"] },
+      "source": "IDF/NCEP-ATP III metabolic syndrome criteria; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_DX_HTN",
+      "text": "Have you been diagnosed with high blood pressure (hypertension) or told your blood pressure is elevated?",
+      "category": "Condition History",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["hypertension", "stroke", "coronary_artery_disease", "heart_failure", "atherosclerosis", "atrial_fibrillation", "peripheral_artery_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Borderline / elevated (130–139/80–89)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.14, "REN": 0.08 }, "reservoirs": { "vascular_bp_load": 0.12, "atherogenic_burden": 0.08, "renal_reserve": -0.06 } },
+        { "label": "Yes, diagnosed hypertension (≥140/90)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.26, "REN": 0.14, "MCS": 0.06 }, "reservoirs": { "vascular_bp_load": 0.24, "atherogenic_burden": 0.14, "renal_reserve": -0.12 } },
+        { "label": "Yes, on medication for blood pressure", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.22, "REN": 0.12 }, "reservoirs": { "vascular_bp_load": 0.20, "atherogenic_burden": 0.12, "renal_reserve": -0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["condition_load", "metabolic"], "personas": ["ckd", "southasian", "fh", "menopause"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [{ "if_response": "Yes, diagnosed hypertension (≥140/90)", "ask": "Q_CARDIOMET_SALT_INTAKE" }],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "event",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.systolic_bp", "lab.diastolic_bp", "wearable.bp"] },
+      "source": "ACC/AHA 2017 hypertension guidelines; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_DX_CHOL",
+      "text": "Have you been diagnosed with high cholesterol (hypercholesterolaemia) or high LDL?",
+      "category": "Condition History",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["high_cholesterol", "atherosclerosis", "coronary_artery_disease", "peripheral_artery_disease", "stroke"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Borderline high", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.12, "MET": 0.06 }, "reservoirs": { "atherogenic_burden": 0.10 } },
+        { "label": "Yes, high total/LDL cholesterol", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.24, "MET": 0.08 }, "reservoirs": { "atherogenic_burden": 0.22, "inflammatory_load": 0.08 } },
+        { "label": "Yes, familial hypercholesterolaemia (FH) confirmed", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.30, "MET": 0.10 }, "reservoirs": { "atherogenic_burden": 0.28, "inflammatory_load": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["condition_load", "metabolic", "genetic_familial"], "personas": ["fh", "southasian", "menopause"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [{ "if_response": "Yes, familial hypercholesterolaemia (FH) confirmed", "ask": "Q_CARDIOMET_FH_TENDON" }],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "event",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.LDL", "lab.total_cholesterol", "lab.ApoB", "lab.Lp(a)"] },
+      "source": "OMICS Introductory Report; EAS familial hypercholesterolaemia guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_DX_TG",
+      "text": "Have you been diagnosed with high triglycerides (hypertriglyceridaemia)?",
+      "category": "Condition History",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["high_triglycerides", "metabolic_syndrome", "atherosclerosis", "type_2_diabetes", "insulin_resistance"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Borderline (1.7–2.2 mmol/L)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.10, "MET": 0.12, "HEP": 0.08 }, "reservoirs": { "atherogenic_burden": 0.08, "glycemic_burden": 0.08, "hepatic_fat": 0.06 } },
+        { "label": "High (>2.3 mmol/L) or on medication", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.18, "MET": 0.20, "HEP": 0.12 }, "reservoirs": { "atherogenic_burden": 0.16, "glycemic_burden": 0.14, "hepatic_fat": 0.12, "adiposity": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["condition_load", "metabolic"], "personas": ["prediabetic", "ramadan_dm", "southasian"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "event",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.triglycerides", "lab.HDL"] },
+      "source": "ACC/AHA lipid guidelines; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_DX_T2D",
+      "text": "Have you been diagnosed with type 2 diabetes or prediabetes?",
+      "category": "Condition History",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["type_2_diabetes", "prediabetes", "insulin_resistance", "metabolic_syndrome", "coronary_artery_disease", "stroke", "peripheral_artery_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Prediabetes (HbA1c 5.7–6.4% or fasting glucose 5.6–6.9 mmol/L)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.16, "CV": 0.10, "REN": 0.06 }, "reservoirs": { "glycemic_burden": 0.14, "atherogenic_burden": 0.08, "renal_reserve": -0.06 } },
+        { "label": "Type 2 diabetes, diet/lifestyle managed", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.26, "CV": 0.18, "REN": 0.12, "HEP": 0.10 }, "reservoirs": { "glycemic_burden": 0.24, "atherogenic_burden": 0.14, "renal_reserve": -0.12, "hepatic_fat": 0.10 } },
+        { "label": "Type 2 diabetes on medication (oral or insulin)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.28, "CV": 0.20, "REN": 0.14, "HEP": 0.10 }, "reservoirs": { "glycemic_burden": 0.26, "atherogenic_burden": 0.16, "renal_reserve": -0.14, "hepatic_fat": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["condition_load", "metabolic"], "personas": ["prediabetic", "ramadan_dm", "southasian", "ckd"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Type 2 diabetes, diet/lifestyle managed", "ask": "Q_CARDIOMET_GLYCEMIC_CTRL" },
+          { "if_response": "Type 2 diabetes on medication (oral or insulin)", "ask": "Q_CARDIOMET_GLYCEMIC_CTRL" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "event",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.HbA1c", "lab.fasting_glucose", "lab.HOMA_IR"] },
+      "source": "ADA Standards of Medical Care; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_DX_CAD",
+      "text": "Have you been diagnosed with coronary artery disease (CAD), angina, or had a heart attack?",
+      "category": "Condition History",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["coronary_artery_disease", "atherosclerosis", "heart_failure", "atrial_fibrillation"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Angina or evidence of stenosis (no MI)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.24, "FIT": 0.14 }, "reservoirs": { "atherogenic_burden": 0.22, "cardiorespiratory_reserve": -0.14 } },
+        { "label": "Heart attack (myocardial infarction)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.30, "FIT": 0.18, "MCS": 0.08 }, "reservoirs": { "atherogenic_burden": 0.28, "cardiorespiratory_reserve": -0.18, "allostatic_load": 0.08 } },
+        { "label": "Coronary stent or bypass surgery (CABG)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.28, "FIT": 0.16 }, "reservoirs": { "atherogenic_burden": 0.26, "cardiorespiratory_reserve": -0.16 } }
+      ],
+      "dimensions": { "age": { "min": 30, "max": 120 }, "sex": ["all"], "axis_tags": ["condition_load"], "personas": ["fh", "southasian", "ckd"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "event",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.troponin", "lab.BNP"] },
+      "source": "ACC/AHA ASCVD risk guidelines; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_DX_HF",
+      "text": "Have you been diagnosed with heart failure (reduced or preserved ejection fraction)?",
+      "category": "Condition History",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["heart_failure", "coronary_artery_disease", "atrial_fibrillation"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes, compensated / stable", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.26, "FIT": 0.20, "REN": 0.10 }, "reservoirs": { "cardiorespiratory_reserve": -0.22, "vascular_bp_load": 0.14, "renal_reserve": -0.10 } },
+        { "label": "Yes, decompensated or hospitalised in past year", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.30, "FIT": 0.26, "REN": 0.14 }, "reservoirs": { "cardiorespiratory_reserve": -0.28, "vascular_bp_load": 0.18, "renal_reserve": -0.14 } }
+      ],
+      "dimensions": { "age": { "min": 40, "max": 120 }, "sex": ["all"], "axis_tags": ["condition_load"], "personas": ["ckd", "fh"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "event",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.BNP", "lab.NT_proBNP"] },
+      "source": "ESC Heart Failure guidelines; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_DX_AFIB",
+      "text": "Have you been diagnosed with atrial fibrillation (AF) or flutter?",
+      "category": "Condition History",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["atrial_fibrillation", "stroke", "heart_failure"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Paroxysmal (comes and goes)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.22, "MCS": 0.06 }, "reservoirs": { "vascular_bp_load": 0.16, "atherogenic_burden": 0.10 } },
+        { "label": "Persistent or permanent", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.28, "MCS": 0.08 }, "reservoirs": { "vascular_bp_load": 0.22, "atherogenic_burden": 0.14 } }
+      ],
+      "dimensions": { "age": { "min": 40, "max": 120 }, "sex": ["all"], "axis_tags": ["condition_load"], "personas": ["fh", "ckd"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "event",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["wearable.afib_detection"] },
+      "source": "CHA2DS2-VASc framework; ESC AF guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_DX_STROKE",
+      "text": "Have you had a stroke or transient ischaemic attack (TIA)?",
+      "category": "Condition History",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["stroke", "atherosclerosis", "atrial_fibrillation", "hypertension"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "TIA only", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.22, "MCS": 0.10 }, "reservoirs": { "atherogenic_burden": 0.16, "vascular_bp_load": 0.12 } },
+        { "label": "Ischaemic stroke", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.28, "MCS": 0.14 }, "reservoirs": { "atherogenic_burden": 0.22, "vascular_bp_load": 0.16 } },
+        { "label": "Haemorrhagic stroke", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.26, "MCS": 0.14 }, "reservoirs": { "vascular_bp_load": 0.22, "atherogenic_burden": 0.12 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["condition_load"], "personas": ["fh", "ckd", "southasian"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "event",
+      "perceived_actual": { "kind": "actual", "corroborated_by": [] },
+      "source": "Stroke risk factor literature; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_DX_PAD",
+      "text": "Have you been diagnosed with peripheral artery disease (PAD) or experience leg pain / cramping when walking?",
+      "category": "Condition History",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["peripheral_artery_disease", "atherosclerosis", "type_2_diabetes", "coronary_artery_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No symptoms, no diagnosis", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Intermittent claudication symptoms only", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.14, "FIT": 0.10 }, "reservoirs": { "atherogenic_burden": 0.12, "cardiorespiratory_reserve": -0.08 } },
+        { "label": "Confirmed PAD diagnosis", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.24, "FIT": 0.14 }, "reservoirs": { "atherogenic_burden": 0.22, "cardiorespiratory_reserve": -0.14 } }
+      ],
+      "dimensions": { "age": { "min": 40, "max": 120 }, "sex": ["all"], "axis_tags": ["condition_load", "activity"], "personas": ["prediabetic", "fh", "ckd"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "event",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.ABI"] },
+      "source": "TASC II PAD guidelines; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_DX_GOUT",
+      "text": "Have you been diagnosed with gout or had a gout attack (sudden, severe joint pain, often in the big toe)?",
+      "category": "Condition History",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["gout", "insulin_resistance", "metabolic_syndrome", "hypertension", "renal_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "One episode, not recurrent", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.10, "REN": 0.08, "INF": 0.10 }, "reservoirs": { "inflammatory_load": 0.10, "glycemic_burden": 0.06, "renal_reserve": -0.06 } },
+        { "label": "Recurrent gout or on urate-lowering therapy", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.16, "REN": 0.12, "INF": 0.16 }, "reservoirs": { "inflammatory_load": 0.14, "glycemic_burden": 0.10, "renal_reserve": -0.12 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["condition_load", "diet", "metabolic"], "personas": ["prediabetic", "ckd", "southasian"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [{ "if_response": "Recurrent gout or on urate-lowering therapy", "ask": "Q_CARDIOMET_SUGARY_DRINKS" }],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "event",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.uric_acid"] },
+      "source": "ACR gout guidelines; serum uric acid–metabolic syndrome link",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_FH_TENDON",
+      "text": "Have you noticed yellow-ish fatty lumps (xanthomas) on your tendons or eyelids, or an early whitish ring around your iris?",
+      "category": "Condition History",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["high_cholesterol", "atherosclerosis", "coronary_artery_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Yes, one sign", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.20 }, "reservoirs": { "atherogenic_burden": 0.18 } },
+        { "label": "Yes, multiple signs", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.28 }, "reservoirs": { "atherogenic_burden": 0.26 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["condition_load", "genetic_familial"], "personas": ["fh"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_CARDIOMET_DX_CHOL", "in": ["Yes, familial hypercholesterolaemia (FH) confirmed", "Yes, high total/LDL cholesterol"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.LDL", "lab.ApoB", "lab.Lp(a)"] },
+      "source": "Dutch Lipid Clinic Network FH criteria; Simon Broome criteria",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_GLYCEMIC_CTRL",
+      "text": "How well is your blood sugar currently controlled (if you have been told you have diabetes or prediabetes)?",
+      "category": "Condition History",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["type_2_diabetes", "prediabetes", "insulin_resistance"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Well controlled (HbA1c <7% / doctor satisfied)", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "MET": -0.12, "CV": -0.08, "REN": -0.06 }, "reservoirs": { "glycemic_burden": -0.12, "atherogenic_burden": -0.08, "renal_reserve": 0.06 } },
+        { "label": "Partially controlled (HbA1c 7–9%)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.14, "CV": 0.10, "REN": 0.08 }, "reservoirs": { "glycemic_burden": 0.12, "atherogenic_burden": 0.08, "renal_reserve": -0.08 } },
+        { "label": "Poorly controlled (HbA1c >9% or not monitoring)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.24, "CV": 0.16, "REN": 0.14 }, "reservoirs": { "glycemic_burden": 0.22, "atherogenic_burden": 0.14, "renal_reserve": -0.14 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["condition_load", "metabolic"], "personas": ["prediabetic", "ramadan_dm", "ckd"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_CARDIOMET_DX_T2D", "in": ["Type 2 diabetes, diet/lifestyle managed", "Type 2 diabetes on medication (oral or insulin)", "Prediabetes (HbA1c 5.7–6.4% or fasting glucose 5.6–6.9 mmol/L)"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.HbA1c", "lab.fasting_glucose", "wearable.CGM"] },
+      "source": "ADA Standards of Medical Care in Diabetes; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_SALT_INTAKE",
+      "text": "How would you describe your daily salt (sodium) intake?",
+      "category": "Diet & Nutrition",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["hypertension", "heart_failure", "stroke", "metabolic_syndrome"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Low — rarely add salt, avoid processed/salty foods", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "CV": -0.12, "REN": -0.06 }, "reservoirs": { "vascular_bp_load": -0.12, "renal_reserve": 0.06 } },
+        { "label": "Moderate — some processed food, occasionally add salt", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "High — frequent fast food, canned/pickled foods, always add salt", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.22, "REN": 0.10 }, "reservoirs": { "vascular_bp_load": 0.20, "renal_reserve": -0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet", "metabolic"], "personas": ["ckd", "southasian", "ramadan_dm"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.urinary_sodium"] },
+      "source": "DASH trial; WHO salt reduction guidelines; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_PROCESSED_MEAT",
+      "text": "How often do you eat processed meats (bacon, sausage, salami, hot dogs, deli meats)?",
+      "category": "Diet & Nutrition",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["high_cholesterol", "atherosclerosis", "high_triglycerides", "hypertension", "coronary_artery_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Never / rarely (<1×/week)", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "CV": -0.06, "MET": -0.05 }, "reservoirs": { "atherogenic_burden": -0.05, "inflammatory_load": -0.05 } },
+        { "label": "1–3×/week", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.10, "MET": 0.08, "INF": 0.06 }, "reservoirs": { "atherogenic_burden": 0.10, "inflammatory_load": 0.08 } },
+        { "label": "4+×/week", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.20, "MET": 0.14, "INF": 0.12 }, "reservoirs": { "atherogenic_burden": 0.18, "inflammatory_load": 0.12, "glycemic_burden": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet"], "personas": ["southasian", "fh"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS Introductory Report; IARC Group 1 carcinogen; PREDIMED",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_REFINED_GRAINS",
+      "text": "How often do you eat refined grains or white-flour products (white bread, white rice, pastries, biscuits)?",
+      "category": "Diet & Nutrition",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["insulin_resistance", "type_2_diabetes", "high_triglycerides", "metabolic_syndrome", "obesity"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely / mostly wholegrains", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "MET": -0.12, "CV": -0.06 }, "reservoirs": { "glycemic_burden": -0.10, "adiposity": -0.06 } },
+        { "label": "Mixed — some refined, some whole", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Mostly refined grains daily", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.14, "CV": 0.08, "HEP": 0.08 }, "reservoirs": { "glycemic_burden": 0.12, "adiposity": 0.08, "hepatic_fat": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet", "metabolic"], "personas": ["prediabetic", "ramadan_dm", "southasian"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.fasting_glucose", "lab.HbA1c"] },
+      "source": "OMICS Introductory Report; NHS/PREDIMED glycaemic-index evidence",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_SUGARY_DRINKS",
+      "text": "How many sugar-sweetened beverages (sodas, fruit juices, sweetened teas/coffees) do you drink per day?",
+      "category": "Diet & Nutrition",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["insulin_resistance", "type_2_diabetes", "high_triglycerides", "gout", "obesity", "metabolic_syndrome"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "None", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "MET": -0.10, "HEP": -0.06 }, "reservoirs": { "glycemic_burden": -0.10, "hepatic_fat": -0.06, "adiposity": -0.06 } },
+        { "label": "1 per day", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.12, "HEP": 0.08, "CV": 0.06 }, "reservoirs": { "glycemic_burden": 0.12, "hepatic_fat": 0.08, "adiposity": 0.08 } },
+        { "label": "2+ per day", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.22, "HEP": 0.14, "CV": 0.10 }, "reservoirs": { "glycemic_burden": 0.20, "hepatic_fat": 0.14, "adiposity": 0.14, "inflammatory_load": 0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet", "metabolic"], "personas": ["prediabetic", "ramadan_dm", "southasian"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.triglycerides", "lab.uric_acid"] },
+      "source": "OMICS Introductory Report; fructose–uric-acid–TG link; Malik et al. Circulation 2010",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_FIBER",
+      "text": "How many servings of vegetables, legumes, or high-fibre foods do you eat per day?",
+      "category": "Diet & Nutrition",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["high_cholesterol", "type_2_diabetes", "metabolic_syndrome", "atherosclerosis", "obesity"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "0–1 servings/day", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.10, "CV": 0.10, "HEP": 0.06 }, "reservoirs": { "glycemic_burden": 0.08, "atherogenic_burden": 0.08, "micronutrient_reserve": -0.06 } },
+        { "label": "2–4 servings/day", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "5+ servings/day", "direction": "decrease_risk", "magnitude": "strong", "pillars": { "MET": -0.18, "CV": -0.14, "HEP": -0.08 }, "reservoirs": { "glycemic_burden": -0.14, "atherogenic_burden": -0.12, "micronutrient_reserve": 0.10, "inflammatory_load": -0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet", "metabolic"], "personas": ["prediabetic", "ramadan_dm", "southasian", "fh"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS Introductory Report; PREDIMED; WHO dietary guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_NUTS",
+      "text": "How often do you eat a small handful of unsalted nuts (almonds, walnuts, pistachios)?",
+      "category": "Diet & Nutrition",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["high_cholesterol", "atherosclerosis", "coronary_artery_disease", "type_2_diabetes"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely / never", "direction": "increase_risk", "magnitude": "weak", "pillars": { "CV": 0.06, "MET": 0.05 }, "reservoirs": { "atherogenic_burden": 0.05, "micronutrient_reserve": -0.05 } },
+        { "label": "1–4×/week", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "CV": -0.10, "MET": -0.08 }, "reservoirs": { "atherogenic_burden": -0.10, "micronutrient_reserve": 0.08, "inflammatory_load": -0.06 } },
+        { "label": "Daily (≥5×/week)", "direction": "decrease_risk", "magnitude": "strong", "pillars": { "CV": -0.16, "MET": -0.12 }, "reservoirs": { "atherogenic_burden": -0.14, "micronutrient_reserve": 0.10, "inflammatory_load": -0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet"], "personas": ["fh", "southasian", "prediabetic"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.LDL", "lab.omega3_index"] },
+      "source": "OMICS Introductory Report; PREDIMED; NEJM 2013 nut meta-analysis",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_DARK_CHOC",
+      "text": "How often do you consume dark chocolate (≥70% cocoa)?",
+      "category": "Diet & Nutrition",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["high_cholesterol", "atherosclerosis", "hypertension"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "1–3×/week", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "CV": -0.06, "INF": -0.05 }, "reservoirs": { "atherogenic_burden": -0.05, "inflammatory_load": -0.05, "vascular_bp_load": -0.05 } },
+        { "label": "Daily", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "CV": -0.10, "INF": -0.08 }, "reservoirs": { "atherogenic_burden": -0.08, "inflammatory_load": -0.08, "vascular_bp_load": -0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet"], "personas": ["fh", "southasian"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 4,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS Introductory Report; flavanol BP meta-analysis; Hooper et al. Cochrane 2012",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_TEA_COFFEE",
+      "text": "How many cups of unsweetened tea or coffee do you drink per day?",
+      "category": "Diet & Nutrition",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["type_2_diabetes", "insulin_resistance", "atherosclerosis", "gout"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "None", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "1–3 cups/day", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "MET": -0.06, "CV": -0.05 }, "reservoirs": { "glycemic_burden": -0.05, "inflammatory_load": -0.05 } },
+        { "label": "4+ cups/day (unsweetened)", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "MET": -0.10, "CV": -0.08 }, "reservoirs": { "glycemic_burden": -0.08, "inflammatory_load": -0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet", "metabolic"], "personas": ["prediabetic", "ramadan_dm", "southasian"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 4,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS Introductory Report; van Dam & Hu meta-analysis coffee–T2D; gout–coffee",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_SOY",
+      "text": "How often do you eat soy-based foods (tofu, edamame, soy milk, tempeh)?",
+      "category": "Diet & Nutrition",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["high_cholesterol", "atherosclerosis", "menopause"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Rarely / never", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "1–4×/week", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "CV": -0.06, "MET": -0.05, "ENDO": -0.05 }, "reservoirs": { "atherogenic_burden": -0.05, "micronutrient_reserve": 0.05 } },
+        { "label": "Daily", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "CV": -0.10, "MET": -0.08, "ENDO": -0.08 }, "reservoirs": { "atherogenic_burden": -0.08, "micronutrient_reserve": 0.08, "inflammatory_load": -0.05 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet"], "personas": ["fh", "menopause", "southasian"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 4,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.LDL"] },
+      "source": "OMICS Introductory Report; AHA soy statement; Anderson et al. NEJM 1995",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_EXERCISE_INTENSITY",
+      "text": "On a typical week, how many minutes of moderate-to-vigorous aerobic exercise do you do? (e.g. brisk walking, cycling, swimming)",
+      "category": "Physical Activity",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["hypertension", "type_2_diabetes", "insulin_resistance", "obesity", "metabolic_syndrome", "coronary_artery_disease", "heart_failure", "peripheral_artery_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "0–29 min/week (sedentary)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.22, "MET": 0.18, "FIT": 0.20, "BCM": 0.10 }, "reservoirs": { "cardiorespiratory_reserve": -0.20, "glycemic_burden": 0.14, "adiposity": 0.12, "vascular_bp_load": 0.10 } },
+        { "label": "30–74 min/week (below guidelines)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.12, "MET": 0.10, "FIT": 0.12 }, "reservoirs": { "cardiorespiratory_reserve": -0.12, "glycemic_burden": 0.08, "adiposity": 0.06 } },
+        { "label": "75–149 min/week (at minimum guideline)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "150–299 min/week (meets guidelines)", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "CV": -0.14, "MET": -0.12, "FIT": -0.14 }, "reservoirs": { "cardiorespiratory_reserve": 0.14, "glycemic_burden": -0.12, "adiposity": -0.08, "vascular_bp_load": -0.10 } },
+        { "label": "300+ min/week (exceeds guidelines)", "direction": "decrease_risk", "magnitude": "strong", "pillars": { "CV": -0.22, "MET": -0.18, "FIT": -0.22 }, "reservoirs": { "cardiorespiratory_reserve": 0.20, "glycemic_burden": -0.18, "adiposity": -0.14, "vascular_bp_load": -0.14 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["activity", "metabolic"], "personas": ["prediabetic", "ramadan_dm", "southasian", "ckd", "menopause"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "IPAQ-SF"
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.MVPA", "wearable.step_count"] },
+      "source": "WHO Physical Activity Guidelines 2020; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_RESISTANCE_TRAIN",
+      "text": "How many days per week do you do resistance or strength training (weights, bands, bodyweight exercises)?",
+      "category": "Physical Activity",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["insulin_resistance", "type_2_diabetes", "metabolic_syndrome", "obesity", "peripheral_artery_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "None", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.10, "BCM": 0.12, "FIT": 0.08 }, "reservoirs": { "glycemic_burden": 0.10, "muscle_reserve": -0.12, "adiposity": 0.08 } },
+        { "label": "1 day/week", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "2–3 days/week", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "MET": -0.12, "BCM": -0.14, "FIT": -0.10 }, "reservoirs": { "glycemic_burden": -0.10, "muscle_reserve": 0.12, "adiposity": -0.08 } },
+        { "label": "4+ days/week", "direction": "decrease_risk", "magnitude": "strong", "pillars": { "MET": -0.16, "BCM": -0.18, "FIT": -0.14 }, "reservoirs": { "glycemic_burden": -0.14, "muscle_reserve": 0.18, "adiposity": -0.12 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["activity", "metabolic"], "personas": ["prediabetic", "southasian", "menopause"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "IPAQ-SF"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.MVPA", "bcm.muscle_mass"] },
+      "source": "WHO Physical Activity Guidelines 2020; ADA resistance training–glycaemia evidence",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_SEDENTARY_HOURS",
+      "text": "On a typical workday, how many hours do you spend sitting (desk work, driving, screen time)?",
+      "category": "Physical Activity",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["insulin_resistance", "metabolic_syndrome", "obesity", "high_triglycerides", "hypertension"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Fewer than 4 hours", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "MET": -0.06, "CV": -0.05 }, "reservoirs": { "glycemic_burden": -0.06, "adiposity": -0.05 } },
+        { "label": "4–7 hours", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "8–10 hours", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.10, "CV": 0.08, "BCM": 0.06 }, "reservoirs": { "glycemic_burden": 0.10, "adiposity": 0.08, "vascular_bp_load": 0.06 } },
+        { "label": "More than 10 hours", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.18, "CV": 0.14, "BCM": 0.10 }, "reservoirs": { "glycemic_burden": 0.16, "adiposity": 0.14, "vascular_bp_load": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["activity", "occupation", "metabolic"], "personas": ["prediabetic", "southasian"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_CORE_OCCUPATION", "in": ["Mostly seated / desk"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "IPAQ-SF"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sedentary_time"] },
+      "source": "OMICS Introductory Report; Biswas et al. Ann Intern Med 2015 (sitting time)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_CHRONIC_STRESS",
+      "text": "How would you rate your chronic stress level over the past 3 months?",
+      "category": "Stress & Mental Health",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["hypertension", "insulin_resistance", "metabolic_syndrome", "coronary_artery_disease", "atrial_fibrillation", "obesity"],
+      "stream": "LIFE",
+      "type": "scale",
+      "responses": [
+        { "label": "Low (calm most days)", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "CV": -0.05, "MET": -0.05, "MCS": -0.06 }, "reservoirs": { "allostatic_load": -0.06, "vascular_bp_load": -0.05 } },
+        { "label": "Moderate (manageable stress)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "High (frequent stress, difficult to cope)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.12, "MET": 0.10, "MCS": 0.12 }, "reservoirs": { "allostatic_load": 0.12, "vascular_bp_load": 0.10, "glycemic_burden": 0.08 } },
+        { "label": "Very high (overwhelmed, burnout)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.20, "MET": 0.16, "MCS": 0.20 }, "reservoirs": { "allostatic_load": 0.20, "vascular_bp_load": 0.16, "glycemic_burden": 0.14 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["stress", "metabolic"], "personas": ["ramadan_dm", "prediabetic", "menopause"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "PSS-4"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.cortisol_rhythm", "wearable.HRV"] },
+      "source": "OMICS Introductory Report; Kivimäki et al. stress–CAD meta-analysis; HPA-axis T2D link",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_SLEEP_QUALITY",
+      "text": "How many hours of sleep do you typically get per night, and how would you rate the quality?",
+      "category": "Sleep",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["hypertension", "obesity", "insulin_resistance", "type_2_diabetes", "atrial_fibrillation", "coronary_artery_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "7–9 hours, good quality", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "CV": -0.06, "MET": -0.06 }, "reservoirs": { "vascular_bp_load": -0.06, "glycemic_burden": -0.06, "allostatic_load": -0.06 } },
+        { "label": "6–7 hours or mild disturbance", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "5–6 hours or poor quality most nights", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.12, "MET": 0.10, "SLP": 0.10 }, "reservoirs": { "vascular_bp_load": 0.10, "glycemic_burden": 0.10, "sleep_debt": 0.10, "adiposity": 0.06 } },
+        { "label": "Fewer than 5 hours or very disrupted", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.20, "MET": 0.18, "SLP": 0.20 }, "reservoirs": { "vascular_bp_load": 0.18, "glycemic_burden": 0.16, "sleep_debt": 0.20, "adiposity": 0.12, "inflammatory_load": 0.10 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["sleep", "metabolic"], "personas": ["prediabetic", "ramadan_dm", "ckd"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "ISI"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.sleep_duration", "wearable.sleep_efficiency"] },
+      "source": "OMICS Introductory Report; Cappuccio et al. sleep–T2D/hypertension meta-analysis",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_BP_READINGS",
+      "text": "What is your most recent home or clinic blood pressure reading?",
+      "category": "Clinical Measures",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["hypertension", "stroke", "coronary_artery_disease", "heart_failure", "peripheral_artery_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Optimal (<120/80 mmHg)", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "CV": -0.08 }, "reservoirs": { "vascular_bp_load": -0.08 } },
+        { "label": "Normal (120–129 / <80 mmHg)", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Elevated (130–139 / 80–89 mmHg)", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.12, "REN": 0.06 }, "reservoirs": { "vascular_bp_load": 0.12, "renal_reserve": -0.06 } },
+        { "label": "Stage 2 HTN (≥140/90 mmHg)", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.24, "REN": 0.12 }, "reservoirs": { "vascular_bp_load": 0.22, "atherogenic_burden": 0.10, "renal_reserve": -0.12 } },
+        { "label": "Don't know / haven't checked recently", "direction": "increase_risk", "magnitude": "weak", "pillars": { "CV": 0.05 }, "reservoirs": {} }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["condition_load", "metabolic"], "personas": ["all"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["wearable.bp", "lab.systolic_bp", "lab.diastolic_bp"] },
+      "source": "ACC/AHA 2017 BP classification; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_INSULIN_RESISTANCE_SX",
+      "text": "Do you experience any of the following symptoms that may suggest insulin resistance? (select all)",
+      "category": "Symptoms",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["insulin_resistance", "prediabetes", "metabolic_syndrome", "type_2_diabetes"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "None of these", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Persistent fatigue after eating", "direction": "increase_risk", "magnitude": "weak", "pillars": { "MET": 0.08 }, "reservoirs": { "glycemic_burden": 0.06 } },
+        { "label": "Cravings for sweets or carbs shortly after eating", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.12 }, "reservoirs": { "glycemic_burden": 0.10 } },
+        { "label": "Dark patches of skin (acanthosis nigricans) on neck or armpits", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.22, "ENDO": 0.10 }, "reservoirs": { "glycemic_burden": 0.20 } },
+        { "label": "Increased thirst or urination", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "MET": 0.16, "REN": 0.08 }, "reservoirs": { "glycemic_burden": 0.14, "renal_reserve": -0.06 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["metabolic", "condition_load"], "personas": ["prediabetic", "southasian", "ramadan_dm", "ckd"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [{ "if_response": "Dark patches of skin (acanthosis nigricans) on neck or armpits", "ask": "Q_CARDIOMET_DX_T2D" }],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.HOMA_IR", "lab.fasting_insulin", "lab.fasting_glucose", "lab.HbA1c"] },
+      "source": "OMICS Introductory Report; IRS symptom cluster; acanthosis nigricans insulin resistance marker",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_CV_SYMPTOMS",
+      "text": "Have you experienced any of the following cardiovascular symptoms in the past 6 months? (select all)",
+      "category": "Symptoms",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["coronary_artery_disease", "heart_failure", "atrial_fibrillation", "hypertension", "peripheral_artery_disease", "atherosclerosis"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        { "label": "None", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Chest pain or pressure, especially on exertion", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.28, "FIT": 0.14 }, "reservoirs": { "atherogenic_burden": 0.20, "cardiorespiratory_reserve": -0.14 } },
+        { "label": "Palpitations or irregular heartbeat", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.18 }, "reservoirs": { "vascular_bp_load": 0.12 } },
+        { "label": "Shortness of breath at rest or with light activity", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.22, "FIT": 0.16 }, "reservoirs": { "cardiorespiratory_reserve": -0.18 } },
+        { "label": "Ankle or leg swelling", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.16, "REN": 0.10 }, "reservoirs": { "vascular_bp_load": 0.12, "renal_reserve": -0.08 } },
+        { "label": "Dizziness or fainting spells", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.16 }, "reservoirs": { "vascular_bp_load": 0.10 } }
+      ],
+      "dimensions": { "age": { "min": 30, "max": 120 }, "sex": ["all"], "axis_tags": ["condition_load", "activity"], "personas": ["fh", "ckd", "southasian", "menopause"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Chest pain or pressure, especially on exertion", "ask": "Q_CARDIOMET_DX_CAD" },
+          { "if_response": "Palpitations or irregular heartbeat", "ask": "Q_CARDIOMET_DX_AFIB" }
+        ],
+        "validated_by": ""
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["wearable.afib_detection", "wearable.resting_hr", "lab.BNP"] },
+      "source": "ACC/AHA ASCVD symptom criteria; OMICS Introductory Report",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_MENOPAUSE_CVD",
+      "text": "Have you gone through menopause (natural or surgical), and if so, are you on hormone replacement therapy (HRT)?",
+      "category": "Reproductive & Hormonal",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["high_cholesterol", "atherosclerosis", "hypertension", "metabolic_syndrome", "coronary_artery_disease"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "No / not applicable", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "Perimenopausal (irregular cycles)", "direction": "increase_risk", "magnitude": "weak", "pillars": { "CV": 0.08, "MET": 0.06, "ENDO": 0.08 }, "reservoirs": { "atherogenic_burden": 0.08, "vascular_bp_load": 0.06 } },
+        { "label": "Post-menopausal, not on HRT", "direction": "increase_risk", "magnitude": "moderate", "pillars": { "CV": 0.16, "MET": 0.10, "ENDO": 0.10, "BCM": 0.08 }, "reservoirs": { "atherogenic_burden": 0.14, "vascular_bp_load": 0.10, "bone_reserve": -0.08 } },
+        { "label": "Post-menopausal, on HRT (oestrogen/combined)", "direction": "decrease_risk", "magnitude": "weak", "pillars": { "CV": -0.06, "MET": -0.05, "ENDO": -0.05 }, "reservoirs": { "atherogenic_burden": -0.06, "vascular_bp_load": -0.05 } }
+      ],
+      "dimensions": { "age": { "min": 40, "max": 120 }, "sex": ["female"], "axis_tags": ["reproductive", "metabolic", "lifestage"], "personas": ["menopause", "fh"] },
+      "dependencies": {
+        "show_if": [{ "q": "Q_CORE_SEX", "in": ["Female"] }],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": ""
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "event",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.E2", "lab.FSH", "lab.LDL"] },
+      "source": "OMICS Introductory Report; WHI; AHA menopause–CVD statement 2020",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_CARDIOMET_DIETARY_PATTERN",
+      "text": "Which of these best describes your overall eating pattern?",
+      "category": "Diet & Nutrition",
+      "domain": "CARDIOMETABOLIC",
+      "conditions": ["high_cholesterol", "high_triglycerides", "insulin_resistance", "type_2_diabetes", "metabolic_syndrome", "atherosclerosis", "obesity"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        { "label": "Mediterranean / whole-food plant-rich diet", "direction": "decrease_risk", "magnitude": "strong", "pillars": { "CV": -0.22, "MET": -0.18, "HEP": -0.10, "INF": -0.12 }, "reservoirs": { "atherogenic_burden": -0.20, "glycemic_burden": -0.16, "inflammatory_load": -0.12, "micronutrient_reserve": 0.10 } },
+        { "label": "Balanced — mix of whole and processed foods", "direction": "neutral", "magnitude": "none", "pillars": {}, "reservoirs": {} },
+        { "label": "High carb / sugary / fast-food dominant", "direction": "increase_risk", "magnitude": "strong", "pillars": { "MET": 0.22, "CV": 0.14, "HEP": 0.14 }, "reservoirs": { "glycemic_burden": 0.20, "atherogenic_burden": 0.12, "hepatic_fat": 0.14, "adiposity": 0.12 } },
+        { "label": "High saturated-fat / meat-heavy diet", "direction": "increase_risk", "magnitude": "strong", "pillars": { "CV": 0.22, "MET": 0.10, "HEP": 0.10 }, "reservoirs": { "atherogenic_burden": 0.22, "hepatic_fat": 0.10, "inflammatory_load": 0.10 } },
+        { "label": "Very low calorie / restrictive (fasting, keto, etc.)", "direction": "decrease_risk", "magnitude": "moderate", "pillars": { "MET": -0.12, "CV": -0.08 }, "reservoirs": { "glycemic_burden": -0.10, "adiposity": -0.10, "hepatic_fat": -0.08 } }
+      ],
+      "dimensions": { "age": "all", "sex": ["all"], "axis_tags": ["diet", "metabolic"], "personas": ["prediabetic", "ramadan_dm", "southasian", "fh"] },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.LDL", "lab.triglycerides", "lab.HbA1c", "lab.omega3_index"] },
+      "source": "OMICS Introductory Report; PREDIMED; ACC/AHA 2019 cholesterol guideline diet section",
+      "flag": "illustrative-reverify"
+    }
+  ]
+}

@@ -1,0 +1,891 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Behemoth Class Diagram — HikmaEngine Tech Wiki</title>
+<link rel="stylesheet" href="assets/wiki.css">
+<style>.topbar .brand b{color:#2ecc71}</style>
+<script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{htmlLabels:true,curve:"basis"},themeVariables:{fontSize:"14px"}});</script></head><body>
+<div class="topbar"><button class="menu-btn" aria-label="menu">☰</button>
+<a class="brand" href="index.html">Hikma<b>Engine</b> · Tech Wiki</a>
+<span class="tag">design spec — not clinically validated</span><span class="grow"></span>
+<input id="search" type="search" placeholder="Filter pages…  ( / )"></div>
+<div class="shell"><aside class="side"><div class="side-tools"><button class="side-allbtn" data-act="expand">expand all</button><button class="side-allbtn" data-act="collapse">collapse all</button></div><div class="navgrp" data-grp="g0"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">Start here</span></button><div class="grp-b"><div class="grp-blurb">Orient yourself — what PureScore is and how the pieces connect.</div><a href="index.html">Home</a><a href="purescore-uber-map.html">How it all connects</a><a href="00-vision-principles-and-lessons.html"><span class="n">00</span>Vision & principles</a><a href="conventions.html">Conventions & glossary</a><a href="decisions.html">Decision log</a></div></div><div class="navgrp" data-grp="g1"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">1 · How scoring works</span></button><div class="grp-b"><div class="grp-blurb">The core engine: pillars → markers → score, reservoirs, and PureScore 2.0.</div><a href="purescore-overview.html">Overview</a><a href="02-pillars-and-marker-catalog.html"><span class="n">02</span>Pillars & markers</a><a href="03-scoring-formula.html"><span class="n">03</span>Scoring formula</a><a href="04-moniac-reservoir-dynamics.html"><span class="n">04</span>Reservoir dynamics</a><a href="12-critical-review-and-purescore-2.0.html"><span class="n">12</span>PureScore 2.0</a></div></div><div class="navgrp" data-grp="g2"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">2 · The inputs (what feeds it)</span></button><div class="grp-b"><div class="grp-blurb">Where the data comes from: labs, wearables, and the question intake.</div><a href="01-data-model-and-reference-ranges.html"><span class="n">01</span>Data model & ranges</a><a href="18-data-streams-and-experience.html"><span class="n">18</span>Data streams & experience</a><a href="appendix-biomarkers.html">A · Markers (all channels)</a><a href="appendix-wearables.html">B · Wearables</a><a href="purescore-wearable-baselines.html">Baselines (Wearables)</a><a href="questions-hub.html">Intake — overview</a><a href="appendix-onboarding.html">K · Onboarding & first-run</a><a href="appendix-questions.html">C · Screeners & PROs</a><a href="appendix-question-bank.html">E · Question bank</a><a href="appendix-lifestyles.html">F · Lifestyles</a><a href="appendix-wearable-corroboration.html">L · Wearable corroboration</a><a href="eligibility-gating.html">Eligibility & gating</a></div></div><div class="navgrp" data-grp="g3"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">3 · Making it personal</span></button><div class="grp-b"><div class="grp-blurb">Context that reshapes the score: sex, life-stage, conditions, personas.</div><a href="05-sex-specific-models.html"><span class="n">05</span>Sex-specific models</a><a href="06-acute-events-and-life-stage-plans.html"><span class="n">06</span>Acute events & life-stage</a><a href="08-clinical-scores-integration.html"><span class="n">08</span>Clinical scores</a><a href="appendix-personas.html">D · Personas</a><a href="appendix-persona-matrix.html">I · Persona matrix</a><a href="purescore-male.html">PureScore — Male</a><a href="purescore-female.html">PureScore — Female</a></div></div><div class="navgrp" data-grp="g4"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">4 · Acting on it</span></button><div class="grp-b"><div class="grp-blurb">Turning the score into nudges, actions, adherence and goals.</div><a href="07-daily-nudge-engine.html"><span class="n">07</span>Daily nudge engine</a><a href="16-recommended-actions-catalogue.html"><span class="n">16</span>Actions catalogue</a><a href="appendix-adherence.html">H · Adherence</a><a href="appendix-goals.html">J · Goals</a><a href="feedback-loop.html">Feedback-loop demo</a></div></div><div class="navgrp" data-grp="g5"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">5 · Trust &amp; govern</span></button><div class="grp-b"><div class="grp-blurb">Validation, safety, evidence, fairness, localization and the audit.</div><a href="09-cohort-percentiles-and-validation.html"><span class="n">09</span>Cohorts & validation</a><a href="13-validation-and-calibration-harness.html"><span class="n">13</span>Validation harness</a><a href="14-evidence-registry-and-provenance.html"><span class="n">14</span>Evidence registry</a><a href="11-safety-governance-and-regulatory.html"><span class="n">11</span>Safety & governance</a><a href="17-clinician-red-team-and-blind-spots.html"><span class="n">17</span>Clinician red-team</a><a href="15-uae-localization.html"><span class="n">15</span>UAE localization</a><a href="10-actuarial-pricing-and-insurance.html"><span class="n">10</span>Actuarial & insurance</a><a href="appendix-coverage-audit.html">G · Coverage audit</a></div></div><div class="navgrp open" data-grp="g6"><button class="grp-h" aria-expanded="true"><span class="grp-car">▸</span><span class="grp-t">6 · See the system (maps)</span></button><div class="grp-b"><div class="grp-blurb">Diagrams that show the whole machine end-to-end.</div><a href="purescore-dataflow.html">PureScore calculation DFD</a><a href="states.html">Patient life-state machine</a><a href="engagement-state-machines.html">Engagement state machines</a><a href="behemoth-class-diagram.html" class="active">Behemoth class diagram</a><a href="wearable-baselines.html">Wearable baselines (mobile)</a></div></div><div class="navgrp" data-grp="g7"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">7 · Build it (engineering)</span></button><div class="grp-b"><div class="grp-blurb">The production object model: classes, ERD, C4, API, stories.</div><a href="class-explorer.html">Class explorer</a><a href="dossier-erd.html">Data model (ERD)</a><a href="dossier-c4.html">C4 architecture</a><a href="dossier-api.html">API contracts</a><a href="dossier-sequences.html">Sequences</a><a href="dossier-stories.html">User stories</a></div></div><div class="navgrp" data-grp="g8"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">8 · Reference — data tables</span></button><div class="grp-b"><div class="grp-blurb">Sortable/filterable spreadsheets of every catalogue.</div><a href="grid-questions.html">Question bank</a><a href="grid-biomarkers.html">Biomarkers</a><a href="grid-wearables.html">Wearables</a><a href="grid-personas.html">Personas</a><a href="grid-lifestyles.html">Lifestyles</a><a href="grid-adherence.html">Adherence</a><a href="grid-goals.html">Goals</a><a href="grid-persona-matrix.html">Persona matrix</a><a href="grid-onboarding.html">Onboarding</a><a href="grid-wearable-corroboration.html">Wearable corroboration</a><a href="grid-erd.html">Data model (ERD)</a></div></div><div class="navgrp" data-grp="g9"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">9 · Doctor's board (admin)</span></button><div class="grp-b"><div class="grp-blurb">The clinician configuration &amp; sign-off surfaces.</div><a href="admin-index.html">Dashboard</a><a href="admin-lab-ranges.html">Lab ranges</a><a href="admin-weights.html">Weights & constants</a><a href="admin-lifestyle.html">Lifestyle / PRO</a><a href="admin-personas.html">Personas & frames</a><a href="admin-governance.html">Governance & sign-off</a></div></div></aside><main class="main"><div class="chapter-ctx"><div class="chx-top"><span class="chx-name">6 · See the system (maps)</span><span class="chx-blurb">Diagrams that show the whole machine end-to-end.</span></div><details class="chx-d"><summary>5 pages in this chapter</summary><nav class="chx-list"><a class="chx-l" href="purescore-dataflow.html">PureScore calculation DFD</a><a class="chx-l" href="states.html">Patient life-state machine</a><a class="chx-l" href="engagement-state-machines.html">Engagement state machines</a><a class="chx-l cur" href="behemoth-class-diagram.html">Behemoth class diagram</a><a class="chx-l" href="wearable-baselines.html">Wearable baselines (mobile)</a></nav></details></div><div class="crumbs"><a href="index.html">Home</a> &rsaquo; Diagrams & system maps &rsaquo; Behemoth class diagram</div><h1>Behemoth Class Diagram</h1><p class="lead">A single uber class diagram mapping <b>every concept across <code>docs/</code></b> &mdash; scoring (<a class="xref" href="03-scoring-formula.html">Doc 03</a>), reservoirs (<a class="xref" href="04-moniac-reservoir-dynamics.html">Doc 04</a>), the 2.0 companion vector (<a class="xref" href="12-critical-review-and-purescore-2.0.html">Doc 12</a>), streams, sex/acute, nudges, governance, the question bank (<a class="xref" href="appendix-question-bank.html">Appx E</a>), lifestyles/personas (<a class="xref" href="appendix-lifestyles.html">Appx F</a>) and the tooling/calculator/UI. <b>65 classes</b> across <b>12 colour-coded subject areas</b>; live counts: 15 reservoirs &middot; 12 pillars &middot; 12 question-domains &middot; 354 questions &middot; 13 clinical personas &middot; 24 archetypes.</p><div id="bm-frame" tabindex="0" style="position:relative;height:76vh;overflow:hidden;border:1px solid var(--line,#334);border-radius:10px;background:#0b0f17;cursor:grab"><div id="bm-overlay" style="position:absolute;top:0;left:0;right:0;z-index:4;padding:8px 10px;pointer-events:none;background:linear-gradient(180deg,rgba(11,15,23,.92),rgba(11,15,23,0))"><div class="bm-tool" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;pointer-events:auto"><span class="small muted">detail:</span><button id="bm-fields">Fields</button><button id="bm-names">Names</button><button id="bm-areas">Areas</button><span style="width:10px"></span><span class="small muted">view:</span><button id="bm-zout">&minus;</button><button id="bm-reset">reset</button><button id="bm-fit">fit</button><button id="bm-zin">&plus;</button><button id="bm-full">&#9974; fullscreen</button><span id="bm-hud" class="small muted mono" style="margin-left:6px">100%</span><span class="small muted">wheel = zoom &middot; drag = pan &middot; <b>double-click a class &rarr; its dossier</b></span></div><div id="bm-legend" class="tagrow" style="gap:6px;margin-top:6px;pointer-events:auto"><span class="small muted">areas (click to spotlight):</span><span data-area="core" style="background:#5b21b6;color:#fff">Core</span><span data-area="intake" style="background:#1d4ed8;color:#fff">Data &amp; Streams</span><span data-area="markers" style="background:#0e7490;color:#fff">Markers &amp; Bands</span><span data-area="scoring" style="background:#4338ca;color:#fff">Scoring Engine &middot;12 pillars</span><span data-area="context" style="background:#7e22ce;color:#fff">Context (2.0)</span><span data-area="reservoir" style="background:#15803d;color:#fff">Reservoirs &middot;15</span><span data-area="sexacute" style="background:#b45309;color:#fff">Sex / Acute / Life-stage</span><span data-area="nudge" style="background:#a16207;color:#fff">Nudges &amp; Actions</span><span data-area="governance" style="background:#b91c1c;color:#fff">Governance &amp; Validation</span><span data-area="questions" style="background:#0891b2;color:#fff">Question Bank &middot;354Q</span><span data-area="persona" style="background:#be185d;color:#fff">Personas &amp; Lifestyles &middot;13+24</span><span data-area="infra" style="background:#475569;color:#fff">Tooling / Calc / UI</span></div></div><div id="bm-stage" style="position:absolute;top:0;left:0;transform-origin:0 0"></div></div><p class="small muted" style="margin-top:8px">Generated from the <code>BEHEMOTH</code> spec in <code>wiki_content.py</code> (areas &middot; classes &middot; relations); the three views and colours regenerate on every <code>build_wiki.py</code> run and counts are pulled live from the data files, so the map stays in sync.</p><div class="callout note"><div class="ct">Illustrative</div>All bands, weights and cut-points on this page are literature/guideline-anchored examples and <b>must be re-verified and cohort-adjusted before any production use</b> (README §5.6). This is design documentation, not a validated medical device.</div><div class="callout note"><div class="ct">Reconciliations baked in</div><b>Reservoirs</b> 15 canonical (Doc 04, incl. VBP/OXD/IRON). <b>Symbol</b> responsiveness cap = <code>kappa_resp</code> vs interference <code>kappa_jl</code>. <b>Scope</b> everything under <code>docs/</code>.</div><script type="application/x-mermaid" id="bm-src-fields">classDiagram
+direction LR
+classDef core fill:#5b21b6,stroke:#a78bfa,color:#fff,stroke-width:1px;
+classDef intake fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:1px;
+classDef markers fill:#0e7490,stroke:#67e8f9,color:#fff,stroke-width:1px;
+classDef scoring fill:#4338ca,stroke:#a5b4fc,color:#fff,stroke-width:1px;
+classDef context fill:#7e22ce,stroke:#d8b4fe,color:#fff,stroke-width:1px;
+classDef reservoir fill:#15803d,stroke:#86efac,color:#fff,stroke-width:1px;
+classDef sexacute fill:#b45309,stroke:#fcd34d,color:#fff,stroke-width:1px;
+classDef nudge fill:#a16207,stroke:#fde68a,color:#fff,stroke-width:1px;
+classDef governance fill:#b91c1c,stroke:#fca5a5,color:#fff,stroke-width:1px;
+classDef questions fill:#0891b2,stroke:#22d3ee,color:#fff,stroke-width:1px;
+classDef persona fill:#be185d,stroke:#f9a8d4,color:#fff,stroke-width:1px;
+classDef infra fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:1px;
+class Patient {
+«core»
++id
++age
++sex
++gender
++ethnicity
+}
+class InputStream {
+«Doc01»
++flag
++q_source
+}
+class LabStream {
+«LAB»
+}
+class WearableStream {
+«WEAR»
+}
+class GoalStream {
+«GOAL»
+}
+class LifeStream {
+«LIFE»
+}
+class Measurement {
+«Doc01»
++x_i
++source
++confidence
++tier
++timestamp
+}
+class TrustTier {
+«D22»
++tier
++q_source
+}
+class WearableMetric {
+«AppxB»
++metric
++layer
++pillars
++devices
+}
+class Marker {
+«Doc02»
++name
++unit
++tier
++twoSided
++w_i
++critical
++escalation
++r_clin
+}
+class Band {
+«Doc02»
++L
++U
++Ly
++Uy
++Lr
++Ur
++optimum
+}
+class Modifier {
+«Doc02»
++name
++effect
+}
+class CohortStat {
+«Doc01»
++q_i
++g
++phi
+}
+class PersonalBaseline {
+«Doc03_2b»
++mu
++sigma
++z_i
++k_i
++kappa_resp
+}
+class ClinicalScore {
+«Doc08»
++FINDRISC
++ASCVD
++KDIGO
++FIB4
++FRAX
++PhenoAge
+}
+class Pillar {
+«Doc03»
++code
++R_mark
++R_k
++S_k
++status
++cov
++W_k
++gamma
++count 12
+}
+class ScoringConstants {
+«Doc03»
++phi
++kappa_resp
++gamma
++delta
++rho_k
++R_crit
++cap
+}
+class PureScore {
+«Doc03_12»
++R_total
++value
++overall_status
++delta
++progressToBest
+}
+class CriticalCascade {
+«Doc03_4»
++criticalMarkers
++R_crit
++cap40
++escalation
+}
+class Explanation {
+«Doc03_7»
++bindingConstraint
++topContributors
++weights
+}
+class CompanionVector {
+«Doc12_4»
++Confidence
++DataSufficiency
++Criticality
++Trajectory
++EarlyWarning
++Representativeness
++Skew
++Volatility
++Modifiability
++StressLoad
+}
+class EarlyWarning {
+«Doc12_5»
++tier
++D_M
++syndromic
++timeToThreshold
+}
+class ManagedState {
+«Doc12_3»
++drugTargets
++tag
+}
+class ConfounderRule {
+«Doc12_3»
++confounds
++c_conf
+}
+class AgeFrame {
+«Doc12_3»
++ageBand
++anchorRetained
+}
+class ReservoirSystem {
+«Doc04»
++deltaT
++stateEq
+}
+class Reservoir {
+«Doc04»
++id
++polarity
++B_j
++setpoint
++B_max
++lambda
++B_tilde
++catalogue 15
+}
+class InterferenceMatrix {
+«Doc04»
++kappa_jl
++hurwitz
+}
+class Valve {
+«Doc04_6»
++intervention
++efficacy
++latency
+}
+class HormonalMilieu {
+«Doc05»
++phase
++rangeShift
+}
+class AcuteEvent {
+«Doc06»
++m_acute
++hysteresis
+}
+class CarePlan {
+«Doc06»
++valveBundle
++lifeStage
++goals
+}
+class PatientState {
+«states»
++Baseline
++AcuteMode
+}
+class NudgeEngine {
+«Doc07»
++top5
++safetyFilter
++deltaScore
++rank()
+}
+class Action {
+«Doc16»
++id
++condition
++impact
++ease
+}
+class Adherence {
+«Doc07»
++completion
++feedsInflow
+}
+class Goal {
+«Doc18»
++stated
++m_goal
+}
+class Cohort {
+«Doc09»
++stratum
++shrinkage
++calibration
++fairness
++drift
+}
+class ValidationHarness {
+«Doc13»
++discrimination
++calibration
++PPV
++gates
+}
+class EvidenceRegistry {
+«Doc14»
++entry
++provenance
++ignition
+}
+class Governance {
+«Doc11»
++escalationTiers
++crisisPathway
++FMEA
++consent
++audit
+}
+class ModelVersion {
+«Doc11»
++version
++configHash
++bump
+}
+class ActuarialLayer {
+«Doc10»
++gated
++firewall
+}
+class UAELocalization {
+«Doc15»
++ethnicityCutpoints
++ramadan
+}
+class QuestionBank {
+«AppxE»
++meta
++total 354
+}
+class Question {
+«AppxE»
++ref
++seq
++order
++prev
++next
++priority
++cadence
++refresh
++stream
++type
+}
+class Response {
+«AppxE»
++label
++direction
++magnitude
++pillars
++reservoirs
+}
+class Dependency {
+«AppxE»
++showIf
++skipIf
++triggers
++validatedBy
++prerequisites
++unlocks
+}
+class Applicability {
+«AppxE»
++sex
++ageMin
++ageMax
++lifeStage
++personas
++gated
+}
+class QuestionDomain {
+«AppxE»
++code
++count 12
+}
+class Category {
+«AppxE»
++theme
+}
+class ValidatedPRO {
+«AppxC»
++instrument
++scoring
++bands
++cadence
+}
+class Persona {
+«abstract»
+}
+class ClinicalPersona {
+«AppxD»
++key
++age
++meds
++rep
++weightMult
++frame
++count 13
+}
+class LifestyleArchetype {
+«AppxF»
++key
++axisProfile
++weightMult
++count 24
+}
+class LifestyleAxis {
+«AppxF»
++id
++levels
++pillars
++perceivedSignal
++actualSignal
++count 12
+}
+class AxisVector {
+«AppxF»
++levels
+}
+class PerceivedVsActual {
+«AppxF»
++perceived
++actual
++gap
++strategy
++companionEffect
+}
+class WikiGenerator {
+«gen»
++md_to_html()
++page()
++sidebar()
+}
+class WikiContent {
+«gen»
++PILLARS
++INSTRUMENTS
++PERSONAS
++builders()
+}
+class WikiAdmin {
+«gen»
++ADMIN_PAGES
+}
+class Calculator {
+«impl»
++computes2_0()
+}
+class DataArtifact {
+«data»
++questionBank
++personaAxes
++evidence
+}
+class AdminBoard {
+«ui»
++labRanges
++weights
++lifestyle
++personas
+}
+class InteractiveDemo {
+«ui»
++feedbackLoop
++stateMachine
+}
+cssClass "Patient" core
+cssClass "InputStream,LabStream,WearableStream,GoalStream,LifeStream,Measurement,TrustTier,WearableMetric" intake
+cssClass "Marker,Band,Modifier,CohortStat,PersonalBaseline,ClinicalScore" markers
+cssClass "Pillar,ScoringConstants,PureScore,CriticalCascade,Explanation" scoring
+cssClass "CompanionVector,EarlyWarning,ManagedState,ConfounderRule,AgeFrame" context
+cssClass "ReservoirSystem,Reservoir,InterferenceMatrix,Valve" reservoir
+cssClass "HormonalMilieu,AcuteEvent,CarePlan,PatientState" sexacute
+cssClass "NudgeEngine,Action,Adherence,Goal" nudge
+cssClass "Cohort,ValidationHarness,EvidenceRegistry,Governance,ModelVersion,ActuarialLayer,UAELocalization" governance
+cssClass "QuestionBank,Question,Response,Dependency,Applicability,QuestionDomain,Category,ValidatedPRO" questions
+cssClass "Persona,ClinicalPersona,LifestyleArchetype,LifestyleAxis,AxisVector,PerceivedVsActual" persona
+cssClass "WikiGenerator,WikiContent,WikiAdmin,Calculator,DataArtifact,AdminBoard,InteractiveDemo" infra
+Patient *-- InputStream
+Patient *-- PureScore
+Patient *-- ReservoirSystem
+Patient --> Persona
+Patient --> CarePlan
+Patient --> PatientState
+Patient o-- Measurement
+InputStream <|-- LabStream
+InputStream <|-- WearableStream
+InputStream <|-- GoalStream
+InputStream <|-- LifeStream
+WearableStream o-- WearableMetric
+WearableMetric --> TrustTier
+WearableMetric --> Pillar
+Measurement --> TrustTier
+Measurement ..> Marker : feeds x_i
+GoalStream --> Goal
+LifeStream --> QuestionBank
+Marker --> Band
+Marker --> Modifier
+Marker --> PersonalBaseline
+Marker --> CohortStat
+Marker ..> ManagedState
+Marker ..> ConfounderRule
+HormonalMilieu --> Band
+AgeFrame --> Band
+UAELocalization --> Band
+EvidenceRegistry --> Band : provenance
+Pillar o-- Marker
+Pillar --> ScoringConstants
+PureScore o-- Pillar
+PureScore --> ScoringConstants
+PureScore --> CriticalCascade
+PureScore --> CompanionVector
+PureScore --> Explanation
+CriticalCascade --> Governance : escalates
+CompanionVector --> EarlyWarning
+CompanionVector ..> Reservoir : StressLoad reads ALLO
+ClinicalScore ..> Pillar : feeds max
+PersonalBaseline --> CompanionVector : z drives
+PersonalBaseline ..> PureScore : Stage2b
+ReservoirSystem o-- Reservoir
+ReservoirSystem --> InterferenceMatrix
+Reservoir --> Pillar : B_tilde feeds
+Reservoir <-- Valve
+Valve <.. Action
+Valve <.. NudgeEngine
+AcuteEvent --> Pillar : m_acute
+AcuteEvent --> PatientState
+AcuteEvent ..> ReservoirSystem
+CarePlan o-- Valve
+CarePlan --> Goal
+Goal --> Pillar : m_goal
+NudgeEngine --> Action : top5
+NudgeEngine ..> PureScore : deltaScore
+Action --> Adherence
+Adherence --> Reservoir : inflow
+Cohort --> CohortStat
+Cohort --> PersonalBaseline : prior
+ValidationHarness ..> ModelVersion : gates
+Governance o-- ModelVersion
+ActuarialLayer ..> PureScore : gated
+QuestionBank o-- Question
+Question o-- Response
+Question --> Dependency
+Question --> Applicability
+Question --> QuestionDomain
+Question --> Category
+Question ..> ValidatedPRO : validatedBy
+Response --> Pillar : weights
+Response --> Reservoir : weights
+Applicability --> ClinicalPersona
+Dependency ..> Question : prereq
+Persona <|-- ClinicalPersona
+Persona <|-- LifestyleArchetype
+LifestyleArchetype --> ClinicalPersona : links
+ClinicalPersona --> AxisVector
+LifestyleArchetype --> AxisVector
+AxisVector o-- LifestyleAxis
+PerceivedVsActual --> AxisVector
+PerceivedVsActual ..> NudgeEngine : strategy
+LifestyleAxis --> Pillar
+ClinicalPersona --> Pillar : weightMult
+QuestionDomain ..> Pillar : routesTo
+Reservoir ..> Pillar : feeds
+Category ..> Question : groups
+WikiGenerator ..> DataArtifact : reads
+WikiGenerator ..> WikiContent
+WikiGenerator ..> WikiAdmin
+WikiContent ..> QuestionBank : renders
+WikiContent ..> Pillar : PILLARS
+WikiAdmin ..> AdminBoard
+Calculator ..> PureScore : computes
+Calculator ..> CompanionVector
+DataArtifact ..> QuestionBank
+DataArtifact ..> PerceivedVsActual
+InteractiveDemo ..> PureScore : demoLoop
+AdminBoard ..> ScoringConstants : configures
+AdminBoard ..> Band : labRanges
+AdminBoard ..> ClinicalPersona</script><script type="application/x-mermaid" id="bm-src-names">classDiagram
+direction LR
+classDef core fill:#5b21b6,stroke:#a78bfa,color:#fff,stroke-width:1px;
+classDef intake fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:1px;
+classDef markers fill:#0e7490,stroke:#67e8f9,color:#fff,stroke-width:1px;
+classDef scoring fill:#4338ca,stroke:#a5b4fc,color:#fff,stroke-width:1px;
+classDef context fill:#7e22ce,stroke:#d8b4fe,color:#fff,stroke-width:1px;
+classDef reservoir fill:#15803d,stroke:#86efac,color:#fff,stroke-width:1px;
+classDef sexacute fill:#b45309,stroke:#fcd34d,color:#fff,stroke-width:1px;
+classDef nudge fill:#a16207,stroke:#fde68a,color:#fff,stroke-width:1px;
+classDef governance fill:#b91c1c,stroke:#fca5a5,color:#fff,stroke-width:1px;
+classDef questions fill:#0891b2,stroke:#22d3ee,color:#fff,stroke-width:1px;
+classDef persona fill:#be185d,stroke:#f9a8d4,color:#fff,stroke-width:1px;
+classDef infra fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:1px;
+class Patient
+class InputStream
+class LabStream
+class WearableStream
+class GoalStream
+class LifeStream
+class Measurement
+class TrustTier
+class WearableMetric
+class Marker
+class Band
+class Modifier
+class CohortStat
+class PersonalBaseline
+class ClinicalScore
+class Pillar
+class ScoringConstants
+class PureScore
+class CriticalCascade
+class Explanation
+class CompanionVector
+class EarlyWarning
+class ManagedState
+class ConfounderRule
+class AgeFrame
+class ReservoirSystem
+class Reservoir
+class InterferenceMatrix
+class Valve
+class HormonalMilieu
+class AcuteEvent
+class CarePlan
+class PatientState
+class NudgeEngine
+class Action
+class Adherence
+class Goal
+class Cohort
+class ValidationHarness
+class EvidenceRegistry
+class Governance
+class ModelVersion
+class ActuarialLayer
+class UAELocalization
+class QuestionBank
+class Question
+class Response
+class Dependency
+class Applicability
+class QuestionDomain
+class Category
+class ValidatedPRO
+class Persona
+class ClinicalPersona
+class LifestyleArchetype
+class LifestyleAxis
+class AxisVector
+class PerceivedVsActual
+class WikiGenerator
+class WikiContent
+class WikiAdmin
+class Calculator
+class DataArtifact
+class AdminBoard
+class InteractiveDemo
+cssClass "Patient" core
+cssClass "InputStream,LabStream,WearableStream,GoalStream,LifeStream,Measurement,TrustTier,WearableMetric" intake
+cssClass "Marker,Band,Modifier,CohortStat,PersonalBaseline,ClinicalScore" markers
+cssClass "Pillar,ScoringConstants,PureScore,CriticalCascade,Explanation" scoring
+cssClass "CompanionVector,EarlyWarning,ManagedState,ConfounderRule,AgeFrame" context
+cssClass "ReservoirSystem,Reservoir,InterferenceMatrix,Valve" reservoir
+cssClass "HormonalMilieu,AcuteEvent,CarePlan,PatientState" sexacute
+cssClass "NudgeEngine,Action,Adherence,Goal" nudge
+cssClass "Cohort,ValidationHarness,EvidenceRegistry,Governance,ModelVersion,ActuarialLayer,UAELocalization" governance
+cssClass "QuestionBank,Question,Response,Dependency,Applicability,QuestionDomain,Category,ValidatedPRO" questions
+cssClass "Persona,ClinicalPersona,LifestyleArchetype,LifestyleAxis,AxisVector,PerceivedVsActual" persona
+cssClass "WikiGenerator,WikiContent,WikiAdmin,Calculator,DataArtifact,AdminBoard,InteractiveDemo" infra
+Patient *-- InputStream
+Patient *-- PureScore
+Patient *-- ReservoirSystem
+Patient --> Persona
+Patient --> CarePlan
+Patient --> PatientState
+Patient o-- Measurement
+InputStream <|-- LabStream
+InputStream <|-- WearableStream
+InputStream <|-- GoalStream
+InputStream <|-- LifeStream
+WearableStream o-- WearableMetric
+WearableMetric --> TrustTier
+WearableMetric --> Pillar
+Measurement --> TrustTier
+Measurement ..> Marker : feeds x_i
+GoalStream --> Goal
+LifeStream --> QuestionBank
+Marker --> Band
+Marker --> Modifier
+Marker --> PersonalBaseline
+Marker --> CohortStat
+Marker ..> ManagedState
+Marker ..> ConfounderRule
+HormonalMilieu --> Band
+AgeFrame --> Band
+UAELocalization --> Band
+EvidenceRegistry --> Band : provenance
+Pillar o-- Marker
+Pillar --> ScoringConstants
+PureScore o-- Pillar
+PureScore --> ScoringConstants
+PureScore --> CriticalCascade
+PureScore --> CompanionVector
+PureScore --> Explanation
+CriticalCascade --> Governance : escalates
+CompanionVector --> EarlyWarning
+CompanionVector ..> Reservoir : StressLoad reads ALLO
+ClinicalScore ..> Pillar : feeds max
+PersonalBaseline --> CompanionVector : z drives
+PersonalBaseline ..> PureScore : Stage2b
+ReservoirSystem o-- Reservoir
+ReservoirSystem --> InterferenceMatrix
+Reservoir --> Pillar : B_tilde feeds
+Reservoir <-- Valve
+Valve <.. Action
+Valve <.. NudgeEngine
+AcuteEvent --> Pillar : m_acute
+AcuteEvent --> PatientState
+AcuteEvent ..> ReservoirSystem
+CarePlan o-- Valve
+CarePlan --> Goal
+Goal --> Pillar : m_goal
+NudgeEngine --> Action : top5
+NudgeEngine ..> PureScore : deltaScore
+Action --> Adherence
+Adherence --> Reservoir : inflow
+Cohort --> CohortStat
+Cohort --> PersonalBaseline : prior
+ValidationHarness ..> ModelVersion : gates
+Governance o-- ModelVersion
+ActuarialLayer ..> PureScore : gated
+QuestionBank o-- Question
+Question o-- Response
+Question --> Dependency
+Question --> Applicability
+Question --> QuestionDomain
+Question --> Category
+Question ..> ValidatedPRO : validatedBy
+Response --> Pillar : weights
+Response --> Reservoir : weights
+Applicability --> ClinicalPersona
+Dependency ..> Question : prereq
+Persona <|-- ClinicalPersona
+Persona <|-- LifestyleArchetype
+LifestyleArchetype --> ClinicalPersona : links
+ClinicalPersona --> AxisVector
+LifestyleArchetype --> AxisVector
+AxisVector o-- LifestyleAxis
+PerceivedVsActual --> AxisVector
+PerceivedVsActual ..> NudgeEngine : strategy
+LifestyleAxis --> Pillar
+ClinicalPersona --> Pillar : weightMult
+QuestionDomain ..> Pillar : routesTo
+Reservoir ..> Pillar : feeds
+Category ..> Question : groups
+WikiGenerator ..> DataArtifact : reads
+WikiGenerator ..> WikiContent
+WikiGenerator ..> WikiAdmin
+WikiContent ..> QuestionBank : renders
+WikiContent ..> Pillar : PILLARS
+WikiAdmin ..> AdminBoard
+Calculator ..> PureScore : computes
+Calculator ..> CompanionVector
+DataArtifact ..> QuestionBank
+DataArtifact ..> PerceivedVsActual
+InteractiveDemo ..> PureScore : demoLoop
+AdminBoard ..> ScoringConstants : configures
+AdminBoard ..> Band : labRanges
+AdminBoard ..> ClinicalPersona</script><script type="application/x-mermaid" id="bm-src-areas">classDiagram
+direction LR
+classDef core fill:#5b21b6,stroke:#a78bfa,color:#fff,stroke-width:1px;
+classDef intake fill:#1d4ed8,stroke:#93c5fd,color:#fff,stroke-width:1px;
+classDef markers fill:#0e7490,stroke:#67e8f9,color:#fff,stroke-width:1px;
+classDef scoring fill:#4338ca,stroke:#a5b4fc,color:#fff,stroke-width:1px;
+classDef context fill:#7e22ce,stroke:#d8b4fe,color:#fff,stroke-width:1px;
+classDef reservoir fill:#15803d,stroke:#86efac,color:#fff,stroke-width:1px;
+classDef sexacute fill:#b45309,stroke:#fcd34d,color:#fff,stroke-width:1px;
+classDef nudge fill:#a16207,stroke:#fde68a,color:#fff,stroke-width:1px;
+classDef governance fill:#b91c1c,stroke:#fca5a5,color:#fff,stroke-width:1px;
+classDef questions fill:#0891b2,stroke:#22d3ee,color:#fff,stroke-width:1px;
+classDef persona fill:#be185d,stroke:#f9a8d4,color:#fff,stroke-width:1px;
+classDef infra fill:#475569,stroke:#cbd5e1,color:#fff,stroke-width:1px;
+class Core
+cssClass "Core" core
+class DataStreams
+cssClass "DataStreams" intake
+class Markers
+cssClass "Markers" markers
+class ScoringEngine
+cssClass "ScoringEngine" scoring
+class Context
+cssClass "Context" context
+class Reservoirs
+cssClass "Reservoirs" reservoir
+class SexAcute
+cssClass "SexAcute" sexacute
+class Nudges
+cssClass "Nudges" nudge
+class Governance
+cssClass "Governance" governance
+class Questions
+cssClass "Questions" questions
+class Personas
+cssClass "Personas" persona
+class Tooling
+cssClass "Tooling" infra
+Core --> DataStreams
+Core --> ScoringEngine
+Core --> Reservoirs
+Core --> Personas
+Core --> SexAcute
+DataStreams --> ScoringEngine
+DataStreams --> Markers
+DataStreams --> Nudges
+DataStreams --> Questions
+Markers --> Context
+SexAcute --> Markers
+Context --> Markers
+Governance --> Markers
+ScoringEngine --> Markers
+ScoringEngine --> Context
+ScoringEngine --> Governance
+Context --> Reservoirs
+Markers --> ScoringEngine
+Reservoirs --> ScoringEngine
+Reservoirs --> Nudges
+SexAcute --> ScoringEngine
+SexAcute --> Reservoirs
+SexAcute --> Nudges
+Nudges --> ScoringEngine
+Nudges --> Reservoirs
+Governance --> ScoringEngine
+Questions --> ScoringEngine
+Questions --> Reservoirs
+Questions --> Personas
+Personas --> Nudges
+Personas --> ScoringEngine
+Tooling --> Questions
+Tooling --> ScoringEngine
+Tooling --> Context
+Tooling --> Personas
+Tooling --> Markers</script><script>window.BM_AREA_COLORS={"core":"#5b21b6","intake":"#1d4ed8","markers":"#0e7490","scoring":"#4338ca","context":"#7e22ce","reservoir":"#15803d","sexacute":"#b45309","nudge":"#a16207","governance":"#b91c1c","questions":"#0891b2","persona":"#be185d","infra":"#475569"};</script><style>
+#bm-frame:fullscreen{height:100vh!important;width:100vw!important;border-radius:0}
+.bm-tool button{cursor:pointer;border:1px solid var(--line,#334);background:transparent;color:inherit;border-radius:7px;padding:4px 9px}
+.bm-tool button.on{background:var(--acc,#6cf);color:#04121f;border-color:var(--acc,#6cf);font-weight:600}
+#bm-legend span[data-area]{cursor:pointer;border-radius:7px;padding:3px 9px;font-size:12px}
+</style>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({startOnLoad:false,theme:"dark",securityLevel:"loose",flowchart:{htmlLabels:true,curve:"basis"},themeVariables:{fontSize:"13px"}});
+(function(){
+ var frame=document.getElementById("bm-frame"),stage=document.getElementById("bm-stage"),hud=document.getElementById("bm-hud");
+ if(!frame||!stage)return;
+ var srcs={fields:document.getElementById("bm-src-fields").textContent,
+           names:document.getElementById("bm-src-names").textContent,
+           areas:document.getElementById("bm-src-areas").textContent};
+ var level=localStorage.getItem("bmLevel")||"fields",z=1,tx=0,ty=0,area=null,n=0,natW=0,natH=0;
+ function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+ function apply(){stage.style.transform="translate("+tx+"px,"+ty+"px) scale("+z+")";if(hud)hud.textContent=Math.round(z*100)+"%";}
+ var AREAS=window.BM_AREA_COLORS||{};
+ function nodeArea(g){for(var k in AREAS){if(g.classList.contains(k))return k;}return null;}
+ function colorize(){var s=stage.querySelector("svg");if(!s)return;
+   s.querySelectorAll("g.node").forEach(function(g){var k=nodeArea(g);if(!k)return;var col=AREAS[k];
+     g.querySelectorAll("path,rect,polygon").forEach(function(sh){
+       var f=sh.getAttribute("fill")||getComputedStyle(sh).fill;
+       if(f&&f!=="none"&&f!=="rgba(0, 0, 0, 0)"){sh.style.fill=col;}});
+     g.querySelectorAll("text,tspan,.nodeLabel").forEach(function(t){t.style.fill="#fff";});});}
+ function wireNav(){if(level==="areas")return;var s=stage.querySelector("svg");if(!s)return;
+   s.querySelectorAll("g.node").forEach(function(g){var m=(g.id||"").match(/classId-(.+?)-\d+$/);if(!m)return;
+     g.style.cursor="pointer";g.setAttribute("title","double-click → "+m[1]+" dossier");});}
+ function nodeName(t){var g=t&&t.closest&&t.closest("g.node");if(!g)return null;var m=(g.id||"").match(/classId-(.+?)-\d+$/);return m?m[1]:null;}
+ frame.addEventListener("dblclick",function(e){if(level==="areas")return;var nm=nodeName(e.target);if(nm){e.preventDefault();location.href="class-explorer.html#"+nm;}});
+ function highlight(){var s=stage.querySelector("svg");if(!s)return;
+   s.querySelectorAll("g.node").forEach(function(g){g.style.opacity=(!area||g.classList.contains(area))?"1":"0.18";});}
+ function fit(){if(!natW||!natH)return;var fw=frame.clientWidth-24,fh=frame.clientHeight-24;
+   z=clamp(Math.min(fw/natW,(fh-60)/natH),0.05,4);tx=Math.max(8,(frame.clientWidth-natW*z)/2);ty=66;apply();}
+ function setActive(){["fields","names","areas"].forEach(function(k){var b=document.getElementById("bm-"+k);if(b)b.classList.toggle("on",k===level);});}
+ function render(){mermaid.render("bmG"+(++n),srcs[level]).then(function(r){stage.innerHTML=r.svg;
+     var s=stage.querySelector("svg");
+     if(s){var vb=(s.viewBox&&s.viewBox.baseVal)?s.viewBox.baseVal:null;
+       if(vb&&vb.width){natW=vb.width;natH=vb.height;}
+       else{try{var bb=s.getBBox();natW=bb.width;natH=bb.height;}catch(e){natW=1400;natH=900;}}
+       s.setAttribute("width",natW);s.setAttribute("height",natH);
+       s.style.maxWidth="none";s.style.width=natW+"px";s.style.height=natH+"px";}
+     setActive();fit();colorize();wireNav();highlight();}).catch(function(e){stage.innerHTML='<pre style="color:#ff8a8a;padding:14px;white-space:pre-wrap">'+(e&&e.message||e)+'</pre>';});}
+ ["fields","names","areas"].forEach(function(k){var b=document.getElementById("bm-"+k);if(b)b.addEventListener("click",function(){level=k;localStorage.setItem("bmLevel",k);render();});});
+ function zoomAt(cx,cy,f){var nz=clamp(z*f,0.08,6);tx=cx-((cx-tx)/z)*nz;ty=cy-((cy-ty)/z)*nz;z=nz;apply();}
+ var byId=function(i){return document.getElementById(i);};
+ if(byId("bm-zin"))byId("bm-zin").addEventListener("click",function(){zoomAt(frame.clientWidth/2,frame.clientHeight/2,1.2);});
+ if(byId("bm-zout"))byId("bm-zout").addEventListener("click",function(){zoomAt(frame.clientWidth/2,frame.clientHeight/2,1/1.2);});
+ if(byId("bm-reset"))byId("bm-reset").addEventListener("click",function(){z=1;tx=0;ty=0;apply();});
+ if(byId("bm-fit"))byId("bm-fit").addEventListener("click",fit);
+ if(byId("bm-full"))byId("bm-full").addEventListener("click",function(){try{if(!document.fullscreenElement){if(frame.requestFullscreen){var pr=frame.requestFullscreen();if(pr&&pr.catch)pr.catch(function(){});}}else if(document.exitFullscreen){document.exitFullscreen();}}catch(_){}});
+ document.addEventListener("fullscreenchange",function(){setTimeout(fit,90);});
+ frame.addEventListener("wheel",function(e){e.preventDefault();var r=frame.getBoundingClientRect();zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY<0?1.1:1/1.1);},{passive:false});
+ var gx=0,gy=0,sx=0,sy=0,pid=null,drag=false,moved=false;
+ frame.addEventListener("pointerdown",function(e){if(e.target.closest&&e.target.closest("#bm-overlay"))return;drag=true;moved=false;pid=e.pointerId;sx=e.clientX;sy=e.clientY;gx=e.clientX-tx;gy=e.clientY-ty;});
+ frame.addEventListener("pointermove",function(e){if(!drag)return;if(!moved&&Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy)>4){moved=true;try{frame.setPointerCapture(pid);}catch(_){}frame.style.cursor="grabbing";}if(moved){tx=e.clientX-gx;ty=e.clientY-gy;apply();}});
+ frame.addEventListener("pointerup",function(){drag=false;moved=false;frame.style.cursor="grab";try{frame.releasePointerCapture(pid);}catch(_){}});
+ document.querySelectorAll("#bm-legend [data-area]").forEach(function(el){el.addEventListener("click",function(){var k=el.getAttribute("data-area");area=(area===k)?null:k;
+   document.querySelectorAll("#bm-legend [data-area]").forEach(function(x){x.style.outline=(x===el&&area)?"2px solid #fff":"none";});highlight();});});
+ render();
+})();
+</script><div class="connects"><div class="cx-h">Connects to</div><div class="cx-row"><span class="cx-k">Pages</span><a class="cx-chip" href="03-scoring-formula.html">Scoring formula</a> <a class="cx-chip" href="index.html">Home</a> <a class="cx-chip" href="04-moniac-reservoir-dynamics.html">Reservoir dynamics</a> <a class="cx-chip" href="appendix-lifestyles.html">F · Lifestyles</a> <a class="cx-chip" href="appendix-question-bank.html">E · Question bank</a></div><div class="cx-row"><span class="cx-k">Diagrams</span><a class="cx-chip" href="class-explorer.html">Class explorer</a> <a class="cx-chip" href="dossier-erd.html">Data model (ERD)</a> <a class="cx-chip" href="states.html">Patient life-state machine</a> <a class="cx-chip" href="purescore-dataflow.html">PureScore calculation DFD</a> <a class="cx-chip" href="engagement-state-machines.html">Engagement state machines</a></div></div><nav class="pn"><a class="prev" href="engagement-state-machines.html"><div class="lbl">← Previous</div><div class="ttl">Engagement state machines</div></a><a class="next" href="wearable-baselines.html"><div class="lbl">Next →</div><div class="ttl">Wearable Baselines</div></a></nav><footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · illustrative design, re-verify before production (README §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
+<script src="assets/wiki.js"></script></body></html>

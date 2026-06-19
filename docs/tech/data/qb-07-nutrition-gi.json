@@ -1,0 +1,1957 @@
+{
+  "domain": "NUTRITION_GI",
+  "questions": [
+    {
+      "id": "Q_NUTGI_FRUIT_VEG",
+      "text": "On a typical day, how many servings of fruits and vegetables do you eat? (1 serving = 80g / half a cup)",
+      "category": "Diet Quality",
+      "domain": "NUTRITION_GI",
+      "conditions": ["poor_diet_quality", "vitamin_d_deficiency", "iron_deficiency_diet", "constipation", "irritable_bowel_syndrome"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "0–1 servings",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.25, "INF": 0.12, "MET": 0.08 },
+          "reservoirs": { "micronutrient_reserve": -0.20, "inflammatory_load": 0.12, "glycemic_burden": 0.06 }
+        },
+        {
+          "label": "2–3 servings",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12, "INF": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.10, "inflammatory_load": 0.05 }
+        },
+        {
+          "label": "4–5 servings",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "6+ servings (5-a-day consistently met)",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.14, "INF": -0.08, "CV": -0.06 },
+          "reservoirs": { "micronutrient_reserve": 0.14, "inflammatory_load": -0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "0–1 servings", "ask": "Q_NUTGI_DIET_QUALITY_BARRIER" }
+        ],
+        "validated_by": "DIET"
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.hs_CRP", "lab.carotenoids"] },
+      "source": "OMICS Introductory Report; WHO Global Diet Strategy; PREDIMED",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_FIBER",
+      "text": "How would you rate your usual daily fiber intake (whole grains, legumes, vegetables, fruit)?",
+      "category": "Diet Quality",
+      "domain": "NUTRITION_GI",
+      "conditions": ["poor_diet_quality", "constipation", "irritable_bowel_syndrome", "gerd_reflux"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Very low — mostly refined/processed foods, little plant matter",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.22, "MET": 0.10, "INF": 0.08 },
+          "reservoirs": { "micronutrient_reserve": -0.16, "glycemic_burden": 0.10, "inflammatory_load": 0.08 }
+        },
+        {
+          "label": "Low — some vegetables but little whole grain or legumes",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12, "MET": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.08, "glycemic_burden": 0.06 }
+        },
+        {
+          "label": "Moderate — occasional whole grain, regular vegetables",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "High — daily whole grains, legumes, nuts, plenty of vegetables",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.12, "MET": -0.08, "INF": -0.06 },
+          "reservoirs": { "micronutrient_reserve": 0.10, "glycemic_burden": -0.08, "inflammatory_load": -0.06 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.HbA1c", "lab.triglycerides"] },
+      "source": "OMICS Introductory Report; Dietary Guidelines for Americans 2020-2025",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_FISH_OMEGA3",
+      "text": "How often do you eat fatty fish (salmon, sardines, mackerel, herring) or take an omega-3 supplement?",
+      "category": "Omega-3 Intake",
+      "domain": "NUTRITION_GI",
+      "conditions": ["omega3_deficiency", "poor_diet_quality", "irritable_bowel_syndrome"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Never / rarely (no supplement either)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.15, "INF": 0.10, "CV": 0.08, "MCS": 0.05 },
+          "reservoirs": { "micronutrient_reserve": -0.12, "inflammatory_load": 0.10 }
+        },
+        {
+          "label": "1×/week or takes low-dose omega-3 supplement",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "2×/week fatty fish or high-dose supplement (≥1 g EPA+DHA)",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.12, "INF": -0.08, "CV": -0.06 },
+          "reservoirs": { "micronutrient_reserve": 0.10, "inflammatory_load": -0.08 }
+        },
+        {
+          "label": "3+×/week fatty fish",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.14, "INF": -0.10, "CV": -0.08, "MCS": -0.05 },
+          "reservoirs": { "micronutrient_reserve": 0.12, "inflammatory_load": -0.10 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["athlete", "elderly", "prediabetic"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.omega3_index"] },
+      "source": "OMICS Introductory Report; PREDIMED; Global Omega-3 EPA+DHA Alliance",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_NUTS_SEEDS",
+      "text": "How often do you eat a handful of nuts or seeds (almonds, walnuts, sunflower seeds, chia, flaxseed)?",
+      "category": "Diet Quality",
+      "domain": "NUTRITION_GI",
+      "conditions": ["poor_diet_quality", "omega3_deficiency", "magnesium_deficiency"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Never / rarely",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12, "MET": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.10 }
+        },
+        {
+          "label": "1–3×/week",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Daily (≥1 small handful)",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.12, "CV": -0.06, "INF": -0.05 },
+          "reservoirs": { "micronutrient_reserve": 0.10, "inflammatory_load": -0.05 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.magnesium_RBC"] },
+      "source": "OMICS Introductory Report; PREDIMED nut arm",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_PROCESSED_MEAT",
+      "text": "How often do you eat processed or red meat (sausage, bacon, deli meat, burgers, hot dogs)?",
+      "category": "Diet Quality",
+      "domain": "NUTRITION_GI",
+      "conditions": ["poor_diet_quality", "irritable_bowel_syndrome", "gerd_reflux"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Daily or almost daily",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.18, "INF": 0.14, "CV": 0.10 },
+          "reservoirs": { "inflammatory_load": 0.14, "atherogenic_burden": 0.08 }
+        },
+        {
+          "label": "3–5×/week",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.10, "INF": 0.08 },
+          "reservoirs": { "inflammatory_load": 0.08 }
+        },
+        {
+          "label": "1–2×/week",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Rarely / never",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": -0.05, "INF": -0.05 },
+          "reservoirs": { "inflammatory_load": -0.05 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.hs_CRP", "lab.ferritin"] },
+      "source": "OMICS Introductory Report; IARC red/processed meat classification",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_REFINED_GRAINS",
+      "text": "What proportion of your grain foods are refined (white bread, white rice, regular pasta) vs. whole grain?",
+      "category": "Diet Quality",
+      "domain": "NUTRITION_GI",
+      "conditions": ["poor_diet_quality", "constipation", "gerd_reflux"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Almost all refined — rarely eat whole grain",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "MET": 0.12 },
+          "reservoirs": { "glycemic_burden": 0.12, "micronutrient_reserve": -0.08 }
+        },
+        {
+          "label": "Mostly refined with some whole grain",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06, "MET": 0.06 },
+          "reservoirs": { "glycemic_burden": 0.06 }
+        },
+        {
+          "label": "Mixed, roughly equal",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Mostly or all whole grain",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.10, "MET": -0.08 },
+          "reservoirs": { "glycemic_burden": -0.08, "micronutrient_reserve": 0.06 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["prediabetic", "ramadan_dm"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.HbA1c", "lab.fasting_glucose"] },
+      "source": "OMICS Introductory Report; Dietary Guidelines for Americans 2020-2025",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_SUGARY_DRINKS",
+      "text": "How many sugary drinks (soda, juice, energy drinks, sweetened tea/coffee) do you have per day?",
+      "category": "Diet Quality",
+      "domain": "NUTRITION_GI",
+      "conditions": ["poor_diet_quality", "dehydration", "gerd_reflux", "irritable_bowel_syndrome"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "3+ per day",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.20, "MET": 0.16, "HEP": 0.08 },
+          "reservoirs": { "glycemic_burden": 0.18, "hepatic_fat": 0.10, "inflammatory_load": 0.08 }
+        },
+        {
+          "label": "1–2 per day",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.10, "MET": 0.10 },
+          "reservoirs": { "glycemic_burden": 0.10, "hepatic_fat": 0.05 }
+        },
+        {
+          "label": "A few per week",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.05, "MET": 0.05 },
+          "reservoirs": { "glycemic_burden": 0.05 }
+        },
+        {
+          "label": "Rarely / never",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["prediabetic", "ramadan_dm"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.HbA1c", "lab.ALT"] },
+      "source": "OMICS Introductory Report; NHS Eatwell Guide; WHO free sugars guideline",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_FAST_FOOD",
+      "text": "How often do you eat fast food or takeaway meals (fried food, pizza, burgers)?",
+      "category": "Diet Quality",
+      "domain": "NUTRITION_GI",
+      "conditions": ["poor_diet_quality", "gerd_reflux", "constipation"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Daily or almost daily",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.22, "MET": 0.14, "INF": 0.10 },
+          "reservoirs": { "micronutrient_reserve": -0.16, "glycemic_burden": 0.12, "inflammatory_load": 0.10 }
+        },
+        {
+          "label": "3–5×/week",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "MET": 0.10 },
+          "reservoirs": { "micronutrient_reserve": -0.10, "glycemic_burden": 0.08 }
+        },
+        {
+          "label": "1–2×/week",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.05 }
+        },
+        {
+          "label": "Rarely / never",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.LDL_C", "lab.hs_CRP"] },
+      "source": "OMICS Introductory Report; UK Biobank dietary patterns",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_BREAKFAST_SKIP",
+      "text": "How often do you skip breakfast or go more than 14 hours without eating overnight?",
+      "category": "Meal Patterns",
+      "domain": "NUTRITION_GI",
+      "conditions": ["poor_diet_quality", "gerd_reflux", "hypochlorhydria", "iron_deficiency_diet"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Almost every day",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12, "MET": 0.10, "MCS": 0.05 },
+          "reservoirs": { "glycemic_burden": 0.10, "micronutrient_reserve": -0.06 }
+        },
+        {
+          "label": "3–4 days/week",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06, "MET": 0.05 },
+          "reservoirs": { "glycemic_burden": 0.05 }
+        },
+        {
+          "label": "1–2 days/week",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Rarely / never skip",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["ramadan_dm", "athlete"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.fasting_glucose", "lab.insulin"] },
+      "source": "OMICS Introductory Report; Circadian eating timing literature",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_WATER_INTAKE",
+      "text": "How much plain water do you drink in a typical day (not counting tea, coffee, or other beverages)?",
+      "category": "Hydration",
+      "domain": "NUTRITION_GI",
+      "conditions": ["dehydration", "constipation", "kidney_stones", "poor_diet_quality"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Less than 1 litre",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.18, "MET": 0.08, "REN": 0.10 },
+          "reservoirs": { "renal_reserve": -0.10, "micronutrient_reserve": -0.06 }
+        },
+        {
+          "label": "1–1.5 litres",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.10, "REN": 0.06 },
+          "reservoirs": { "renal_reserve": -0.05 }
+        },
+        {
+          "label": "1.5–2.5 litres",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "2.5+ litres",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": -0.06, "REN": -0.05 },
+          "reservoirs": { "renal_reserve": 0.05 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "metabolic"],
+        "personas": ["athlete", "elderly", "ramadan_dm"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Less than 1 litre", "ask": "Q_NUTGI_DEHYDRATION_SX" }
+        ],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.serum_osmolality", "lab.urea"] },
+      "source": "OMICS Introductory Report; EFSA water intake guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_DEHYDRATION_SX",
+      "text": "Do you regularly experience any of these dehydration signs? (select all that apply)",
+      "category": "Hydration",
+      "domain": "NUTRITION_GI",
+      "conditions": ["dehydration", "constipation", "poor_diet_quality"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        {
+          "label": "None",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Dark or concentrated urine",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12, "REN": 0.10 },
+          "reservoirs": { "renal_reserve": -0.08 }
+        },
+        {
+          "label": "Persistent thirst or dry mouth",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.10 },
+          "reservoirs": { "renal_reserve": -0.06 }
+        },
+        {
+          "label": "Headaches or brain fog",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06, "MCS": 0.05 },
+          "reservoirs": { "micronutrient_reserve": -0.05 }
+        },
+        {
+          "label": "Muscle cramps",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06, "BCM": 0.05 },
+          "reservoirs": { "micronutrient_reserve": -0.06, "muscle_reserve": -0.05 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["athlete", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_NUTGI_WATER_INTAKE", "in": ["Less than 1 litre"] }
+        ],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.urea", "lab.creatinine"] },
+      "source": "OMICS Introductory Report; Clinical dehydration signs literature",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_VIT_D_SUN",
+      "text": "How much direct sun exposure does your skin (arms/face) get on a typical weekday?",
+      "category": "Vitamin D",
+      "domain": "NUTRITION_GI",
+      "conditions": ["vitamin_d_deficiency"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Almost none — indoors all day or fully covered",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.24, "HEM": 0.08, "BCM": 0.08, "ENDO": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.20, "bone_reserve": -0.10 }
+        },
+        {
+          "label": "Brief outdoor exposure (<15 min)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "BCM": 0.05 },
+          "reservoirs": { "micronutrient_reserve": -0.10, "bone_reserve": -0.05 }
+        },
+        {
+          "label": "15–30 min direct sun most days",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "30+ min outdoor exposure regularly",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.12, "BCM": -0.06 },
+          "reservoirs": { "micronutrient_reserve": 0.12, "bone_reserve": 0.06 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "environment"],
+        "personas": ["elderly", "ramadan_dm"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Almost none — indoors all day or fully covered", "ask": "Q_NUTGI_VIT_D_SUPPL" }
+        ],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.25_OH_vitD"] },
+      "source": "OMICS Introductory Report; Holick vitamin D deficiency review; Doc 15 UAE localization",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_VIT_D_SUPPL",
+      "text": "Do you take a vitamin D supplement?",
+      "category": "Vitamin D",
+      "domain": "NUTRITION_GI",
+      "conditions": ["vitamin_d_deficiency"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12 },
+          "reservoirs": { "micronutrient_reserve": -0.10 }
+        },
+        {
+          "label": "Yes, ≤800 IU/day",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes, 1000–2000 IU/day",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.12, "BCM": -0.05 },
+          "reservoirs": { "micronutrient_reserve": 0.10, "bone_reserve": 0.05 }
+        },
+        {
+          "label": "Yes, prescribed high-dose (>2000 IU or calcitriol)",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.14 },
+          "reservoirs": { "micronutrient_reserve": 0.12, "bone_reserve": 0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["elderly", "ramadan_dm"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.25_OH_vitD"] },
+      "source": "OMICS Introductory Report; Endocrine Society vitamin D guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_B12_DIET",
+      "text": "Which best describes your diet with respect to animal products (meat, dairy, eggs, fish)?",
+      "category": "B12 & Micronutrients",
+      "domain": "NUTRITION_GI",
+      "conditions": ["b12_deficiency", "iron_deficiency_diet", "poor_diet_quality"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Vegan — no animal products",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.26, "HEM": 0.16, "MCS": 0.08 },
+          "reservoirs": { "micronutrient_reserve": -0.20, "iron_reserve": -0.12, "oxygen_delivery_reserve": -0.08 }
+        },
+        {
+          "label": "Vegetarian — dairy and/or eggs but no meat/fish",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "HEM": 0.08 },
+          "reservoirs": { "micronutrient_reserve": -0.10, "iron_reserve": -0.08 }
+        },
+        {
+          "label": "Pescatarian — fish but no meat",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Omnivore — regular meat, dairy, eggs",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": -0.06 },
+          "reservoirs": { "micronutrient_reserve": 0.06, "iron_reserve": 0.06 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Vegan — no animal products", "ask": "Q_NUTGI_B12_SUPPL" }
+        ],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.B12", "lab.MCV", "lab.ferritin"] },
+      "source": "OMICS Introductory Report; UK NDNS; British Dietetic Association vegan B12 statement",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_B12_SUPPL",
+      "text": "Do you take a B12 supplement or regularly eat B12-fortified foods (nutritional yeast, fortified plant milk)?",
+      "category": "B12 & Micronutrients",
+      "domain": "NUTRITION_GI",
+      "conditions": ["b12_deficiency"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.28, "HEM": 0.16, "MCS": 0.10 },
+          "reservoirs": { "micronutrient_reserve": -0.20, "oxygen_delivery_reserve": -0.10 }
+        },
+        {
+          "label": "Yes, occasionally (not daily)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "HEM": 0.08 },
+          "reservoirs": { "micronutrient_reserve": -0.10 }
+        },
+        {
+          "label": "Yes, daily ≥2.4 mcg",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes, prescribed injectable B12",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.12, "HEM": -0.08 },
+          "reservoirs": { "micronutrient_reserve": 0.12, "oxygen_delivery_reserve": 0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_NUTGI_B12_DIET", "in": ["Vegan — no animal products", "Vegetarian — dairy and/or eggs but no meat/fish"] }
+        ],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.B12", "lab.homocysteine"] },
+      "source": "OMICS Introductory Report; British Dietetic Association B12 guidance",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_IRON_DIET",
+      "text": "How often do you eat iron-rich foods (red meat, legumes, leafy greens, fortified cereals)?",
+      "category": "Iron & Haematologic Nutrition",
+      "domain": "NUTRITION_GI",
+      "conditions": ["iron_deficiency_diet", "b12_deficiency", "poor_diet_quality"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Rarely — not a regular part of my diet",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.22, "HEM": 0.18 },
+          "reservoirs": { "micronutrient_reserve": -0.16, "iron_reserve": -0.18, "oxygen_delivery_reserve": -0.10 }
+        },
+        {
+          "label": "A few times a week",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06, "HEM": 0.06 },
+          "reservoirs": { "iron_reserve": -0.05 }
+        },
+        {
+          "label": "Daily or near-daily",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["athlete", "elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.ferritin", "lab.serum_iron", "lab.Hb"] },
+      "source": "OMICS Introductory Report; WHO iron deficiency anaemia guidelines",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_MAGNESIUM_DIET",
+      "text": "How often do you eat magnesium-rich foods — leafy greens (spinach, kale), nuts, seeds, legumes, whole grains, or dark chocolate?",
+      "category": "Magnesium Nutrition",
+      "domain": "NUTRITION_GI",
+      "conditions": ["magnesium_deficiency", "poor_diet_quality", "constipation"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Rarely or never",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.16, "CV": 0.06, "MCS": 0.05 },
+          "reservoirs": { "micronutrient_reserve": -0.14 }
+        },
+        {
+          "label": "A few times a week",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Daily with variety",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.12, "CV": -0.05 },
+          "reservoirs": { "micronutrient_reserve": 0.12 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.magnesium_RBC"] },
+      "source": "OMICS Introductory Report; DiDi study; WHO magnesium reference intakes",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_DAIRY",
+      "text": "Do you regularly consume dairy products (milk, yogurt, cheese)?",
+      "category": "B12 & Micronutrients",
+      "domain": "NUTRITION_GI",
+      "conditions": ["b12_deficiency", "vitamin_d_deficiency", "magnesium_deficiency", "food_intolerance"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No — dairy-free (intolerance, allergy, or preference)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "HEM": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.10, "bone_reserve": -0.06 }
+        },
+        {
+          "label": "Occasionally",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Daily (1–2 servings)",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": -0.06 },
+          "reservoirs": { "micronutrient_reserve": 0.06, "bone_reserve": 0.05 }
+        },
+        {
+          "label": "3+ servings daily",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.10, "BCM": -0.05 },
+          "reservoirs": { "micronutrient_reserve": 0.10, "bone_reserve": 0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "No — dairy-free (intolerance, allergy, or preference)", "ask": "Q_NUTGI_FOOD_INTOL" }
+        ],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.25_OH_vitD", "lab.B12"] },
+      "source": "OMICS Introductory Report; UK NDNS dairy patterns",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_SOY_LEGUMES",
+      "text": "How often do you eat soy products (tofu, edamame, soy milk) or other legumes (lentils, chickpeas, beans)?",
+      "category": "Diet Quality",
+      "domain": "NUTRITION_GI",
+      "conditions": ["poor_diet_quality", "magnesium_deficiency", "iron_deficiency_diet"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Rarely / never",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.05 }
+        },
+        {
+          "label": "1–2×/week",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "3+×/week",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": -0.06, "CV": -0.05 },
+          "reservoirs": { "micronutrient_reserve": 0.06, "glycemic_burden": -0.05 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 4,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS Introductory Report; Mediterranean-DASH diet patterns",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_COFFEE_TEA",
+      "text": "How much coffee or strong tea do you drink per day?",
+      "category": "Meal Patterns",
+      "domain": "NUTRITION_GI",
+      "conditions": ["gerd_reflux", "hypochlorhydria", "iron_deficiency_diet", "dehydration"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "None",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "1–2 cups/day",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "3–4 cups/day",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06 },
+          "reservoirs": { "iron_reserve": -0.05, "micronutrient_reserve": -0.05 }
+        },
+        {
+          "label": "5+ cups/day",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.10, "MCS": 0.05 },
+          "reservoirs": { "iron_reserve": -0.08, "micronutrient_reserve": -0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "substance"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.ferritin"] },
+      "source": "OMICS Introductory Report; Tannin-iron inhibition studies; Rome IV GERD criteria",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_SPICY_FOOD",
+      "text": "How often do you eat spicy foods (hot chilli, hot sauce, heavily spiced meals)?",
+      "category": "GI Triggers",
+      "domain": "NUTRITION_GI",
+      "conditions": ["gerd_reflux", "irritable_bowel_syndrome", "hypochlorhydria"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Daily",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.10, "INF": 0.06 },
+          "reservoirs": { "inflammatory_load": 0.06 }
+        },
+        {
+          "label": "Most days",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06 },
+          "reservoirs": { "inflammatory_load": 0.05 }
+        },
+        {
+          "label": "Occasionally (1–2×/week)",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Rarely / never",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["ramadan_dm"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS Introductory Report; Rome IV GI trigger data",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_PPI_ANTACID",
+      "text": "Do you regularly take antacids, proton-pump inhibitors (PPIs like omeprazole), or H2 blockers (e.g. ranitidine)?",
+      "category": "Medication & GI",
+      "domain": "NUTRITION_GI",
+      "conditions": ["hypochlorhydria", "b12_deficiency", "magnesium_deficiency", "gerd_reflux"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Occasionally as needed (not daily)",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.05 },
+          "reservoirs": { "micronutrient_reserve": -0.05 }
+        },
+        {
+          "label": "Yes, daily PPI or H2 blocker",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.16, "HEM": 0.10, "MCS": 0.05 },
+          "reservoirs": { "micronutrient_reserve": -0.14, "iron_reserve": -0.08 }
+        },
+        {
+          "label": "Yes, long-term PPI >1 year",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.22, "HEM": 0.14, "BCM": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.20, "iron_reserve": -0.12, "bone_reserve": -0.06 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Yes, daily PPI or H2 blocker", "ask": "Q_NUTGI_GERD_SX" },
+          { "if_response": "Yes, long-term PPI >1 year", "ask": "Q_NUTGI_GERD_SX" }
+        ]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.B12", "lab.magnesium_RBC", "lab.ferritin"] },
+      "source": "OMICS Introductory Report; NICE PPI guidance; Heidelbaugh PPI complications review",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_GERD_SX",
+      "text": "How often do you experience heartburn, acid reflux, or a burning sensation in your chest or throat?",
+      "category": "GERD & Reflux",
+      "domain": "NUTRITION_GI",
+      "conditions": ["gerd_reflux", "hypochlorhydria"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Never or very rarely",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "A few times a month",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.05 },
+          "reservoirs": { "inflammatory_load": 0.05 }
+        },
+        {
+          "label": "Weekly (1–2× per week)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12, "INF": 0.06 },
+          "reservoirs": { "inflammatory_load": 0.08, "micronutrient_reserve": -0.06 }
+        },
+        {
+          "label": "Most days or daily",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.20, "INF": 0.10 },
+          "reservoirs": { "inflammatory_load": 0.12, "micronutrient_reserve": -0.10 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Weekly (1–2× per week)", "ask": "Q_NUTGI_HYPOACID_SX" },
+          { "if_response": "Most days or daily", "ask": "Q_NUTGI_HYPOACID_SX" }
+        ]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS Introductory Report; Rome IV diagnostic criteria",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_HYPOACID_SX",
+      "text": "After eating, do you often experience: early fullness, excessive belching/bloating, feeling of undigested food, or nausea?",
+      "category": "Hypochlorhydria",
+      "domain": "NUTRITION_GI",
+      "conditions": ["hypochlorhydria", "b12_deficiency", "iron_deficiency_diet"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        {
+          "label": "None of these",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Early satiety or heaviness after small meals",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "HEM": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.10, "iron_reserve": -0.06 }
+        },
+        {
+          "label": "Excessive belching or upper-GI bloating",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12 },
+          "reservoirs": { "micronutrient_reserve": -0.08 }
+        },
+        {
+          "label": "Feeling of undigested food / slow stomach",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "HEM": 0.08 },
+          "reservoirs": { "micronutrient_reserve": -0.10, "iron_reserve": -0.06 }
+        },
+        {
+          "label": "Nausea or queasiness after protein-rich meals",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.08 },
+          "reservoirs": { "micronutrient_reserve": -0.06 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.B12", "lab.ferritin"] },
+      "source": "OMICS Introductory Report; Hypochlorhydria clinical review Kines & Kines 2016",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_BLOATING_IBS_SX",
+      "text": "How often do you experience lower-abdominal bloating, cramping, or discomfort linked to eating?",
+      "category": "IBS & Gut Function",
+      "domain": "NUTRITION_GI",
+      "conditions": ["irritable_bowel_syndrome", "food_intolerance", "constipation"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Never or rarely",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Occasionally (a few times a month)",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06, "INF": 0.05 },
+          "reservoirs": { "inflammatory_load": 0.05 }
+        },
+        {
+          "label": "Weekly",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12, "INF": 0.08, "MCS": 0.06 },
+          "reservoirs": { "inflammatory_load": 0.10, "allostatic_load": 0.05 }
+        },
+        {
+          "label": "Most days",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.20, "INF": 0.14, "MCS": 0.10 },
+          "reservoirs": { "inflammatory_load": 0.14, "allostatic_load": 0.10 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load", "metabolic"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Weekly", "ask": "Q_NUTGI_IBS_DIAGNOSED" },
+          { "if_response": "Most days", "ask": "Q_NUTGI_IBS_DIAGNOSED" }
+        ]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.hs_CRP", "lab.calprotectin"] },
+      "source": "OMICS Introductory Report; Rome IV functional bowel criteria",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_IBS_DIAGNOSED",
+      "text": "Have you ever been formally diagnosed with irritable bowel syndrome (IBS) or functional bowel disorder by a doctor?",
+      "category": "IBS & Gut Function",
+      "domain": "NUTRITION_GI",
+      "conditions": ["irritable_bowel_syndrome"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes, IBS-C (constipation-predominant)",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.22, "INF": 0.12, "MCS": 0.10 },
+          "reservoirs": { "inflammatory_load": 0.12, "allostatic_load": 0.08 }
+        },
+        {
+          "label": "Yes, IBS-D (diarrhoea-predominant)",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.24, "INF": 0.14, "HEM": 0.08, "MCS": 0.10 },
+          "reservoirs": { "inflammatory_load": 0.14, "micronutrient_reserve": -0.10, "allostatic_load": 0.08 }
+        },
+        {
+          "label": "Yes, IBS-M (mixed) or unspecified",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.22, "INF": 0.12, "MCS": 0.10 },
+          "reservoirs": { "inflammatory_load": 0.12, "micronutrient_reserve": -0.08, "allostatic_load": 0.08 }
+        },
+        {
+          "label": "Suspected but undiagnosed",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12, "INF": 0.08, "MCS": 0.06 },
+          "reservoirs": { "inflammatory_load": 0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [],
+        "validated_by": "DIET"
+      },
+      "priority": 1,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.calprotectin", "lab.hs_CRP"] },
+      "source": "OMICS Introductory Report; Rome IV IBS diagnostic criteria; Q_CORE_ACE (childhood adversity → IBS risk)",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_IBS_FAMHX",
+      "text": "Do any of your biological relatives (parents, siblings) have IBS, inflammatory bowel disease (Crohn's/colitis), or other chronic gut conditions?",
+      "category": "IBS & Gut Function",
+      "domain": "NUTRITION_GI",
+      "conditions": ["irritable_bowel_syndrome"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "No known family history",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Yes — IBS in first-degree relative",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12, "INF": 0.08 },
+          "reservoirs": { "inflammatory_load": 0.08 }
+        },
+        {
+          "label": "Yes — IBD (Crohn's/colitis) in family",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "INF": 0.12 },
+          "reservoirs": { "inflammatory_load": 0.10 }
+        },
+        {
+          "label": "Not sure",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["genetic_familial", "condition_load"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 3,
+      "cadence": "annual",
+      "refresh": "slow",
+      "perceived_actual": { "kind": "anchor", "corroborated_by": [] },
+      "source": "OMICS Introductory Report; IBS genetic epidemiology — see Q_CORE_FAMHX for broader FHx",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_BOWEL_REGULARITY",
+      "text": "How often do you have a bowel movement?",
+      "category": "Bowel Function",
+      "domain": "NUTRITION_GI",
+      "conditions": ["constipation", "irritable_bowel_syndrome", "poor_diet_quality", "dehydration"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "Less than 3 times a week",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.20, "INF": 0.08 },
+          "reservoirs": { "inflammatory_load": 0.08, "micronutrient_reserve": -0.06 }
+        },
+        {
+          "label": "3–6 times a week",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Once daily",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "2–3 times daily (may indicate IBS-D)",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06, "HEM": 0.05 },
+          "reservoirs": { "micronutrient_reserve": -0.05, "iron_reserve": -0.05 }
+        },
+        {
+          "label": "4+ times daily (loose/frequent)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "HEM": 0.10 },
+          "reservoirs": { "micronutrient_reserve": -0.10, "iron_reserve": -0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["elderly"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Less than 3 times a week", "ask": "Q_NUTGI_FIBER" },
+          { "if_response": "Less than 3 times a week", "ask": "Q_NUTGI_WATER_INTAKE" }
+        ]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS Introductory Report; Rome IV constipation criteria",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_FOOD_INTOL",
+      "text": "Do you believe certain foods regularly cause symptoms for you (bloating, cramps, diarrhoea, skin reaction, brain fog)?",
+      "category": "Food Intolerance",
+      "domain": "NUTRITION_GI",
+      "conditions": ["food_intolerance", "irritable_bowel_syndrome"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        {
+          "label": "No obvious food triggers",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Lactose / dairy",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12, "INF": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.08, "inflammatory_load": 0.06 }
+        },
+        {
+          "label": "Gluten / wheat",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "INF": 0.10, "HEM": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.10, "inflammatory_load": 0.08, "iron_reserve": -0.06 }
+        },
+        {
+          "label": "FODMAPs (onion, garlic, legumes, wheat, apples etc.)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12, "INF": 0.08 },
+          "reservoirs": { "inflammatory_load": 0.08 }
+        },
+        {
+          "label": "Other specific foods (eggs, nuts, shellfish, etc.)",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.08, "INF": 0.06 },
+          "reservoirs": { "inflammatory_load": 0.06 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.tTG_IgA", "lab.hs_CRP"] },
+      "source": "OMICS Introductory Report; NICE food intolerance / allergy pathway; Low-FODMAP evidence Halmos et al.",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_DIET_QUALITY_BARRIER",
+      "text": "What are the main barriers to eating a healthy diet? (select all that apply)",
+      "category": "Diet Quality",
+      "domain": "NUTRITION_GI",
+      "conditions": ["poor_diet_quality"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        {
+          "label": "Cost / affordability",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14 },
+          "reservoirs": { "micronutrient_reserve": -0.10 }
+        },
+        {
+          "label": "Lack of time / convenience",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12 },
+          "reservoirs": { "micronutrient_reserve": -0.08 }
+        },
+        {
+          "label": "Limited access to fresh food",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14 },
+          "reservoirs": { "micronutrient_reserve": -0.10 }
+        },
+        {
+          "label": "Food preferences / palatability",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.05 }
+        },
+        {
+          "label": "No major barriers",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "social"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [
+          { "q": "Q_NUTGI_FRUIT_VEG", "in": ["0–1 servings"] }
+        ],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 4,
+      "cadence": "annual",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": [] },
+      "source": "OMICS Introductory Report; Health Equity dietary barrier literature",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_SUPPLEMENT_GENERAL",
+      "text": "Which supplements do you currently take regularly? (select all that apply)",
+      "category": "Supplement Use",
+      "domain": "NUTRITION_GI",
+      "conditions": ["vitamin_d_deficiency", "b12_deficiency", "magnesium_deficiency", "iron_deficiency_diet", "omega3_deficiency"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        {
+          "label": "None",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.05 },
+          "reservoirs": { "micronutrient_reserve": -0.05 }
+        },
+        {
+          "label": "Multivitamin",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": -0.06 },
+          "reservoirs": { "micronutrient_reserve": 0.06 }
+        },
+        {
+          "label": "Vitamin D",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.12 },
+          "reservoirs": { "micronutrient_reserve": 0.10, "bone_reserve": 0.05 }
+        },
+        {
+          "label": "B12 or B-complex",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.12, "HEM": -0.06 },
+          "reservoirs": { "micronutrient_reserve": 0.10 }
+        },
+        {
+          "label": "Iron supplement",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.10, "HEM": -0.08 },
+          "reservoirs": { "micronutrient_reserve": 0.08, "iron_reserve": 0.10 }
+        },
+        {
+          "label": "Magnesium",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": -0.08 },
+          "reservoirs": { "micronutrient_reserve": 0.08 }
+        },
+        {
+          "label": "Omega-3 / fish oil",
+          "direction": "decrease_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": -0.10, "INF": -0.06 },
+          "reservoirs": { "micronutrient_reserve": 0.08, "inflammatory_load": -0.06 }
+        },
+        {
+          "label": "Probiotic",
+          "direction": "decrease_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": -0.05, "INF": -0.05 },
+          "reservoirs": { "inflammatory_load": -0.05 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["elderly", "athlete"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": []
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "periodic",
+      "perceived_actual": { "kind": "actual", "corroborated_by": ["lab.25_OH_vitD", "lab.B12", "lab.ferritin", "lab.omega3_index"] },
+      "source": "OMICS Introductory Report; NHS supplement recommendations",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_FATIGUE_COLDINTOL",
+      "text": "Do you experience persistent fatigue, cold intolerance, pale skin, or shortness of breath not explained by another condition?",
+      "category": "Iron & B12 Symptoms",
+      "domain": "NUTRITION_GI",
+      "conditions": ["iron_deficiency_diet", "b12_deficiency", "vitamin_d_deficiency"],
+      "stream": "LIFE",
+      "type": "single_select",
+      "responses": [
+        {
+          "label": "None of these",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Mild — occasional tiredness, no other signs",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.06, "HEM": 0.05 },
+          "reservoirs": { "micronutrient_reserve": -0.05, "oxygen_delivery_reserve": -0.05 }
+        },
+        {
+          "label": "Moderate — regular fatigue + one other sign",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "HEM": 0.12 },
+          "reservoirs": { "micronutrient_reserve": -0.10, "iron_reserve": -0.10, "oxygen_delivery_reserve": -0.08 }
+        },
+        {
+          "label": "Severe — all or most signs present most days",
+          "direction": "increase_risk",
+          "magnitude": "strong",
+          "pillars": { "NUT": 0.22, "HEM": 0.20, "MCS": 0.08 },
+          "reservoirs": { "micronutrient_reserve": -0.18, "iron_reserve": -0.16, "oxygen_delivery_reserve": -0.14 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load", "metabolic"],
+        "personas": ["all"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Moderate — regular fatigue + one other sign", "ask": "Q_NUTGI_IRON_DIET" },
+          { "if_response": "Severe — all or most signs present most days", "ask": "Q_NUTGI_IRON_DIET" }
+        ]
+      },
+      "priority": 1,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.ferritin", "lab.B12", "lab.25_OH_vitD", "lab.Hb"] },
+      "source": "OMICS Introductory Report; WHO anaemia symptoms; NICE B12 deficiency guidance",
+      "flag": "illustrative-reverify"
+    },
+    {
+      "id": "Q_NUTGI_MUSCLE_CRAMPS_TINGLING",
+      "text": "Do you experience muscle cramps, restless legs, tingling hands/feet, or poor wound healing regularly?",
+      "category": "Magnesium & Micronutrient Symptoms",
+      "domain": "NUTRITION_GI",
+      "conditions": ["magnesium_deficiency", "b12_deficiency", "vitamin_d_deficiency"],
+      "stream": "LIFE",
+      "type": "multi_select",
+      "responses": [
+        {
+          "label": "None",
+          "direction": "neutral",
+          "magnitude": "none",
+          "pillars": {},
+          "reservoirs": {}
+        },
+        {
+          "label": "Muscle cramps (especially at night)",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "BCM": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.12, "muscle_reserve": -0.06 }
+        },
+        {
+          "label": "Restless legs or twitching",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.12, "SLP": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.10 }
+        },
+        {
+          "label": "Tingling, numbness, or pins-and-needles",
+          "direction": "increase_risk",
+          "magnitude": "moderate",
+          "pillars": { "NUT": 0.14, "MCS": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.12 }
+        },
+        {
+          "label": "Poor wound healing or frequent illness",
+          "direction": "increase_risk",
+          "magnitude": "weak",
+          "pillars": { "NUT": 0.08, "INF": 0.06 },
+          "reservoirs": { "micronutrient_reserve": -0.08 }
+        }
+      ],
+      "dimensions": {
+        "age": "all",
+        "sex": ["all"],
+        "axis_tags": ["diet", "condition_load"],
+        "personas": ["elderly", "athlete"]
+      },
+      "dependencies": {
+        "show_if": [],
+        "skip_if": [],
+        "triggers": [
+          { "if_response": "Tingling, numbness, or pins-and-needles", "ask": "Q_NUTGI_B12_DIET" }
+        ]
+      },
+      "priority": 2,
+      "cadence": "quarterly",
+      "refresh": "dynamic",
+      "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.magnesium_RBC", "lab.B12", "lab.25_OH_vitD"] },
+      "source": "OMICS Introductory Report; Subclinical B12/Mg deficiency symptom reviews",
+      "flag": "illustrative-reverify"
+    }
+  ]
+}

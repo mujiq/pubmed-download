@@ -162,4 +162,7 @@ pubchem_graph.png
 
 # Backup files
 *.bak
-*.backup 
+*.backup
+
+# Generated wiki export (regenerable from docs/tech source)
+docs/PureScore-Reloaded-Wiki.zip 

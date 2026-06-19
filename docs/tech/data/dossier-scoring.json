@@ -1,0 +1,371 @@
+{
+  "classes": {
+    "PureScore": {
+      "purpose": "Aggregates pillar risks into a single 0-100 headline score via confidence-weighted power-mean (δ=2), then enforces the critical cascade cap (≤40 when any pillar is critical); each computation is persisted as an immutable snapshot with the full explanation object.",
+      "stories": [
+        {
+          "id": "US-PURESCORE-1",
+          "role": "patient",
+          "want": "my PureScore to be immediately capped at or below 40 whenever a life-threatening biomarker is critical",
+          "soThat": "I and my clinician see unambiguous urgency and cannot be falsely reassured by healthy pillars averaging away the danger",
+          "acceptance": [
+            "Given a patient with K⁺=6.3 and all other pillars green, When the scoring engine runs, Then PureScore ≤ 40 and overall_status = CRITICAL",
+            "Given a patient where the critical marker is flagged as a lab artifact (confidence≈0 per D14), When the engine runs, Then the cascade does NOT fire and PureScore is computed normally with a Reconfirm-pending flag",
+            "Given a patient whose K⁺ drops below the red threshold on re-test, When the engine runs without confirming-measurement hysteresis cleared, Then PureScore remains capped until hysteresis resolves"
+          ],
+          "edge": [
+            "Two simultaneous critical markers in different pillars: cascade must still cap at 40 and surface both binding constraints in the explanation",
+            "Model-version change mid-flight: snapshot must record the model_version_id at the time of computation so audits are reproducible"
+          ]
+        },
+        {
+          "id": "US-PURESCORE-2",
+          "role": "patient",
+          "want": "my PureScore to tick up visibly the day after I get a good night's sleep or complete 9,000 steps",
+          "soThat": "daily positive actions produce real, immediate feedback reinforcing the behaviour loop",
+          "acceptance": [
+            "Given a patient's personal baseline for sleep duration is μ=6.5h and they log 8h, When the scoring engine runs Stage 2b, Then r_i^pers = κ_resp·tanh(z/2) with z<0 and PureScore rises by a measurable non-zero delta",
+            "Given κ_resp=0.10 and band_clamp active, When the personal-baseline term is computed, Then the resulting r_i never falls below the Stage 2 clinical/cohort floor (band_clamp cannot relax a red)",
+            "Given the pillar is already red/critical, When Stage 2b runs, Then the 𝟙[non-critical] flag suppresses the personal-baseline additive term entirely"
+          ],
+          "edge": [
+            "Cold-start patient with fewer than the minimum measurement count: empirical-Bayes shrinks to cohort prior; z-score weight is low so feedback signal is small but still non-zero"
+          ]
+        },
+        {
+          "id": "US-PURESCORE-3",
+          "role": "clinician",
+          "want": "to retrieve the binding constraint (which pillar and marker capped the score) with every score fetch",
+          "soThat": "I can immediately focus on the correct clinical concern without reading the full explanation object",
+          "acceptance": [
+            "Given a patient with a critical REN pillar, When GET /v1/patients/{id}/score is called, Then the response includes cappedBy: {pillar:'REN', marker:'K+', escalation:'emergency'}",
+            "Given all pillars are on-track, When GET /v1/patients/{id}/score is called, Then cappedBy is null and overall_status = ON_TRACK",
+            "Given overall_status = AT_RISK (R_total ≥ 0.30 but no critical), When score is fetched, Then cappedBy is null and PureScore = PureScore° without cascade"
+          ],
+          "edge": [
+            "Score requested before any measurements exist: return 404 or a coverage=0 sentinel score clearly marked insufficient-data, never a fabricated value"
+          ]
+        },
+        {
+          "id": "US-PURESCORE-4",
+          "role": "engineer",
+          "want": "every PureScore snapshot to be deterministic and immutable given its inputs and model version",
+          "soThat": "audit trails and regulatory reviews can reproduce any historical score exactly",
+          "acceptance": [
+            "Given identical input measurements and the same model_version_id, When the scoring engine runs twice, Then both snapshots have identical value, status, and explanation JSON",
+            "Given a constant change triggers a model-version bump per D20, When the new version is applied, Then old snapshots retain the old model_version_id and are not retroactively altered",
+            "Given admin-constants is called with a valid proposal, When the gate passes, Then a new model_version record is created and all subsequent score snapshots reference it"
+          ],
+          "edge": [
+            "Concurrent ingest events for the same patient within the same second: idempotency-key dedup must prevent double-computation; last-write-wins with the newer measurement timestamp"
+          ]
+        }
+      ],
+      "table": {
+        "name": "pure_score_snapshot",
+        "columns": [
+          {"name": "id", "type": "uuid", "key": "PK", "note": ""},
+          {"name": "patient_id", "type": "uuid", "key": "FK->patient(id)", "note": "partition key"},
+          {"name": "computed_at", "type": "timestamptz", "key": "IDX", "note": "partition range key; append-only"},
+          {"name": "value", "type": "numeric(5,2)", "key": "", "note": "0-100; enforced ≤40 when critical"},
+          {"name": "overall_status", "type": "text", "key": "", "note": "ON_TRACK | AT_RISK | CRITICAL"},
+          {"name": "r_total", "type": "numeric(6,5)", "key": "", "note": "aggregate risk [0,1] before cascade"},
+          {"name": "capped_by_pillar", "type": "text", "key": "", "note": "null unless critical cascade fired"},
+          {"name": "capped_by_marker", "type": "text", "key": "", "note": "null unless critical cascade fired"},
+          {"name": "escalation", "type": "text", "key": "", "note": "null | emergency | urgent | routine"},
+          {"name": "pillar_weights", "type": "jsonb", "key": "", "note": "W_k after cohort/goal/acute modifiers"},
+          {"name": "explanation_id", "type": "uuid", "key": "FK->explanation(id)", "note": "full explainability object"},
+          {"name": "model_version_id", "type": "uuid", "key": "FK->model_version(id)", "note": "constants snapshot at compute time"},
+          {"name": "trigger_measurement_id", "type": "uuid", "key": "FK->measurement(id)", "note": "measurement that triggered this recompute"},
+          {"name": "is_cold_start", "type": "bool", "key": "", "note": "true when personal baseline still shrunk to cohort prior"}
+        ],
+        "indexes": [
+          "(patient_id, computed_at DESC)",
+          "(patient_id, overall_status) WHERE overall_status = 'CRITICAL'",
+          "(model_version_id)"
+        ],
+        "notes": "Time-series; range-partitioned by computed_at (monthly). Append-only — no UPDATE or DELETE. Latest snapshot per patient is the live score; historical rows are the audit trail. Partition pruning on patient_id + computed_at for GET /score (latest row) and for validation-harness batch reads."
+      },
+      "invariants": [
+        "IF any pillar status = CRITICAL THEN value ≤ PURE_CRIT_CAP (40) — hard cap, never relaxable by personalisation",
+        "value = 100·(1 − R_total) before cascade; cascade only lowers, never raises the value",
+        "overall_status = CRITICAL IFF ∃ pillar with status = CRITICAL; AT_RISK IFF R_total ≥ 0.30 AND no critical; ON_TRACK otherwise",
+        "model_version_id MUST be set on every snapshot; orphaned snapshots (no FK) are invalid",
+        "Append-only: no row may be updated or deleted after insert; corrections are new snapshots referencing a correction note",
+        "Determinism: given same (patient_id, set_of_measurement_ids, model_version_id), value is bit-identical across recomputes",
+        "band_clamp: Stage 2b personalisation cannot set r_i below the Stage 2 clinical/cohort floor, so no personal-baseline improvement can relax a red or clear a critical",
+        "escalation = emergency MUST trigger the emergency pathway (Doc 11); no silent suppression except via confirmed data-quality confidence≈0 flag (D14)"
+      ],
+      "apiRefs": ["get-score", "get-explanation", "get-model-version", "admin-constants", "ingest-measurement"],
+      "seqRefs": ["ingest-recompute", "wearable-critical-gate", "acute-event"],
+      "decisions": ["D1", "D2", "D5", "D6", "D9", "D14", "D17", "D20", "D23"]
+    },
+    "Pillar": {
+      "purpose": "Aggregates marker risks for one organ-system domain into a pillar risk R_k via γ=3 confidence-weighted power mean plus a reservoir load term, determines the pillar's status (green/yellow/red/critical), and exposes per-pillar score S_k, coverage, and top contributors for the explanation and clinician view.",
+      "stories": [
+        {
+          "id": "US-PILLAR-1",
+          "role": "patient",
+          "want": "the worst marker in a pillar to dominate the pillar score even when my other markers in that pillar are green",
+          "soThat": "a single dangerous value cannot be averaged away and hidden",
+          "acceptance": [
+            "Given a CV pillar with systolic BP r=0.7 (red) and three other markers all r=0.05 (green), When pillar aggregation runs with γ=3, Then R_CV is substantially closer to 0.7 than to the simple average of all four markers",
+            "Given R_k ≥ 0.60, When status is computed, Then status_k = critical regardless of whether a specific critical-marker flag is set",
+            "Given a critical-marker (e.g. eGFR) with r_i ≥ 0.5 in REN pillar, When status is computed, Then status_k = critical and R_k is floored to max(R_k, R_crit=0.60)"
+          ],
+          "edge": [
+            "All markers in a pillar are imputed (confidence low): coverage cov_k < threshold → pillar displayed as low-coverage-green, not confirmed-green; S_k is shown with a data-gap caveat"
+          ]
+        },
+        {
+          "id": "US-PILLAR-2",
+          "role": "clinician",
+          "want": "to see pillar coverage alongside the score so I know when a green pillar is green by default vs evidenced",
+          "soThat": "I do not over-interpret a pillar score based on absent data",
+          "acceptance": [
+            "Given a pillar with 3 of 6 markers observed and the rest literature-imputed, When GET /v1/patients/{id}/pillars is called, Then cov_k = observed_weight / total_weight < 1.0 and a low_coverage flag is set",
+            "Given cov_k is below the green-display threshold, When the pillar is returned, Then status may not be displayed as confirmed-green even if R_k < 0.15",
+            "Given all markers are observed with full confidence, When coverage is computed, Then cov_k = 1.0 and no caveat is added"
+          ],
+          "edge": [
+            "Marker added to a pillar mid-model-version: historical pillar snapshots retain the old coverage denominator; the new marker only affects snapshots after the model-version bump"
+          ]
+        },
+        {
+          "id": "US-PILLAR-3",
+          "role": "system",
+          "want": "the reservoir load term to raise a pillar's risk even when its spot markers look acceptable",
+          "soThat": "chronic burden (e.g. accumulated sleep debt on SLP/CV) is reflected in the pillar risk continuously",
+          "acceptance": [
+            "Given B̃_SLP = 0.8 (high chronic sleep debt) and ρ_SLP = 0.2, When pillar risk is computed, Then R_SLP = clamp(R_SLP^mark + 0.2·0.8) = clamp(R_SLP^mark + 0.16) which is ≥ R_SLP^mark",
+            "Given ρ_k = 0.20 and B̃_k = 1.0, When the reservoir term is added, Then the maximum reservoir contribution is 0.20 and R_k is clamped to [0,1]",
+            "Given reservoir load is zero (B̃_k=0), When pillar risk is computed, Then R_k = R_k^mark with no reservoir contribution"
+          ],
+          "edge": [
+            "A pillar receives contributions from multiple reservoirs (e.g. ALLO and SLP both feed MCS): B̃_k is the aggregate normalized load; individual reservoir contributions must be decomposed in the explanation for nudge attribution"
+          ]
+        }
+      ],
+      "table": {
+        "name": "pillar_snapshot",
+        "columns": [
+          {"name": "id", "type": "uuid", "key": "PK", "note": ""},
+          {"name": "pure_score_snapshot_id", "type": "uuid", "key": "FK->pure_score_snapshot(id)", "note": "parent score snapshot"},
+          {"name": "patient_id", "type": "uuid", "key": "FK->patient(id) IDX", "note": "for direct pillar queries"},
+          {"name": "computed_at", "type": "timestamptz", "key": "IDX", "note": "denormalized from parent snapshot"},
+          {"name": "pillar_code", "type": "text", "key": "IDX", "note": "CV | MET | FIT | MCS | SLP | REN | HEP | IMM | END | HEM | MSK | GI | PUL"},
+          {"name": "s_k", "type": "numeric(5,2)", "key": "", "note": "100·(1−R_k); 0-100"},
+          {"name": "r_k", "type": "numeric(6,5)", "key": "", "note": "pillar risk after floor [0,1]"},
+          {"name": "r_k_mark", "type": "numeric(6,5)", "key": "", "note": "marker-only power mean before reservoir"},
+          {"name": "reservoir_contribution", "type": "numeric(6,5)", "key": "", "note": "ρ_k·B̃_k additive term"},
+          {"name": "status", "type": "text", "key": "", "note": "green | yellow | red | critical"},
+          {"name": "cov_k", "type": "numeric(4,3)", "key": "", "note": "coverage ratio [0,1]"},
+          {"name": "top_contributors", "type": "jsonb", "key": "", "note": "[{marker_id, w_hat_r_gamma}] top 3"},
+          {"name": "pillar_weight", "type": "numeric(6,5)", "key": "", "note": "W_k used in PureScore aggregation"},
+          {"name": "model_version_id", "type": "uuid", "key": "FK->model_version(id)", "note": ""}
+        ],
+        "indexes": [
+          "(patient_id, computed_at DESC)",
+          "(patient_id, pillar_code, computed_at DESC)",
+          "(pure_score_snapshot_id)",
+          "(patient_id, status) WHERE status IN ('red','critical')"
+        ],
+        "notes": "Appended with each PureScore recompute; one row per pillar per snapshot. Range-partitioned by computed_at. Never updated after insert."
+      },
+      "invariants": [
+        "status = critical IFF (∃ i∈k with r_i ≥ 0.5 AND i ∈ CriticalMarkers_k) OR R_k ≥ 0.60 — both conditions independently sufficient",
+        "IF status = critical THEN r_k ≥ R_crit (0.60) — risk is floored, never below the critical floor",
+        "s_k = 100·(1 − r_k); s_k ≤ 40 when status = critical",
+        "reservoir_contribution ≤ ρ_k · 1.0 (i.e. ≤ 0.20 at default ρ) — reservoir term is bounded",
+        "r_k = clamp([0,1], r_k_mark + reservoir_contribution) — clamp ensures r_k stays in unit interval",
+        "cov_k = Σ(observed ŵ_i) / Σ(all ŵ_i); low cov_k triggers low-coverage display suppression of confirmed-green",
+        "pillar_code must exist in the versioned pillar catalogue for the given model_version_id; orphaned codes are rejected on insert"
+      ],
+      "apiRefs": ["get-pillars", "get-explanation", "get-score", "get-reservoirs"],
+      "seqRefs": ["ingest-recompute", "question-answer", "reservoir-update", "acute-event"],
+      "decisions": ["D1", "D3", "D4", "D6", "D7", "D22", "D23", "D24"]
+    },
+    "CriticalCascade": {
+      "purpose": "Implements the safety override that floors any critical pillar's risk to R_crit=0.60, caps PureScore at PURE_CRIT_CAP=40 when any pillar is critical, sets overall_status=CRITICAL, and fires the emergency or urgent escalation pathway for acute-danger markers — ensuring a single life-threatening biomarker is never averaged away.",
+      "stories": [
+        {
+          "id": "US-CRITICALCASCADE-1",
+          "role": "system",
+          "want": "a confirmed acute-danger critical marker to unconditionally trigger the emergency escalation pathway",
+          "soThat": "no clinical emergency can be silenced by healthy pillars or a high background PureScore",
+          "acceptance": [
+            "Given K⁺=6.3 with escalation=emergency and confidence=1.0, When CriticalCascade runs, Then overall_status=CRITICAL, PureScore≤40, and the emergency pathway (Doc 11) is triggered within the same compute cycle",
+            "Given SpO2=88% from a consumer-tier wearable (confidence≈0 per D14/D22), When CriticalCascade runs, Then the cascade does NOT fire; an Early-warning Watch is raised instead",
+            "Given SpO2=88% corroborated by a second clinical-grade device (confidence=1.0), When CriticalCascade runs, Then the cascade fires and escalation=emergency is routed to the clinician"
+          ],
+          "edge": [
+            "Emergency escalation must fire even if the patient has previously opted out of notifications: the safety pathway bypasses nudge-preference settings (Doc 11 compliance)"
+          ]
+        },
+        {
+          "id": "US-CRITICALCASCADE-2",
+          "role": "patient",
+          "want": "the cascade to lift when I re-test and the critical marker is confirmed normal, but not instantaneously flip back on noise",
+          "soThat": "my score recovers honestly when the danger resolves without oscillating on measurement noise",
+          "acceptance": [
+            "Given a patient exiting a critical state (K⁺ returned to 5.0), When the confirming measurement arrives, Then the cascade flag is removed only after hysteresis clearance (either confirming-measurement or sustained reservoir drain per Doc 03 §6)",
+            "Given only one in-range re-test with no sustained improvement, When CriticalCascade evaluates, Then status remains critical-pending-confirmation and PureScore stays capped",
+            "Given two consecutive in-range measurements with no adverse reservoir state, When CriticalCascade evaluates, Then the floor is lifted and PureScore rebounds to PureScore°"
+          ],
+          "edge": [
+            "Anti-flap: a borderline marker oscillating around the critical threshold (r=0.49/0.51) must require hysteresis to settle before status toggles — bare threshold crossing must not cause same-day flip/unflip"
+          ]
+        },
+        {
+          "id": "US-CRITICALCASCADE-3",
+          "role": "engineer",
+          "want": "to distinguish reserve-deficit critical markers from acute-danger critical markers in the cascade output",
+          "soThat": "the engine routes reserve-deficit reds to improvement plans rather than the emergency pathway",
+          "acceptance": [
+            "Given VO2max in the very-low range (reserve-deficit critical, escalation=routine), When CriticalCascade runs, Then pillar is floored to R_crit, PureScore≤40, but escalation=routine and the improvement plan path (Doc 06) is triggered — NOT emergency",
+            "Given PHQ-9 item 9 score ≥ 3 (suicidality, escalation=emergency), When CriticalCascade runs, Then escalation=emergency and the crisis pathway is triggered immediately",
+            "Given escalation field missing from the marker catalogue, When CriticalCascade runs, Then computation halts and returns an error — untagged critical markers are forbidden"
+          ],
+          "edge": [
+            "Multiple simultaneous critical markers with mixed escalation levels: the highest escalation level (emergency > urgent > routine) governs the pathway fired; all critical markers are listed in the explanation"
+          ]
+        }
+      ],
+      "table": {
+        "name": "critical_cascade_event",
+        "columns": [
+          {"name": "id", "type": "uuid", "key": "PK", "note": ""},
+          {"name": "patient_id", "type": "uuid", "key": "FK->patient(id) IDX", "note": ""},
+          {"name": "pure_score_snapshot_id", "type": "uuid", "key": "FK->pure_score_snapshot(id)", "note": "score snapshot that fired this event"},
+          {"name": "fired_at", "type": "timestamptz", "key": "IDX", "note": "when the cascade was triggered"},
+          {"name": "resolved_at", "type": "timestamptz", "key": "", "note": "null until hysteresis cleared"},
+          {"name": "triggering_marker_ids", "type": "uuid[]", "key": "", "note": "marker(s) that caused the cascade"},
+          {"name": "triggering_pillar_codes", "type": "text[]", "key": "", "note": ""},
+          {"name": "escalation_level", "type": "text", "key": "", "note": "emergency | urgent | routine"},
+          {"name": "pathway_triggered", "type": "text", "key": "", "note": "emergency | improvement_plan | urgent_review"},
+          {"name": "pure_score_before_cap", "type": "numeric(5,2)", "key": "", "note": "PureScore° before cascade cap"},
+          {"name": "pure_score_after_cap", "type": "numeric(5,2)", "key": "", "note": "≤40"},
+          {"name": "hysteresis_cleared", "type": "bool", "key": "", "note": "false until confirmed normal or reservoir drained"},
+          {"name": "artifact_suppressed", "type": "bool", "key": "", "note": "true if cascade was blocked by confidence≈0 flag (D14)"},
+          {"name": "model_version_id", "type": "uuid", "key": "FK->model_version(id)", "note": ""}
+        ],
+        "indexes": [
+          "(patient_id, fired_at DESC)",
+          "(patient_id) WHERE resolved_at IS NULL",
+          "(escalation_level, fired_at DESC) WHERE escalation_level = 'emergency'"
+        ],
+        "notes": "Append-only audit log of every cascade firing and resolution. One row per cascade event (not per snapshot). resolved_at is set when hysteresis clears. artifact_suppressed=true rows are Watch events, not real cascades — kept for audit completeness."
+      },
+      "invariants": [
+        "IF escalation_level = emergency AND artifact_suppressed = false THEN pathway_triggered = emergency — no silent suppression of confirmed emergencies",
+        "pure_score_after_cap ≤ 40 — the cap is absolute; no pillar weight configuration may override it",
+        "resolved_at IS NULL implies the cascade is still active and the current score snapshot must still be capped",
+        "artifact_suppressed = true requires a data-quality confidence≈0 flag from the ingestion layer — cascade cannot be suppressed by any business logic",
+        "hysteresis_cleared = true requires either a confirmed in-range measurement OR sustained reservoir drainage, never just a single re-test at the margin",
+        "triggering_marker_ids must reference markers in the CriticalMarkers catalogue for the active model_version; uncatalogued markers may not fire a cascade",
+        "escalation_level = max(escalation of all triggering markers) — highest severity governs the pathway"
+      ],
+      "apiRefs": ["get-score", "get-explanation", "ingest-measurement"],
+      "seqRefs": ["ingest-recompute", "wearable-critical-gate", "acute-event"],
+      "decisions": ["D2", "D14", "D22", "D23"]
+    },
+    "PersonalBaseline": {
+      "purpose": "Maintains each patient's per-marker empirical-Bayes personal baseline (μ_i^p, σ_i^p) that powers Stage 2b personalised responsiveness and the companion Trajectory, Early-warning, and Modifiability dimensions; cold-starts shrunk to the cohort prior and converges to personal statistics as measurements accumulate.",
+      "stories": [
+        {
+          "id": "US-PERSONALBASELINE-1",
+          "role": "patient",
+          "want": "my baseline for each marker to start from population norms and smoothly personalise as my readings accumulate",
+          "soThat": "I get honest feedback from day one without needing months of data",
+          "acceptance": [
+            "Given a new patient with zero prior readings for HRV, When the personal baseline is requested, Then μ_i^p = cohort_mean and σ_i^p = cohort_sd with shrinkage_weight = 0.0 (fully cold-start)",
+            "Given a patient with 30 daily HRV readings, When the baseline is updated, Then shrinkage_weight > 0.5 and μ_i^p has moved meaningfully toward the patient's empirical mean",
+            "Given a heavy-tailed marker (hsCRP, flagged skew=true per D13), When the baseline is updated, Then μ_i^p and σ_i^p are computed on log(value) and the z-score is on the log scale"
+          ],
+          "edge": [
+            "Patient with a single outlier reading early in their history: empirical-Bayes shrinkage must dampen the outlier's influence; a single extreme value should not permanently skew the baseline"
+          ]
+        },
+        {
+          "id": "US-PERSONALBASELINE-2",
+          "role": "system",
+          "want": "the personal z-score to drive the Stage 2b term and correctly orient adverse direction per marker",
+          "soThat": "improvement-vs-your-baseline always lowers r_i and degradation always raises it, with correct polarity per marker",
+          "acceptance": [
+            "Given a patient whose resting HR (adverse direction = high) drops below their personal mean, When Stage 2b computes z_i = sign_adverse·(x_i − μ_i^p)/σ_i^p, Then z_i < 0 and r_i^pers = κ_resp·tanh(z_i/2) < 0, reducing r_i",
+            "Given a patient whose HDL (adverse direction = low) rises above their personal mean, When Stage 2b runs, Then z_i < 0 and r_i decreases",
+            "Given z_i = 2.0 and κ_resp = 0.10, When r_i^pers is computed, Then r_i^pers = 0.10·tanh(1.0) ≈ 0.076 and the result is bounded to [−0.10, +0.10]"
+          ],
+          "edge": [
+            "σ_i^p → 0 (patient has near-constant readings): denominator clamp must prevent z-score explosion; minimum σ is floored to a fraction of cohort σ"
+          ]
+        },
+        {
+          "id": "US-PERSONALBASELINE-3",
+          "role": "clinician",
+          "want": "to see the trajectory and early-warning signals derived from the personal baseline history",
+          "soThat": "I can detect adverse trends before any clinical band is crossed",
+          "acceptance": [
+            "Given a patient whose sleep duration z-scores have been positive (worse-than-baseline) for 7 consecutive days, When the companion vector is computed, Then Trajectory for SLP is flagged as declining and an Early-warning Watch is raised",
+            "Given z-scores return to negative after the adverse streak, When the companion is recomputed, Then the Watch flag is downgraded (with hysteresis) and Trajectory shows recovering",
+            "Given the diagonal-covariance aggregate D = sqrt(Σzᵢ²) exceeds the Advisory threshold across multiple markers simultaneously, When early-warning runs, Then an Advisory (not just Watch) is surfaced per D10"
+          ],
+          "edge": [
+            "Patient on a new medication that systematically shifts a biomarker (e.g. statin lowers LDL): the personal baseline will appear to improve rapidly; the engine must not interpret the drug-effect step-change as an adverse-to-normal rebound — medication context (D3) should flag the reading as MANAGED with down-weight on the baseline z"
+          ]
+        },
+        {
+          "id": "US-PERSONALBASELINE-4",
+          "role": "engineer",
+          "want": "each baseline update to be stored as a versioned snapshot so the history of baseline parameters is auditable",
+          "soThat": "we can replay any historical z-score computation from stored parameters",
+          "acceptance": [
+            "Given a new measurement is ingested, When the baseline updater runs, Then a new personal_baseline_snapshot row is inserted with updated_at = now() and the prior row is not modified",
+            "Given a request to audit a past PureScore, When the audit lookup resolves personal_baseline_snapshot rows by patient_id + marker_id + updated_at ≤ score.computed_at, Then the parameters at the time of the score are recovered exactly",
+            "Given the baseline for a skew-tagged marker, When the row is read, Then log_scale = true and mu and sigma are stored in log-space"
+          ],
+          "edge": [
+            "Bulk historical data upload (e.g. 2 years of wearable data imported on onboarding): baseline must be computed in chronological order over the import batch; out-of-order processing must be detected and rejected or re-sorted"
+          ]
+        }
+      ],
+      "table": {
+        "name": "personal_baseline_snapshot",
+        "columns": [
+          {"name": "id", "type": "uuid", "key": "PK", "note": ""},
+          {"name": "patient_id", "type": "uuid", "key": "FK->patient(id)", "note": "partition key"},
+          {"name": "marker_id", "type": "uuid", "key": "FK->marker(id) IDX", "note": ""},
+          {"name": "updated_at", "type": "timestamptz", "key": "IDX", "note": "partition range key; append-only"},
+          {"name": "mu_personal", "type": "numeric(12,6)", "key": "", "note": "empirical-Bayes blended mean; log-space if log_scale=true"},
+          {"name": "sigma_personal", "type": "numeric(12,6)", "key": "", "note": "blended std dev; floored to avoid division-by-zero"},
+          {"name": "mu_cohort", "type": "numeric(12,6)", "key": "", "note": "cohort prior mean at time of update"},
+          {"name": "sigma_cohort", "type": "numeric(12,6)", "key": "", "note": "cohort prior std dev"},
+          {"name": "shrinkage_weight", "type": "numeric(5,4)", "key": "", "note": "[0,1]; 0=fully cold-start, 1=fully personal"},
+          {"name": "n_obs", "type": "integer", "key": "", "note": "number of observations used to compute personal stats"},
+          {"name": "log_scale", "type": "bool", "key": "", "note": "true for heavy-tailed/skew-tagged markers (D13)"},
+          {"name": "sign_adverse", "type": "smallint", "key": "", "note": "+1 (high=adverse) or -1 (low=adverse)"},
+          {"name": "last_measurement_id", "type": "uuid", "key": "FK->measurement(id)", "note": "measurement that triggered this update"},
+          {"name": "model_version_id", "type": "uuid", "key": "FK->model_version(id)", "note": ""}
+        ],
+        "indexes": [
+          "(patient_id, marker_id, updated_at DESC)",
+          "(patient_id, updated_at DESC)",
+          "(marker_id, updated_at DESC)"
+        ],
+        "notes": "Time-series; range-partitioned by updated_at (monthly). Append-only — each measurement update appends a new row. Latest row per (patient_id, marker_id) is the live baseline. Historical rows enable exact replay of any past z-score. sigma_personal is clamped to max(computed_sigma, cohort_sigma·MIN_SIGMA_FRACTION) to prevent z-score explosion."
+      },
+      "invariants": [
+        "sigma_personal > 0 — enforced via floor at MAX(computed_sigma, cohort_sigma·MIN_SIGMA_FRACTION); zero-sigma rows are forbidden",
+        "shrinkage_weight ∈ [0,1]; shrinkage_weight = 0 when n_obs < minimum cold-start threshold (per-marker config)",
+        "log_scale = true IFF the marker catalogue tags the marker as skew; this flag is immutable for a given marker across all rows",
+        "sign_adverse ∈ {-1, +1}; must match the marker catalogue for the active model_version — mismatched sign inverts the feedback loop and is a critical correctness error",
+        "Append-only: no UPDATE or DELETE after insert; the history is the audit trail for companion Trajectory/Early-warning replay",
+        "updated_at must be ≥ the updated_at of all prior rows for the same (patient_id, marker_id); out-of-order inserts are rejected",
+        "r_i^pers = κ_resp·tanh(z_i/2) ∈ [−κ_resp, +κ_resp] = [−0.10, +0.10]; the additive term is bounded by design and must be enforced at computation time"
+      ],
+      "apiRefs": ["ingest-measurement", "get-companion", "get-score", "get-explanation"],
+      "seqRefs": ["ingest-recompute", "wearable-critical-gate", "reservoir-update"],
+      "decisions": ["D6", "D9", "D13", "D23", "D1", "D2", "D7"]
+    }
+  }
+}

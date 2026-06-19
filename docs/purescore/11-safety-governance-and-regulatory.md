@@ -190,7 +190,7 @@ maps to an enforced control elsewhere in the spec.
 | F3 | **Alert fatigue** | Real alerts ignored because too many fire | 4 | 3 | 3 | Tiered escalation (§2.1); anti-flap hysteresis (Doc 03 §6); top-5 nudge cap (Doc 07); monitor alert-acknowledgement rate (§5.4) |
 | F4 | **Automation bias** | Clinician/patient over-trusts the number | 4 | 3 | 4 | Inspectable CDS (§1.2b, Doc 08 §4); explainability shipped with every score (Doc 03 §7); discrepancy banner (Doc 08 §5); human-override primacy (§2.5) |
 | F5 | **Miscalibration / drift** | Bands wrong for this cohort → wrong risk | 4 | 3 | 3 | Calibration + drift monitoring (Doc 09); OOD flagging (Doc 08 §6); version bump + re-validation on any constant change (§5.1) |
-| F6 | **Data error** (unit/transcription/device) | Spurious red (anxiety, over-treatment) or spurious green | 4 | 3 | 3 | Confirming-measurement requirement before critical→non-critical transition (Doc 03 §6); plausibility/unit checks (Doc 01); confidence-weighting (Doc 03 §3) |
+| F6 | **Data error** (unit/transcription/device) | Spurious red (anxiety, over-treatment) or spurious green | 4 | 3 | 3 | Confirming-measurement requirement before critical→non-critical transition (Doc 03 §6); plausibility/unit checks (Doc 01); confidence-weighting (Doc 03 §3); **wearable trust-tiering — a consumer/inferential wearable cannot drive red/critical without clinical-grade confirmation (D22; Doc 12 §3.4; Doc 18 §2)** |
 | F7 | **Equity harm** | Worse score/access/pricing for a protected class | 5 | 2 | 4 | No-proxy rule (README §5.5; §6); fairness audit gate (Doc 09); cohorting reduces not encodes disparity (Doc 00 §2.8); appeal rights (§6.4) |
 | F8 | **Privacy / security breach** | Sensitive health (incl. genetic, reproductive) exposed | 5 | 2 | 3 | Encryption, RBAC, audit logging, minimization (§4); genetic (GINA) + reproductive special handling (§4.4–§4.5); breach response (§4.6) |
 | F9 | **Reproductive-data weaponization** | Pregnancy/fertility data used against the patient | 5 | 2 | 4 | Heightened minimization/consent for Doc 05 data (§4.5); legal-process resistance; opt-out; default no third-party sharing |
@@ -224,6 +224,15 @@ blocker (§8).
 - **Granular consent** per data class (wearable, labs, **genetic**, **reproductive**, mental-health),
   with plain-language explanation, easy withdrawal, and no loss of core wellness function as
   coercion. Children/dependents and incapacity handled per jurisdiction.
+- **Household accounts (Doc 18 §6)** hold individual scores per member under one shared view with
+  **role-based access** (e.g. a caregiver monitors an elder's in-home stream). Each member's data
+  stays member-scoped; a household view **never merges or cross-uses** members' protected data, and
+  the same per-data-class consent, special-category handling (§4.4–§4.5), and RBAC (§4.3) apply
+  per member. Dependent/guardian and elder-caregiver access follows the incapacity rules above.
+- **Product surfaces (Doc 18 §5)** — AI scribe, AI chat agent, scheduling, in-home tracking,
+  insurance-auth — are all **inside these firewalls**: the agent never diagnoses and escalates on the
+  §2 hard rules; insurance-auth runs under the payer separation (§1.5, Doc 10); in-home passive
+  sensing requires its own explicit consent.
 
 ### 4.3 Encryption, access control, audit logging
 

@@ -1,0 +1,2901 @@
+{
+ "domain": "ENDOCRINE_HORMONAL",
+ "questions": [
+  {
+   "id": "Q_ENDO_THYROID_DX",
+   "text": "Have you ever been diagnosed with a thyroid condition?",
+   "category": "Endocrine — Thyroid",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "hypothyroidism",
+    "hyperthyroidism"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No known thyroid condition",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Hypothyroidism (underactive)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.25,
+      "MET": 0.14,
+      "BCM": 0.1,
+      "CV": 0.08
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.1,
+      "adiposity": 0.1,
+      "allostatic_load": 0.08,
+      "bone_reserve": -0.08
+     }
+    },
+    {
+     "label": "Hyperthyroidism (overactive)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.25,
+      "CV": 0.14,
+      "BCM": 0.1
+     },
+     "reservoirs": {
+      "bone_reserve": -0.12,
+      "muscle_reserve": -0.08,
+      "allostatic_load": 0.08
+     }
+    },
+    {
+     "label": "Thyroid nodule / goitre (no functional change)",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.06
+     },
+     "reservoirs": {}
+    },
+    {
+     "label": "Thyroid cancer (treated)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.12,
+      "BCM": 0.06
+     },
+     "reservoirs": {
+      "bone_reserve": -0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "condition_load",
+     "metabolic",
+     "lifestage"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [
+     {
+      "if_response": "Hypothyroidism (underactive)",
+      "ask": "Q_ENDO_COLD_INTOLERANCE"
+     },
+     {
+      "if_response": "Hypothyroidism (underactive)",
+      "ask": "Q_ENDO_HAIR_THINNING"
+     },
+     {
+      "if_response": "Hyperthyroidism (overactive)",
+      "ask": "Q_ENDO_HEAT_PALPITATIONS"
+     }
+    ],
+    "validated_by": ""
+   },
+   "priority": 1,
+   "cadence": "annual",
+   "refresh": "slow",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.TSH",
+     "lab.fT4",
+     "lab.fT3"
+    ]
+   },
+   "source": "OMICS Introductory Report; ATA thyroid guidelines 2021",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_COLD_INTOLERANCE",
+   "text": "Do you feel unusually cold when others are comfortable, or have a persistent low body temperature?",
+   "category": "Endocrine — Thyroid",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "hypothyroidism"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No / rarely",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Sometimes",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.06,
+      "MET": 0.05
+     },
+     "reservoirs": {
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Often / most of the time",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "MET": 0.08,
+      "BCM": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.08,
+      "glycemic_burden": 0.05
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "condition_load",
+     "metabolic"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.TSH",
+     "lab.fT4"
+    ]
+   },
+   "source": "Garber et al. AACE/ATA hypothyroidism guidelines 2012; OMICS Introductory Report",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_HAIR_THINNING",
+   "text": "Have you noticed significant hair thinning or hair loss (not male-pattern baldness)?",
+   "category": "Endocrine — Thyroid",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "hypothyroidism",
+    "pcos",
+    "metabolic_bone_disease"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mild thinning",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.06,
+      "NUT": 0.05
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.05
+     }
+    },
+    {
+     "label": "Significant thinning / patchy loss",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.12,
+      "NUT": 0.08,
+      "INF": 0.06
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.08,
+      "allostatic_load": 0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "condition_load",
+     "metabolic",
+     "aesthetic"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.TSH",
+     "lab.ferritin",
+     "lab.fT4"
+    ]
+   },
+   "source": "OMICS Introductory Report; Blume-Peytavi et al. JDDG 2011",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_WEIGHT_CHANGE",
+   "text": "Have you had unexplained weight gain or weight loss (≥5 kg in 3 months, without intentional diet change)?",
+   "category": "Endocrine — Thyroid",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "hypothyroidism",
+    "hyperthyroidism",
+    "cortisol_dysregulation_stress"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No unexplained change",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Unexplained weight gain",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "MET": 0.12,
+      "BCM": 0.08
+     },
+     "reservoirs": {
+      "adiposity": 0.1,
+      "glycemic_burden": 0.08
+     }
+    },
+    {
+     "label": "Unexplained weight loss",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "BCM": 0.1,
+      "NUT": 0.06
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.1,
+      "micronutrient_reserve": -0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "condition_load",
+     "metabolic",
+     "anthropometric"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.TSH",
+     "lab.cortisol_AM",
+     "bcm.bmi"
+    ]
+   },
+   "source": "OMICS Introductory Report; Braverman & Cooper Thyroid 2012",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_HEAT_PALPITATIONS",
+   "text": "Do you experience heat intolerance, heart palpitations, or tremors at rest?",
+   "category": "Endocrine — Thyroid",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "hyperthyroidism"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "One of these occasionally",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08,
+      "CV": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.06
+     }
+    },
+    {
+     "label": "Two or more / frequently",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.22,
+      "CV": 0.14,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.12,
+      "bone_reserve": -0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "condition_load",
+     "stress"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.TSH",
+     "lab.fT3",
+     "wearable.resting_hr"
+    ]
+   },
+   "source": "Ross et al. ATA hyperthyroidism guidelines 2016",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_CHRONIC_STRESS",
+   "text": "Over the past month, how often have you felt that your stress was uncontrollable or overwhelming?",
+   "category": "Endocrine — HPA Axis / Cortisol",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "cortisol_dysregulation_stress",
+    "hypothyroidism",
+    "subfertility"
+   ],
+   "stream": "LIFE",
+   "type": "scale",
+   "responses": [
+    {
+     "label": "Never / rarely (0–1×)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Sometimes (2–3×/week)",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.08
+     }
+    },
+    {
+     "label": "Often (4–5×/week)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "MCS": 0.12,
+      "MET": 0.08,
+      "CV": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.14,
+      "glycemic_burden": 0.06
+     }
+    },
+    {
+     "label": "Almost daily / constant",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.22,
+      "MCS": 0.2,
+      "MET": 0.12,
+      "CV": 0.1
+     },
+     "reservoirs": {
+      "allostatic_load": 0.22,
+      "glycemic_burden": 0.1,
+      "bone_reserve": -0.08,
+      "muscle_reserve": -0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "stress",
+     "condition_load",
+     "metabolic"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "PSS-4"
+   },
+   "priority": 1,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.cortisol_AM",
+     "lab.DHEAS",
+     "wearable.HRV"
+    ]
+   },
+   "source": "Cohen PSS-4 1983; McEwen allostatic load framework 1998",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_SHIFT_WORK",
+   "text": "Do you regularly work night shifts, rotating shifts, or have severely irregular sleep–wake times?",
+   "category": "Endocrine — HPA Axis / Cortisol",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "cortisol_dysregulation_stress",
+    "metabolic_bone_disease",
+    "vitamin_d_deficiency"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No — standard daytime schedule",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Occasional irregular shifts (<2 nights/week)",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.06,
+      "SLP": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.06,
+      "sleep_debt": 0.05
+     }
+    },
+    {
+     "label": "Regular night or rotating shifts (2+/week)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.2,
+      "SLP": 0.18,
+      "MET": 0.12,
+      "CV": 0.08
+     },
+     "reservoirs": {
+      "allostatic_load": 0.18,
+      "sleep_debt": 0.14,
+      "glycemic_burden": 0.1,
+      "micronutrient_reserve": -0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "occupation",
+     "sleep",
+     "stress",
+     "metabolic"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "wearable.sleep_duration",
+     "lab.cortisol_AM"
+    ]
+   },
+   "source": "Vetter et al. JCEM 2015; Schernhammer circadian disruption meta-analysis",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_PROLACTIN_SX",
+   "text": "Have you experienced spontaneous breast milk production (galactorrhoea), breast tenderness (outside pregnancy), or been told you have high prolactin?",
+   "category": "Endocrine — Prolactin",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "prolactin_disorder",
+    "subfertility"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Breast tenderness / mild symptoms only",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08
+     },
+     "reservoirs": {
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Galactorrhoea or confirmed high prolactin",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.24,
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "allostatic_load": 0.12,
+      "bone_reserve": -0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "condition_load",
+     "reproductive"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.prolactin"
+    ]
+   },
+   "source": "Melmed et al. Endocr Rev 2011; OMICS Introductory Report",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_SUN_EXPOSURE",
+   "text": "On average, how much direct sunlight (face and arms uncovered) do you get per day?",
+   "category": "Endocrine — Vitamin D",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "vitamin_d_deficiency",
+    "metabolic_bone_disease",
+    "cortisol_dysregulation_stress"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "< 15 min/day or fully covered / indoor worker",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.2,
+      "BCM": 0.14,
+      "NUT": 0.14,
+      "INF": 0.08
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.14,
+      "bone_reserve": -0.12,
+      "inflammatory_load": 0.06
+     }
+    },
+    {
+     "label": "15–30 min/day",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.06,
+      "NUT": 0.06
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.05,
+      "bone_reserve": -0.05
+     }
+    },
+    {
+     "label": "30–60 min/day",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "> 60 min/day",
+     "direction": "decrease_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "NUT": -0.06
+     },
+     "reservoirs": {
+      "micronutrient_reserve": 0.08,
+      "bone_reserve": 0.05
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "environment",
+     "diet",
+     "metabolic"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.25OH_vitD"
+    ]
+   },
+   "source": "Holick vitamin D deficiency review NEJM 2007; OMICS Introductory Report",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_VITD_SUPPL",
+   "text": "Do you regularly take vitamin D supplements?",
+   "category": "Endocrine — Vitamin D",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "vitamin_d_deficiency",
+    "metabolic_bone_disease"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.06,
+      "NUT": 0.06
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.05
+     }
+    },
+    {
+     "label": "Yes — occasional / low dose (<800 IU/day)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Yes — daily ≥800 IU or prescribed dose",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": -0.1,
+      "NUT": -0.1,
+      "BCM": -0.06
+     },
+     "reservoirs": {
+      "micronutrient_reserve": 0.1,
+      "bone_reserve": 0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "diet",
+     "condition_load"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 3,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.25OH_vitD"
+    ]
+   },
+   "source": "OMICS Introductory Report; Pludowski et al. Nutrients 2022",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_BONE_FRACTURE",
+   "text": "Have you had a fragility fracture (from a low-energy fall or minor trauma) or been diagnosed with osteoporosis / osteopenia?",
+   "category": "Endocrine — Metabolic Bone",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "metabolic_bone_disease",
+    "vitamin_d_deficiency",
+    "menopause_symptoms"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Osteopenia (low bone density, no fracture)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.12,
+      "BCM": 0.14
+     },
+     "reservoirs": {
+      "bone_reserve": -0.12
+     }
+    },
+    {
+     "label": "Osteoporosis (T-score ≤ -2.5)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.2,
+      "BCM": 0.22
+     },
+     "reservoirs": {
+      "bone_reserve": -0.2
+     }
+    },
+    {
+     "label": "Prior fragility fracture",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.22,
+      "BCM": 0.24,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "bone_reserve": -0.22,
+      "muscle_reserve": -0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "condition_load",
+     "lifestage"
+    ],
+    "personas": [
+     "menopause",
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "annual",
+   "refresh": "slow",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.25OH_vitD",
+     "lab.PTH",
+     "lab.Ca"
+    ]
+   },
+   "source": "Kanis et al. Osteoporos Int FRAX methodology 2008",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_TTC",
+   "text": "Are you currently trying to conceive (or attempting to start a pregnancy in the next 12 months)?",
+   "category": "Endocrine — Subfertility",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "subfertility",
+    "pcos",
+    "prolactin_disorder"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Yes — less than 6 months trying",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Yes — 6–12 months without success",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.12,
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "allostatic_load": 0.08
+     }
+    },
+    {
+     "label": "Yes — >12 months without success (or known fertility treatment)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.2,
+      "MCS": 0.12
+     },
+     "reservoirs": {
+      "allostatic_load": 0.14
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "reproductive",
+     "lifestage",
+     "stress"
+    ],
+    "personas": [
+     "pregnancy",
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.AMH",
+     "lab.FSH",
+     "lab.prolactin"
+    ]
+   },
+   "source": "WHO infertility definition; NICE fertility guidelines 2023",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_MENSTRUAL_REGULARITY",
+   "text": "How regular are your menstrual cycles?",
+   "category": "Endocrine — Female Reproductive",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "pcos",
+    "subfertility",
+    "menopause_symptoms",
+    "hypothyroidism"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Regular cycles (21–35 days)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Slightly irregular (varies ± 7 days)",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08
+     },
+     "reservoirs": {
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Infrequent / long cycles (>35 days) or fewer than 9/year",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.22,
+      "MET": 0.1,
+      "BCM": 0.06
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.08,
+      "adiposity": 0.06,
+      "allostatic_load": 0.08
+     }
+    },
+    {
+     "label": "Absent (no period for ≥3 months, not pregnant or menopausal)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.26,
+      "BCM": 0.1,
+      "MET": 0.1
+     },
+     "reservoirs": {
+      "bone_reserve": -0.1,
+      "allostatic_load": 0.1,
+      "glycemic_burden": 0.08
+     }
+    },
+    {
+     "label": "Post-menopausal / no longer cycling",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "On hormonal contraception (cycle masked)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "female"
+    ],
+    "axis_tags": [
+     "reproductive",
+     "metabolic",
+     "lifestage"
+    ],
+    "personas": [
+     "menopause",
+     "pregnancy"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Female"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [
+     {
+      "if_response": "Infrequent / long cycles (>35 days) or fewer than 9/year",
+      "ask": "Q_ENDO_PCOS_SX"
+     },
+     {
+      "if_response": "Absent (no period for ≥3 months, not pregnant or menopausal)",
+      "ask": "Q_ENDO_PCOS_SX"
+     }
+    ],
+    "validated_by": ""
+   },
+   "priority": 1,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.LH",
+     "lab.FSH",
+     "lab.AMH",
+     "lab.testosterone"
+    ]
+   },
+   "source": "Rotterdam PCOS criteria 2003; FIGO menstrual disorders classification 2018",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_PCOS_DX",
+   "text": "Have you been diagnosed with polycystic ovary syndrome (PCOS)?",
+   "category": "Endocrine — PCOS",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "pcos",
+    "subfertility",
+    "metabolic_bone_disease"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Suspected but not confirmed",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "MET": 0.1
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.08,
+      "adiposity": 0.06
+     }
+    },
+    {
+     "label": "Yes — confirmed diagnosis",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.26,
+      "MET": 0.18,
+      "CV": 0.1,
+      "BCM": 0.06
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.16,
+      "adiposity": 0.1,
+      "allostatic_load": 0.08,
+      "inflammatory_load": 0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "female"
+    ],
+    "axis_tags": [
+     "condition_load",
+     "reproductive",
+     "metabolic"
+    ],
+    "personas": [
+     "pregnancy",
+     "prediabetic"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Female"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 1,
+   "cadence": "annual",
+   "refresh": "slow",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.testosterone",
+     "lab.SHBG",
+     "lab.LH",
+     "lab.AMH"
+    ]
+   },
+   "source": "Rotterdam PCOS criteria 2003; Teede et al. Int J Gynaecol Obstet 2023 PCOS guideline",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_PCOS_SX",
+   "text": "Do you experience hirsutism (excess facial / body hair) or persistent acne related to hormones?",
+   "category": "Endocrine — PCOS",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "pcos"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mild — some facial hair or occasional acne",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08,
+      "MET": 0.05
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.05
+     }
+    },
+    {
+     "label": "Moderate-to-severe hirsutism or persistent hormonal acne",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.16,
+      "MET": 0.1,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.08,
+      "adiposity": 0.06,
+      "allostatic_load": 0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "female"
+    ],
+    "axis_tags": [
+     "reproductive",
+     "metabolic",
+     "aesthetic"
+    ],
+    "personas": [
+     "pregnancy"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Female"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.testosterone",
+     "lab.SHBG",
+     "lab.DHEAS"
+    ]
+   },
+   "source": "Azziz et al. excess androgen criteria; Rotterdam PCOS 2003",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_HOT_FLASHES",
+   "text": "Do you experience hot flushes / flashes or night sweats?",
+   "category": "Endocrine — Menopause",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "menopause_symptoms"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mild — occasional flushes, not disruptive",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08,
+      "SLP": 0.05
+     },
+     "reservoirs": {
+      "sleep_debt": 0.05,
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Moderate — several per day / disrupting sleep",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.16,
+      "SLP": 0.12,
+      "CV": 0.06,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "sleep_debt": 0.1,
+      "allostatic_load": 0.1,
+      "bone_reserve": -0.05
+     }
+    },
+    {
+     "label": "Severe — frequent, affecting daily functioning",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.24,
+      "SLP": 0.18,
+      "CV": 0.1,
+      "MCS": 0.1
+     },
+     "reservoirs": {
+      "sleep_debt": 0.16,
+      "allostatic_load": 0.16,
+      "bone_reserve": -0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": {
+     "min": 35,
+     "max": 120
+    },
+    "sex": [
+     "female"
+    ],
+    "axis_tags": [
+     "reproductive",
+     "sleep",
+     "stress",
+     "lifestage"
+    ],
+    "personas": [
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Female"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "WHO-5"
+   },
+   "priority": 1,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.FSH",
+     "lab.E2",
+     "wearable.sleep_duration"
+    ]
+   },
+   "source": "Menopause Society (NAMS) 2023 position statement; Greene Climacteric Scale",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_MENOPAUSE_DX",
+   "text": "What is your current menopause status?",
+   "category": "Endocrine — Menopause",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "menopause_symptoms",
+    "metabolic_bone_disease",
+    "vitamin_d_deficiency"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Pre-menopausal (still having regular cycles)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Peri-menopausal (irregular cycles, symptoms)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "BCM": 0.08,
+      "CV": 0.06
+     },
+     "reservoirs": {
+      "bone_reserve": -0.08,
+      "allostatic_load": 0.08
+     }
+    },
+    {
+     "label": "Post-menopausal — natural (≥12 months no period)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.22,
+      "BCM": 0.16,
+      "CV": 0.14,
+      "MET": 0.08
+     },
+     "reservoirs": {
+      "bone_reserve": -0.16,
+      "adiposity": 0.08,
+      "atherogenic_burden": 0.08,
+      "muscle_reserve": -0.06
+     }
+    },
+    {
+     "label": "Post-menopausal — surgical / premature (< age 45)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.28,
+      "CV": 0.18,
+      "BCM": 0.2,
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "bone_reserve": -0.2,
+      "atherogenic_burden": 0.14,
+      "allostatic_load": 0.1
+     }
+    },
+    {
+     "label": "On hormone replacement therapy (HRT)",
+     "direction": "decrease_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": -0.1,
+      "BCM": -0.08,
+      "CV": -0.06
+     },
+     "reservoirs": {
+      "bone_reserve": 0.1,
+      "allostatic_load": -0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": {
+     "min": 35,
+     "max": 120
+    },
+    "sex": [
+     "female"
+    ],
+    "axis_tags": [
+     "reproductive",
+     "lifestage",
+     "metabolic"
+    ],
+    "personas": [
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Female"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [
+     {
+      "if_response": "Peri-menopausal (irregular cycles, symptoms)",
+      "ask": "Q_ENDO_HOT_FLASHES"
+     },
+     {
+      "if_response": "Post-menopausal — natural (≥12 months no period)",
+      "ask": "Q_ENDO_HOT_FLASHES"
+     },
+     {
+      "if_response": "Post-menopausal — surgical / premature (< age 45)",
+      "ask": "Q_ENDO_HOT_FLASHES"
+     }
+    ],
+    "validated_by": ""
+   },
+   "priority": 1,
+   "cadence": "annual",
+   "refresh": "slow",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.FSH",
+     "lab.E2",
+     "lab.AMH"
+    ]
+   },
+   "source": "STRAW+10 staging criteria; NAMS 2023",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_LIBIDO_FEMALE",
+   "text": "Have you noticed a significant decrease in sexual desire or libido over the past 3 months?",
+   "category": "Endocrine — Female Reproductive",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "menopause_symptoms",
+    "pcos",
+    "prolactin_disorder",
+    "cortisol_dysregulation_stress"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No change / satisfied",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mild decrease",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.06
+     }
+    },
+    {
+     "label": "Significant decrease — affects relationship or wellbeing",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "MCS": 0.12
+     },
+     "reservoirs": {
+      "allostatic_load": 0.12
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "female"
+    ],
+    "axis_tags": [
+     "reproductive",
+     "stress",
+     "lifestage"
+    ],
+    "personas": [
+     "menopause"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Female"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "WHO-5"
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.testosterone",
+     "lab.E2",
+     "lab.prolactin"
+    ]
+   },
+   "source": "NAMS female sexual dysfunction position statement 2019",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_TESTOSTERONE_LOW_DX",
+   "text": "Have you been diagnosed with or told you have low testosterone (hypogonadism)?",
+   "category": "Endocrine — Male Hypogonadism",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "low_testosterone",
+    "andropause",
+    "subfertility"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No / not tested",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Borderline low (not treated)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "BCM": 0.1,
+      "MCS": 0.06,
+      "MET": 0.06
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.1,
+      "bone_reserve": -0.06,
+      "adiposity": 0.06
+     }
+    },
+    {
+     "label": "Confirmed low testosterone (on TRT)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.1,
+      "CV": 0.06
+     },
+     "reservoirs": {
+      "muscle_reserve": 0.06,
+      "bone_reserve": 0.06,
+      "allostatic_load": -0.06
+     }
+    },
+    {
+     "label": "Confirmed low testosterone (untreated)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.24,
+      "BCM": 0.16,
+      "MET": 0.12,
+      "CV": 0.08,
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.14,
+      "bone_reserve": -0.1,
+      "adiposity": 0.1,
+      "glycemic_burden": 0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "male"
+    ],
+    "axis_tags": [
+     "condition_load",
+     "reproductive",
+     "metabolic"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Male"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 1,
+   "cadence": "annual",
+   "refresh": "slow",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.total_testosterone",
+     "lab.SHBG",
+     "lab.LH",
+     "lab.FSH"
+    ]
+   },
+   "source": "Bhasin et al. J Clin Endocrinol Metab 2018 testosterone guideline; EAU andrology guidelines",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_MORNING_ERECTIONS",
+   "text": "How often do you experience morning erections (nocturnal penile tumescence)?",
+   "category": "Endocrine — Male Hypogonadism",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "low_testosterone",
+    "andropause"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Most mornings (≥4×/week)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Occasionally (1–3×/week)",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08,
+      "CV": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Rarely or never",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.22,
+      "CV": 0.14,
+      "BCM": 0.08,
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "allostatic_load": 0.1,
+      "muscle_reserve": -0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": {
+     "min": 18,
+     "max": 120
+    },
+    "sex": [
+     "male"
+    ],
+    "axis_tags": [
+     "reproductive",
+     "condition_load"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Male"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.total_testosterone",
+     "lab.freeT"
+    ]
+   },
+   "source": "Buvat et al. J Sex Med 2010; Araujo & McKinlay testosterone deficiency review",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_MALE_LIBIDO_ENERGY",
+   "text": "Over the past 4 weeks, how would you rate your sex drive and overall energy level?",
+   "category": "Endocrine — Male Hypogonadism",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "low_testosterone",
+    "andropause",
+    "cortisol_dysregulation_stress"
+   ],
+   "stream": "LIFE",
+   "type": "scale",
+   "responses": [
+    {
+     "label": "Normal / good (both adequate)",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mildly reduced libido or energy (one)",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.06
+     }
+    },
+    {
+     "label": "Moderately reduced (both)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.16,
+      "MCS": 0.12,
+      "BCM": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.12,
+      "muscle_reserve": -0.06
+     }
+    },
+    {
+     "label": "Very low — markedly affecting quality of life",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.24,
+      "MCS": 0.18,
+      "BCM": 0.1,
+      "MET": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.18,
+      "muscle_reserve": -0.1,
+      "adiposity": 0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "male"
+    ],
+    "axis_tags": [
+     "reproductive",
+     "stress",
+     "lifestage",
+     "condition_load"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Male"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "WHO-5"
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.total_testosterone",
+     "lab.freeT",
+     "lab.LH"
+    ]
+   },
+   "source": "ADAM questionnaire (Morley et al.); AMS andropause scale",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_ANDROPAUSE_SX",
+   "text": "Have you experienced a combination of reduced muscle mass, increased body fat (especially belly), low mood, or reduced stamina over the past year?",
+   "category": "Endocrine — Andropause",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "andropause",
+    "low_testosterone"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No notable changes",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "1–2 of these features",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08,
+      "BCM": 0.06
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.06,
+      "adiposity": 0.05
+     }
+    },
+    {
+     "label": "3+ features / significant decline",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.22,
+      "BCM": 0.16,
+      "MCS": 0.1,
+      "MET": 0.1,
+      "CV": 0.06
+     },
+     "reservoirs": {
+      "muscle_reserve": -0.14,
+      "adiposity": 0.12,
+      "glycemic_burden": 0.08,
+      "allostatic_load": 0.1
+     }
+    }
+   ],
+   "dimensions": {
+    "age": {
+     "min": 40,
+     "max": 120
+    },
+    "sex": [
+     "male"
+    ],
+    "axis_tags": [
+     "reproductive",
+     "metabolic",
+     "lifestage",
+     "condition_load"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Male"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "WHO-5"
+   },
+   "priority": 2,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.total_testosterone",
+     "lab.SHBG",
+     "bcm.lean_mass"
+    ]
+   },
+   "source": "Heinemann AMS scale; Buvat et al. late-onset hypogonadism ISSAM guidelines",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_MALE_FERTILITY",
+   "text": "Has a semen analysis or fertility workup revealed any abnormality (e.g. low count, poor motility)?",
+   "category": "Endocrine — Male Fertility",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "subfertility",
+    "low_testosterone"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Not tested / not relevant",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Normal results",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mild abnormality (e.g. borderline count or motility)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.08
+     }
+    },
+    {
+     "label": "Significant abnormality (azoospermia, severe oligospermia)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.24,
+      "MCS": 0.1
+     },
+     "reservoirs": {
+      "allostatic_load": 0.14
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "male"
+    ],
+    "axis_tags": [
+     "reproductive",
+     "condition_load"
+    ],
+    "personas": [
+     "pregnancy"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Male"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 3,
+   "cadence": "annual",
+   "refresh": "slow",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.FSH",
+     "lab.total_testosterone",
+     "lab.inhibin_B"
+    ]
+   },
+   "source": "WHO semen analysis reference values 2021; Tournaye et al. EAU male infertility",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_INSULIN_RESISTANCE_SX",
+   "text": "Do you experience any of the following? (select all that apply): persistent sugar cravings, afternoon energy crashes, skin tags, dark patches of skin (acanthosis nigricans), or being told you are pre-diabetic.",
+   "category": "Endocrine — Metabolic / Glycaemic",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "pcos",
+    "metabolic_bone_disease",
+    "cortisol_dysregulation_stress"
+   ],
+   "stream": "LIFE",
+   "type": "multi_select",
+   "responses": [
+    {
+     "label": "None of these",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Sugar cravings / energy crashes",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "MET": 0.08,
+      "ENDO": 0.06
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.08
+     }
+    },
+    {
+     "label": "Skin tags",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "MET": 0.06,
+      "ENDO": 0.05
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.05
+     }
+    },
+    {
+     "label": "Acanthosis nigricans (dark neck/armpit patches)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "MET": 0.14,
+      "ENDO": 0.1
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.12,
+      "adiposity": 0.06
+     }
+    },
+    {
+     "label": "Told I am pre-diabetic",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "MET": 0.22,
+      "ENDO": 0.12,
+      "CV": 0.06
+     },
+     "reservoirs": {
+      "glycemic_burden": 0.18,
+      "adiposity": 0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "metabolic",
+     "condition_load"
+    ],
+    "personas": [
+     "prediabetic"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.HbA1c",
+     "lab.fasting_insulin",
+     "lab.HOMA_IR"
+    ]
+   },
+   "source": "OMICS Introductory Report; Fauser et al. PCOS metabolic phenotype; ADA prediabetes criteria",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_CORTISOL_PATTERN",
+   "text": "Which best describes your typical daily energy and alertness pattern?",
+   "category": "Endocrine — HPA Axis / Cortisol",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "cortisol_dysregulation_stress",
+    "hypothyroidism",
+    "andropause"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "Alert in morning, stable through day, good sleep",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Sluggish morning but improves — afternoon dip is manageable",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.06,
+      "SLP": 0.05
+     },
+     "reservoirs": {
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Wired at night but exhausted in morning (reversed rhythm)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "SLP": 0.14,
+      "MET": 0.06,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.12,
+      "sleep_debt": 0.1,
+      "glycemic_burden": 0.05
+     }
+    },
+    {
+     "label": "Flat / exhausted all day regardless of sleep",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.22,
+      "SLP": 0.1,
+      "MCS": 0.12,
+      "BCM": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.18,
+      "sleep_debt": 0.08,
+      "muscle_reserve": -0.06
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "stress",
+     "sleep",
+     "metabolic",
+     "condition_load"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "PSS-4"
+   },
+   "priority": 2,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.cortisol_AM",
+     "lab.cortisol_PM",
+     "lab.DHEAS",
+     "wearable.HRV"
+    ]
+   },
+   "source": "Clow et al. cortisol awakening response review; Tsigos & Chrousos HPA axis review",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_STEROID_MEDS",
+   "text": "Are you taking or have you taken long-term corticosteroids (prednisone, dexamethasone, or inhaled steroids for >3 months)?",
+   "category": "Endocrine — HPA Axis / Cortisol",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "cortisol_dysregulation_stress",
+    "metabolic_bone_disease",
+    "vitamin_d_deficiency"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Short course only (<3 months, now stopped)",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.05,
+      "BCM": 0.05
+     },
+     "reservoirs": {}
+    },
+    {
+     "label": "Current or long-term oral corticosteroids (>3 months)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.22,
+      "BCM": 0.18,
+      "MET": 0.12,
+      "CV": 0.08
+     },
+     "reservoirs": {
+      "bone_reserve": -0.18,
+      "adiposity": 0.1,
+      "glycemic_burden": 0.1,
+      "muscle_reserve": -0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "condition_load",
+     "metabolic"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.cortisol_AM",
+     "lab.25OH_vitD",
+     "lab.HbA1c"
+    ]
+   },
+   "source": "Fardet & Petri glucocorticoid iatrogenic effects review JAMA IM 2019",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_VITD_RISK_PROFILE",
+   "text": "Which of the following apply to you? (select all): dark skin tone, strict vegan / avoid dairy, BMI > 30, kidney disease, or living above 35° latitude with limited outdoor time in winter.",
+   "category": "Endocrine — Vitamin D",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "vitamin_d_deficiency",
+    "metabolic_bone_disease"
+   ],
+   "stream": "LIFE",
+   "type": "multi_select",
+   "responses": [
+    {
+     "label": "None of these",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Dark skin tone",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.1,
+      "NUT": 0.1
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.1,
+      "bone_reserve": -0.06
+     }
+    },
+    {
+     "label": "Strict vegan or avoids dairy",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "NUT": 0.1,
+      "ENDO": 0.08
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.08,
+      "bone_reserve": -0.06
+     }
+    },
+    {
+     "label": "BMI > 30",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.08,
+      "NUT": 0.06
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.06
+     }
+    },
+    {
+     "label": "Kidney disease (CKD)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.14,
+      "NUT": 0.12,
+      "REN": 0.1
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.12,
+      "bone_reserve": -0.1
+     }
+    },
+    {
+     "label": "High latitude / little winter sun",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.1,
+      "NUT": 0.1
+     },
+     "reservoirs": {
+      "micronutrient_reserve": -0.08,
+      "bone_reserve": -0.05
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "environment",
+     "diet",
+     "condition_load",
+     "metabolic"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 2,
+   "cadence": "annual",
+   "refresh": "slow",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.25OH_vitD",
+     "lab.PTH",
+     "lab.Ca"
+    ]
+   },
+   "source": "Holick NEJM 2007; SACN vitamin D report 2016",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_BONE_RISK_MODIFIERS",
+   "text": "Which of the following apply to you? (select all): low calcium intake, lack of weight-bearing exercise, long-term proton-pump inhibitor (PPI) or anticonvulsant use, heavy smoking, or early menopause.",
+   "category": "Endocrine — Metabolic Bone",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "metabolic_bone_disease",
+    "vitamin_d_deficiency"
+   ],
+   "stream": "LIFE",
+   "type": "multi_select",
+   "responses": [
+    {
+     "label": "None of these",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Low calcium intake (rare dairy, fortified foods, or supplements)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "BCM": 0.12,
+      "NUT": 0.1
+     },
+     "reservoirs": {
+      "bone_reserve": -0.1,
+      "micronutrient_reserve": -0.08
+     }
+    },
+    {
+     "label": "No regular weight-bearing exercise",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "BCM": 0.1,
+      "FIT": 0.06
+     },
+     "reservoirs": {
+      "bone_reserve": -0.1,
+      "muscle_reserve": -0.06
+     }
+    },
+    {
+     "label": "Long-term PPI or anticonvulsant use (>1 year)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "BCM": 0.1,
+      "NUT": 0.08
+     },
+     "reservoirs": {
+      "bone_reserve": -0.1,
+      "micronutrient_reserve": -0.06
+     }
+    },
+    {
+     "label": "Heavy smoking (10+ cigarettes/day)",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "BCM": 0.1,
+      "CV": 0.06
+     },
+     "reservoirs": {
+      "bone_reserve": -0.1
+     }
+    },
+    {
+     "label": "Menopause before age 45 (female)",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "BCM": 0.16,
+      "ENDO": 0.1
+     },
+     "reservoirs": {
+      "bone_reserve": -0.16
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "condition_load",
+     "diet",
+     "metabolic",
+     "lifestage"
+    ],
+    "personas": [
+     "menopause",
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 3,
+   "cadence": "annual",
+   "refresh": "periodic",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.25OH_vitD",
+     "lab.Ca",
+     "lab.PTH"
+    ]
+   },
+   "source": "Kanis FRAX model; IOF osteoporosis clinical risk factors 2019",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_FEMALE_SUBFERTILITY_HX",
+   "text": "Have you or your partner been diagnosed with a cause of female-factor subfertility (e.g. blocked tubes, endometriosis, uterine abnormality)?",
+   "category": "Endocrine — Subfertility",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "subfertility",
+    "pcos"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "No / not applicable",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Suspected but unconfirmed",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.12,
+      "INF": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.08,
+      "allostatic_load": 0.06
+     }
+    },
+    {
+     "label": "Confirmed diagnosis",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.2,
+      "INF": 0.12,
+      "MCS": 0.08
+     },
+     "reservoirs": {
+      "inflammatory_load": 0.1,
+      "allostatic_load": 0.12
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "female"
+    ],
+    "axis_tags": [
+     "reproductive",
+     "condition_load"
+    ],
+    "personas": [
+     "pregnancy"
+    ]
+   },
+   "dependencies": {
+    "show_if": [
+     {
+      "q": "Q_CORE_SEX",
+      "in": [
+       "Female"
+      ]
+     }
+    ],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": ""
+   },
+   "priority": 3,
+   "cadence": "annual",
+   "refresh": "slow",
+   "perceived_actual": {
+    "kind": "actual",
+    "corroborated_by": [
+     "lab.AMH",
+     "lab.FSH",
+     "lab.E2"
+    ]
+   },
+   "source": "NICE fertility guideline NG156 2023; Toftager et al. subfertility predictors",
+   "flag": "illustrative-reverify"
+  },
+  {
+   "id": "Q_ENDO_RECOVERY_FATIGUE",
+   "text": "How long does it typically take you to recover after moderate physical exertion (e.g. a brisk 30-minute walk)?",
+   "category": "Endocrine — HPA Axis / Cortisol",
+   "domain": "ENDOCRINE_HORMONAL",
+   "conditions": [
+    "cortisol_dysregulation_stress",
+    "hypothyroidism",
+    "andropause"
+   ],
+   "stream": "LIFE",
+   "type": "single_select",
+   "responses": [
+    {
+     "label": "I feel fine during and after — normal recovery",
+     "direction": "neutral",
+     "magnitude": "none",
+     "pillars": {},
+     "reservoirs": {}
+    },
+    {
+     "label": "Mildly tired for 1–2 hours after",
+     "direction": "increase_risk",
+     "magnitude": "weak",
+     "pillars": {
+      "ENDO": 0.06,
+      "FIT": 0.05
+     },
+     "reservoirs": {
+      "allostatic_load": 0.05
+     }
+    },
+    {
+     "label": "Unusually exhausted for hours / rest of the day",
+     "direction": "increase_risk",
+     "magnitude": "moderate",
+     "pillars": {
+      "ENDO": 0.14,
+      "FIT": 0.08,
+      "MCS": 0.06
+     },
+     "reservoirs": {
+      "allostatic_load": 0.12,
+      "muscle_reserve": -0.06
+     }
+    },
+    {
+     "label": "Exercise intolerant — I avoid it because of how bad I feel afterwards",
+     "direction": "increase_risk",
+     "magnitude": "strong",
+     "pillars": {
+      "ENDO": 0.2,
+      "FIT": 0.14,
+      "MCS": 0.1,
+      "BCM": 0.08
+     },
+     "reservoirs": {
+      "allostatic_load": 0.18,
+      "muscle_reserve": -0.1,
+      "cardiorespiratory_reserve": -0.08
+     }
+    }
+   ],
+   "dimensions": {
+    "age": "all",
+    "sex": [
+     "all"
+    ],
+    "axis_tags": [
+     "stress",
+     "condition_load",
+     "activity"
+    ],
+    "personas": [
+     "all"
+    ]
+   },
+   "dependencies": {
+    "show_if": [],
+    "skip_if": [],
+    "triggers": [],
+    "validated_by": "WHO-5"
+   },
+   "priority": 3,
+   "cadence": "quarterly",
+   "refresh": "dynamic",
+   "perceived_actual": {
+    "kind": "perceived",
+    "corroborated_by": [
+     "lab.cortisol_AM",
+     "lab.TSH",
+     "wearable.HRV"
+    ]
+   },
+   "source": "WHO-5 wellbeing index; Nater & Rohleder salivary cortisol fatigue studies",
+   "flag": "illustrative-reverify"
+  }
+ ]
+}

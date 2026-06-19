@@ -1,0 +1,275 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Engagement state machines — HikmaEngine Tech Wiki</title>
+<link rel="stylesheet" href="assets/wiki.css">
+<style>.topbar .brand b{color:#2ecc71}</style>
+<script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{htmlLabels:true,curve:"basis"},themeVariables:{fontSize:"14px"}});</script></head><body>
+<div class="topbar"><button class="menu-btn" aria-label="menu">☰</button>
+<a class="brand" href="index.html">Hikma<b>Engine</b> · Tech Wiki</a>
+<span class="tag">design spec — not clinically validated</span><span class="grow"></span>
+<input id="search" type="search" placeholder="Filter pages…  ( / )"></div>
+<div class="shell"><aside class="side"><div class="side-tools"><button class="side-allbtn" data-act="expand">expand all</button><button class="side-allbtn" data-act="collapse">collapse all</button></div><div class="navgrp" data-grp="g0"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">Start here</span></button><div class="grp-b"><div class="grp-blurb">Orient yourself — what PureScore is and how the pieces connect.</div><a href="index.html">Home</a><a href="purescore-uber-map.html">How it all connects</a><a href="00-vision-principles-and-lessons.html"><span class="n">00</span>Vision & principles</a><a href="conventions.html">Conventions & glossary</a><a href="decisions.html">Decision log</a></div></div><div class="navgrp" data-grp="g1"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">1 · How scoring works</span></button><div class="grp-b"><div class="grp-blurb">The core engine: pillars → markers → score, reservoirs, and PureScore 2.0.</div><a href="purescore-overview.html">Overview</a><a href="02-pillars-and-marker-catalog.html"><span class="n">02</span>Pillars & markers</a><a href="03-scoring-formula.html"><span class="n">03</span>Scoring formula</a><a href="04-moniac-reservoir-dynamics.html"><span class="n">04</span>Reservoir dynamics</a><a href="12-critical-review-and-purescore-2.0.html"><span class="n">12</span>PureScore 2.0</a></div></div><div class="navgrp" data-grp="g2"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">2 · The inputs (what feeds it)</span></button><div class="grp-b"><div class="grp-blurb">Where the data comes from: labs, wearables, and the question intake.</div><a href="01-data-model-and-reference-ranges.html"><span class="n">01</span>Data model & ranges</a><a href="18-data-streams-and-experience.html"><span class="n">18</span>Data streams & experience</a><a href="appendix-biomarkers.html">A · Markers (all channels)</a><a href="appendix-wearables.html">B · Wearables</a><a href="purescore-wearable-baselines.html">Baselines (Wearables)</a><a href="questions-hub.html">Intake — overview</a><a href="appendix-onboarding.html">K · Onboarding & first-run</a><a href="appendix-questions.html">C · Screeners & PROs</a><a href="appendix-question-bank.html">E · Question bank</a><a href="appendix-lifestyles.html">F · Lifestyles</a><a href="appendix-wearable-corroboration.html">L · Wearable corroboration</a><a href="eligibility-gating.html">Eligibility & gating</a></div></div><div class="navgrp" data-grp="g3"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">3 · Making it personal</span></button><div class="grp-b"><div class="grp-blurb">Context that reshapes the score: sex, life-stage, conditions, personas.</div><a href="05-sex-specific-models.html"><span class="n">05</span>Sex-specific models</a><a href="06-acute-events-and-life-stage-plans.html"><span class="n">06</span>Acute events & life-stage</a><a href="08-clinical-scores-integration.html"><span class="n">08</span>Clinical scores</a><a href="appendix-personas.html">D · Personas</a><a href="appendix-persona-matrix.html">I · Persona matrix</a><a href="purescore-male.html">PureScore — Male</a><a href="purescore-female.html">PureScore — Female</a></div></div><div class="navgrp" data-grp="g4"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">4 · Acting on it</span></button><div class="grp-b"><div class="grp-blurb">Turning the score into nudges, actions, adherence and goals.</div><a href="07-daily-nudge-engine.html"><span class="n">07</span>Daily nudge engine</a><a href="16-recommended-actions-catalogue.html"><span class="n">16</span>Actions catalogue</a><a href="appendix-adherence.html">H · Adherence</a><a href="appendix-goals.html">J · Goals</a><a href="feedback-loop.html">Feedback-loop demo</a></div></div><div class="navgrp" data-grp="g5"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">5 · Trust &amp; govern</span></button><div class="grp-b"><div class="grp-blurb">Validation, safety, evidence, fairness, localization and the audit.</div><a href="09-cohort-percentiles-and-validation.html"><span class="n">09</span>Cohorts & validation</a><a href="13-validation-and-calibration-harness.html"><span class="n">13</span>Validation harness</a><a href="14-evidence-registry-and-provenance.html"><span class="n">14</span>Evidence registry</a><a href="11-safety-governance-and-regulatory.html"><span class="n">11</span>Safety & governance</a><a href="17-clinician-red-team-and-blind-spots.html"><span class="n">17</span>Clinician red-team</a><a href="15-uae-localization.html"><span class="n">15</span>UAE localization</a><a href="10-actuarial-pricing-and-insurance.html"><span class="n">10</span>Actuarial & insurance</a><a href="appendix-coverage-audit.html">G · Coverage audit</a></div></div><div class="navgrp open" data-grp="g6"><button class="grp-h" aria-expanded="true"><span class="grp-car">▸</span><span class="grp-t">6 · See the system (maps)</span></button><div class="grp-b"><div class="grp-blurb">Diagrams that show the whole machine end-to-end.</div><a href="purescore-dataflow.html">PureScore calculation DFD</a><a href="states.html">Patient life-state machine</a><a href="engagement-state-machines.html" class="active">Engagement state machines</a><a href="behemoth-class-diagram.html">Behemoth class diagram</a><a href="wearable-baselines.html">Wearable baselines (mobile)</a></div></div><div class="navgrp" data-grp="g7"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">7 · Build it (engineering)</span></button><div class="grp-b"><div class="grp-blurb">The production object model: classes, ERD, C4, API, stories.</div><a href="class-explorer.html">Class explorer</a><a href="dossier-erd.html">Data model (ERD)</a><a href="dossier-c4.html">C4 architecture</a><a href="dossier-api.html">API contracts</a><a href="dossier-sequences.html">Sequences</a><a href="dossier-stories.html">User stories</a></div></div><div class="navgrp" data-grp="g8"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">8 · Reference — data tables</span></button><div class="grp-b"><div class="grp-blurb">Sortable/filterable spreadsheets of every catalogue.</div><a href="grid-questions.html">Question bank</a><a href="grid-biomarkers.html">Biomarkers</a><a href="grid-wearables.html">Wearables</a><a href="grid-personas.html">Personas</a><a href="grid-lifestyles.html">Lifestyles</a><a href="grid-adherence.html">Adherence</a><a href="grid-goals.html">Goals</a><a href="grid-persona-matrix.html">Persona matrix</a><a href="grid-onboarding.html">Onboarding</a><a href="grid-wearable-corroboration.html">Wearable corroboration</a><a href="grid-erd.html">Data model (ERD)</a></div></div><div class="navgrp" data-grp="g9"><button class="grp-h" aria-expanded="false"><span class="grp-car">▸</span><span class="grp-t">9 · Doctor's board (admin)</span></button><div class="grp-b"><div class="grp-blurb">The clinician configuration &amp; sign-off surfaces.</div><a href="admin-index.html">Dashboard</a><a href="admin-lab-ranges.html">Lab ranges</a><a href="admin-weights.html">Weights & constants</a><a href="admin-lifestyle.html">Lifestyle / PRO</a><a href="admin-personas.html">Personas & frames</a><a href="admin-governance.html">Governance & sign-off</a></div></div></aside><main class="main"><div class="chapter-ctx"><div class="chx-top"><span class="chx-name">6 · See the system (maps)</span><span class="chx-blurb">Diagrams that show the whole machine end-to-end.</span></div><details class="chx-d"><summary>5 pages in this chapter</summary><nav class="chx-list"><a class="chx-l" href="purescore-dataflow.html">PureScore calculation DFD</a><a class="chx-l" href="states.html">Patient life-state machine</a><a class="chx-l cur" href="engagement-state-machines.html">Engagement state machines</a><a class="chx-l" href="behemoth-class-diagram.html">Behemoth class diagram</a><a class="chx-l" href="wearable-baselines.html">Wearable baselines (mobile)</a></nav></details></div><div class="crumbs"><a href="index.html">Home</a> › Diagrams & system maps › Engagement state machines</div>
+<h1>Engagement State Machines — nudges, check-ins, self-reports & adherence</h1>
+<p class="lead">The four engagement artifacts PureScore creates and consumes every day are each a <b>persisted state machine</b> with explicit technical states, guarded transitions, timeouts, retries and terminal states. This page models all of them — the <b>nudge</b> (<a class="xref" href="07-daily-nudge-engine.html">Doc 07</a>), the <b>check-in</b>, the <b>self-report</b> (<a class="xref" href="18-data-streams-and-experience.html">Doc 18</a>, <a class="xref" href="01-data-model-and-reference-ranges.html">Doc 01</a>) and the <b>adherence check</b> that closes the calibration loop (<a class="xref" href="09-cohort-percentiles-and-validation.html">Doc 09</a>).</p>
+
+<div class="callout spec"><div class="ct">Reading the diagrams</div>
+Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions within one machine (labelled with their trigger; full guards and side-effects are in the table under each diagram). <b>Dashed edges</b> in the overview are hand-offs to <em>another</em> machine or subsystem. State colours: <span class="b-green">green</span> = adherent / ingested success, <span class="b-yellow">amber</span> = in-flight / waiting, <span class="b-red">red</span> = dropped / failed / missing, and an alert tint marks states that hand off to safety (<a class="xref" href="11-safety-governance-and-regulatory.html">Doc 11</a>). All states are auditable and every transition is append-only logged.</div>
+
+<div class="callout note"><div class="ct">Illustrative</div>State names, enums and window/TTL defaults below are a design model, not a shipped schema — they <b>must be reconciled with the production event model and re-verified before any clinical or production use</b> (README §5.6).</div>
+
+<h2 id="overview">0 · Overview — how the four machines interconnect</h2>
+<p>The engagement layer is a closed loop: the engine emits nudges, the patient acts, adherence is verified, and the realized outcome recalibrates the next day's nudges. Check-ins and self-reports feed scoring (and, on red flags, safety) which in turn re-derives the engine's inputs.</p>
+<pre class="mermaid">flowchart LR
+  SC["Scoring + companion vector (Doc 03)"] --> NE["Nudge engine (Doc 07)"]
+  NE -->|"top-5 presented"| NUD(["Nudge lifecycle (1)"])
+  NUD -->|"done / partial"| AC(["Adherence check (4)"])
+  NUD -.->|"self-attest"| SR(["Self-reported data (3)"])
+  CI(["Check-in (2)"]) -->|"submitted PRO"| SR
+  CI -->|"scored"| SC
+  SR -->|"ingested (confidence-weighted)"| SC
+  AC -->|"realized adherence"| CAL["Adherence model p_hat recalibration (Doc 09)"]
+  CAL --> NE
+  AC -.->|"repeated non-adherence"| NE
+  CI -.->|"red-flag item"| SAFE["Safety / escalation (Doc 11)"]
+  AC -.->|"disputed / harm signal"| SAFE
+  classDef engine fill:#0c1726,stroke:#2b5a86,color:#cfe3ff;
+  classDef machine fill:#10151e,stroke:#2ee6c9,color:#bdf5e0;
+  classDef safe fill:#1a0f15,stroke:#f0606e,color:#ffd0d6;
+  class SC,NE,CAL engine
+  class NUD,CI,SR,AC machine
+  class SAFE safe</pre>
+
+<h2 id="nudge">1 · Nudge lifecycle</h2>
+<p>A <b>nudge</b> is an <em>instance</em> of a catalogue action (<a class="xref" href="16-recommended-actions-catalogue.html">Doc 16</a>) issued to one patient for one planning day. It is born in the candidate pool, survives the safety filter and the diversity / class-cap selection, is delivered and presented, then resolves to an observed completion that opens an adherence check and, at horizon <code>h</code>, a realized-Δ measurement that recalibrates the engine.</p>
+<pre class="mermaid">stateDiagram-v2
+  direction TB
+  [*] --> Candidate : engine emits A_p
+  Candidate --> FilteredOut : safety fail
+  Candidate --> Ranked : passes safety
+  Ranked --> Suppressed : not top-5 / class-cap
+  Ranked --> Selected : in top-5
+  Selected --> Scheduled : enqueue delivery
+  Scheduled --> DeliveryFailed : push error
+  DeliveryFailed --> Scheduled : retry
+  DeliveryFailed --> Expired : retries exhausted
+  Scheduled --> Delivered : push / in-app sent
+  Delivered --> Presented : impression
+  Presented --> Snoozed : user defers
+  Snoozed --> Scheduled : re-arm
+  Snoozed --> Expired : snooze cap / EOD
+  Presented --> Dismissed : user rejects
+  Presented --> Done : completed
+  Presented --> Partial : partly done
+  Presented --> Expired : TTL / end-of-day
+  Done --> AwaitingMeasurement : open adherence check
+  Partial --> AwaitingMeasurement
+  AwaitingMeasurement --> Measured : realized Δ at horizon h
+  Measured --> [*]
+  Dismissed --> [*]
+  FilteredOut --> [*]
+  Suppressed --> [*]
+  Expired --> [*]
+  classDef good fill:#10241c,stroke:#3ad6a0,color:#bdf5e0;
+  classDef bad fill:#1a0f15,stroke:#f0606e,color:#ffd0d6;
+  classDef wait fill:#1d1a0c,stroke:#edb14a,color:#ffe6b0;
+  class Done,Partial,Measured good
+  class FilteredOut,Dismissed,Expired,DeliveryFailed bad
+  class Scheduled,Delivered,Presented,Snoozed,AwaitingMeasurement wait</pre>
+<div class="tablewrap"><table><thead><tr><th>From</th><th>Event / trigger</th><th>Guard</th><th>To</th><th>Side-effect</th></tr></thead><tbody>
+<tr><td>Candidate</td><td>daily build</td><td>fails safety / contraindication filter (Doc 07 §5)</td><td>FilteredOut</td><td>log reason; never shown</td></tr>
+<tr><td>Candidate</td><td>daily build</td><td>passes safety</td><td>Ranked</td><td>compute <code>U_a = impact·p̂_a·ease</code></td></tr>
+<tr><td>Ranked</td><td>selection</td><td>outside top-5 or class-cap (≤2/class) hit</td><td>Suppressed</td><td>may carry to tomorrow</td></tr>
+<tr><td>Ranked</td><td>selection</td><td>in greedy top-5 diverse set</td><td>Selected</td><td>attach attributed ΔPureScore</td></tr>
+<tr><td>Selected → Scheduled → Delivered</td><td>delivery</td><td>channel available; else retry to max, then <code>Expired</code></td><td>Delivered</td><td><code>delivered_at</code>; idempotent send key</td></tr>
+<tr><td>Delivered</td><td>render</td><td>card shown</td><td>Presented</td><td><code>presented_at</code> (impression)</td></tr>
+<tr><td>Presented</td><td>user defer</td><td><code>snooze_count &lt; max</code></td><td>Snoozed → Scheduled</td><td><code>snooze_count++</code>; re-arm time</td></tr>
+<tr><td>Presented</td><td>user tap</td><td>—</td><td>Done / Partial / Dismissed</td><td>record <code>completion</code>, update <code>streak</code></td></tr>
+<tr><td>Presented / Snoozed</td><td>clock</td><td>past <code>ttl_expires_at</code> or end-of-day, no action</td><td>Expired</td><td>count as non-adherent signal</td></tr>
+<tr><td>Done / Partial</td><td>completion</td><td>—</td><td>AwaitingMeasurement</td><td><b>open Adherence check (4)</b></td></tr>
+<tr><td>AwaitingMeasurement</td><td>horizon reached</td><td><code>now ≥ issued + h</code></td><td>Measured</td><td>compute realized ΔPureScore; feed recalibration (Doc 09)</td></tr>
+</tbody></table></div>
+<pre class="code"><code>Nudge {
+  nudge_id, action_id, patient_id, issued_date, horizon_h
+  status: candidate | filtered_out | ranked | suppressed | selected
+        | scheduled | delivered | presented | snoozed
+        | done | partial | dismissed | expired
+        | awaiting_measurement | measured
+  U_a, p_hat, impact_delta, ease, rank, class_a
+  delivered_at, presented_at, completed_at, snooze_count, ttl_expires_at
+  completion: done|partial|dismissed|snoozed   realized_delta, measured_at
+}</code></pre>
+
+<h2 id="checkin">2 · Check-in lifecycle</h2>
+<p>A <b>check-in</b> is a <em>prompted</em> capture on a cadence — a daily mood/symptom tap, a weekly review, or a scheduled PRO instrument (PHQ-9, GAD-7, ISI; <a class="xref" href="appendix-questions.html">Appendix C</a>). Its technical job is to open inside a window, chase a response, validate and score it, route red-flag items to safety, and either ingest the result or record a defensible <em>missing</em> state that widens uncertainty rather than guessing.</p>
+<pre class="mermaid">stateDiagram-v2
+  direction TB
+  [*] --> Scheduled : cadence rule
+  Scheduled --> Due : window opens
+  Due --> Notified : reminder sent
+  Notified --> Notified : re-remind
+  Due --> Started : user opens
+  Notified --> Started : user opens
+  Due --> Missed : window closes
+  Notified --> Missed : window closes
+  Started --> InProgress : answering
+  InProgress --> Abandoned : left mid-form
+  Abandoned --> InProgress : resume
+  Abandoned --> Missed : window closes
+  InProgress --> Submitted : required complete
+  Submitted --> Rejected : validation fail
+  Rejected --> InProgress : re-prompt
+  Submitted --> Validated : consistency ok
+  Validated --> Scored : instrument scored
+  Scored --> EscalationTriggered : red-flag item
+  Scored --> Ingested : write to record
+  EscalationTriggered --> Ingested : after safety handoff
+  Ingested --> [*]
+  Missed --> [*]
+  classDef good fill:#10241c,stroke:#3ad6a0,color:#bdf5e0;
+  classDef bad fill:#1a0f15,stroke:#f0606e,color:#ffd0d6;
+  classDef wait fill:#1d1a0c,stroke:#edb14a,color:#ffe6b0;
+  classDef alert fill:#241016,stroke:#ff7a8a,color:#ffd0d6;
+  class Scored,Ingested good
+  class Missed,Rejected,Abandoned bad
+  class Scheduled,Due,Notified,Started,InProgress,Submitted,Validated wait
+  class EscalationTriggered alert</pre>
+<div class="tablewrap"><table><thead><tr><th>From</th><th>Event / trigger</th><th>Guard</th><th>To</th><th>Side-effect</th></tr></thead><tbody>
+<tr><td>—</td><td>cadence engine</td><td>daily / weekly / event-triggered / PRO due</td><td>Scheduled</td><td>set <code>window_start/end</code></td></tr>
+<tr><td>Due / Notified</td><td>reminder clock</td><td><code>reminders &lt; max</code></td><td>Notified</td><td>send push; <code>reminders++</code></td></tr>
+<tr><td>Due / Notified / Abandoned</td><td>window clock</td><td>window closed, not submitted</td><td>Missed</td><td><b>record absence → ↑uncertainty</b> (never impute)</td></tr>
+<tr><td>InProgress</td><td>app background / exit</td><td>partial answers exist</td><td>Abandoned</td><td>persist draft; resumable in-window</td></tr>
+<tr><td>Submitted</td><td>validate</td><td>range / skip-logic / duplicate fail</td><td>Rejected → InProgress</td><td>show field errors</td></tr>
+<tr><td>Validated</td><td>score</td><td>—</td><td>Scored</td><td>compute instrument total / subscales</td></tr>
+<tr><td>Scored</td><td>safety rule</td><td>red-flag (e.g. PHQ-9 Q9 &gt; 0; severe band)</td><td>EscalationTriggered</td><td><b>hand off to safety (Doc 11)</b>; still ingest</td></tr>
+<tr><td>Scored / EscalationTriggered</td><td>persist</td><td>—</td><td>Ingested</td><td>write PRO to record; feeds scoring (Doc 03)</td></tr>
+</tbody></table></div>
+<pre class="code"><code>CheckIn {
+  checkin_id, patient_id, type: daily|weekly|event|pro, instrument
+  scheduled_for, window_start, window_end, reminders
+  status: scheduled | due | notified | started | in_progress
+        | abandoned | submitted | rejected | validated | scored
+        | escalation_triggered | ingested | missed
+  responses[], score, subscales, validation_status, escalation_flag
+  started_at, submitted_at, ingested_at
+}</code></pre>
+
+<h2 id="selfreport">3 · Self-reported data lifecycle</h2>
+<p>A <b>self-report</b> is <em>unprompted</em> patient-volunteered data — a logged meal, a "bad night", a home BP or weight, a medication taken. Its distinctive technical states are offline capture / sync, idempotent de-duplication, plausibility validation, a <b>provenance / trust-tier tag</b> (self-report carries lower confidence than device or lab; <a class="xref" href="01-data-model-and-reference-ranges.html">Doc 01</a>, <a class="xref" href="18-data-streams-and-experience.html">Doc 18</a>), and being <em>superseded</em> when an authoritative source arrives.</p>
+<pre class="mermaid">stateDiagram-v2
+  direction TB
+  [*] --> Drafting : user enters value
+  Drafting --> CapturedOnline : submit online
+  Drafting --> CapturedOffline : submit offline
+  CapturedOffline --> QueuedForSync : persist local
+  QueuedForSync --> Synced : connectivity restored
+  CapturedOnline --> Validated : plausibility check
+  Synced --> Validated : plausibility check
+  Validated --> DuplicateMerged : idempotency hit
+  Validated --> Rejected : implausible
+  Rejected --> Drafting : user corrects
+  Rejected --> Discarded : user cancels
+  Validated --> Conflicting : contradicts device / lab
+  Conflicting --> Reconciled : resolution rule
+  Reconciled --> ProvenanceTagged
+  Validated --> ProvenanceTagged : trust-tier = self-report
+  ProvenanceTagged --> Ingested : confidence-weighted
+  Ingested --> Superseded : authoritative override
+  Superseded --> Archived
+  Ingested --> [*]
+  DuplicateMerged --> [*]
+  Discarded --> [*]
+  Archived --> [*]
+  classDef good fill:#10241c,stroke:#3ad6a0,color:#bdf5e0;
+  classDef bad fill:#1a0f15,stroke:#f0606e,color:#ffd0d6;
+  classDef wait fill:#1d1a0c,stroke:#edb14a,color:#ffe6b0;
+  class ProvenanceTagged,Ingested good
+  class Rejected,Discarded,DuplicateMerged bad
+  class Drafting,CapturedOnline,CapturedOffline,QueuedForSync,Synced,Validated,Conflicting,Reconciled,Superseded,Archived wait</pre>
+<div class="tablewrap"><table><thead><tr><th>From</th><th>Event / trigger</th><th>Guard</th><th>To</th><th>Side-effect</th></tr></thead><tbody>
+<tr><td>Drafting</td><td>submit</td><td>no network</td><td>CapturedOffline → QueuedForSync</td><td>persist locally with client <code>idempotency_key</code></td></tr>
+<tr><td>QueuedForSync</td><td>connectivity</td><td>online</td><td>Synced</td><td>upload; server dedupe by key</td></tr>
+<tr><td>Captured / Synced</td><td>validate</td><td>unit / range / plausibility</td><td>Validated · Rejected · DuplicateMerged · Conflicting</td><td>route by outcome</td></tr>
+<tr><td>Validated</td><td>provenance</td><td>—</td><td>ProvenanceTagged</td><td>set <code>source=self_report</code>, <code>trust_tier</code>, <code>confidence</code></td></tr>
+<tr><td>ProvenanceTagged</td><td>ingest</td><td>—</td><td>Ingested</td><td>feeds scoring at reduced weight (Doc 03)</td></tr>
+<tr><td>Validated</td><td>cross-check</td><td>contradicts device / lab beyond tolerance</td><td>Conflicting → Reconciled</td><td>apply hierarchy (lab &gt; device &gt; self) or ask user</td></tr>
+<tr><td>Ingested</td><td>later data</td><td>authoritative source for same observation arrives</td><td>Superseded → Archived</td><td>keep for audit; stop influencing score</td></tr>
+</tbody></table></div>
+<pre class="code"><code>SelfReport {
+  report_id, patient_id, type, value, unit, captured_at
+  source: self_report, sync_status: online|queued|synced
+  idempotency_key, trust_tier, confidence
+  status: drafting | captured_online | captured_offline | queued_for_sync
+        | synced | validated | rejected | duplicate_merged | conflicting
+        | reconciled | provenance_tagged | ingested | superseded | archived | discarded
+  validation_status, provenance, superseded_by
+}</code></pre>
+
+<h2 id="adherence">4 · Adherence-check lifecycle</h2>
+<p>An <b>adherence check</b> verifies whether a recommended action was actually done — it turns a nudge completion into a calibrated outcome. It collects evidence (self-attestation, objective sensor corroboration, or none), resolves contradictions, scores an outcome, and feeds the per-patient adherence model <code>p̂_a</code> (<a class="xref" href="07-daily-nudge-engine.html">Doc 07</a> §3.2, <a class="xref" href="09-cohort-percentiles-and-validation.html">Doc 09</a>). Repeated non-adherence re-strategises future nudges.</p>
+<pre class="mermaid">stateDiagram-v2
+  direction TB
+  [*] --> Pending : opened by nudge Done/Partial
+  Pending --> AwaitingEvidence : collection window opens
+  AwaitingEvidence --> SelfAttested : patient marks done
+  AwaitingEvidence --> SensorConfirmed : objective signal
+  AwaitingEvidence --> Unverifiable : no observable signal
+  AwaitingEvidence --> Lapsed : window closes
+  SelfAttested --> Confirmed : sensor corroborates
+  SensorConfirmed --> Confirmed : self attests
+  SelfAttested --> Probable : self only
+  SensorConfirmed --> Probable : sensor only
+  SelfAttested --> Contradicted : sensor refutes
+  Contradicted --> Disputed : flag conflict
+  Disputed --> Reconciled : resolution rule
+  Reconciled --> Confirmed
+  Reconciled --> NonAdherent
+  Lapsed --> NonAdherent
+  Confirmed --> Scored
+  Probable --> Scored
+  Unverifiable --> Scored : neutral
+  NonAdherent --> Scored
+  Scored --> FedToCalibration : refit p_hat
+  FedToCalibration --> [*]
+  classDef good fill:#10241c,stroke:#3ad6a0,color:#bdf5e0;
+  classDef bad fill:#1a0f15,stroke:#f0606e,color:#ffd0d6;
+  classDef wait fill:#1d1a0c,stroke:#edb14a,color:#ffe6b0;
+  class Confirmed,Probable,Scored,FedToCalibration good
+  class Lapsed,NonAdherent,Contradicted bad
+  class Pending,AwaitingEvidence,SelfAttested,SensorConfirmed,Unverifiable,Disputed,Reconciled wait</pre>
+<div class="tablewrap"><table><thead><tr><th>From</th><th>Event / trigger</th><th>Guard</th><th>To</th><th>Side-effect</th></tr></thead><tbody>
+<tr><td>—</td><td>nudge Done/Partial, or standing rec at horizon</td><td>—</td><td>Pending → AwaitingEvidence</td><td>set <code>expected_window</code>, <code>verification_mode</code></td></tr>
+<tr><td>AwaitingEvidence</td><td>patient attests</td><td>—</td><td>SelfAttested</td><td>store self evidence</td></tr>
+<tr><td>AwaitingEvidence</td><td>sensor signal</td><td>objective metric matches action class (e.g. steps↑, sleep window)</td><td>SensorConfirmed</td><td>store sensor evidence</td></tr>
+<tr><td>AwaitingEvidence</td><td>class rule</td><td>action has no observable signal</td><td>Unverifiable</td><td>neutral — no model update</td></tr>
+<tr><td>AwaitingEvidence</td><td>window clock</td><td>no evidence by close</td><td>Lapsed → NonAdherent</td><td>record non-adherence</td></tr>
+<tr><td>SelfAttested + SensorConfirmed</td><td>corroboration</td><td>both present, agree</td><td>Confirmed</td><td>high-confidence adherent</td></tr>
+<tr><td>SelfAttested</td><td>sensor refutes</td><td>objective signal contradicts claim</td><td>Contradicted → Disputed</td><td>flag; may route to safety / clinician (Doc 11)</td></tr>
+<tr><td>Confirmed / Probable / NonAdherent / Unverifiable</td><td>score</td><td>—</td><td>Scored → FedToCalibration</td><td>refit <code>p̂_a</code> (empirical Bayes, Doc 09); repeated non-adherence ⇒ lower ease threshold / re-strategy next nudge</td></tr>
+</tbody></table></div>
+<pre class="code"><code>AdherenceCheck {
+  check_id, nudge_id | recommendation_id, patient_id, action_class
+  expected_window, verification_mode: self | sensor | both | none
+  evidence[]: { type, source, confidence, observed_at }
+  status: pending | awaiting_evidence | self_attested | sensor_confirmed
+        | contradicted | disputed | reconciled | confirmed | probable
+        | unverifiable | lapsed | non_adherent | scored | fed_to_calibration
+  outcome: confirmed | probable | non_adherent | disputed | unverifiable
+  realized_adherence, fed_to_model_at
+}</code></pre>
+
+<h2 id="invariants">5 · Cross-machine technical invariants</h2>
+<p>The four machines share a small set of engineering rules that make the loop safe and replayable:</p>
+<div class="tablewrap"><table><thead><tr><th>Invariant</th><th>Applies to</th><th>Rule</th></tr></thead><tbody>
+<tr><td><b>Idempotency</b></td><td>all</td><td>every external event carries a key; re-delivered events are no-ops (duplicate sends, double submits, replayed syncs)</td></tr>
+<tr><td><b>Timeout / expiry</b></td><td>nudge TTL, check-in window, adherence window</td><td>a clock transition always exists to a terminal state — no machine waits forever</td></tr>
+<tr><td><b>Retry with cap</b></td><td>nudge delivery, check-in reminders</td><td>bounded retries, then degrade to a terminal/failed state; never infinite loops</td></tr>
+<tr><td><b>Absence ≠ value</b></td><td>check-in Missed, adherence Lapsed/Unverifiable</td><td>missing data widens uncertainty (Doc 12) and never imputes a favourable value</td></tr>
+<tr><td><b>Provenance &amp; trust</b></td><td>self-report, adherence evidence</td><td>every ingested datum keeps source + trust-tier + confidence; lab &gt; device &gt; self hierarchy on conflict</td></tr>
+<tr><td><b>Safety pre-emption</b></td><td>check-in, adherence</td><td>red-flag / disputed-harm transitions hand off to safety (Doc 11) and can override the normal flow</td></tr>
+<tr><td><b>Append-only audit</b></td><td>all</td><td>every transition is logged with actor, timestamp and reason; state is reconstructable for governance</td></tr>
+<tr><td><b>Closed loop</b></td><td>nudge → adherence → calibration → engine</td><td>realized outcomes refit <code>p̂_a</code> and impact estimates, so tomorrow's top-5 reflects what this patient actually does</td></tr>
+</tbody></table></div>
+
+<blockquote><p>Related: the <b>data-stream</b> states a whole patient can occupy live in the <a class="xref" href="states.html">Patient state machine</a>; the scoring response to these events is animated in the <a class="xref" href="feedback-loop.html">live feedback-loop demo</a>.</p></blockquote>
+<div class="connects"><div class="cx-h">Connects to</div><div class="cx-row"><span class="cx-k">Pages</span><a class="cx-chip" href="index.html">Home</a> <a class="cx-chip" href="11-safety-governance-and-regulatory.html">Safety &amp; governance</a> <a class="cx-chip" href="01-data-model-and-reference-ranges.html">Data model &amp; ranges</a> <a class="cx-chip" href="09-cohort-percentiles-and-validation.html">Cohorts &amp; validation</a> <a class="cx-chip" href="07-daily-nudge-engine.html">Daily nudge engine</a> <a class="cx-chip" href="18-data-streams-and-experience.html">Data streams &amp; experience</a></div><div class="cx-row"><span class="cx-k">Diagrams</span><a class="cx-chip" href="purescore-dataflow.html">PureScore calculation DFD</a> <a class="cx-chip" href="states.html">Patient life-state machine</a> <a class="cx-chip" href="behemoth-class-diagram.html">Behemoth class diagram</a> <a class="cx-chip" href="wearable-baselines.html">Wearable baselines (mobile)</a></div></div><nav class="pn"><a class="prev" href="states.html"><div class="lbl">← Previous</div><div class="ttl">Patient life-state machine</div></a><a class="next" href="behemoth-class-diagram.html"><div class="lbl">Next →</div><div class="ttl">Behemoth Class Diagram</div></a></nav><footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · illustrative design, re-verify before production (README §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
+<script src="assets/wiki.js"></script></body></html>

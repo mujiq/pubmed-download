@@ -1,0 +1,639 @@
+{
+ "meta": {
+  "name": "Input → persona determination matrix",
+  "version": "0.1",
+  "flag": "illustrative — weights are design seeds, calibrate before production",
+  "closes": "F2",
+  "method": "Persona posterior = softmax over per-column evidence sums. Hard priors (sex · age · life-stage · requires) zero out impossible columns BEFORE the soft evidence is summed, so e.g. a pregnancy column can never light up for a male. Many-to-many by construction: one signal supports several personas, and each persona is supported by many signals. A signal's value comes from a question answer (Appendix E), a derived flag, or a wearable/lab threshold.",
+  "links": [
+   "Doc 05",
+   "Doc 12",
+   "Appendix D",
+   "Appendix E",
+   "Appendix F"
+  ]
+ },
+ "personas": [
+  {
+   "id": "healthy",
+   "name": "Healthy adult",
+   "type": "clinical",
+   "priors": {}
+  },
+  {
+   "id": "prediabetic",
+   "name": "Pre-diabetes",
+   "type": "clinical",
+   "priors": {
+    "age": [
+     25,
+     75
+    ]
+   }
+  },
+  {
+   "id": "ckd",
+   "name": "CKD-3 on ACE-i",
+   "type": "clinical",
+   "priors": {
+    "requires": "reduced_egfr"
+   }
+  },
+  {
+   "id": "athlete",
+   "name": "Endurance athlete (clinical)",
+   "type": "clinical",
+   "priors": {
+    "age": [
+     16,
+     60
+    ]
+   }
+  },
+  {
+   "id": "betablocker",
+   "name": "On β-blocker",
+   "type": "clinical",
+   "priors": {
+    "requires": "on_betablocker"
+   }
+  },
+  {
+   "id": "elderly",
+   "name": "Older adult",
+   "type": "clinical",
+   "priors": {
+    "age": [
+     70,
+     120
+    ]
+   }
+  },
+  {
+   "id": "dialysis",
+   "name": "ESRD on dialysis",
+   "type": "clinical",
+   "priors": {
+    "requires": "on_dialysis"
+   }
+  },
+  {
+   "id": "pregnancy",
+   "name": "Pregnancy",
+   "type": "clinical",
+   "priors": {
+    "sex": "female",
+    "life_stage": "pregnancy"
+   }
+  },
+  {
+   "id": "menopause",
+   "name": "Postmenopausal",
+   "type": "clinical",
+   "priors": {
+    "sex": "female",
+    "life_stage": "menopause",
+    "age": [
+     44,
+     70
+    ]
+   }
+  },
+  {
+   "id": "southasian",
+   "name": "South-Asian metabolic",
+   "type": "clinical",
+   "priors": {}
+  },
+  {
+   "id": "ramadan_dm",
+   "name": "Gulf-Arab T2D, Ramadan",
+   "type": "clinical",
+   "priors": {
+    "requires": "t2d"
+   }
+  },
+  {
+   "id": "fh",
+   "name": "Familial hypercholesterolemia",
+   "type": "clinical",
+   "priors": {}
+  },
+  {
+   "id": "labartifact",
+   "name": "Lab artifact",
+   "type": "clinical",
+   "priors": {}
+  },
+  {
+   "id": "desk_sedentary",
+   "name": "Desk-bound sedentary",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "weekend_warrior",
+   "name": "Weekend warrior",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "endurance_athlete",
+   "name": "Endurance athlete",
+   "type": "archetype",
+   "priors": {
+    "age": [
+     16,
+     60
+    ]
+   }
+  },
+  {
+   "id": "shift_worker",
+   "name": "Shift worker",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "frequent_traveler_exec",
+   "name": "Frequent-traveler exec",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "new_parent",
+   "name": "New parent",
+   "type": "archetype",
+   "priors": {
+    "age": [
+     20,
+     50
+    ]
+   }
+  },
+  {
+   "id": "caregiver_burnout",
+   "name": "Caregiver burnout",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "retired_active_ager",
+   "name": "Retired active ager",
+   "type": "archetype",
+   "priors": {
+    "age": [
+     60,
+     120
+    ]
+   }
+  },
+  {
+   "id": "frail_elderly",
+   "name": "Frail elderly",
+   "type": "archetype",
+   "priors": {
+    "age": [
+     70,
+     120
+    ]
+   }
+  },
+  {
+   "id": "ramadan_faster_t2d",
+   "name": "Ramadan faster (T2D)",
+   "type": "archetype",
+   "priors": {
+    "requires": "t2d"
+   }
+  },
+  {
+   "id": "south_asian_metabolic",
+   "name": "South-Asian metabolic",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "postmenopausal_bone",
+   "name": "Postmenopausal bone-loss",
+   "type": "archetype",
+   "priors": {
+    "sex": "female",
+    "age": [
+     44,
+     80
+    ]
+   }
+  },
+  {
+   "id": "young_optimizer",
+   "name": "Young optimizer",
+   "type": "archetype",
+   "priors": {
+    "age": [
+     18,
+     40
+    ]
+   }
+  },
+  {
+   "id": "yo_yo_dieter",
+   "name": "Yo-yo dieter",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "corporate_stress_eater",
+   "name": "Corporate stress-eater",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "overtrainer",
+   "name": "Overtrainer",
+   "type": "archetype",
+   "priors": {
+    "age": [
+     16,
+     55
+    ]
+   }
+  },
+  {
+   "id": "sedentary_smoker",
+   "name": "Sedentary smoker",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "social_drinker_pro",
+   "name": "Social drinker (professional)",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "plant_based_athlete",
+   "name": "Plant-based athlete",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "chronic_pain_deconditioned",
+   "name": "Chronic-pain deconditioned",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "anxious_insomniac",
+   "name": "Anxious insomniac",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "prediabetic_unaware",
+   "name": "Pre-diabetic (unaware)",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "fh_genetic_risk",
+   "name": "FH / genetic CV risk",
+   "type": "archetype",
+   "priors": {}
+  },
+  {
+   "id": "pregnant_active",
+   "name": "Pregnant & active",
+   "type": "archetype",
+   "priors": {
+    "sex": "female",
+    "life_stage": "pregnancy"
+   }
+  }
+ ],
+ "signals": [
+  {
+   "id": "all_markers_green",
+   "label": "All pillars green · no Dx · no meds",
+   "source": "derived",
+   "weights": {
+    "healthy": 3,
+    "young_optimizer": 1
+   }
+  },
+  {
+   "id": "hba1c_pre",
+   "label": "HbA1c 5.7–6.4% (no T2D Dx)",
+   "source": "biomarker-lab",
+   "weights": {
+    "prediabetic": 3,
+    "prediabetic_unaware": 2,
+    "southasian": 1,
+    "south_asian_metabolic": 1
+   }
+  },
+  {
+   "id": "metabolic_risk_no_dx",
+   "label": "Waist↑ + TG↑ + low HDL, no diagnosis",
+   "source": "biomarker-lab",
+   "weights": {
+    "prediabetic_unaware": 3,
+    "corporate_stress_eater": 1,
+    "yo_yo_dieter": 1
+   }
+  },
+  {
+   "id": "reduced_egfr",
+   "label": "eGFR 30–59 (sustained)",
+   "source": "biomarker-lab",
+   "weights": {
+    "ckd": 3
+   }
+  },
+  {
+   "id": "on_dialysis",
+   "label": "On dialysis / RRT",
+   "source": "self-report",
+   "weights": {
+    "dialysis": 4
+   }
+  },
+  {
+   "id": "on_betablocker",
+   "label": "On a β-blocker",
+   "source": "self-report",
+   "weights": {
+    "betablocker": 4
+   }
+  },
+  {
+   "id": "on_acei_arb",
+   "label": "On ACE-i / ARB",
+   "source": "self-report",
+   "weights": {
+    "ckd": 1,
+    "betablocker": 1
+   }
+  },
+  {
+   "id": "age_75plus",
+   "label": "Age ≥ 75",
+   "source": "self-report",
+   "weights": {
+    "elderly": 3,
+    "frail_elderly": 1,
+    "retired_active_ager": 1
+   }
+  },
+  {
+   "id": "frailty_falls",
+   "label": "Low grip / gait + falls history",
+   "source": "self-report",
+   "weights": {
+    "frail_elderly": 3,
+    "elderly": 1,
+    "chronic_pain_deconditioned": 1
+   }
+  },
+  {
+   "id": "retired_high_activity",
+   "label": "Retired + high daily activity",
+   "source": "wearable-consumer",
+   "weights": {
+    "retired_active_ager": 3
+   }
+  },
+  {
+   "id": "currently_pregnant",
+   "label": "Currently pregnant",
+   "source": "self-report",
+   "weights": {
+    "pregnancy": 4,
+    "pregnant_active": 2
+   }
+  },
+  {
+   "id": "pregnant_and_active",
+   "label": "Pregnant + ≥150 min/wk activity",
+   "source": "wearable-consumer",
+   "weights": {
+    "pregnant_active": 3,
+    "pregnancy": 1
+   }
+  },
+  {
+   "id": "menopausal_status",
+   "label": "≥12 mo amenorrhea / FSH↑",
+   "source": "biomarker-lab",
+   "weights": {
+    "menopause": 3,
+    "postmenopausal_bone": 2
+   }
+  },
+  {
+   "id": "bmd_low",
+   "label": "BMD T-score ≤ −2.0",
+   "source": "biomarker-lab",
+   "weights": {
+    "postmenopausal_bone": 3,
+    "frail_elderly": 1
+   }
+  },
+  {
+   "id": "south_asian_ancestry",
+   "label": "South-Asian ancestry",
+   "source": "self-report",
+   "weights": {
+    "southasian": 3,
+    "south_asian_metabolic": 2
+   }
+  },
+  {
+   "id": "waist_high_asian_cut",
+   "label": "Waist above Asian cut-point",
+   "source": "self-report",
+   "weights": {
+    "south_asian_metabolic": 2,
+    "prediabetic_unaware": 1,
+    "corporate_stress_eater": 1
+   }
+  },
+  {
+   "id": "fasting_ramadan_t2d",
+   "label": "Fasts Ramadan + has T2D",
+   "source": "self-report",
+   "weights": {
+    "ramadan_dm": 3,
+    "ramadan_faster_t2d": 3
+   }
+  },
+  {
+   "id": "fh_family_hx",
+   "label": "Family Hx premature CVD / very high LDL",
+   "source": "self-report",
+   "weights": {
+    "fh": 3,
+    "fh_genetic_risk": 3
+   }
+  },
+  {
+   "id": "lpa_high",
+   "label": "Lp(a) ≥ 125 nmol/L",
+   "source": "biomarker-lab",
+   "weights": {
+    "fh_genetic_risk": 2,
+    "fh": 1
+   }
+  },
+  {
+   "id": "isolated_implausible_lab",
+   "label": "Single implausible lab, no corroboration",
+   "source": "derived",
+   "weights": {
+    "labartifact": 4
+   }
+  },
+  {
+   "id": "sedentary_job_low_steps",
+   "label": "Desk job + < 5k steps/day",
+   "source": "wearable-consumer",
+   "weights": {
+    "desk_sedentary": 3,
+    "corporate_stress_eater": 1
+   }
+  },
+  {
+   "id": "weekend_only_activity",
+   "label": "Activity clustered on weekends only",
+   "source": "wearable-consumer",
+   "weights": {
+    "weekend_warrior": 3
+   }
+  },
+  {
+   "id": "high_volume_endurance",
+   "label": "High weekly endurance volume · low RHR · high VO₂max",
+   "source": "wearable-consumer",
+   "weights": {
+    "endurance_athlete": 3,
+    "athlete": 3,
+    "plant_based_athlete": 1
+   }
+  },
+  {
+   "id": "high_train_low_recovery",
+   "label": "High training load + suppressed HRV / readiness",
+   "source": "wearable-consumer",
+   "weights": {
+    "overtrainer": 3,
+    "endurance_athlete": 1
+   }
+  },
+  {
+   "id": "night_shift",
+   "label": "Night / rotating shift ≥ 3×/wk",
+   "source": "self-report",
+   "weights": {
+    "shift_worker": 3,
+    "anxious_insomniac": 1
+   }
+  },
+  {
+   "id": "frequent_tz_travel",
+   "label": "Frequent cross-timezone travel",
+   "source": "self-report",
+   "weights": {
+    "frequent_traveler_exec": 3,
+    "corporate_stress_eater": 1
+   }
+  },
+  {
+   "id": "new_parent_infant",
+   "label": "Infant at home / fragmented sleep",
+   "source": "self-report",
+   "weights": {
+    "new_parent": 3,
+    "anxious_insomniac": 1
+   }
+  },
+  {
+   "id": "caregiving_hours_high",
+   "label": "High caregiving hours + PSS↑",
+   "source": "self-report",
+   "weights": {
+    "caregiver_burnout": 3,
+    "corporate_stress_eater": 1
+   }
+  },
+  {
+   "id": "weight_cycling_hx",
+   "label": "Repeated weight-loss/regain cycles",
+   "source": "self-report",
+   "weights": {
+    "yo_yo_dieter": 3
+   }
+  },
+  {
+   "id": "stress_emotional_eating",
+   "label": "High stress + emotional-eating PRO",
+   "source": "self-report",
+   "weights": {
+    "corporate_stress_eater": 3,
+    "yo_yo_dieter": 1
+   }
+  },
+  {
+   "id": "smoker_sedentary",
+   "label": "Current smoker + low activity",
+   "source": "self-report",
+   "weights": {
+    "sedentary_smoker": 3,
+    "desk_sedentary": 1
+   }
+  },
+  {
+   "id": "audit_c_high",
+   "label": "AUDIT-C ≥ 8",
+   "source": "self-report",
+   "weights": {
+    "social_drinker_pro": 3,
+    "corporate_stress_eater": 1
+   }
+  },
+  {
+   "id": "plant_based_diet",
+   "label": "Plant-based diet + active",
+   "source": "self-report",
+   "weights": {
+    "plant_based_athlete": 3,
+    "young_optimizer": 1
+   }
+  },
+  {
+   "id": "chronic_pain_low_activity",
+   "label": "Chronic pain + deconditioned",
+   "source": "self-report",
+   "weights": {
+    "chronic_pain_deconditioned": 3,
+    "frail_elderly": 1
+   }
+  },
+  {
+   "id": "anxiety_insomnia",
+   "label": "GAD-7↑ + ISI↑",
+   "source": "self-report",
+   "weights": {
+    "anxious_insomniac": 3,
+    "caregiver_burnout": 1
+   }
+  },
+  {
+   "id": "young_quantified_self",
+   "label": "Age < 40 + multiple devices + optimization goals",
+   "source": "derived",
+   "weights": {
+    "young_optimizer": 3
+   }
+  }
+ ]
+}

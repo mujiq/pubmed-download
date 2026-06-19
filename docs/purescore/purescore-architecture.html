@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>PureScore 2.0 — Architecture, Live Calculator & Companion Vector</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+  :root{
+    --bg:#0e1320; --panel:#161d2e; --panel2:#1d2740; --ink:#e8edf7; --muted:#93a0bd;
+    --green:#2e9e5b; --yellow:#e0a82e; --red:#d1495b; --crit:#ff3b5c;
+    --line:#2a3654; --accent:#5b8cff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  header{padding:14px 20px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#141b2c,#0e1320);display:flex;flex-wrap:wrap;align-items:center;gap:16px}
+  header h1{font-size:18px;margin:0;letter-spacing:.3px}
+  header .sub{color:var(--muted);font-size:12px}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;margin-left:auto;align-items:center}
+  .controls label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+  select,input[type=number]{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer}
+  button.ghost{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+  button:hover{filter:brightness(1.08)}
+  .wrap{display:grid;grid-template-columns:380px 1fr;gap:0;height:calc(100vh - 64px)}
+  .inputs{overflow:auto;border-right:1px solid var(--line);padding:14px}
+  .stage{overflow:auto;padding:10px}
+  .sec{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:10px}
+  .sec>summary{cursor:pointer;padding:9px 12px;font-weight:600;display:flex;align-items:center;gap:8px;list-style:none}
+  .sec>summary::-webkit-details-marker{display:none}
+  .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 2px rgba(255,255,255,.06)}
+  .sec .body{padding:4px 12px 12px}
+  .mk{display:grid;grid-template-columns:1fr 84px 64px;gap:8px;align-items:center;padding:4px 0;border-top:1px dashed var(--line)}
+  .mk:first-child{border-top:0}
+  .mk .nm{font-size:12.5px}
+  .mk .nm small{color:var(--muted)}
+  .mk .rv{font-size:10.5px;text-align:right;font-variant-numeric:tabular-nums}
+  .pill-score{margin-left:auto;font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted)}
+  .res .mk{grid-template-columns:1fr 120px 40px}
+  .res input[type=range]{width:120px}
+  .companion{display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px 2px}
+  .badge{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12px;display:flex;gap:6px;align-items:center}
+  .badge b{font-variant-numeric:tabular-nums}
+  .badge .k{color:var(--muted)}
+  .pnote{color:var(--muted);font-size:11.5px;padding:2px 10px 6px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12px;padding:6px 10px}
+  .chip{display:inline-flex;align-items:center;gap:6px}
+  #tip{position:fixed;pointer-events:none;background:#0b1020;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;max-width:300px;opacity:0;transition:opacity .12s;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  .break{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
+  .break h3{margin:0 0 6px;font-size:13px}
+  .bk-row{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--muted);gap:8px}
+  .bk-row b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .tag{font-size:9.5px;padding:1px 5px;border-radius:5px;margin-left:4px;border:1px solid}
+  .tag.mng{color:#7fd1ff;border-color:#37618a}
+  .tag.cnf{color:#c9a0ff;border-color:#5a4a8a}
+  .tag.exc{color:#8f9bbd;border-color:#3a4668}
+  svg text{font-family:inherit}
+  .foot{color:var(--muted);font-size:11px;padding:8px 12px;border-top:1px solid var(--line)}
+  a,code{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>PureScore 2.0 — Architecture, Live Calculator & Companion Vector</h1>
+    <div class="sub">Context-aware scoring (Docs 03/04/12). Managed-state · confounder down-weighting · age/dialysis/pregnancy frames · companion meta-dimensions. Inputs are trust-flagged — labs anchor, wearables are tiered (D22), goals steer, self-report fills gaps (Doc 18). Illustrative bands — re-verify before real use.</div>
+  </div>
+  <div class="controls">
+    <label>Natal sex
+      <select id="sex"><option value="m">Male</option><option value="f">Female</option></select>
+    </label>
+    <label>Hormones
+      <select id="hrt"><option value="none">None</option><option value="feminizing">Feminizing HRT</option><option value="masculinizing">Masculinizing HRT</option></select>
+    </label>
+    <label>Life stage
+      <select id="stage">
+        <option value="reproductive">Reproductive</option>
+        <option value="preg_t1">Pregnant · T1</option>
+        <option value="preg_t2">Pregnant · T2</option>
+        <option value="preg_t3">Pregnant · T3</option>
+        <option value="postpartum">Postpartum / lactating</option>
+        <option value="perimenopause">Perimenopause</option>
+        <option value="postmenopause">Postmenopause</option>
+        <option value="andropause">Andropause</option>
+      </select>
+    </label>
+    <label>Ethnicity (UAE)
+      <select id="ethnicity">
+        <option value="unspecified">Unspecified</option>
+        <option value="south_asian">South Asian</option>
+        <option value="gulf_arab">Gulf Arab / Emirati</option>
+        <option value="other_arab">Other Arab</option>
+        <option value="sea_filipino">SE Asian / Filipino</option>
+        <option value="western">Western / European</option>
+        <option value="african">African</option>
+      </select>
+    </label>
+    <label>Ramadan
+      <select id="ramadan"><option value="no">Not fasting</option><option value="yes">Fasting</option></select>
+    </label>
+    <label>Persona / edge case
+      <select id="persona">
+        <option value="healthy">Healthy adult</option>
+        <option value="prediabetic">Pre-diabetic</option>
+        <option value="ckd">CKD (stage 3, on ACE-i)</option>
+        <option value="athlete">Endurance athlete</option>
+        <option value="betablocker">On β-blocker</option>
+        <option value="elderly">Elderly 84 (age frames)</option>
+        <option value="dialysis">ESRD on dialysis</option>
+        <option value="pregnancy">Pregnant (2nd tri)</option>
+        <option value="transfem">Trans woman (estrogen)</option>
+        <option value="transmasc">Trans man (testosterone)</option>
+        <option value="menopause">Postmenopausal</option>
+        <option value="southasian">South-Asian cardiometabolic</option>
+        <option value="ramadan_dm">Gulf-Arab T2D · Ramadan</option>
+        <option value="fh">Familial hypercholesterolemia</option>
+        <option value="labartifact">Lab artifact (hemolyzed K⁺)</option>
+      </select>
+    </label>
+    <label>Simulate adherence
+      <span style="display:flex;gap:6px;align-items:center">
+        <input id="days" type="number" value="30" min="1" max="365" style="width:60px"/>
+        <button id="simulate" title="Drain burden reservoirs & build asset reservoirs over N days — produces a trajectory reading">▶ days</button>
+      </span>
+    </label>
+    <button class="ghost" id="reset">Reset</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="inputs" id="inputs"></div>
+  <div class="stage">
+    <div class="companion" id="companion"></div>
+    <div class="pnote" id="twozero"></div>
+    <div class="pnote" id="localization"></div>
+    <div class="pnote" id="pnote"></div>
+    <div class="legend">
+      <span class="chip"><span class="dot" style="background:var(--green)"></span>green (R&lt;0.30)</span>
+      <span class="chip"><span class="dot" style="background:var(--yellow)"></span>yellow (0.30–0.60)</span>
+      <span class="chip"><span class="dot" style="background:var(--red)"></span>red / critical</span>
+      <span class="chip"><span class="tag mng">MNG</span>managed</span>
+      <span class="chip"><span class="tag cnf">CNF</span>confounded (down-weighted)</span>
+      <span class="chip">→ flow &nbsp; ⋯ reservoir interference</span>
+    </div>
+    <svg id="svg" width="100%" viewBox="0 0 980 760" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="foot">Pieces = 12 pillars · centre = PureScore (worst-sensitive δ-mean + critical cascade cap 40). Companion vector above carries the score's direction & error bars (Doc 12). Click a pillar for its breakdown.</div>
+    <div class="break" id="nudges" style="margin:8px 0"></div>
+  </div>
+</div>
+<div id="tip"></div>
+
+<script>
+/* ============================================================
+   PureScore 2.0 live calculator — Docs 03 (scoring), 04 (reservoirs), 12 (2.0 layer)
+   Illustrative bands; re-verify before real use.
+   ============================================================ */
+const GAMMA=3, DELTA=2, RHO=0.20, R_CRIT=0.60, PURE_CRIT_CAP=40;
+
+const PILLARS=[
+  {id:'CV',name:'Cardiovascular',base:1.3},{id:'MET',name:'Metabolic',base:1.2},
+  {id:'REN',name:'Renal',base:1.0},{id:'HEP',name:'Hepatic',base:0.9},
+  {id:'INF',name:'Inflammation',base:1.0},{id:'HEM',name:'Hematologic',base:0.9},
+  {id:'ENDO',name:'Endocrine',base:0.9},{id:'BCM',name:'Body Comp/MSK',base:1.0},
+  {id:'NUT',name:'Nutrition',base:0.8},{id:'SLP',name:'Sleep',base:1.1},
+  {id:'FIT',name:'Fitness',base:1.2},{id:'MCS',name:'Mental/Cog',base:1.2}];
+
+function M(o){return Object.assign({w:1,critical:false,optLo:null,optHi:null,yLo:null,yHi:null,rLo:null,rHi:null},o);}
+const MARKERS={
+  CV:[ M({id:'sbp',name:'Systolic BP',unit:'mmHg',val:115,w:.30,critical:true,optLo:90,optHi:119,yLo:89,yHi:120,rLo:85,rHi:140}),
+       M({id:'apob',name:'ApoB',unit:'mg/dL',val:70,w:.40,critical:true,optHi:79,yHi:80,rHi:100}),
+       M({id:'rhr',name:'Resting HR',unit:'bpm',val:60,w:.30,optLo:50,optHi:69,yLo:49,yHi:70,rLo:40,rHi:85}) ],
+  MET:[ M({id:'a1c',name:'HbA1c',unit:'%',val:5.1,w:.45,critical:true,optHi:5.3,yHi:5.4,rHi:6.5}),
+        M({id:'glu',name:'Fasting glucose',unit:'mg/dL',val:88,w:.30,critical:true,optLo:70,optHi:99,yLo:65,yHi:100,rLo:55,rHi:126}),
+        M({id:'waist',name:'Waist',unit:'cm',val:88,w:.25,optHi:94,yHi:95,rHi:102,bySex:{f:{optHi:80,yHi:81,rHi:88,val:78}}}) ],
+  REN:[ M({id:'egfr',name:'eGFR',unit:'mL/min',val:100,w:.40,critical:true,optLo:90,yLo:89,rLo:60}),
+        M({id:'uacr',name:'UACR',unit:'mg/g',val:8,w:.30,critical:true,skew:true,optHi:29,yHi:30,rHi:300}),
+        M({id:'k',name:'Potassium',unit:'mmol/L',val:4.2,w:.30,critical:true,optLo:3.6,optHi:5.0,yLo:3.5,yHi:5.1,rLo:3.2,rHi:5.6}) ],
+  HEP:[ M({id:'alt',name:'ALT',unit:'U/L',val:22,w:.45,skew:true,optHi:29,yHi:30,rHi:50}),
+        M({id:'fib4',name:'FIB-4',unit:'',val:0.9,w:.35,critical:true,skew:true,optHi:1.29,yHi:1.3,rHi:2.67}),
+        M({id:'bili',name:'Bilirubin',unit:'mg/dL',val:0.7,w:.20,skew:true,optHi:1.19,yHi:1.2,rHi:2.0}) ],
+  INF:[ M({id:'crp',name:'hsCRP',unit:'mg/L',val:0.6,w:.50,critical:true,skew:true,optHi:0.99,yHi:1.0,rHi:3.0}),
+        M({id:'wbc',name:'WBC',unit:'×10⁹/L',val:6,w:.30,optLo:4,optHi:9,yLo:3.9,yHi:9.1,rLo:3.5,rHi:11}),
+        M({id:'alb',name:'Albumin',unit:'g/dL',val:4.4,w:.20,optLo:4.0,yLo:3.9,rLo:3.5}) ],
+  HEM:[ M({id:'hgb',name:'Hemoglobin',unit:'g/dL',val:15,w:.40,critical:true,optLo:13.5,optHi:17,yLo:13.4,yHi:17.1,rLo:11,rHi:18,
+          bySex:{f:{optLo:12,optHi:15.5,yLo:11.9,yHi:15.6,rLo:10.5,rHi:16.5,val:13.5}}}),
+        M({id:'spo2',name:'SpO₂',unit:'%',val:98,w:.35,critical:true,optLo:96,yLo:95,rLo:92}),
+        M({id:'plt',name:'Platelets',unit:'×10⁹/L',val:260,w:.25,optLo:150,optHi:400,yLo:149,yHi:401,rLo:100,rHi:500}) ],
+  ENDO:[ M({id:'tsh',name:'TSH',unit:'mIU/L',val:1.8,w:.40,optLo:0.5,optHi:2.5,yLo:0.49,yHi:2.6,rLo:0.3,rHi:4.5}),
+         M({id:'cort',name:'Cortisol (AM)',unit:'µg/dL',val:11,w:.30,optLo:5,optHi:15,yLo:4.9,yHi:15.1,rLo:3,rHi:22}),
+         M({id:'sex_h',name:'Testosterone',unit:'ng/dL',val:550,w:.30,optLo:400,yLo:399,rLo:264,
+            bySex:{f:{name:'Estradiol',unit:'pg/mL',val:120,optLo:30,optHi:350,yLo:29,yHi:360,rLo:15,rHi:500}}}) ],
+  BCM:[ M({id:'bmi',name:'BMI',unit:'kg/m²',val:23,w:.30,optLo:18.5,optHi:24.9,yLo:17,yHi:25,rLo:16,rHi:30}),
+        M({id:'grip',name:'Grip strength',unit:'kg',val:45,w:.30,optLo:40,yLo:39,rLo:27,bySex:{f:{optLo:27,yLo:26,rLo:18,val:30}}}),
+        M({id:'tsc',name:'BMD T-score',unit:'',val:-0.3,w:.30,optLo:-1.0,yLo:-1.01,rLo:-2.5}) ],
+  NUT:[ M({id:'vitd',name:'Vitamin D',unit:'ng/mL',val:42,w:.35,optLo:30,optHi:60,yLo:29,yHi:61,rLo:20,rHi:100}),
+        M({id:'o3',name:'Omega-3 index',unit:'%',val:9,w:.30,optLo:8,yLo:7.9,rLo:4}),
+        M({id:'b12',name:'Vitamin B12',unit:'pg/mL',val:550,w:.25,optLo:400,optHi:900,yLo:399,yHi:901,rLo:200,rHi:1100}) ],
+  SLP:[ M({id:'sdur',name:'Sleep duration',unit:'h',val:7.6,w:.40,optLo:7,optHi:9,yLo:6.9,yHi:9.1,rLo:6,rHi:10}),
+        M({id:'seff',name:'Sleep efficiency',unit:'%',val:93,w:.30,optLo:90,yLo:89,rLo:85}),
+        M({id:'sreg',name:'Sleep regularity',unit:'idx',val:88,w:.30,optLo:85,yLo:84,rLo:60}) ],
+  FIT:[ M({id:'vo2',name:'VO₂max',unit:'mL/kg/min',val:45,w:.40,optLo:42,yLo:41,rLo:30,bySex:{f:{optLo:35,yLo:34,rLo:25,val:38}}}),
+        M({id:'mvpa',name:'MVPA',unit:'min/wk',val:180,w:.30,optLo:150,yLo:149,rLo:75}),
+        M({id:'step',name:'Steps',unit:'/day',val:9000,w:.30,optLo:8000,yLo:7999,rLo:5000}) ],
+  MCS:[ M({id:'phq',name:'PHQ-9',unit:'0–27',val:2,w:.40,critical:true,optHi:4,yHi:5,rHi:15}),
+        M({id:'gad',name:'GAD-7',unit:'0–21',val:2,w:.30,optHi:4,yHi:5,rHi:15}),
+        M({id:'lone',name:'Loneliness',unit:'UCLA-3',val:3,w:.30,optHi:3,yHi:4,rHi:7}) ],
+};
+let suicidality=false;
+for(const k in MARKERS) MARKERS[k].forEach(m=>{ m._val0=m.val; });   // pristine defaults for reset
+
+const RESERVOIRS=[
+  {id:'SLD',name:'Sleep debt',type:'burden',lambda:0.30,val:18,feeds:{SLP:1.0,MCS:0.5,MET:0.4,CV:0.3,INF:0.4}},
+  {id:'ATH',name:'Atherogenic burden',type:'burden',lambda:0.005,val:18,feeds:{CV:1.0}},
+  {id:'INFL',name:'Inflammatory load',type:'burden',lambda:0.10,val:18,feeds:{INF:1.0,CV:0.5,MET:0.4,HEP:0.4,MCS:0.3}},
+  {id:'GLY',name:'Glycemic burden',type:'burden',lambda:0.05,val:18,feeds:{MET:1.0,CV:0.5,REN:0.4,HEP:0.4}},
+  {id:'ALLO',name:'Allostatic/stress',type:'burden',lambda:0.15,val:18,feeds:{MCS:1.0,ENDO:0.5,CV:0.3,SLP:0.5}},
+  {id:'CRF',name:'Cardioresp reserve',type:'asset',lambda:0.05,val:72,feeds:{FIT:1.0,CV:0.5,MET:0.4}},
+  {id:'MUS',name:'Muscle reserve',type:'asset',lambda:0.03,val:72,feeds:{BCM:1.0,FIT:0.5,MET:0.3}},
+];
+
+/* ---- 2.0 context tables (Doc 12 §3) ---- */
+const CONFOUNDS={ betablocker:{rhr:0.7, vo2:0.6} };                 // drug → {marker: c_conf}
+const MANAGES={ betablocker:['sbp','rhr'], statin:['apob'], acei:['sbp','uacr'], metformin:['a1c','glu'], diuretic:['sbp'] };
+
+/* ---- personas / edge cases ---- */
+const PERSONAS={
+  healthy:    {age:40,meds:[],rep:0.90,wmult:{},marks:{},res:{},note:'Healthy adult cohort — well represented.'},
+  prediabetic:{age:52,meds:[],rep:0.85,wmult:{MET:1.6,CV:1.3,REN:1.1},marks:{a1c:6.0,glu:112,apob:95,waist:101},res:{GLY:55,ATH:40,INFL:35,CRF:55},trend:{a1c:1.2,glu:1.0,waist:0.8},note:'Pre-diabetes — MET/CV up-weighted; glycemic burden accumulating; metabolic markers trending up.'},
+  ckd:        {age:60,meds:['acei'],rep:0.80,wmult:{REN:2.0,CV:1.4,MET:1.2},marks:{egfr:48,uacr:90,k:5.0,sbp:138,apob:92},res:{GLY:42,ATH:52,INFL:46,CRF:55},trend:{egfr:-1.0,uacr:1.2},note:'CKD-3 on ACE-i — BP/UACR MANAGED; mild K⁺ rise is drug-expected (Watch, not Alert); eGFR declining.'},
+  athlete:    {age:30,meds:[],rep:0.40,wmult:{},marks:{rhr:42,vo2:58,glu:82,bmi:26.5,hgb:16.2,step:14000,mvpa:600},res:{CRF:96,MUS:92,SLD:10},trend:{vo2:0.5},note:'Endurance athlete — RHR 42 & low glucose are ADAPTIVE; out-of-cohort → cohort stats suppressed, confidence lowered.'},
+  betablocker:{age:58,meds:['betablocker'],rep:0.70,wmult:{CV:1.3},marks:{rhr:52,sbp:124,vo2:34},res:{},note:'On β-blocker — RHR & VO₂max CONFOUNDED (down-weighted, not scored as fitness); BP MANAGED.'},
+  elderly:    {age:84,meds:['acei'],rep:0.60,wmult:{REN:1.2,BCM:1.3,FIT:1.1},marks:{egfr:66,bmi:26,sbp:134,grip:30,vo2:24,a1c:5.7},res:{MUS:45,CRF:40},
+               bands:{bmi:{optLo:23,optHi:28,yLo:22,yHi:29,rLo:20,rHi:32},sbp:{optLo:120,optHi:139,yLo:118,yHi:142,rLo:112,rHi:160},egfr:{optLo:60,yLo:59,rLo:40},vo2:{optLo:22,yLo:21,rLo:15}},
+               trend:{grip:-0.8,vo2:-0.6},crmute:{NUT:0.6},
+               note:'Age 84 — age-adjusted BMI/BP(J-curve)/eGFR/VO₂max frames; actionability modifier de-prioritizes low-yield flags; sarcopenic drift; NUT competing-risk-muted.'},
+  dialysis:   {age:64,meds:[],rep:0.50,wmult:{REN:1.5,CV:1.4},marks:{egfr:8,uacr:600,k:5.3,sbp:138,hgb:10.8},exclude:['egfr'],fixed:['uacr','egfr'],crmute:{NUT:0.5,SLP:0.8},res:{ATH:55},note:'ESRD on dialysis — eGFR EXCLUDED (adequacy frame); structural renal damage fixed; renal anemia (Hgb) expected; NUT/SLP competing-risk-muted.'},
+  pregnancy:  {natal:'f',stage:'preg_t2',age:31,meds:[],rep:0.50,wmult:{ENDO:1.3,HEM:1.2,CV:1.2},marks:{hgb:11.4,sbp:108,glu:84},exclude:['waist'],
+               note:'2nd-trimester frame — physiologic anemia & eGFR-rise expected (Hgb/eGFR/glucose bands shifted); pre-eclampsia/GDM absolute anchors retained.'},
+  transfem:   {natal:'m',hrt:'feminizing',age:34,meds:[],rep:0.55,wmult:{},marks:{hgb:12.8},
+               note:'Trans woman on established estrogen — Hgb/hematocrit, lipids, urate & estradiol read against the FEMALE (gonadal) reference; Hgb 12.8 is normal-female but a binary male toggle would falsely flag it anemic. Natal-sex organ baseline retained; confidence lowered (less cohort data).'},
+  transmasc:  {natal:'f',hrt:'masculinizing',age:29,meds:[],rep:0.55,wmult:{},marks:{hgb:16.0,sex_h:520},
+               note:'Trans man on established testosterone — Hgb, creatinine/eGFR, urate & testosterone read against the MALE (gonadal) reference; under a female toggle Hgb 16.0 would falsely read high.'},
+  menopause:  {natal:'f',stage:'postmenopause',age:56,meds:[],rep:0.82,wmult:{CV:1.2,BCM:1.3},marks:{apob:96,tsc:-1.7,sbp:134},
+               note:'Postmenopausal — estrogen-loss CV & bone-loss risk (CV/BCM up-weighted; BMD red sooner); ApoB drift; vasomotor sleep impact.'},
+  southasian: {natal:'m',ethnicity:'south_asian',age:45,meds:[],rep:1.0,wmult:{MET:1.4,CV:1.3},marks:{bmi:24.5,waist:93,a1c:5.9,apob:98,vitd:16},trend:{a1c:0.8,waist:0.6},
+               note:'South-Asian male — WHO Asian BMI/waist cut-points flag cardiometabolic risk a normal-range BMI would miss; ASCVD under-predicts → ethnicity-aware equation; G6PD/hemoglobinopathy/FH & vitamin-D screening raised (D18).'},
+  ramadan_dm: {natal:'m',ethnicity:'gulf_arab',ramadan:true,age:52,meds:['metformin','sglt2'],rep:1.0,wmult:{MET:1.5},marks:{a1c:7.2,glu:140,egfr:72,bmi:23.5,waist:96},
+               note:'Gulf-Arab with T2D fasting Ramadan — med-timing & hypoglycemia/dehydration safety (IDF-DAR); SGLT2i held if dehydration/euglycemic-DKA risk; clinician-set fast-breaking rule.'},
+  fh:         {age:38,meds:[],rep:0.75,wmult:{CV:1.5},marks:{apob:140,sbp:118},fixed:['apob'],res:{ATH:70},note:'Familial hypercholesterolemia — ApoB genetic, NOT lifestyle-modifiable (needs medication); modifiability low.'},
+  labartifact:{age:55,meds:[],rep:0.85,wmult:{},marks:{k:6.6},artifacts:['k'],res:{},note:'Isolated implausible K⁺ 6.6 (hemolysis suspected, no corroboration) → held for RECONFIRM, NOT an emergency cascade (Doc 12 §3.4). Corroboration (ECG/symptom/second draw) would escalate immediately.'},
+};
+
+let SEX='m', PERSONA='healthy', prevPure=null;
+/* hormonal-milieu model (Doc 05; decision D15): natal sex baseline; hormone-sensitive markers
+   follow the CURRENT gonadal milieu (established HRT flips it); life-stage modifiers adjust bands;
+   acute-danger anchors stay absolute. */
+let CTX={natal:'m', hrt:'none', stage:'reproductive', ethnicity:'unspecified', ramadan:false};
+function gsex(){ return CTX.hrt==='feminizing'?'f':CTX.hrt==='masculinizing'?'m':CTX.natal; }  // governing milieu for gonadal-axis bands
+function syncSex(){ SEX=gsex(); }
+/* ethnicity = CONTEXT & SCREENING, never penalty (D18; Doc 15). UAE-prevalent higher-cardiometabolic-risk
+   groups use WHO Asian / IDF ethnic-specific BMI & waist cut-points; eGFR stays race-free (CKD-EPI 2021). */
+function ethTier(){ return ['south_asian','sea_filipino','gulf_arab','other_arab'].includes(CTX.ethnicity)?'asian':'standard'; }
+function ethRep(){ return CTX.ethnicity==='unspecified'?0.90:(['south_asian','gulf_arab'].includes(CTX.ethnicity)?1.0:0.97); } // representativeness, NOT penalty
+function screeningFor(){ const e=CTX.ethnicity, s=['Vitamin D (UAE near-universal deficiency)'];
+  if(['south_asian','gulf_arab','other_arab','sea_filipino'].includes(e)){ s.unshift('Early cardiometabolic (lower BMI/waist cut-points)'); s.push('G6PD before oxidant drugs','Hemoglobinopathy/thalassemia (premarital)','FH cascade (consanguinity)'); }
+  if(e==='gulf_arab') s.push('Consanguinity-linked recessive conditions');
+  if(e==='african') s.push('Sickle-cell / hemoglobinopathy');
+  return s; }
+function riskEqNote(){ return ethTier()==='asian'
+  ? 'CV risk: pooled-cohort/ASCVD UNDER-predicts in South-Asian/Gulf ancestry → use ethnicity-aware equation (QRISK3); consider earlier statin & screening (EVD-ETHN-ASCVD-001).'
+  : 'CV risk: standard equation; ethnicity not specified does not penalize the score (D18).'; }
+const STAGE_MODS={      // life-stage band overrides (physiologic); acute anchors never set here
+  preg_t1:{hgb:{optLo:11,optHi:14,yLo:10.5,yHi:14.5,rLo:9.5,rHi:15.5}, egfr:{optLo:100,yLo:99,rLo:70}, glu:{optLo:65,optHi:92,yLo:60,yHi:95,rLo:55,rHi:126}},
+  preg_t2:{hgb:{optLo:10.5,optHi:14,yLo:10,yHi:14.5,rLo:9,rHi:15.5}, egfr:{optLo:105,yLo:104,rLo:75}, glu:{optLo:65,optHi:90,yLo:60,yHi:95,rLo:55,rHi:126}},
+  preg_t3:{hgb:{optLo:11,optHi:14,yLo:10.5,yHi:14.5,rLo:9.5,rHi:15.5}, egfr:{optLo:100,yLo:99,rLo:70}, sbp:{optLo:90,optHi:129,yLo:89,yHi:130,rLo:85,rHi:140}},
+  postpartum:{hgb:{optLo:11.5,optHi:15,yLo:11,yHi:15.5,rLo:9.5,rHi:16.5}},
+  perimenopause:{},
+  postmenopause:{tsc:{optLo:-1.0,yLo:-1.01,rLo:-2.0}},   // post-menopausal bone-loss risk → red sooner
+  andropause:{sex_h:{optLo:300,yLo:264,rLo:230}},          // age-adjusted male testosterone reference
+};
+function band(m){ const o=Object.assign({},m);
+  if(m.bySex&&m.bySex[gsex()]) Object.assign(o,m.bySex[gsex()]);                 // gonadal-milieu range
+  const sm=STAGE_MODS[CTX.stage]; if(sm&&sm[m.id]) Object.assign(o,sm[m.id]);    // life-stage modifier
+  if(ethTier()==='asian'){                                                       // ethnicity cut-points (WHO Asian / IDF) — context, not penalty
+    if(m.id==='bmi') Object.assign(o,{optLo:18.5,optHi:22.9,yLo:17,yHi:23,rLo:16,rHi:27.5});
+    if(m.id==='waist') Object.assign(o, gsex()==='f'?{optHi:79,yHi:80,rHi:88}:{optHi:89,yHi:90,rHi:100});
+  }
+  const pb=PERSONAS[PERSONA].bands; if(pb&&pb[m.id]) Object.assign(o,pb[m.id]);  // explicit persona override
+  return o; }
+function defaultVal(m){ let v=m._val0;
+  if(m.bySex&&m.bySex[gsex()]&&m.bySex[gsex()].val!=null) v=m.bySex[gsex()].val;
+  const pb=PERSONAS[PERSONA].bands; if(pb&&pb[m.id]&&pb[m.id].val!=null) v=pb[m.id].val;
+  return v; }
+function activeMeds(){ return PERSONAS[PERSONA].meds||[]; }
+function isModifiable(m){ return !((PERSONAS[PERSONA].fixed||[]).includes(m.id)); }
+
+function ctxOf(m){ const p=PERSONAS[PERSONA]; let conf=1,managed=false,confounded=false,present=true,excluded=false,artifact=false;
+  if((p.missing||[]).includes(m.id)){ present=false; conf=0.30; }
+  if((p.exclude||[]).includes(m.id)){ conf=0; excluded=true; }
+  if((p.artifacts||[]).includes(m.id)){ conf=Math.min(conf,0.05); artifact=true; }  // implausible/low-quality → held for reconfirm (§3.4)
+  activeMeds().forEach(md=>{
+    if(CONFOUNDS[md]&&CONFOUNDS[md][m.id]!==undefined){ confounded=true; conf*=(1-CONFOUNDS[md][m.id]); }
+    if((MANAGES[md]||[]).includes(m.id)) managed=true; });
+  return {conf,managed,confounded,present,excluded,artifact}; }
+
+function applyPersona(reset){ const p=PERSONAS[PERSONA];
+  if(reset){
+    for(const k in MARKERS) MARKERS[k].forEach(m=>{ m.val=defaultVal(m); });
+    for(const id in (p.marks||{})){ outer: for(const k in MARKERS) for(const m of MARKERS[k]) if(m.id===id){ m.val=p.marks[id]; break outer; } }
+    RESERVOIRS.forEach(r=>{ r.val=(p.res&&p.res[r.id]!==undefined)?p.res[r.id]:(r.type==='asset'?72:18); });
+  } }
+
+/* ---- scoring math (Doc 03) ---- */
+function sideRisk(x,opt,yel,red){ const sgn=(red>=opt)?1:-1; const X=sgn*x,O=sgn*opt,Y=sgn*yel,R=sgn*red;
+  if(X<=O)return 0; if(X<=Y)return (Y>O)?0.15*(X-O)/(Y-O):0.5;
+  if(X<=R)return 0.15+0.35*(X-Y)/Math.max(R-Y,1e-6);
+  const s=Math.max(R-Y,1e-6); return Math.min(1,0.5+0.5*(1-Math.exp(-(X-R)/s))); }
+function markerRisk(m){ const b=band(m); let r=0;
+  if(b.optHi!=null&&m.val>b.optHi) r=Math.max(r,sideRisk(m.val,b.optHi,b.yHi,b.rHi));
+  if(b.optLo!=null&&m.val<b.optLo) r=Math.max(r,sideRisk(m.val,b.optLo,b.yLo,b.rLo));
+  return Math.max(0,Math.min(1,r)); }
+/* within-green drift (Doc 12 §5.2) — early-warning before threshold */
+function driftScore(m){ const b=band(m); if(markerRisk(m)>0) return 0; let pos=0;
+  if(b.optLo!=null&&b.optHi!=null){ const c=(b.optLo+b.optHi)/2,h=(b.optHi-b.optLo)/2||1; pos=Math.abs(m.val-c)/h; }
+  else if(b.optHi!=null){ const Wd=Math.max((b.yHi-b.optHi)*4,1e-6); pos=Math.min(1,Math.max(0,(m.val-(b.optHi-Wd))/Wd)); }
+  else if(b.optLo!=null){ const Wd=Math.max((b.optLo-b.yLo)*4,1e-6); pos=Math.min(1,Math.max(0,((b.optLo+Wd)-m.val)/Wd)); }
+  return Math.min(0.1,0.1*pos); }
+function reservoirLoad(pid){ let num=0,den=0;
+  RESERVOIRS.forEach(r=>{ const w=r.feeds[pid]; if(!w)return; den+=w; num+=w*(r.type==='burden'?r.val/100:(1-r.val/100)); });
+  return den?Math.max(0,Math.min(1,num/den)):0; }
+function pillarRisk(pid){ const ms=MARKERS[pid]; let num=0,den=0,anyCritRed=false,contribs=[];
+  ms.forEach(m=>{ const ctx=ctxOf(m); const r=markerRisk(m); const wi=m.w*ctx.conf;
+    num+=wi*Math.pow(r,GAMMA); den+=wi;
+    if(m.critical&&r>=0.5&&ctx.conf>0.05) anyCritRed=true;
+    contribs.push({m,r,ctx,drift:driftScore(m)}); });
+  let Rmark=den>0?Math.pow(num/den,1/GAMMA):0;
+  const Btil=reservoirLoad(pid); let R=Math.min(1,Rmark+RHO*Btil);
+  let critical=anyCritRed||R>=R_CRIT; if(pid==='MCS'&&suicidality) critical=true;
+  if(critical) R=Math.max(R,R_CRIT);
+  return {R,critical,Rmark,Btil,contribs,cov:den}; }
+
+/* ===== 2.0 time-series engine (Doc 12 §5; decisions D9/D10) — synthetic, seeded, illustrative ===== */
+const NSER=90;
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+function mcenter(m){const b=band(m); if(b.optLo!=null&&b.optHi!=null)return (b.optLo+b.optHi)/2; if(b.optHi!=null)return b.optHi*0.82; if(b.optLo!=null)return b.optLo*1.12; return m.val;}
+function mscale(m){const b=band(m); let s; if(b.optLo!=null&&b.optHi!=null)s=(b.optHi-b.optLo)/4; else if(b.optHi!=null)s=Math.max((b.yHi-b.optHi),Math.abs(b.optHi)*0.08); else if(b.optLo!=null)s=Math.max((b.optLo-b.yLo),Math.abs(b.optLo)*0.08); else s=Math.abs(m.val)*0.1; return Math.max(s,1e-6);}
+function badDir(m){const b=band(m); if(b.optLo!=null&&b.optHi!=null)return 0; if(b.optHi!=null)return 1; if(b.optLo!=null)return -1; return 0;} // +1 high=bad, -1 low=bad, 0 two-sided
+function worseningVsBaseline(m,mean){ const dev=m.val-mean, bd=badDir(m);
+  if(bd>0) return dev>0; if(bd<0) return dev<0; const c=mcenter(m); return Math.abs(m.val-c)>Math.abs(mean-c); }
+function seriesOf(m){ const sc=mscale(m), tr=(PERSONAS[PERSONA].trend||{})[m.id]||0, slope=tr*sc*0.02;
+  const rnd=mulberry32(hashStr(PERSONA+SEX+m.id)); const a=[];
+  for(let t=0;t<NSER;t++){ const back=NSER-1-t; a.push(m.val - slope*back + (rnd()*2-1)*sc*0.22); }
+  a[NSER-1]=m.val; return a; }
+function lin(arr){ const n=arr.length; let sx=0,sy=0,sxx=0,sxy=0; for(let i=0;i<n;i++){sx+=i;sy+=arr[i];sxx+=i*i;sxy+=i*arr[i];} const d=n*sxx-sx*sx; const slope=d?(n*sxy-sx*sy)/d:0; return {slope,inter:(sy-slope*sx)/n}; }
+function avg(a){return a.reduce((x,y)=>x+y,0)/a.length;}
+function sdev(a){const m=avg(a);return Math.sqrt(a.reduce((x,y)=>x+(y-m)*(y-m),0)/a.length);}
+function baseline(m){ const s0=seriesOf(m), hist0=s0.slice(0,NSER-1), lg=!!m.skew, tx=v=>lg?Math.log(Math.max(v,1e-3)):v;
+  // anomaly z vs the PERSONAL baseline; heavy-tailed markers use a log transform (robust to right-skew spikes).
+  // variance floored to avoid tiny-σ false alarms. (EB shrinkage toward cohort, D6, matters only at cold-start; here n≈89 ⇒ personal.)
+  const hist=hist0.map(tx), sd0=lg?0.4:mscale(m), sdB=Math.max(sdev(hist), sd0*0.3);
+  const z=(tx(m.val)-avg(hist))/sdB;
+  const win=s0.slice(NSER-30), L=lin(win), resid=win.map((v,i)=>v-(L.inter+L.slope*i));  // slope/vol kept on RAW scale (consistent with bands)
+  return {z, mean:avg(hist0), slope30:L.slope, vol:Math.min(1,sdev(resid)/mscale(m))}; }
+function timeToThreshold(m){ const b=band(m), sc=mscale(m), sl=baseline(m).slope30;
+  if(Math.abs(sl*30) < 0.25*sc) return null;        // require a genuine trend, not noise
+  let days=null;
+  if(sl>0 && b.yHi!=null && m.val<b.yHi) days=(b.yHi-m.val)/sl;
+  if(sl<0 && b.yLo!=null && m.val>b.yLo) days=(m.val-b.yLo)/(-sl);
+  return (days!=null && days>0 && days<3650)?days:null; }
+
+/* ===== core scoring (no companion) — re-usable for historical & counterfactual snapshots ===== */
+function scoreCore(){ const pr={}; let anyCrit=false;
+  PILLARS.forEach(p=>{ pr[p.id]=pillarRisk(p.id); if(pr[p.id].critical) anyCrit=true; });
+  const wm=PERSONAS[PERSONA].wmult||{}, cr=PERSONAS[PERSONA].crmute||{}; let W={},sumW=0;       // crmute = competing-risk muting (D5)
+  PILLARS.forEach(p=>{ W[p.id]=p.base*(wm[p.id]||1)*(cr[p.id]||1); sumW+=W[p.id]; });
+  let num=0; PILLARS.forEach(p=>{ num+=W[p.id]*Math.pow(pr[p.id].R,DELTA); });
+  let Rtot=Math.pow(num/sumW,1/DELTA), pure=100*(1-Rtot);
+  let status=anyCrit?'CRITICAL':(Rtot>=0.30?'AT RISK':'ON TRACK'), binding=null;
+  if(anyCrit){ pure=Math.min(pure,PURE_CRIT_CAP); let best=-1; PILLARS.forEach(p=>{ if(pr[p.id].critical&&pr[p.id].R>best){best=pr[p.id].R;binding=p.id;} }); }
+  return {pr,W,sumW,Rtot,pure,status,anyCrit,binding}; }
+function withVals(setter,fn){ const saved={}; for(const k in MARKERS) MARKERS[k].forEach(m=>{saved[m.id]=m.val;});
+  for(const k in MARKERS) MARKERS[k].forEach(m=>{ const v=setter(m); if(v!=null) m.val=v; });
+  const out=fn(); for(const k in MARKERS) MARKERS[k].forEach(m=>{ m.val=saved[m.id]; }); return out; }
+function pureAtDay(idx){ return withVals(m=>seriesOf(m)[idx], ()=>scoreCore().pure); }
+function uncapped(){ return 100*(1-scoreCore().Rtot); }                                          // ignores cascade cap → risk headroom
+function dualFraming(){ const cur=uncapped();                                                    // D11
+  const ceil=withVals(m=>isModifiable(m)?mcenter(m):null, uncapped);
+  const floor=withVals(m=>{ if(!isModifiable(m))return null; const b=band(m); return b.yHi!=null?b.yHi*1.05:(b.yLo!=null?b.yLo*0.95:mcenter(m)); }, uncapped);
+  const prog=(ceil-floor>1e-6)?Math.max(0,Math.min(1,(cur-floor)/(ceil-floor))):1;
+  return {ceil:Math.round(ceil),floor:Math.round(floor),progress:Math.round(100*prog)}; }
+function syndromes(){ const out=[], v=id=>{for(const k in MARKERS)for(const m of MARKERS[k])if(m.id===id)return m;}, r=id=>{const m=v(id);return m?markerRisk(m):0;};
+  let ms=0; if(r('waist')>=0.3)ms++; if(r('sbp')>=0.3)ms++; if(r('a1c')>=0.3||r('glu')>=0.3)ms++; if(r('apob')>=0.3)ms++;
+  if(ms>=2) out.push('Metabolic-syndrome pattern ('+ms+'/4)');
+  let fr=0; if(r('grip')>=0.3)fr++; if(r('vo2')>=0.3)fr++; const mus=RESERVOIRS.find(x=>x.id==='MUS'); if(mus&&mus.val<45)fr++;
+  if(fr>=2 && PERSONAS[PERSONA].age>=70) out.push('Frailty phenotype ('+fr+'/3)');
+  const egfrM=v('egfr'); if((r('egfr')>=0.3||(egfrM&&baseline(egfrM).slope30<0)) && r('uacr')>=0.2) out.push('CKD-progression pattern');
+  return out; }
+
+function compute(){ const core=scoreCore(); const {pr,W,pure,status,anyCrit,binding,Rtot}=core;
+  /* ---- companion vector (Doc 12 §4) ---- */
+  let cW=0,cConf=0,cPres=0,totR=0,modR=0,reds=0,emergency=false,bandWatch=0,volAcc=0,volW=0,zsq=0,nz=0,zmax=0; const watchP=new Set(),reconfirm=[],robust=[];
+  PILLARS.forEach(p=>{ pr[p.id].contribs.forEach(c=>{ const w=c.m.w*W[p.id];
+    cW+=w; cConf+=w*c.ctx.conf; cPres+=w*(c.ctx.present?1:0);
+    totR+=c.m.w*c.r; if(isModifiable(c.m)) modR+=c.m.w*c.r;
+    if(c.r>=0.5){ if(c.ctx.conf>0.05){ reds++; if(['k','spo2','glu'].includes(c.m.id)) emergency=true; }
+                  else if(c.ctx.artifact) reconfirm.push(band(c.m).name); }   // implausible/low-quality critical → reconfirm, not Alert
+    if(c.m.skew && c.r>0.1) robust.push(band(c.m).name);
+    if(c.r>0&&c.r<0.15){ bandWatch++; watchP.add(p.id); }
+    if(c.ctx.conf>0.05){ const bl=baseline(c.m); volAcc+=w*bl.vol; volW+=w; zsq+=bl.z*bl.z; nz++; zmax=Math.max(zmax,Math.abs(bl.z));
+      if(Math.abs(bl.z)>1.5 && c.r<0.15 && worseningVsBaseline(c.m,bl.mean)) watchP.add(p.id); } }); });  // within-green drift TOWARD risk → Watch
+  RESERVOIRS.forEach(r=>{ if((r.type==='burden'&&r.val>45)||(r.type==='asset'&&r.val<40)) bandWatch++; });
+  if(suicidality){ emergency=true; reds++; }
+  const rep=PERSONAS[PERSONA].rep;
+  const confidence=Math.round(100*(cW?cConf/cW:0)*rep*ethRep());   // ethnicity adjusts representativeness/confidence, never penalty (D18)
+  const sufficiency=Math.round(100*(cW?cPres/cW:0));
+  const modifiability=Math.round(100*(totR>0?modR/totR:1));
+  const volatility=Math.round(100*(volW?volAcc/volW:0));
+  const critTier=emergency?'emergency':(reds>0?'urgent':'none');
+  const Dmv=Math.sqrt(zsq), Dstar=Math.sqrt(Math.max(nz,1))*1.3;                                 // diagonal-covariance multivariate (D10)
+  const sources=bandWatch+watchP.size;
+  let ewTier=sources>0?'Watch':'none';
+  if(sources>=3 || Dmv>Dstar || zmax>3) ewTier='Advisory';
+  if(reconfirm.length && ewTier==='none') ewTier='Watch';
+  let traj=uncapped()-withVals(m=>seriesOf(m)[NSER-31],uncapped); if(prevPure!=null) traj=pure-prevPure;  // live 30-day delta (uncapped so cascade-capped scores still show trend)
+  let tnext=null,tmk=null; PILLARS.forEach(p=>pr[p.id].contribs.forEach(c=>{ if(c.ctx.conf>0.05){ const d=timeToThreshold(c.m); if(d!=null&&(tnext==null||d<tnext)){tnext=d;tmk=band(c.m).name;} }}));
+  const dual=dualFraming(), synd=syndromes();
+  const companion={confidence,sufficiency,modifiability,rep:Math.round(100*rep),critTier,reds,ewTier,
+    watchM:sources,watchP:[...watchP],traj,volatility,Dmv:+Dmv.toFixed(1),tnext:tnext==null?null:Math.round(tnext),tmk,dual,synd,
+    reconfirm:[...new Set(reconfirm)],robust:[...new Set(robust)]};
+  return {...core,companion}; }
+
+/* ===== Daily nudge engine (Doc 07; decision D16) — ease-weighted utility, exact ΔPureScore@30d ===== */
+const NUDGES=[
+  {id:'SLP-WIND',cls:'SLEEP',label:'Wind-down routine + lights-out 30 min earlier',E:0.25,ev:0.7,marks:['sdur','seff'],res:{SLD:-22},pillar:'SLP'},
+  {id:'SLP-REG',cls:'SLEEP',label:'Constant sleep/wake time (±30 min)',E:0.35,ev:0.6,marks:['sreg'],res:{SLD:-15,ALLO:-8},pillar:'SLP'},
+  {id:'ACT-STEPS',cls:'ACT',label:'+1,500 steps/day',E:0.20,ev:0.8,marks:['step'],res:{CRF:10,GLY:-8},pillar:'FIT'},
+  {id:'ACT-Z2',cls:'ACT',label:'2× zone-2 cardio 30 min/wk',E:0.55,ev:0.8,marks:['vo2','mvpa','rhr'],res:{CRF:18,GLY:-6},pillar:'FIT',safe:['acute-cardiac']},
+  {id:'ACT-RES',cls:'ACT',label:'2× resistance training 20 min/wk',E:0.55,ev:0.7,marks:['grip'],res:{MUS:15},pillar:'BCM'},
+  {id:'NUT-FIBER',cls:'NUTR',label:'+10 g fiber/day',E:0.30,ev:0.7,marks:['glu','a1c'],res:{GLY:-10,INFL:-4},pillar:'MET'},
+  {id:'NUT-O3',cls:'NUTR',label:'Omega-3 to index ≥8',E:0.20,ev:0.6,marks:['o3','crp'],res:{INFL:-8},pillar:'NUT',caveatKey:'anticoag'},
+  {id:'NUT-NAK',cls:'NUTR',label:'Cut added sugar / refined carbs',E:0.40,ev:0.7,marks:['glu','a1c','waist','alt'],res:{GLY:-12},pillar:'MET',caveatKey:'deficit'},
+  {id:'NUT-SOD',cls:'NUTR',label:'Reduce sodium / DASH pattern',E:0.30,ev:0.7,marks:['sbp'],res:{},pillar:'CV'},
+  {id:'NUT-PROT',cls:'NUTR',label:'Protein to 1.2 g/kg',E:0.35,ev:0.6,marks:['grip'],res:{MUS:8},pillar:'BCM',safe:['ckd-advanced']},
+  {id:'STR-BREATH',cls:'STRESS',label:'5-min daily breathing / mindfulness',E:0.15,ev:0.5,marks:['phq','gad'],res:{ALLO:-12},pillar:'MCS'},
+  {id:'NUT-VITD',cls:'NUTR',label:'Vitamin D repletion',E:0.10,ev:0.6,marks:['vitd'],res:{},pillar:'NUT'},
+  {id:'NUT-ALC',cls:'NUTR',label:'Reduce alcohol intake',E:0.40,ev:0.6,marks:['alt','seff'],res:{INFL:-4},pillar:'HEP'},
+  {id:'MED-STATIN',cls:'ADHERE',label:'Take prescribed statin daily',E:0.10,ev:0.9,marks:['apob'],res:{ATH:-6},pillar:'CV',rx:['statin']},
+  {id:'MED-BP',cls:'ADHERE',label:'Take prescribed antihypertensive',E:0.10,ev:0.9,marks:['sbp'],res:{},pillar:'CV',rx:['acei','diuretic','betablocker']},
+  {id:'CLN-FU',cls:'CLINICAL',label:'Book clinician review (genetic/medication-responsive risk)',E:0.45,ev:0.9,marks:[],res:{},pillar:null,clinical:true},
+];
+const LIFESTYLE=new Set(['SLEEP','NUTR','ACT','STRESS']);
+function improveToward(m,frac){ const c=mcenter(m),bd=badDir(m),cur=m.val; let t;
+  if(bd>0) t=Math.min(cur,c); else if(bd<0) t=Math.max(cur,c); else t=c;
+  return cur+(t-cur)*frac; }
+function nudgeApplicable(n){
+  if(n.rx) return n.rx.some(x=>activeMeds().includes(x));                 // adherence nudges: prescribed only
+  if(n.measure) return (PERSONAS[PERSONA].missing||[]).includes(n.measure);
+  if(n.safe&&n.safe.includes('ckd-advanced')&&(PERSONA==='ckd'||PERSONA==='dialysis')) return false; // protein cap in advanced CKD
+  if(n.clinical) return false;   // surfaced separately when a fixed/med-responsive red exists
+  return true; }
+function nudgeCaveat(n){
+  if(n.caveatKey==='deficit'&&(CTX.stage.startsWith('preg')||CTX.stage==='postpartum')) return 'no caloric deficit while pregnant/lactating';
+  return null; }
+function nudgeImpact(n){ const cur=uncapped();
+  const after=withVals(m=>{ if(!n.marks.includes(m.id)) return null;
+      if(LIFESTYLE.has(n.cls)&&!isModifiable(m)) return null;             // Modifiability gate: lifestyle can't move a fixed/genetic marker
+      return improveToward(m,0.35); },
+    ()=>{ const sv=RESERVOIRS.map(r=>r.val);
+      for(const id in (n.res||{})){ const r=RESERVOIRS.find(x=>x.id===id); if(r) r.val=Math.max(0,Math.min(100,r.val+n.res[id])); }
+      const p=uncapped(); RESERVOIRS.forEach((r,i)=>r.val=sv[i]); return p; });
+  return after-cur; }
+function nudgeRank(worst){ const list=[];
+  NUDGES.forEach(n=>{ if(!nudgeApplicable(n)) return;
+    const dP=Math.max(0,nudgeImpact(n)); if(dP<0.05) return;
+    const padh=Math.max(0.12,0.9-0.7*n.E), ease=Math.pow(1-n.E,1.5);
+    let nu=1.0; if(n.pillar===worst) nu+=0.25;                            // bind-the-constraint bonus (Trajectory/worst pillar)
+    const U=Math.pow(dP*n.ev,1.0)*Math.pow(padh,1.0)*ease*nu;             // U = [ΔPure·ε]^α · p̂^β · (1−E)^η · ν  (Doc 07 §3.1)
+    list.push({n,dP,U,caveat:nudgeCaveat(n)}); });
+  list.sort((a,b)=>b.U-a.U);
+  const out=[],cc={}; for(const it of list){ cc[it.n.cls]=cc[it.n.cls]||0; if(cc[it.n.cls]>=2) continue; cc[it.n.cls]++; out.push(it); if(out.length>=5) break; }
+  return out; }
+
+/* evidence map — primary citation per marker (full registry: assets/evidence-registry.json — Doc 14/D19) */
+const EVDMAP={sbp:'EVD-CVD-BP-001 · ACC/AHA·ESH',apob:'EVD-CVD-APOB-001 · ACC/AHA·ESC',rhr:'EVD-MED-BB-CONFOUND-002',a1c:'EVD-MET-A1C-001 · ADA 2024',glu:'EVD-MET-A1C-001 · ADA 2024',waist:'EVD-BCM-BMI-WAIST-001 · WHO/IDF',egfr:'EVD-REN-EGFR-001 · KDIGO 2024',uacr:'EVD-REN-EGFR-001 · KDIGO 2024',k:'EVD-REN-K-003',alt:'EVD-HEP-FIB4-001 · AASLD',fib4:'EVD-HEP-FIB4-001 · AASLD 2023',bili:'EVD-HEP-LFT-003',crp:'EVD-INFL-CRP-001 · AHA/CDC',wbc:'EVD-HEM-CBC-002',alb:'EVD-NUT-ALB-004',hgb:'EVD-HEM-HGB-001 · WHO',spo2:'EVD-HEM-SPO2-001 · WHO',plt:'EVD-HEM-CBC-002',tsh:'EVD-ENDO-TSH-001 · ATA',cort:'EVD-ENDO-CORT-004',sex_h:'EVD-ENDO-TESTO-002 · Endo Soc',bmi:'EVD-BCM-BMI-WAIST-001 · WHO Asian',grip:'EVD-BCM-GRIP-005 · EWGSOP2',tsc:'EVD-BCM-BMD-002 · WHO/FRAX',vitd:'EVD-NUT-VITD-001 · Endo Soc',o3:'EVD-NUT-O3-002 · AHA',b12:'EVD-NUT-B12-006',sdur:'EVD-SLP-001 · AASM',seff:'EVD-SLP-001 · AASM',sreg:'EVD-SLP-001 · AASM',vo2:'EVD-FIT-VO2-001 · ACSM',mvpa:'EVD-FIT-PA-001 · WHO',step:'EVD-FIT-PA-001 · WHO',phq:'EVD-MCS-PHQ-001',gad:'EVD-MCS-PHQ-001',lone:'EVD-MCS-LONE-007'};
+
+/* ---- colours ---- */
+function colR(R,crit){ if(crit)return 'var(--red)'; if(R<0.30)return 'var(--green)'; if(R<0.60)return 'var(--yellow)'; return 'var(--red)'; }
+function colPure(s,status){ if(status==='CRITICAL')return 'var(--crit)'; if(s>=70)return 'var(--green)'; if(s>=50)return 'var(--yellow)'; return 'var(--red)'; }
+function bcol(v){ return v>=70?'var(--green)':v>=40?'var(--yellow)':'var(--red)'; }
+
+/* ---- inputs ---- */
+function buildInputs(){ const root=d3.select('#inputs'); root.html('');
+  root.append('div').attr('class','pnote').html('Adjust any marker / reservoir, or pick an edge-case persona — the puzzle, PureScore <b>and the companion vector</b> update live. ★ = critical marker.');
+  const sui=root.append('details').attr('class','sec').attr('open',true);
+  sui.append('summary').html('<span class="dot" style="background:var(--crit)"></span> Mental-health safety flag');
+  const sb=sui.append('div').attr('class','body');
+  const lab=sb.append('label').style('display','flex').style('gap','8px').style('align-items','center').style('font-size','12.5px');
+  lab.append('input').attr('type','checkbox').attr('id','sui').property('checked',suicidality).on('change',function(){suicidality=this.checked;prevPure=null;render();});
+  lab.append('span').html('PHQ-9 item 9 &gt; 0 — <span style="color:var(--crit);font-weight:700">forces MCS critical + emergency</span>');
+  PILLARS.forEach(p=>{ const d=root.append('details').attr('class','sec').attr('data-pid',p.id);
+    const sum=d.append('summary'); sum.append('span').attr('class','dot').attr('id','dot-'+p.id);
+    sum.append('span').html(`<b>${p.id}</b> · ${p.name}`); sum.append('span').attr('class','pill-score').attr('id','ps-'+p.id);
+    const body=d.append('div').attr('class','body');
+    MARKERS[p.id].forEach(m=>{ const b=band(m); const row=body.append('div').attr('class','mk');
+      row.append('div').attr('class','nm').html(`${m.critical?'★ ':''}${b.name} <small>${b.unit||''}</small>`);
+      row.append('input').attr('type','number').attr('step','any').attr('value',m.val).attr('id','in-'+m.id)
+        .on('input',function(){ m.val=parseFloat(this.value); prevPure=null; render(); });
+      row.append('div').attr('class','rv').attr('id','rv-'+m.id); }); });
+  const rd=root.append('details').attr('class','sec res');
+  rd.append('summary').html('<span class="dot" style="background:#7a86ff"></span> MONIAC reservoirs');
+  const rb=rd.append('div').attr('class','body');
+  rb.append('div').attr('class','pnote').html('Burdens raise / depleted assets raise linked pillars. Trajectory is live (synthetic 90-day history); “Simulate days” drains/builds reservoirs by λ to preview a reservoir-driven delta.');
+  RESERVOIRS.forEach(r=>{ const row=rb.append('div').attr('class','mk');
+    row.append('div').attr('class','nm').html(`${r.name} <small>${r.type} · λ=${r.lambda}</small>`);
+    row.append('input').attr('type','range').attr('min',0).attr('max',100).attr('value',r.val).attr('id','res-'+r.id)
+      .on('input',function(){ r.val=+this.value; prevPure=null; render(); });
+    row.append('div').attr('class','rv').attr('id','resv-'+r.id).text(r.val); });
+  root.append('div').attr('class','break').attr('id','break').html('<h3>Click a pillar piece →</h3><div class="bk-row">Select a pillar to see its marker-by-marker breakdown.</div>');
+  root.append('div').attr('class','pnote').style('margin-top','10px').html('Methodology: <code>docs/purescore/03</code>, <code>04</code> & <code>12</code>.'); }
+
+/* ---- diagram ---- */
+const svg=d3.select('#svg'); const W=980,H=760,cx=W/2,cy=H/2+10,ring=255; let selected=null;
+function lerp(a,b,t){return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];}
+function jigsaw(x,y,w,h,tabs){ const c=[[0,0],[w,0],[w,h],[0,h]],k=Math.min(w,h)*0.16; let d=`M${x+c[0][0]},${y+c[0][1]}`;
+  for(let e=0;e<4;e++){ const p0=c[e],p1=c[(e+1)%4],sg=tabs[e]; if(sg===0){d+=` L${x+p1[0]},${y+p1[1]}`;continue;}
+    const dv=[p1[0]-p0[0],p1[1]-p0[1]]; let nr=[dv[1],-dv[0]]; const nl=Math.hypot(nr[0],nr[1]); nr=[nr[0]/nl,nr[1]/nl];
+    const a=lerp(p0,p1,0.36),cc=lerp(p0,p1,0.64); let pk=lerp(p0,p1,0.5); pk=[pk[0]+nr[0]*sg*k,pk[1]+nr[1]*sg*k];
+    let m1=lerp(p0,p1,0.42); m1=[m1[0]+nr[0]*sg*k*1.5,m1[1]+nr[1]*sg*k*1.5];
+    let m2=lerp(p0,p1,0.58); m2=[m2[0]+nr[0]*sg*k*1.5,m2[1]+nr[1]*sg*k*1.5];
+    d+=` L${x+a[0]},${y+a[1]} Q${x+m1[0]},${y+m1[1]} ${x+pk[0]},${y+pk[1]} Q${x+m2[0]},${y+m2[1]} ${x+cc[0]},${y+cc[1]} L${x+p1[0]},${y+p1[1]}`; }
+  return d+' Z'; }
+const POS={}; PILLARS.forEach((p,i)=>{ const a=-Math.PI/2+i*2*Math.PI/12; POS[p.id]=[cx+ring*Math.cos(a),cy+ring*Math.sin(a)]; });
+const PW=118,PH=70;
+function drawStatic(){ svg.selectAll('*').remove();
+  svg.append('defs').html('<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7f8cb0"/></marker>');
+  const rl=svg.append('g'); const RP={};
+  RESERVOIRS.forEach((r,i)=>{ const a=-Math.PI/2+(i+0.5)*2*Math.PI/7; RP[r.id]=[cx+(ring+150)*Math.cos(a),cy+(ring+118)*Math.sin(a)]; });
+  RESERVOIRS.forEach(r=>{ for(const pid in r.feeds){ const a=RP[r.id],b=POS[pid];
+    rl.append('path').attr('class','re re-'+r.id).attr('d',`M${a[0]},${a[1]} Q${(a[0]+b[0])/2},${(a[1]+b[1])/2} ${b[0]},${b[1]}`)
+      .attr('fill','none').attr('stroke',r.type==='asset'?'#3b7':'#7a86ff').attr('stroke-opacity',.13).attr('stroke-width',1).attr('stroke-dasharray','3 4'); } });
+  RESERVOIRS.forEach(r=>{ const a=RP[r.id]; const g=rl.append('g').attr('transform',`translate(${a[0]},${a[1]})`)
+      .on('mouseover',()=>{d3.selectAll('.re-'+r.id).attr('stroke-opacity',.6).attr('stroke-width',1.6);})
+      .on('mouseout',()=>{d3.selectAll('.re-'+r.id).attr('stroke-opacity',.13).attr('stroke-width',1);});
+    g.append('rect').attr('x',-30).attr('y',-15).attr('width',60).attr('height',30).attr('rx',8).attr('fill','#10162a').attr('stroke',r.type==='asset'?'#3b7':'#7a86ff').attr('stroke-opacity',.5);
+    g.append('text').attr('text-anchor','middle').attr('dy',-2).attr('font-size',9).attr('fill','#aeb8d6').text(r.id);
+    g.append('text').attr('id','rt-'+r.id).attr('text-anchor','middle').attr('dy',9).attr('font-size',9).attr('fill','#7f8cb0').text(r.val); });
+  const fl=svg.append('g'); PILLARS.forEach(p=>{ const a=POS[p.id],dx=cx-a[0],dy=cy-a[1],L=Math.hypot(dx,dy);
+    fl.append('line').attr('class','flow-'+p.id).attr('x1',a[0]+dx/L*46).attr('y1',a[1]+dy/L*30).attr('x2',cx-dx/L*92).attr('y2',cy-dy/L*92).attr('stroke','#46527a').attr('stroke-width',2).attr('marker-end','url(#arr)'); });
+  const pg=svg.append('g'); PILLARS.forEach((p,i)=>{ const a=POS[p.id];
+    const g=pg.append('g').attr('transform',`translate(${a[0]-PW/2},${a[1]-PH/2})`).style('cursor','pointer')
+      .on('click',()=>{selected=p.id;openPillar(p.id);render();}).on('mouseover',()=>pillarTip(p.id)).on('mousemove',moveTip).on('mouseout',hideTip);
+    g.append('path').attr('class','piece-'+p.id).attr('d',jigsaw(0,0,PW,PH,[(i%2?1:-1),(i%2?-1:1),(i%2?1:-1),(i%2?-1:1)])).attr('fill','#1b2440').attr('stroke','#39456b').attr('stroke-width',2);
+    g.append('text').attr('x',PW/2).attr('y',PH/2-6).attr('text-anchor','middle').attr('font-size',13).attr('font-weight',700).attr('fill','#fff').text(p.id);
+    g.append('text').attr('id','svg-ps-'+p.id).attr('x',PW/2).attr('y',PH/2+13).attr('text-anchor','middle').attr('font-size',12).attr('fill','#cdd6ee').text(''); });
+  svg.append('path').attr('id','hub').attr('d',jigsaw(cx-95,cy-95,190,190,[-1,1,-1,1])).attr('fill','#10203a').attr('stroke','var(--accent)').attr('stroke-width',3);
+  svg.append('text').attr('x',cx).attr('y',cy-44).attr('text-anchor','middle').attr('font-size',13).attr('fill','#9fb0d8').text('PureScore');
+  svg.append('text').attr('id','hub-num').attr('x',cx).attr('y',cy+12).attr('text-anchor','middle').attr('font-size',54).attr('font-weight',800).attr('fill','#fff').text('—');
+  svg.append('text').attr('id','hub-status').attr('x',cx).attr('y',cy+44).attr('text-anchor','middle').attr('font-size',13).attr('font-weight',700).text('');
+  svg.append('text').attr('id','hub-bind').attr('x',cx).attr('y',cy+66).attr('text-anchor','middle').attr('font-size',10.5).attr('fill','#9fb0d8').text(''); }
+function openPillar(pid){ document.querySelectorAll('#inputs details[data-pid]').forEach(d=>{d.open=(d.getAttribute('data-pid')===pid);});
+  const el=document.querySelector(`#inputs details[data-pid="${pid}"]`); if(el) el.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+const tipEl=document.getElementById('tip');
+function moveTip(ev){tipEl.style.left=(ev.clientX+14)+'px';tipEl.style.top=(ev.clientY+14)+'px';}
+function hideTip(){tipEl.style.opacity=0;}
+function pillarTip(pid){ const r=pillarRisk(pid);
+  const rows=r.contribs.map(c=>`${band(c.m).name}: r=${c.r.toFixed(2)}${c.ctx.managed?' MNG':''}${c.ctx.confounded?' CNF':''}${c.ctx.excluded?' EXC':''}`).join('<br>');
+  tipEl.innerHTML=`<b>${pid}</b> — R=${r.R.toFixed(2)} ${r.critical?'<span style="color:var(--crit)">CRITICAL</span>':''}<br>${rows}<br><i>reservoir +${(RHO*r.Btil).toFixed(2)}</i>`; tipEl.style.opacity=1; }
+
+/* ---- render ---- */
+function render(){ const out=compute();
+  PILLARS.forEach(p=>{ const r=out.pr[p.id]; const col=colR(r.R,r.critical);
+    svg.select('.piece-'+p.id).attr('fill',col).attr('fill-opacity',.22).attr('stroke',col).attr('stroke-width',selected===p.id?4:2.4);
+    svg.select('#svg-ps-'+p.id).text(Math.round(100*(1-r.R))).attr('fill',col);
+    svg.select('.flow-'+p.id).attr('stroke',col).attr('stroke-opacity',r.critical?.95:.55).attr('stroke-width',r.critical?3:2);
+    d3.select('#dot-'+p.id).style('background',col);
+    d3.select('#ps-'+p.id).text('S '+Math.round(100*(1-r.R))+(r.critical?' ⚠':'')); });
+  for(const pid in MARKERS) MARKERS[pid].forEach(m=>{ const r=markerRisk(m); const ctx=ctxOf(m);
+    const c=r<0.15?'var(--green)':r<0.5?'var(--yellow)':'var(--red)'; let t='r '+r.toFixed(2);
+    if(ctx.excluded)t+=' EXC'; else if(ctx.managed)t+=' MNG'; if(ctx.confounded)t+=' CNF';
+    d3.select('#rv-'+m.id).text(t).style('color',ctx.excluded?'var(--muted)':c); });
+  RESERVOIRS.forEach(r=>{ d3.select('#rt-'+r.id).text(r.val); d3.select('#resv-'+r.id).text(r.val); d3.select('#res-'+r.id).property('value',r.val); });
+  const col=colPure(out.pure,out.status);
+  svg.select('#hub-num').text(Math.round(out.pure)).attr('fill',col);
+  svg.select('#hub').attr('stroke',col).attr('fill',out.status==='CRITICAL'?'#2a0e18':'#10203a');
+  svg.select('#hub-status').text(out.status).attr('fill',col);
+  svg.select('#hub-bind').text(out.anyCrit?('capped by '+out.binding+' (cascade)'):('R_total='+out.Rtot.toFixed(2)));
+
+  /* companion vector strip */
+  const co=out.companion; const arrow=co.traj==null?'—':(co.traj>0.5?'↑':co.traj<-0.5?'↓':'→');
+  const trajTxt=co.traj==null?'— (simulate days)':`${arrow} ${co.traj>=0?'+':''}${co.traj.toFixed(1)}`;
+  const trajCol=co.traj==null?'var(--muted)':(co.traj>0.5?'var(--green)':co.traj<-0.5?'var(--red)':'var(--muted)');
+  const critCol=co.critTier==='emergency'?'var(--crit)':co.critTier==='urgent'?'var(--yellow)':'var(--green)';
+  const ewCol=co.ewTier==='Advisory'?'var(--yellow)':co.ewTier==='Watch'?'#7fd1ff':'var(--green)';
+  function badge(k,v,c){ return `<span class="badge"><span class="k">${k}</span><b style="color:${c}">${v}</b></span>`; }
+  const volCol=co.volatility<30?'var(--green)':co.volatility<60?'var(--yellow)':'var(--red)';
+  d3.select('#companion').html(
+    badge('PureScore',Math.round(out.pure)+' '+arrow,col)+
+    badge('Confidence',co.confidence+'%',bcol(co.confidence))+
+    badge('Data',co.sufficiency+'%'+(co.sufficiency<50?' ⚠ insufficient':''),bcol(co.sufficiency))+
+    badge('Criticality',co.critTier+(co.reds?(' ('+co.reds+' red)'):''),critCol)+
+    badge('Trajectory',trajTxt+'/30d',trajCol)+
+    badge('Volatility',co.volatility+'%',volCol)+
+    badge('Early-warning',co.ewTier+(co.watchM?(' · '+co.watchM+' sig'):'')+' · D='+co.Dmv,ewCol)+
+    badge('Representativeness',co.rep+'%'+(co.rep<60?' (OOD→cohort suppressed)':''),bcol(co.rep))+
+    badge('Modifiability',co.modifiability+'%',bcol(co.modifiability)) );
+  const d=co.dual;
+  d3.select('#twozero').html(
+    '<b style="color:'+bcol(d.progress)+'">Attainable-best '+d.progress+'%</b> of your ceiling (modifiable headroom '+d.floor+'→'+d.ceil+')'+
+    ' &nbsp;·&nbsp; Soonest threshold: '+(co.tnext==null?'<span style="color:var(--muted)">none projected</span>':'<b style="color:var(--yellow)">~'+co.tnext+'d → '+co.tmk+' yellow</b>')+
+    ' &nbsp;·&nbsp; Multivariate anomaly D='+co.Dmv+
+    ' &nbsp;·&nbsp; Syndromic: '+(co.synd.length?'<span style="color:var(--yellow)">'+co.synd.join('; ')+'</span>':'<span style="color:var(--muted)">none</span>')+
+    (co.reconfirm.length?' &nbsp;·&nbsp; <span style="color:#7fd1ff">Reconfirm pending: '+co.reconfirm.join(', ')+' (implausible/low-quality → Watch, not Alert)</span>':'')+
+    (co.robust.length?' &nbsp;·&nbsp; <span style="color:var(--muted)">Robust(log) handling: '+co.robust.join(', ')+'</span>':''));
+  /* UAE localization readout (Doc 15; D18) */
+  const ethName={unspecified:'unspecified',south_asian:'South Asian',gulf_arab:'Gulf Arab/Emirati',other_arab:'Other Arab',sea_filipino:'SE Asian/Filipino',western:'Western',african:'African'}[CTX.ethnicity];
+  let locTxt='<b>Localization:</b> ethnicity '+ethName+(ethTier()==='asian'?' → <b style="color:#7fd1ff">WHO Asian BMI/waist cut-points applied</b>':' → standard cut-points')+
+    ' · eGFR race-free (CKD-EPI 2021) · '+riskEqNote()+
+    ' <br>Screening raised: '+screeningFor().join(', ')+'.';
+  if(CTX.ramadan) locTxt+=' <br><b style="color:var(--yellow)">Ramadan (IDF-DAR):</b> shift glucose-lowering meds to Iftar/Suhoor (clinician-set); front-load hydration Iftar→Suhoor; <b>break the fast if glucose &lt;70 mg/dL or hypo/dehydration symptoms</b> (medically permitted); SGLT2i caution (euglycemic-DKA/dehydration).';
+  d3.select('#localization').html(locTxt);
+  const ctxTxt='natal '+(CTX.natal==='m'?'♂':'♀')+(CTX.hrt!=='none'?' · '+CTX.hrt+' HRT → ranges read '+(gsex()==='f'?'♀':'♂'):'')+(CTX.stage!=='reproductive'?' · '+CTX.stage:'');
+  d3.select('#pnote').html('<b>'+PERSONA+'</b> · age '+PERSONAS[PERSONA].age+' · '+ctxTxt+(activeMeds().length?(' · meds: '+activeMeds().join(', ')):'')+' — '+PERSONAS[PERSONA].note+
+    ' &nbsp; <i>Hormone-sensitive bands follow the governing milieu (Doc 05; D15). Trajectory/anomaly from a seeded synthetic 90-day history (D9/D10) — illustrative.</i>');
+
+  /* daily nudges (Doc 07; D16) */
+  let worst=out.binding; if(!worst){ let b=-1; PILLARS.forEach(p=>{ if(out.pr[p.id].R>b){b=out.pr[p.id].R; worst=p.id;} }); }
+  const nudges=nudgeRank(worst);
+  let nh='<h3>Daily nudges — top '+nudges.length+' easiest, impact-attributed <span style="color:var(--muted);font-weight:400">(+ΔPureScore @30d · ease-weighted · Modifiability-gated)</span></h3>';
+  if(!nudges.length) nh+='<div class="bk-row"><span>No high-yield modifiable actions right now.</span></div>';
+  nudges.forEach(it=>{ const d=Math.max(1,Math.round(it.n.E*5)); const dots='●'.repeat(d)+'○'.repeat(5-d);
+    nh+='<div class="bk-row"><span>'+it.n.label+' <span style="color:var(--muted)">· '+it.n.cls+' · effort '+dots+'</span>'+(it.caveat?' <span style="color:var(--yellow)">⚠ '+it.caveat+'</span>':'')+'</span><b style="color:var(--green)">+'+it.dP.toFixed(1)+'</b></div>'; });
+  const fixedRed=PILLARS.some(p=>out.pr[p.id].contribs.some(c=>c.r>=0.5 && !isModifiable(c.m)));
+  if(fixedRed) nh+='<div class="bk-row"><span>Book clinician review — genetic / medication-responsive risk (lifestyle-gated out) <span style="color:var(--muted)">· CLINICAL</span></span><b style="color:#7fd1ff">refer</b></div>';
+  d3.select('#nudges').html(nh);
+
+  if(selected){ const r=out.pr[selected],p=PILLARS.find(x=>x.id===selected);
+    let html=`<h3>${selected} · ${p.name} &nbsp; <span style="color:${colR(r.R,r.critical)}">S ${Math.round(100*(1-r.R))}${r.critical?' · CRITICAL':''}</span></h3>`;
+    r.contribs.forEach(c=>{ const tags=(c.ctx.managed?'<span class="tag mng">MNG</span>':'')+(c.ctx.confounded?'<span class="tag cnf">CNF</span>':'')+(c.ctx.excluded?'<span class="tag exc">EXC</span>':'');
+      const cite=EVDMAP[c.m.id]?`<br><span style="color:var(--muted);font-size:10px">📎 ${EVDMAP[c.m.id]}</span>`:'';
+      html+=`<div class="bk-row"><span>${band(c.m).name} = ${c.m.val} ${band(c.m).unit||''} ${c.m.critical?'★':''}${tags}${cite}</span><b style="color:${c.r<0.15?'var(--green)':c.r<0.5?'var(--yellow)':'var(--red)'}">r ${c.r.toFixed(2)}</b></div>`; });
+    html+=`<div class="bk-row"><span>marker power-mean (γ=3, conf-weighted)</span><b>${r.Rmark.toFixed(2)}</b></div>`;
+    html+=`<div class="bk-row"><span>+ reservoir load (ρ·B̃)</span><b>+${(RHO*r.Btil).toFixed(2)}</b></div>`;
+    html+=`<div class="bk-row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:6px"><span><b>pillar risk R</b></span><b style="color:${colR(r.R,r.critical)}">${r.R.toFixed(2)}</b></div>`;
+    const nP=89,kP=120, thPers=(nP/(nP+kP))*(1-co.volatility/100), thCoh=(1-thPers)*(co.rep/100), thClin=Math.max(0,1-thPers-thCoh);
+    const stg=thPers>0.5?'running · personal':thCoh>thClin?'warm-up · cohort':'crank · guideline';
+    html+=`<div class="bk-row" style="border-top:1px dashed var(--line);margin-top:4px;padding-top:4px"><span>Evidence ignition (Doc 14): <b>${stg}</b> · θ clin/coh/pers = ${thClin.toFixed(2)} / ${thCoh.toFixed(2)} / ${thPers.toFixed(2)}</span><b style="color:var(--muted)">📎 registry</b></div>`;
+    d3.select('#break').html(html); } }
+
+/* ---- controls ---- */
+d3.select('#simulate').on('click',()=>{ const n=Math.max(1,+d3.select('#days').property('value')||30);
+  prevPure=compute().pure;
+  RESERVOIRS.forEach(r=>{ if(r.type==='burden') r.val=Math.round(r.val*Math.exp(-r.lambda*n)); else r.val=Math.round(r.val+(100-r.val)*(1-Math.exp(-r.lambda*n))); });
+  render(); });
+function onPersonaOrSex(){ const p=PERSONAS[PERSONA];
+  if(p.natal) CTX.natal=p.natal; CTX.hrt=p.hrt||'none'; CTX.stage=p.stage||'reproductive';
+  if(p.ethnicity) CTX.ethnicity=p.ethnicity; CTX.ramadan=p.ramadan||false; syncSex();
+  d3.select('#sex').property('value',CTX.natal); d3.select('#hrt').property('value',CTX.hrt); d3.select('#stage').property('value',CTX.stage);
+  d3.select('#ethnicity').property('value',CTX.ethnicity); d3.select('#ramadan').property('value',CTX.ramadan?'yes':'no');
+  applyPersona(true); buildInputs(); reflectToggles(); prevPure=null; render(); }
+d3.select('#sex').on('change',function(){ CTX.natal=this.value; syncSex(); applyPersona(true); buildInputs(); reflectToggles(); prevPure=null; render(); });
+d3.select('#hrt').on('change',function(){ CTX.hrt=this.value; syncSex(); applyPersona(true); buildInputs(); prevPure=null; render(); });
+d3.select('#stage').on('change',function(){ CTX.stage=this.value; applyPersona(true); buildInputs(); prevPure=null; render(); });
+d3.select('#ethnicity').on('change',function(){ CTX.ethnicity=this.value; prevPure=null; render(); });   // bands reinterpret; values unchanged
+d3.select('#ramadan').on('change',function(){ CTX.ramadan=this.value==='yes'; render(); });
+d3.select('#persona').on('change',function(){ PERSONA=this.value; onPersonaOrSex(); });
+d3.select('#reset').on('click',()=>{ suicidality=false; onPersonaOrSex(); });
+function reflectToggles(){ const s=document.getElementById('sui'); if(s) s.checked=suicidality; }
+
+/* ---- boot ---- */
+applyPersona(true); drawStatic(); buildInputs(); render();
+</script>
+</body>
+</html>

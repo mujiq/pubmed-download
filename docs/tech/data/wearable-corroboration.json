@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "name": "Wearable corroboration registry (question → wearable-metric → tolerance)",
+    "version": "0.1",
+    "flag": "illustrative — tolerances are design defaults, calibrate per device/cohort before production",
+    "closes": "F4",
+    "idea": "Types the 'wearable-match' stage: the question bank's free-text-ish wearable.<metric> corroborations are normalized to a canonical wearable metric (Appendix B), assigned a typed source channel, and given a per-metric TOLERANCE — the agreement band between the self-reported answer (perceived) and the wearable actual, beyond which a perceived↔actual gap is flagged. This makes stage-3 auditable: every wearable corroboration resolves to a metric + tolerance the gap engine can apply.",
+    "tolerance_semantics": "|perceived − actual| > tolerance ⇒ flag a perceived-vs-actual gap (Appendix F) and lower Confidence (Doc 12). Consumer/inferential metrics never drive a band on their own (D22).",
+    "normalizes": "Casing/alias variants collapse to one id (wearable.hrv = wearable.HRV; wearable.SpO2 = wearable.spo2; wearable.resting_hr = wearable.resting_HR; wearable.steps ≈ wearable.step_count).",
+    "links": ["Doc 12", "Doc 18", "Appendix B", "Appendix E", "Appendix F", "Appendix G", "D22"]
+  },
+  "metrics": [
+    {"id": "resting_hr", "name": "Resting HR", "appendix_b": "Resting HR", "channel": "wearable-consumer", "tolerance": "±5 bpm", "aliases": ["wearable.resting_hr", "wearable.resting_HR"], "perceived_actual": "self-rated fitness / palpitations vs measured resting HR"},
+    {"id": "hrv", "name": "HRV (RMSSD)", "appendix_b": "HRV (RMSSD)", "channel": "wearable-consumer", "tolerance": "±15%", "aliases": ["wearable.hrv", "wearable.HRV"], "perceived_actual": "perceived stress/recovery vs overnight HRV"},
+    {"id": "steps", "name": "Steps", "appendix_b": "Steps / MVPA", "channel": "wearable-consumer", "tolerance": "±20% (±1500 steps/d)", "aliases": ["wearable.steps", "wearable.step_count"], "perceived_actual": "self-reported daily activity vs measured steps"},
+    {"id": "mvpa", "name": "MVPA", "appendix_b": "Steps / MVPA", "channel": "wearable-consumer", "tolerance": "±30% (±30 min/wk)", "aliases": ["wearable.MVPA"], "perceived_actual": "self-reported exercise vs measured moderate-vigorous minutes"},
+    {"id": "sedentary_time", "name": "Sedentary time", "appendix_b": "Steps / MVPA", "channel": "wearable-consumer", "tolerance": "±60 min/d", "aliases": ["wearable.sedentary_time"], "perceived_actual": "self-reported sitting vs measured sedentary minutes"},
+    {"id": "sleep_duration", "name": "Sleep duration", "appendix_b": "Sleep duration / efficiency / regularity", "channel": "wearable-consumer", "tolerance": "±45 min", "aliases": ["wearable.sleep_duration", "wearable.sleep"], "perceived_actual": "self-reported sleep time vs measured total sleep"},
+    {"id": "sleep_efficiency", "name": "Sleep efficiency", "appendix_b": "Sleep duration / efficiency / regularity", "channel": "wearable-consumer", "tolerance": "±7%", "aliases": ["wearable.sleep_efficiency"], "perceived_actual": "self-rated sleep quality vs measured efficiency"},
+    {"id": "spo2", "name": "SpO₂ (spot/overnight)", "appendix_b": "SpO₂ (spot/overnight)", "channel": "wearable-consumer", "tolerance": "±2%", "aliases": ["wearable.SpO2", "wearable.spo2"], "perceived_actual": "breathlessness PRO vs measured SpO₂"},
+    {"id": "skin_temp", "name": "Skin / body temperature", "appendix_b": "Skin / body temperature", "channel": "wearable-consumer", "tolerance": "±0.3 °C vs personal baseline", "aliases": ["wearable.skin_temp"], "perceived_actual": "feverish/illness PRO vs skin-temp deviation"},
+    {"id": "vo2max", "name": "VO₂max (estimate)", "appendix_b": "VO₂max (estimate)", "channel": "wearable-inferential", "tolerance": "±1 MET (±3.5 mL/kg/min) — trend only", "aliases": ["wearable.vo2max"], "perceived_actual": "self-rated fitness vs estimated VO₂max (informational, D22)"},
+    {"id": "hr_recovery", "name": "HR recovery", "appendix_b": "Resting HR", "channel": "wearable-consumer", "tolerance": "±5 bpm @1 min", "aliases": ["wearable.hr_recovery"], "perceived_actual": "self-rated fitness vs measured HR recovery"},
+    {"id": "stress_score", "name": "Stress score", "appendix_b": "Stress score", "channel": "wearable-inferential", "tolerance": "±1 band (low/med/high) — informational", "aliases": ["wearable.stress_score"], "perceived_actual": "perceived stress (PSS) vs device stress score (informational, D22)"},
+    {"id": "weight", "name": "Weight / body composition", "appendix_b": "Weight / body composition", "channel": "wearable-consumer", "tolerance": "±1 kg", "aliases": ["wearable.weight"], "perceived_actual": "self-reported weight vs smart-scale"},
+    {"id": "bp", "name": "Blood pressure (cuff)", "appendix_b": "Blood pressure (cuff)", "channel": "wearable-clinical", "tolerance": "±5 mmHg (validated cuff)", "aliases": ["wearable.bp", "wearable.bp_systolic"], "perceived_actual": "self-reported BP / symptoms vs validated home cuff (can drive a band, D22)"},
+    {"id": "cgm", "name": "CGM glucose / time-in-range", "appendix_b": "CGM glucose / time-in-range", "channel": "wearable-clinical", "tolerance": "±15 mg/dL · TIR ±10%", "aliases": ["wearable.CGM"], "perceived_actual": "self-reported diet/symptoms vs CGM (clinical-grade)"},
+    {"id": "afib", "name": "Single-lead ECG / rhythm", "appendix_b": "Single-lead ECG / rhythm", "channel": "wearable-clinical", "tolerance": "rhythm class (binary) — confirm vs 12-lead", "aliases": ["wearable.afib_detection"], "perceived_actual": "palpitations PRO vs single-lead AFib detection (needs clinical confirm)"},
+    {"id": "fall_event", "name": "Fall detection", "appendix_b": "(fall detection)", "channel": "wearable-consumer", "tolerance": "event (binary)", "aliases": ["wearable.fall_event"], "perceived_actual": "falls-history PRO vs detected fall events"}
+  ]
+}
