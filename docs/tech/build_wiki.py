@@ -155,8 +155,8 @@ NAV = [
                  (DOCMAP["02"], SHORT["02"], "02"), (DOCMAP["03"], SHORT["03"], "03"),
                  (DOCMAP["04"], SHORT["04"], "04"), (DOCMAP["12"], SHORT["12"], "12")]),
  ("2 · The inputs (what feeds it)", [(DOCMAP["01"], SHORT["01"], "01"), (DOCMAP["18"], SHORT["18"], "18"),
-                 ("appendix-biomarkers.html", "A · Biomarkers (C/P/X)"), ("appendix-wearables.html", "B · Wearables"),
-                 ("purescore-wearable-baselines.html", "Wearable baselines"),
+                 ("appendix-biomarkers.html", "A · Markers (all channels)"), ("appendix-wearables.html", "B · Wearables"),
+                 ("purescore-wearable-baselines.html", "Baselines (Wearables)"),
                  ("questions-hub.html", "Intake — overview"), ("appendix-onboarding.html", "K · Onboarding & first-run"),
                  ("appendix-questions.html", "C · Screeners & PROs"), ("appendix-question-bank.html", "E · Question bank"),
                  ("appendix-lifestyles.html", "F · Lifestyles"), ("appendix-wearable-corroboration.html", "L · Wearable corroboration"),
@@ -204,7 +204,7 @@ NAV_BLURB = {
 # prev/next follows the sidebar reading order exactly (derived from NAV)
 ORDER = [it[0] for grp, items in NAV for it in items]
 PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
-          "appendix-biomarkers.html":"Appendix A · Biomarkers","appendix-wearables.html":"Appendix B · Wearables",
+          "appendix-biomarkers.html":"Appendix A · Markers (all channels)","appendix-wearables.html":"Appendix B · Wearables",
           "appendix-questions.html":"Appendix C · Screeners & PROs","appendix-personas.html":"Appendix D · Personas",
           "appendix-question-bank.html":"Appendix E · Question bank","appendix-lifestyles.html":"Appendix F · Lifestyles",
           "appendix-coverage-audit.html":"Appendix G · Coverage audit","appendix-adherence.html":"Appendix H · Adherence",
@@ -221,7 +221,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "purescore-dataflow.html":"PureScore calculation — data flow",
           "purescore-uber-map.html":"PureScore uber-map",
           "wearable-baselines.html":"Wearable Baselines",
-          "purescore-overview.html":"PureScore · Overview","purescore-wearable-baselines.html":"PureScore · Wearable baselines",
+          "purescore-overview.html":"PureScore · Overview","purescore-wearable-baselines.html":"Baselines (Wearables)",
           "purescore-male.html":"PureScore — Male","purescore-female.html":"PureScore — Female",
           "class-explorer.html":"Class Explorer","dossier-sequences.html":"Sequences",
           "dossier-erd.html":"Data model (ERD)","dossier-c4.html":"C4 architecture",
@@ -280,6 +280,23 @@ def prevnext(fn):
     parts.append("</nav>")
     return "".join(parts)
 
+def _chapter_strip(fn):
+    """A 'what's in this chapter' context banner shown at the top of every content page."""
+    if fn == "index.html":
+        return ""
+    for g, items in NAV:
+        hrefs = [it[0] for it in items]
+        if fn in hrefs:
+            blurb = NAV_BLURB.get(g, "")
+            sibs = "".join('<a class="chx-l%s" href="%s">%s</a>'
+                           % (" cur" if it[0] == fn else "", it[0], esc(it[1])) for it in items)
+            return ('<div class="chapter-ctx"><div class="chx-top"><span class="chx-name">%s</span>'
+                    '<span class="chx-blurb">%s</span></div>'
+                    '<details class="chx-d"><summary>%d pages in this chapter</summary>'
+                    '<nav class="chx-list">%s</nav></details></div>'
+                    % (esc(g), esc(blurb), len(items), sibs))
+    return ""
+
 def page(fn, tab_title, body):
     html = ("""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -291,10 +308,10 @@ def page(fn, tab_title, body):
 <a class="brand" href="index.html">Hikma<b>Engine</b> · Tech Wiki</a>
 <span class="tag">design spec — not clinically validated</span><span class="grow"></span>
 <input id="search" type="search" placeholder="Filter pages…  ( / )"></div>
-<div class="shell">%s<main class="main">%s%s<footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · """
+<div class="shell">%s<main class="main">%s%s%s<footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · """
 """illustrative design, re-verify before production (README §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
 <script src="assets/wiki.js"></script></body></html>""") % (
-        esc(tab_title), MERMAID_HEAD, sidebar(fn), body, prevnext(fn))
+        esc(tab_title), MERMAID_HEAD, sidebar(fn), _chapter_strip(fn), body, prevnext(fn))
     with open(os.path.join(HERE, fn), "w", encoding="utf-8") as f:
         f.write(fix_mermaid(html))
 
@@ -344,6 +361,19 @@ def render_index():
          'validation/governance — plus reference appendices, the engineering build and live demos. Start at '
          '<a href="00-vision-principles-and-lessons.html">Doc 00</a>, the '
          '<a href="purescore-overview.html">PureScore Overview</a>, or jump anywhere.</p></div>',
+         ('<div class="section-h">Where do I start?</div><div class="grid c3 roles">'
+          '<a class="card role" href="00-vision-principles-and-lessons.html"><div class="role-i">🧭</div>'
+          '<h3>New here</h3><p>Read the book front-to-back. Start with the vision, then the Overview and the system map.</p>'
+          '<div class="role-links"><a href="purescore-overview.html">Overview</a>'
+          '<a href="purescore-uber-map.html">How it all connects</a><a href="03-scoring-formula.html">Scoring formula</a></div></a>'
+          '<a class="card role" href="admin-index.html"><div class="role-i">🩺</div>'
+          '<h3>Clinician</h3><p>How the score is kept safe, contextual and reviewable. Jump to the Doctor\'s board.</p>'
+          '<div class="role-links"><a href="11-safety-governance-and-regulatory.html">Safety &amp; governance</a>'
+          '<a href="08-clinical-scores-integration.html">Clinical scores</a><a href="appendix-coverage-audit.html">Coverage audit</a></div></a>'
+          '<a class="card role" href="class-explorer.html"><div class="role-i">🛠️</div>'
+          '<h3>Engineer</h3><p>The production object model and contracts. Start with the class explorer.</p>'
+          '<div class="role-links"><a href="dossier-erd.html">Data model (ERD)</a>'
+          '<a href="dossier-c4.html">C4 architecture</a><a href="dossier-api.html">API contracts</a></div></a></div>'),
          C.ILLUS,
          '<div class="diagram"><div class="dt">How the documents connect</div><pre class="mermaid">%s</pre></div>' % flow]
     # doc-card sections are driven by the NAV pipeline groups, so the landing page stays in
@@ -357,7 +387,7 @@ def render_index():
                      % (DOCMAP[n], n, SHORT[n], esc(C.SUMMARY[n])))
         b.append('</div>')
     b.append('<div class="section-h">Reference appendices</div><div class="grid c4">')
-    for href, t, d in [("appendix-biomarkers.html","Biomarker catalogue","Every marker, band, tier &amp; weight"),
+    for href, t, d in [("appendix-biomarkers.html","Markers (all channels)","Every marker across labs · wearables · self-report"),
                        ("appendix-wearables.html","Wearable metrics","Layers, trust tiers (D22), pillars"),
                        ("appendix-personas.html","Personas","Cohort frames & edge cases"),
                        ("appendix-coverage-audit.html","Coverage audit","Product-loop gaps: persona, goals, adherence")]:

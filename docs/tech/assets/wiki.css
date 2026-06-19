@@ -67,6 +67,51 @@ pre.code code{background:none;border:none;padding:0;color:#bcd2f0;font-size:13px
 .cx-k{font-size:11px;color:var(--mut);min-width:64px;font-weight:600}
 .cx-chip{font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:3px 9px;color:var(--acc);background:#0c1424}
 .cx-chip:hover{border-color:var(--acc);text-decoration:none;background:#10203a}
+/* ---- chapter context strip ---- */
+.chapter-ctx{margin:0 0 14px;padding:9px 13px;border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:0 10px 10px 0;background:var(--bg2)}
+.chx-top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.chx-name{font-size:12px;font-weight:700;color:#fff;letter-spacing:.02em}
+.chx-blurb{font-size:12px;color:var(--mut)}
+.chx-d{margin-top:5px}
+.chx-d>summary{font-size:11.5px;color:var(--dim);cursor:pointer;list-style:none}
+.chx-d>summary:hover{color:var(--ink)}
+.chx-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.chx-list a{font-size:12px;border:1px solid var(--line);border-radius:7px;padding:2px 8px;color:var(--mut)}
+.chx-list a:hover{border-color:var(--acc);color:var(--ink);text-decoration:none}
+.chx-list a.cur{background:#13203a;color:#fff;border-color:#2b4a86}
+/* ---- role entry cards ---- */
+.grid.roles .card.role{position:relative}
+.card.role .role-i{font-size:24px;margin-bottom:4px}
+.card.role .role-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.card.role .role-links a{font-size:12px;border:1px solid var(--line);border-radius:7px;padding:2px 8px;color:var(--acc);background:#0c1424}
+.card.role .role-links a:hover{border-color:var(--acc);background:#10203a;text-decoration:none}
+/* ---- "On this page" mini-TOC ---- */
+.onthispage{margin:10px 0 18px;border:1px solid var(--line);border-radius:10px;background:var(--bg2);padding:4px 12px}
+.onthispage>summary{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);cursor:pointer;padding:6px 0}
+.onthispage>summary:hover{color:var(--ink)}
+.onthispage ul{list-style:none;margin:2px 0 8px;padding:0;columns:2;column-gap:24px}
+.onthispage li{margin:3px 0;break-inside:avoid}
+.onthispage li.otp-h3{padding-left:14px}
+.onthispage a{font-size:12.5px;color:var(--mut)}
+.onthispage a:hover{color:var(--acc)}
+@media(max-width:700px){.onthispage ul{columns:1}}
+/* ---- reading progress ---- */
+.nav-prog{margin:0 6px 10px}
+.np-bar{height:5px;background:#0c1322;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.np-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--acc))}
+.np-t{font-size:10.5px;color:var(--dim);margin-top:4px;display:flex;align-items:center;gap:6px}
+.np-reset{margin-left:auto;cursor:pointer;background:none;border:1px solid var(--line);color:var(--dim);border-radius:5px;font-size:10px;padding:1px 6px}
+.np-reset:hover{border-color:var(--acc);color:var(--ink)}
+.side a.visited:not(.active){color:var(--dim)}
+.side a.visited:not(.active)::after{content:"✓";float:right;color:var(--teal);font-size:10px;opacity:.7}
+/* ---- command palette ---- */
+.cmdk{display:none;position:fixed;inset:0;z-index:120;background:rgba(4,7,14,.6);align-items:flex-start;justify-content:center;padding:12vh 16px}
+.cmdk.on{display:flex}
+.cmdk-box{width:100%;max-width:560px;background:var(--panel);border:1px solid var(--acc);border-radius:14px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+.cmdk-in{width:100%;box-sizing:border-box;background:#0a1120;border:0;border-bottom:1px solid var(--line);color:var(--ink);font-size:15px;padding:14px 16px;outline:none}
+.cmdk-list{list-style:none;margin:0;padding:6px;max-height:54vh;overflow:auto}
+.cmdk-list li{padding:8px 12px;border-radius:8px;font-size:13.5px;color:var(--mut);cursor:pointer}
+.cmdk-list li.sel,.cmdk-list li:hover{background:#16223a;color:#fff}
 
 .main{min-width:0;padding:26px 40px 90px;max-width:none}
 /* full-width shell; keep narrative TEXT at a readable measure (tables/diagrams/panels/grids stay full-width) */

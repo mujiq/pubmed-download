@@ -488,9 +488,9 @@ def _chan_chip(ch):
 
 # =================================================================== APPENDIX BUILDERS
 def build_biomarkers():
-    h = ['<div class="crumbs"><a href="index.html">Home</a> › Reference › Biomarker catalogue</div>',
-         '<h1>Appendix A — Biomarker Catalogue</h1>',
-         '<p class="lead">Every marker across the 12 pillars: tier, two-sidedness, green/yellow/red bands, '
+    h = ['<div class="crumbs"><a href="index.html">Home</a> › Reference › Markers (all channels)</div>',
+         '<h1>Appendix A — Markers (all channels)</h1>',
+         '<p class="lead">Every marker across the 12 pillars and <b>all input channels</b> (lab · wearable · self-report): tier, two-sidedness, green/yellow/red bands, '
          'within-pillar weight and source. Compiled from <a class="xref" href="02-pillars-and-marker-catalog.html">Doc 02</a>; '
          'the scoring math is <a class="xref" href="03-scoring-formula.html">Doc 03</a>.</p>', ILLUS,
          '<div class="tagrow" style="margin:10px 0 18px">'
@@ -522,7 +522,7 @@ def build_biomarkers():
     h.append('<p class="small muted">★ = critical marker — a red value can make its pillar critical and cascade '
              'PureScore into the critical band (<a class="xref" href="03-scoring-formula.html">Doc 03</a> §4). '
              'Sex-specific overrides: <a class="xref" href="05-sex-specific-models.html">Doc 05</a>.</p>')
-    return "Appendix A · Biomarkers", "".join(h)
+    return "Appendix A · Markers (all channels)", "".join(h)
 
 def build_wearables():
     h = ['<div class="crumbs"><a href="index.html">Home</a> › Reference › Wearable metrics</div>',
@@ -3349,8 +3349,8 @@ _WB_BASELINE = {
 
 def build_wearable_baselines():
     tcls = {"clinical-grade": "b-green", "consumer-validated": "b-acc", "inferential": "b-yellow"}
-    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; PureScore &rsaquo; Wearable baselines</div>',
-         '<h1>Wearable Baselines</h1>',
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Questions &amp; intake &rsaquo; Baselines (Wearables)</div>',
+         '<h1>Baselines (Wearables)</h1>',
          '<p class="lead">Each wearable metric is scored against a <b>personal baseline</b> (empirical-Bayes μ/σ that '
          'shrinks from the cohort prior toward the patient as data accrues &mdash; '
          '<a class="xref" href="12-critical-review-and-purescore-2.0.html">Doc 12 §5.1</a>), not a fixed cut-point. '
@@ -3369,7 +3369,7 @@ def build_wearable_baselines():
              '<code>μ_i = (n/(n+k))·x̄_personal + (k/(n+k))·μ_cohort</code>; <code>z = (x−μ)/σ</code>. Cold-start '
              'leans on the cohort prior; sensitivity grows with <code>n</code>. Consumer/inferential tiers are '
              'informational-only and never set a red/critical without clinical-grade confirmation (D22).</div>')
-    return "PureScore · Wearable baselines", "".join(h)
+    return "Baselines (Wearables)", "".join(h)
 
 def _sex_gated(sex):
     try: qs = _load("question-bank.json")["questions"]
