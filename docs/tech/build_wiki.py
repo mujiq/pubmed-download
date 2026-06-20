@@ -160,7 +160,7 @@ NAV = [
                  ("questions-hub.html", "Intake — overview"), ("appendix-onboarding.html", "Onboarding & first-run"),
                  ("appendix-questions.html", "Screeners & PROs"), ("appendix-question-bank.html", "Question bank"),
                  ("appendix-lifestyles.html", "Lifestyles"), ("appendix-wearable-corroboration.html", "Wearable corroboration"),
-                 ("eligibility-gating.html", "Eligibility & gating"), ("appendix-coverage-audit.html", "Coverage audit")]),
+                 ("eligibility-gating.html", "Eligibility & gating")]),
  ("3 · Making it personal", [(DOCMAP["08"], SHORT["08"], "08"), (DOCMAP["09"], SHORT["09"], "09"),
                  (DOCMAP["10"], SHORT["10"], "10"), ("appendix-personas.html", "Personas"),
                  ("appendix-persona-matrix.html", "Persona matrix"),
@@ -170,15 +170,17 @@ NAV = [
                  ("feedback-loop.html", "Feedback-loop demo")]),
  ("5 · Trust & govern", [(DOCMAP["13"], SHORT["13"], "13"), (DOCMAP["14"], SHORT["14"], "14"),
                  (DOCMAP["15"], SHORT["15"], "15"), (DOCMAP["16"], SHORT["16"], "16"),
-                 (DOCMAP["17"], SHORT["17"], "17"), (DOCMAP["18"], SHORT["18"], "18"),
+                 (DOCMAP["18"], SHORT["18"], "18"),
                  (DOCMAP["19"], SHORT["19"], "19")]),
- ("6 · System & build", [("states.html", "Patient life-state machine"),
+ ("6 · Gaps, blind-spots & roadmap", [("production-gaps.html", "Production readiness — gaps"),
+                 (DOCMAP["17"], SHORT["17"], "17"), ("appendix-coverage-audit.html", "Coverage audit")]),
+ ("7 · System & build", [("states.html", "Patient life-state machine"),
                  ("engagement-state-machines.html", "Engagement state machines"),
                  ("class-model.html", "Class model"),
                  ("dossier-erd.html", "Data model (ERD)"), ("dossier-c4.html", "C4 architecture"),
                  ("dossier-api.html", "API contracts"), ("dossier-sequences.html", "Sequences"),
                  ("dossier-stories.html", "User stories")]),
- ("7 · Admin (clinician config)", [("admin-index.html", "Dashboard"), ("admin-lab-ranges.html", "Lab ranges"),
+ ("8 · Admin (clinician config)", [("admin-index.html", "Dashboard"), ("admin-lab-ranges.html", "Lab ranges"),
                  ("admin-weights.html", "Weights & constants"), ("admin-lifestyle.html", "Lifestyle / PRO"),
                  ("admin-personas.html", "Personas & frames"), ("admin-governance.html", "Governance & sign-off")]),
 ]
@@ -189,13 +191,15 @@ NAV_BLURB = {
  "3 · Making it personal": "Context that reshapes the score: sex, life-stage, conditions, personas.",
  "4 · Acting on it": "Turning the score into nudges, actions, adherence and goals.",
  "5 · Trust & govern": "Validation, safety, evidence, fairness, localization and actuarial.",
- "6 · System & build": "The whole machine end-to-end: state machines, the object model, ERD, C4, API, stories.",
- "7 · Admin (clinician config)": "The clinician configuration & sign-off surfaces.",
+ "6 · Gaps, blind-spots & roadmap": "What's missing or partial for a production-grade patient app — plus the clinician red-team and coverage audit.",
+ "7 · System & build": "The whole machine end-to-end: state machines, the object model, ERD, C4, API, stories.",
+ "8 · Admin (clinician config)": "The clinician configuration & sign-off surfaces.",
 }
 
 # prev/next follows the sidebar reading order exactly (derived from NAV)
 ORDER = [it[0] for grp, items in NAV for it in items]
 PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
+          "production-gaps.html":"Production readiness — gaps",
           "appendix-biomarkers.html":"Appendix A · Markers (all channels)","appendix-wearables.html":"Appendix B · Wearables",
           "appendix-questions.html":"Appendix C · Screeners & PROs","appendix-personas.html":"Appendix D · Personas",
           "appendix-question-bank.html":"Appendix E · Question bank","appendix-lifestyles.html":"Appendix F · Lifestyles",
@@ -437,6 +441,7 @@ def render_index():
 # ----------------------------------------------------------------- main
 def main():
     C.write_calc_data()   # generate assets/calc-data.js from canonical JSON (engine source)
+    C.write_cite_data()   # generate assets/cite-data.js from data/citations.json (citation popovers)
     render_index()
     for n in sorted(DOCMAP): render_doc(n)
     render_simple("README.md", "conventions.html", "Conventions & glossary", "Conventions & glossary")
@@ -459,6 +464,7 @@ def main():
                       ("appendix-onboarding.html", "build_onboarding"),
                       ("appendix-wearable-corroboration.html", "build_wearable_corroboration"),
                       ("class-model.html", "build_class_model"),
+                      ("production-gaps.html", "build_production_gaps"),
                       ("purescore-uber-map.html", "build_purescore_uber"),
                       ("purescore-overview.html", "build_purescore_overview"),
                       ("purescore-wearable-baselines.html", "build_wearable_baselines"),

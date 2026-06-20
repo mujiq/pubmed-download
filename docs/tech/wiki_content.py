@@ -133,6 +133,28 @@ def write_calc_data():
         f.write(js)
     return g
 
+def write_cite_data():
+    """Emit assets/cite-data.js (window.PURESCORE_CITATIONS) from data/citations.json so the
+    citation popovers work over file:// without a runtime fetch."""
+    try:
+        c = _load("citations.json")
+    except Exception:
+        c = {"sources": {}, "aliases": {}}
+    js = ("/* GENERATED from data/citations.json — do NOT edit, edit the JSON. */\n"
+          "window.PURESCORE_CITATIONS=" + json.dumps(c, ensure_ascii=False, separators=(",", ":")) + ";\n")
+    with open(os.path.join(_HERE, "assets", "cite-data.js"), "w", encoding="utf-8") as f:
+        f.write(js)
+    return c
+
+# Citation chip: wraps a marker's source token; assets/citations.js wires the click-popover from
+# window.PURESCORE_CITATIONS. data-mk carries the marker name (for PubMed-search of generic tags).
+_CITE_ASSETS = ('<script src="assets/cite-data.js"></script><script src="assets/citations.js"></script>')
+def _cite_chip(src, mk=""):
+    s = (src or "").strip()
+    if not s:
+        return ""
+    return '<span class="cite" data-src="%s" data-mk="%s" tabindex="0">%s</span>' % (_esc(s), _esc(mk or ""), _esc(s))
+
 # ----------------------------------------------------------------- per-doc summaries
 SUMMARY = {
  "01":"Vision, design principles, and the institutional lessons (Babylon / Kaiser / Mayo) PureScore is engineered around.",
@@ -347,7 +369,7 @@ def build_biomarkers():
                      '<td><span class="chip b-red">%s</span></td>'
                      '<td class="mono">%s</td><td class="small muted">%s</td></tr>'
                      % (_esc(mk), star, _esc(unit), t, t.replace("/","/"), _chan_chip(marker_channel(mk, src)),
-                        _rngbar(ts), _esc(g), _esc(y), _esc(r), _esc(w), _esc(src)))
+                        _rngbar(ts), _esc(g), _esc(y), _esc(r), _esc(w), _cite_chip(src, mk)))
         h.append('</tbody></table></div>')
     h.append('<h2 id="modifiers">Cross-cutting modifiers</h2>')
     h.append('<div class="tablewrap"><table><thead><tr><th>Modifier</th><th>Source</th><th>Effect</th></tr></thead><tbody>')
@@ -357,6 +379,11 @@ def build_biomarkers():
     h.append('<p class="small muted">★ = critical marker — a red value can make its pillar critical and cascade '
              'PureScore into the critical band (<a class="xref" href="03-scoring-formula.html">Doc 03</a> §4). '
              'Sex-specific overrides: <a class="xref" href="08-sex-specific-models.html">Doc 08</a>.</p>')
+    h.append('<p class="small muted">Click any <b>Source</b> to verify the citation — the popover shows the full reference, '
+             'the table/section where the range lives, DOI/PMID, and opens the document in a new tab. '
+             '<span class="cite-key"><span class="cite-dot v"></span>verified link</span> '
+             '<span class="cite-key"><span class="cite-dot d"></span>document-level</span></p>')
+    h.append(_CITE_ASSETS)
     return "Appendix A · Markers (all channels)", "".join(h)
 
 def build_wearables():
@@ -2910,14 +2937,15 @@ def build_grid_biomarkers():
         for (mk, unit, tier, two, gr, ye, rd, w, src, crit) in markers:
             rows.append({"Pillar": pid, "Marker": mk, "Unit": unit, "Tier": tier, "Channel": marker_channel(mk, src),
                          "2-sided": "yes" if two else "—", "Green": gr, "Yellow": ye, "Red": rd,
-                         "Weight": w, "Source": src, "Critical": "yes" if crit else "—"})
+                         "Weight": w, "Source": _cite_chip(src, mk), "Critical": "yes" if crit else "—"})
     cols = [{"key":"Pillar","label":"Pillar"},{"key":"Marker","label":"Marker","filter":"text"},{"key":"Unit","label":"Unit"},
             {"key":"Tier","label":"Tier"},{"key":"Channel","label":"Channel"},{"key":"2-sided","label":"2-sided"},
             {"key":"Green","label":"Green","filter":"text"},{"key":"Yellow","label":"Yellow","filter":"text"},
             {"key":"Red","label":"Red","filter":"text"},{"key":"Weight","label":"Weight","type":"num"},{"key":"Source","label":"Source"},
             {"key":"Critical","label":"Critical"}]
-    return _grid_page("Biomarkers grid", "Biomarkers — spreadsheet", "Every marker across the 12 pillars, flat &amp; sortable. Source:",
+    tab, body = _grid_page("Biomarkers grid", "Biomarkers — spreadsheet", "Every marker across the 12 pillars, flat &amp; sortable. Click a Source to verify its citation. Source:",
                       "appendix-biomarkers.html", "Appendix A · Biomarkers", _grid("g-bio", cols, rows), "Biomarkers grid")
+    return tab, body + _CITE_ASSETS
 
 # ----- 2. wearables -----
 def build_grid_wearables():
@@ -3342,6 +3370,74 @@ def build_class_model():
             'stories). Both are derived from the same spec.</p>')
     return "Class model", (head + '<h2 id="diagram">Class diagram</h2>' + body_only(bbody)
                            + '<hr><h2 id="explorer">Class explorer</h2>' + body_only(cbody))
+
+
+def build_production_gaps():
+    """Production-readiness gap analysis for the patient-facing mobile app ('Gaps & roadmap' chapter)."""
+    sev = {"missing": '<span class="chip b-red">missing</span>', "partial": '<span class="chip b-yellow">partial</span>'}
+    GROUPS = [
+     ("Identity &amp; security", [
+       ("Auth &amp; identity", "missing", "Consent/privacy policy (Doc 16)",
+        "Signup/login, MFA, biometric unlock, session &amp; token lifecycle, account recovery, multi-device."),
+       ("On-device security engineering", "missing", "PHI policy + HIPAA/GDPR pointers (Doc 16)",
+        "Encryption-at-rest / Keychain, app-lock, jailbreak-root detection, cert pinning, screenshot/PHI masking, idle timeout."),
+       ("Patient data-rights flows", "partial", "HIPAA/GDPR/GINA stated (Doc 16)",
+        "Self-service export (portability), delete / right-to-be-forgotten, per-stream sharing toggles, patient-visible access log."),
+     ]),
+     ("App &amp; UX", [
+       ("Mobile client architecture &amp; design system", "missing", "Onboarding spec + admin mockups",
+        "Screen/flow inventory, navigation/IA, component library + design tokens, theming, state management."),
+       ("Results &amp; explainability UX", "missing", "The math: score + companion vector + binding constraint + provenance (Docs 03/05, D33)",
+        "Mobile rendering: trend charts, dual-framing, and the cohort-imputed <b>provisional</b> presentation."),
+       ("Accessibility (incl. colour-blind-safe status)", "missing", "Green/yellow/red zone model",
+        "WCAG 2.2, screen reader, dynamic type, and a <b>redundant icon/label cue for status colours</b> (safety, not cosmetic)."),
+       ("Full-UI i18n / Arabic RTL", "partial", "Clinical localization &amp; Ramadan (Doc 18)",
+        "UI-string i18n + right-to-left layout for the whole app."),
+       ("Edge / empty / error / offline states", "missing", "&mdash;",
+        "Loading, no-data, retry, connectivity-loss and stale-data indicators across every screen."),
+     ]),
+     ("Engagement &amp; care", [
+       ("Notification &amp; nudge delivery", "partial", "Nudge selection U_a (Doc 11)",
+        "Delivery channel, scheduling, quiet hours, deep-links, opt-in, streaks / re-engagement."),
+       ("Care-team &amp; crisis UX", "partial", "Escalation tiers + crisis pathway policy (Doc 16)",
+        "On-device emergency surfacing (push takeover, &lsquo;call 999/112&rsquo;), clinician messaging, telehealth, scheduling, disclaimers."),
+       ("Device / wearable integration UX", "partial", "Trust tiers (D22), streams (Doc 07)",
+        "HealthKit / Google-Fit / Terra pairing flows, permission prompts, backfill, background sync, battery/data budget."),
+     ]),
+     ("Offline &amp; data", [
+       ("Offline-first &amp; sync", "missing", "&mdash;",
+        "Offline access, conflict resolution, caching strategy."),
+     ]),
+     ("Product &amp; compliance", [
+       ("Product analytics &amp; in-app feedback", "missing", "Model validation (Doc 14)",
+        "Event taxonomy, funnels/retention, experiment framework, client crash reporting, in-app support/bug-report."),
+       ("SaMD / app-level regulatory", "partial", "Methodology regulatory posture (Docs 16/05)",
+        "App-level Software-as-a-Medical-Device classification, intended-use/labeling, UAE MoHAP/DHA app registration, app-store medical compliance."),
+       ("Content &amp; health literacy", "partial", "Some education references",
+        "Educational / &lsquo;Learn&rsquo; content &amp; CMS, plain-language, reading-level, cultural fit."),
+     ]),
+    ]
+    nmiss = sum(1 for _, items in GROUPS for it in items if it[1] == "missing")
+    npart = sum(1 for _, items in GROUPS for it in items if it[1] == "partial")
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Gaps &amp; roadmap &rsaquo; Production readiness</div>',
+         '<h1>Production readiness &mdash; gap analysis</h1>',
+         '<p class="lead">What a <b>production-grade, patient-facing mobile app</b> still needs beyond this methodology + '
+         'backend spec (scope excludes CI/CD &amp; deployment). <span class="chip b-red">missing</span> = no spec yet; '
+         '<span class="chip b-yellow">partial</span> = policy/partial only. Sibling gap surfaces in this chapter: '
+         '<a class="xref" href="17-clinician-red-team-and-blind-spots.html">Clinician red-team &amp; blind-spots</a> and '
+         '<a class="xref" href="appendix-coverage-audit.html">Coverage audit</a>.</p>', ILLUS,
+         '<div class="callout note"><div class="ct">Two to treat as near-term</div>'
+         '<b>Colour-blind-safe status</b> &mdash; green/yellow/red alone fails ~8% of male users; add a redundant icon/label cue. '
+         '<b>On-device security + auth</b> &mdash; the largest truly-missing surface for PHI, and it gates app-store / medical review.</div>',
+         '<p class="small muted">%d areas &middot; %d missing &middot; %d partial.</p>' % (nmiss + npart, nmiss, npart)]
+    for gname, items in GROUPS:
+        h.append('<h2>%s</h2><div class="tablewrap"><table><thead><tr><th>Area</th><th>Status</th>'
+                 '<th>What exists today</th><th>What a patient app needs</th></tr></thead><tbody>' % gname)
+        for area, st, exists, needed in items:
+            h.append('<tr><td><b>%s</b></td><td>%s</td><td class="small muted">%s</td><td class="small">%s</td></tr>'
+                     % (area, sev[st], exists, needed))
+        h.append('</tbody></table></div>')
+    return "Production readiness — gaps", "".join(h)
 
 
 # =================================================================== WEARABLE CORROBORATION (closes F4)
