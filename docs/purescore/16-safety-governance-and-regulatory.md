@@ -1,4 +1,4 @@
-# 11 — Safety, Governance, and Regulatory
+# 16 — Safety, Governance, and Regulatory
 
 > Binding conventions: `README.md §3`, and especially the **hard safety non-negotiables**
 > (`README.md §5`). This document is the **control document** for everything that keeps PureScore

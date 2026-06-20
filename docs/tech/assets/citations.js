@@ -74,13 +74,18 @@
     var x = pop.querySelector(".x"); if (x) x.onclick = closePop;
     pop.addEventListener("click", function (ev) { ev.stopPropagation(); });
   }
-  function init(){
-    [].forEach.call(document.querySelectorAll(".cite"), function (chip) {
+  function bind(root){
+    [].forEach.call((root || document).querySelectorAll(".cite"), function (chip) {
+      if (chip._cb) return; chip._cb = 1;
       var r = resolve(chip.getAttribute("data-src"));
       if (r.kind === "method") { chip.classList.add("method"); chip.title = "measurement method / internal tag — not a guideline citation"; return; }
       chip.addEventListener("click", function (ev) { ev.stopPropagation(); showPop(chip); });
       chip.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); showPop(chip); } });
     });
+  }
+  window.PureCite = { bind: bind, show: showPop, close: closePop, resolve: resolve };
+  function init(){
+    bind(document);
     document.addEventListener("click", closePop);
     document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") closePop(); });
     window.addEventListener("resize", closePop);

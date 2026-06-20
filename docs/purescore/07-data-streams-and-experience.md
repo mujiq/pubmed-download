@@ -1,4 +1,4 @@
-# 18 — Data Streams, Devices & the Effortless Experience
+# 07 — Data Streams, Devices & the Effortless Experience
 
 > Binding conventions: `README.md §3`. This document defines the **input taxonomy** (lab biomarkers,
 > wearable metrics, user goals, lifestyle/PRO), how **consumer wearables are trust-tiered** into the

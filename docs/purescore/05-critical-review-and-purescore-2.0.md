@@ -1,4 +1,4 @@
-# 12 — Critical Review & PureScore 2.0 (Edge Cases, Companion Vector, Early Detection)
+# 05 — Critical Review & PureScore 2.0 (Edge Cases, Companion Vector, Early Detection)
 
 > Binding conventions: `README.md §3`. This document (a) critically reviews where the v0.1
 > formula (Docs 03–04) misbehaves across the age × sex × lifestyle × persona × disease ×

@@ -338,15 +338,15 @@ def render_index():
     try: NQ = len(C._load("question-bank.json").get("questions", []))
     except Exception: NQ = 0
     flow = """flowchart TD
-  R["README · conventions"] --> D0["00 Vision"]
-  D0 --> D1["01 Data model"] --> D2["02 Pillars & markers"] --> D3["03 Scoring"] --> D4["04 Reservoirs"]
-  D3 --> D12["12 PureScore 2.0"]
-  D2 --> D5["05 Sex-specific"]
-  D3 --> D7["07 Nudge engine"]
-  D12 --> D13["13 Validation"]
-  D1 --> D18["18 Data streams"] --> D7
-  D7 --> D16["16 Actions"]
-  D3 --> D11["11 Safety"]
+  R["README · conventions"] --> D0["01 Vision"]
+  D0 --> D1["06 Data model"] --> D2["02 Pillars & markers"] --> D3["03 Scoring"] --> D4["04 Reservoirs"]
+  D3 --> D12["05 PureScore 2.0"]
+  D2 --> D5["08 Sex-specific"]
+  D3 --> D7["11 Nudge engine"]
+  D12 --> D13["14 Validation"]
+  D1 --> D18["07 Data streams"] --> D7
+  D7 --> D16["12 Actions"]
+  D3 --> D11["16 Safety"]
   D18 --> ADMIN["Admin (clinician config)"]
   D7 --> FB["Feedback-loop demo"]"""
     b = ['<div class="hero"><h1>Hikma<span style="color:#2ecc71">Engine</span> — Technical Wiki</h1>',
@@ -442,6 +442,7 @@ def render_index():
 def main():
     C.write_calc_data()   # generate assets/calc-data.js from canonical JSON (engine source)
     C.write_cite_data()   # generate assets/cite-data.js from data/citations.json (citation popovers)
+    C.write_range_data()  # generate assets/range-data.js from data/range-variations.json (range-variation views)
     render_index()
     for n in sorted(DOCMAP): render_doc(n)
     render_simple("README.md", "conventions.html", "Conventions & glossary", "Conventions & glossary")

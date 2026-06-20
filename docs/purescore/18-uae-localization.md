@@ -1,4 +1,4 @@
-# 15 — UAE Localization (Ethnicity-Aware Frames, Regional Epidemiology, Ramadan)
+# 18 — UAE Localization (Ethnicity-Aware Frames, Regional Epidemiology, Ramadan)
 
 > Binding conventions: `README.md §3`. This document localizes PureScore for the **United Arab
 > Emirates** population: ethnicity-aware reference frames and screening (decision **D18** — *context

@@ -1,4 +1,4 @@
-# 05 — Sex-Specific & Reproductive-Stage Models
+# 08 — Sex-Specific & Reproductive-Stage Models
 
 > Binding conventions: `README.md §3`. This document is authoritative for the **ENDO** sex-hormone
 > bands deferred from Doc 02, and for how **sex at birth × reproductive stage** modifies pillar

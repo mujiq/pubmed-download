@@ -155,6 +155,29 @@ def _cite_chip(src, mk=""):
         return ""
     return '<span class="cite" data-src="%s" data-mk="%s" tabindex="0">%s</span>' % (_esc(s), _esc(mk or ""), _esc(s))
 
+def write_range_data():
+    """Emit assets/range-data.js (window.PURESCORE_RANGES) from data/range-variations.json + the
+    conditions catalogue (for the context-selector dropdowns) so the range-variation views work offline."""
+    try:
+        rv = _load("range-variations.json")
+    except Exception:
+        rv = {"markers": {}, "med_introduces": {}}
+    try:
+        rv["_conditions"] = _load("conditions.json")
+    except Exception:
+        rv["_conditions"] = {"diseases": {}, "meds": {}}
+    js = ("/* GENERATED from data/range-variations.json — do NOT edit, edit the JSON. */\n"
+          "window.PURESCORE_RANGES=" + json.dumps(rv, ensure_ascii=False, separators=(",", ":")) + ";\n")
+    with open(os.path.join(_HERE, "assets", "range-data.js"), "w", encoding="utf-8") as f:
+        f.write(js)
+    return rv
+
+try:
+    _RV_NAMES = set(_load("range-variations.json")["markers"])     # marker names whose range varies by dimension
+except Exception:
+    _RV_NAMES = set()
+_RANGE_ASSETS = '<script src="assets/range-data.js"></script><script src="assets/ranges.js"></script>'
+
 # ----------------------------------------------------------------- per-doc summaries
 SUMMARY = {
  "01":"Vision, design principles, and the institutional lessons (Babylon / Kaiser / Mayo) PureScore is engineered around.",
@@ -354,6 +377,20 @@ def build_biomarkers():
          '<span class="tier X">X</span> Comprehensive &nbsp; · &nbsp; <span class="chip b-mut">2s</span> two-sided '
          '(low <i>and</i> high adverse)</div>',
          '<div class="callout note"><div class="ct">Marker pipeline</div><a class="xref" href="appendix-wearables.html">ingest &amp; trust-tier (Appendix B)</a> &rarr; <b>bands (you are here)</b> &rarr; <a class="xref" href="purescore-wearable-baselines.html">personal baseline (Baselines · Wearables)</a> &middot; scoring math <a class="xref" href="03-scoring-formula.html">Doc 03</a>.</div>']
+    h.append(
+        '<div class="rv-switch"><span class="rv-lab">Range variations</span>'
+        '<button class="rv-vb active" data-view="A">Hover card</button>'
+        '<button class="rv-vb" data-view="B">Inline matrix</button>'
+        '<button class="rv-vb" data-view="C">Range ruler</button>'
+        '<button class="rv-vb" data-view="D">Context selector</button>'
+        '<span class="rv-hint" id="rvHint">&#9651; marks markers whose reference range shifts by sex / age / life-stage / condition / medication — click to explore (each variation carries its own citation).</span></div>'
+        '<div class="rv-ctx" id="rvCtx" style="display:none">'
+        '<select id="rvSex" class="rv-sel"><option value="">sex…</option><option value="male">Male</option><option value="female">Female</option></select>'
+        '<select id="rvAge" class="rv-sel"><option value="">age…</option><option value="young">&lt;40</option><option value="mid">40–64</option><option value="older">65+</option></select>'
+        '<select id="rvLife" class="rv-sel"><option value="">life-stage…</option><option value="pregnancy">Pregnancy</option><option value="postmenopause">Post-menopause</option></select>'
+        '<select id="rvCond" class="rv-sel"></select><select id="rvMed" class="rv-sel"></select>'
+        '<button class="rv-btn" id="rvApply">apply</button><button class="rv-btn" id="rvReset">reset</button>'
+        '<span class="rv-hint" id="rvCtxOut"></span></div>')
     for pid, pname, res, rows in PILLARS:
         h.append('<h2 id="%s">%s · %s</h2>' % (pid, pid, _esc(pname)))
         h.append('<p class="small muted">Reservoir links: %s</p>' % _esc(res))
@@ -362,13 +399,14 @@ def build_biomarkers():
                  '<th>Green</th><th>Yellow</th><th>Red</th><th>w</th><th>Source</th></tr></thead><tbody>')
         for (mk, unit, t, ts, g, y, r, w, src, crit) in rows:
             star = ' <span title="critical marker — can make its pillar critical" style="color:var(--red)">★</span>' if crit else ''
-            h.append('<tr><td><b>%s</b>%s</td><td class="small muted">%s</td>'
+            nm = ('<b class="rv-name" data-rv="%s" tabindex="0">%s <span class="rv-badge">&#9651;</span></b>' % (_esc(mk), _esc(mk))) if mk in _RV_NAMES else ('<b>%s</b>' % _esc(mk))
+            h.append('<tr data-mk="%s"><td>%s%s</td><td class="small muted">%s</td>'
                      '<td><span class="tier %s">%s</span></td><td>%s</td><td>%s</td>'
                      '<td><span class="chip b-green">%s</span></td>'
                      '<td><span class="chip b-yellow">%s</span></td>'
                      '<td><span class="chip b-red">%s</span></td>'
                      '<td class="mono">%s</td><td class="small muted">%s</td></tr>'
-                     % (_esc(mk), star, _esc(unit), t, t.replace("/","/"), _chan_chip(marker_channel(mk, src)),
+                     % (_esc(mk), nm, star, _esc(unit), t, t.replace("/","/"), _chan_chip(marker_channel(mk, src)),
                         _rngbar(ts), _esc(g), _esc(y), _esc(r), _esc(w), _cite_chip(src, mk)))
         h.append('</tbody></table></div>')
     h.append('<h2 id="modifiers">Cross-cutting modifiers</h2>')
@@ -383,7 +421,7 @@ def build_biomarkers():
              'the table/section where the range lives, DOI/PMID, and opens the document in a new tab. '
              '<span class="cite-key"><span class="cite-dot v"></span>verified link</span> '
              '<span class="cite-key"><span class="cite-dot d"></span>document-level</span></p>')
-    h.append(_CITE_ASSETS)
+    h.append(_CITE_ASSETS); h.append(_RANGE_ASSETS)
     return "Appendix A · Markers (all channels)", "".join(h)
 
 def build_wearables():

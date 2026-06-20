@@ -1,4 +1,4 @@
-# 06 — Acute-Event Override & Life-Stage Care / Nutrition / Exercise Plans
+# 09 — Acute-Event Override & Life-Stage Care / Nutrition / Exercise Plans
 
 > Binding conventions: `README.md §3`. This document defines two coupled mechanisms:
 > **(A)** the *acute-event override* — how PureScore detects an acute event, spikes `m_k^acute`

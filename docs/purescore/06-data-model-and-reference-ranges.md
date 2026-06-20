@@ -1,4 +1,4 @@
-# 01 — Canonical Data Model, Tiers, and Reference-Range Strategy
+# 06 — Canonical Data Model, Tiers, and Reference-Range Strategy
 
 > Binding conventions: `README.md §3`. This document defines *what data exists*, *how it is
 > tiered*, and *how reference ranges (medians/percentiles/bands) are derived from literature when

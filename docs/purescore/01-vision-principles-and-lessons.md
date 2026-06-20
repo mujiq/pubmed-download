@@ -1,4 +1,4 @@
-# 00 — Vision, Design Principles, and Institutional Lessons
+# 01 — Vision, Design Principles, and Institutional Lessons
 
 > Read `README.md` first for binding conventions.
 

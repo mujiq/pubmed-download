@@ -1,4 +1,4 @@
-# 07 — The Daily Nudge Engine (Top-5 Easiest Actions, Impact-Attributed)
+# 11 — The Daily Nudge Engine (Top-5 Easiest Actions, Impact-Attributed)
 
 > Binding conventions: `README.md §3`. This document defines how PureScore converts the
 > explainability object (Doc 03 §7) and the reservoir dynamics (Doc 04) into a **daily action

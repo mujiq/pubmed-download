@@ -1,4 +1,4 @@
-# 14 — Evidence Registry, Provenance & the Cold-Start "Ignition" Model
+# 15 — Evidence Registry, Provenance & the Cold-Start "Ignition" Model
 
 > Binding conventions: `README.md §3`. This document defines how **every band, threshold, critical
 > rule, and recommended action in the engine is bound to its clinical evidence**, how that evidence

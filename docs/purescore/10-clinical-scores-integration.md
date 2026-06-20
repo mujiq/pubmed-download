@@ -1,4 +1,4 @@
-# 08 — Clinical-Scores Integration (Clinician Decision-Support Layer)
+# 10 — Clinical-Scores Integration (Clinician Decision-Support Layer)
 
 > Binding conventions: `README.md §3`. This document connects established, **validated clinical
 > risk scores** to the PureScore pillars and markers (Doc 02) and to the scoring formula (Doc 03).

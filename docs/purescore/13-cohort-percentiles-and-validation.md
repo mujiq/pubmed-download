@@ -1,4 +1,4 @@
-# 09 — Cohort Percentiles, Calibration & Validation
+# 13 — Cohort Percentiles, Calibration & Validation
 
 > Binding conventions: `README.md §3`. This document is authoritative for **how cohorts `c(p)` are
 > constructed**, how the percentile CDFs `F_{i,c}` are estimated and shrunk (the empirical-Bayes

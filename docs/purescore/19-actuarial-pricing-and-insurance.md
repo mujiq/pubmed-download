@@ -1,4 +1,4 @@
-# 10 — Actuarial Pricing and Insurance (with heavy regulatory & fairness flags)
+# 19 — Actuarial Pricing and Insurance (with heavy regulatory & fairness flags)
 
 > Read `README.md` first for binding conventions (symbols `R_k`, `PureScore`, cohort `c(p)`,
 > non-negotiables esp. §5.5 *no protected-class proxy may worsen price/access/care*). This

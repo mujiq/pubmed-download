@@ -1,0 +1,126 @@
+{
+ "_meta": {
+  "source": "data/range-variations.json",
+  "note": "How a marker's reference range shifts by dimension (sex · age_band · life_stage · ethnicity · condition[ICD-10] · medication[ATC]). base = the appendix's headline range; var[] = dimension-specific ranges, each with its own citation token (resolved against citations.json, same popover). 'med_introduces' = ranges a drug creates that have no base marker (e.g. warfarin→INR). Illustrative, re-verify (README §5.6).",
+  "dims": ["sex", "age_band", "life_stage", "ethnicity", "condition", "medication"]
+ },
+ "markers": {
+  "Systolic BP": {
+   "base": {"g": "90–119", "y": "120–139", "r": "≥140 or <85", "cite": "ACC/AHA 2017"},
+   "var": [
+    {"dim": "age_band", "key": "≥65 / frail", "g": "<130 (avoid <120, J-curve)", "delta": "individualise; frailty caution", "cite": "ACC/AHA 2017"},
+    {"dim": "condition", "key": "N18.3 CKD", "g": "<120 (standardised office SBP)", "delta": "stricter target", "cite": "KDIGO 2024"},
+    {"dim": "condition", "key": "E11 diabetes", "g": "<130/80", "delta": "stricter", "cite": "ACC/AHA 2017"},
+    {"dim": "life_stage", "key": "Pregnancy", "g": "<140/90", "r": "≥160/110 severe (pre-eclampsia)", "delta": "PE thresholds", "cite": "ATA pregnancy 2017"}
+   ]},
+  "LDL-C": {
+   "base": {"g": "<100 (<70 high-risk)", "y": "100–159", "r": "≥160", "cite": "ESC/EAS"},
+   "var": [
+    {"dim": "condition", "key": "I25.10 CAD (very-high risk)", "g": "<55 (and ≥50% reduction)", "delta": "stricter goal", "cite": "ESC/EAS 2019"},
+    {"dim": "medication", "key": "C10AA statin", "g": "treated target <55", "delta": "MANAGED — read as treated, not 'optimal'", "cite": "ESC/EAS 2019"},
+    {"dim": "condition", "key": "E11 diabetes + target-organ", "g": "<55", "delta": "stricter", "cite": "ESC/EAS 2019"}
+   ]},
+  "ApoB": {
+   "base": {"g": "<80 (<65 high-risk)", "y": "80–99", "r": "≥100", "cite": "ESC/EAS"},
+   "var": [
+    {"dim": "condition", "key": "very-high CV risk", "g": "<65", "delta": "stricter", "cite": "ESC/EAS 2019"},
+    {"dim": "medication", "key": "C10AA statin", "g": "treated target <65", "delta": "MANAGED", "cite": "ESC/EAS 2019"}
+   ]},
+  "HDL-C": {
+   "base": {"g": "≥50 F / ≥40 M", "y": "40–49", "r": "<40", "cite": "ACC/AHA"},
+   "var": [
+    {"dim": "sex", "key": "Female", "g": "≥50", "r": "<50", "delta": "+10 mg/dL vs male", "cite": "ACC/AHA 2017"},
+    {"dim": "sex", "key": "Male", "g": "≥40", "r": "<40", "delta": "baseline", "cite": "ACC/AHA 2017"}
+   ]},
+  "HbA1c": {
+   "base": {"g": "<5.4", "y": "5.4–6.4", "r": "≥6.5", "cite": "ADA"},
+   "var": [
+    {"dim": "life_stage", "key": "Pregnancy", "g": "<6.0 target", "delta": "GDM dx by OGTT, not HbA1c", "cite": "ADA"},
+    {"dim": "age_band", "key": "≥65 complex/frail", "g": "<8.0 (relaxed)", "delta": "looser", "cite": "ADA"},
+    {"dim": "condition", "key": "anaemia / haemoglobinopathy", "g": "—", "delta": "HbA1c unreliable → fructosamine / CGM", "cite": "ADA"},
+    {"dim": "medication", "key": "glucose-lowering Rx", "g": "treated target <7.0", "delta": "MANAGED", "cite": "ADA"}
+   ]},
+  "eGFR (creatinine)": {
+   "base": {"g": "≥90", "y": "60–89", "r": "<60", "cite": "KDIGO 2024"},
+   "var": [
+    {"dim": "age_band", "key": "≥65", "g": "—", "delta": "mildly low eGFR may be age-related; stage by GFR+ACR", "cite": "KDIGO 2024"},
+    {"dim": "life_stage", "key": "Pregnancy", "g": "—", "delta": "physiologic hyperfiltration ↑GFR; creatinine falls", "cite": "KDIGO 2024"},
+    {"dim": "ethnicity", "key": "race-free CKD-EPI 2021", "g": "—", "delta": "race coefficient removed", "cite": "KDIGO 2024"}
+   ]},
+  "Potassium": {
+   "base": {"g": "3.6–5.0", "y": "5.1–5.5 / 3.3–3.5", "r": "≥5.6 or ≤3.2", "cite": "KDIGO 2024"},
+   "var": [
+    {"dim": "condition", "key": "N18.3 CKD", "g": "≤5.0 (tighter, monitor)", "delta": "narrower tolerance", "cite": "KDIGO 2024"},
+    {"dim": "medication", "key": "C09AA ACEi / C09CA ARB", "g": "—", "delta": "expect ↑K; recheck 1–2 wk", "cite": "KDIGO 2024"}
+   ]},
+  "ALT": {
+   "base": {"g": "<30 M / <20 F", "y": "up to 50", "r": ">50 (3× ULN acute)", "cite": "AASLD"},
+   "var": [
+    {"dim": "sex", "key": "Female", "g": "<19–25 (lower ULN)", "delta": "lower ULN", "cite": "AASLD"},
+    {"dim": "medication", "key": "C10AA statin", "g": "—", "delta": "mild ↑ common; >3× ULN → review", "cite": "AASLD"}
+   ]},
+  "TSH": {
+   "base": {"g": "0.5–2.5", "y": "2.5–4.5 / 0.3–0.5", "r": ">4.5 or <0.3", "cite": "ATA"},
+   "var": [
+    {"dim": "life_stage", "key": "Pregnancy T1", "g": "0.1–2.5", "delta": "trimester-specific", "cite": "ATA pregnancy 2017"},
+    {"dim": "life_stage", "key": "Pregnancy T2/T3", "g": "0.2–3.0", "delta": "trimester-specific", "cite": "ATA pregnancy 2017"},
+    {"dim": "age_band", "key": "≥70", "g": "up to ~6.0 may be normal", "delta": "upper limit ↑ with age", "cite": "ATA"},
+    {"dim": "medication", "key": "H03AA01 levothyroxine", "g": "treated target 0.5–2.5", "delta": "MANAGED", "cite": "ATA"}
+   ]},
+  "Hemoglobin": {
+   "base": {"g": "13.5–17 M / 12–15.5 F", "y": "mild low/high", "r": "<11 or >18", "cite": "WHO"},
+   "var": [
+    {"dim": "sex", "key": "Female (non-preg)", "g": "≥12", "r": "<12 anaemia", "delta": "−1.5 g/dL vs male", "cite": "WHO"},
+    {"dim": "sex", "key": "Male", "g": "≥13", "r": "<13 anaemia", "delta": "baseline", "cite": "WHO"},
+    {"dim": "life_stage", "key": "Pregnancy", "g": "≥11", "y": "10–10.9", "r": "<10", "delta": "looser (haemodilution)", "cite": "WHO"},
+    {"dim": "condition", "key": "N18.3 CKD on ESA", "g": "10–12 (Hb target)", "delta": "reset target", "cite": "KDIGO 2024"},
+    {"dim": "medication", "key": "B03A iron", "g": "—", "delta": "expect rise; recheck 8–12 wk", "cite": "WHO"}
+   ]},
+  "Ferritin (iron stores)": {
+   "base": {"g": "50–150", "y": "30–49 / 151–300", "r": "<30 or >300", "cite": "WHO"},
+   "var": [
+    {"dim": "condition", "key": "inflammation / acute-phase", "g": "—", "delta": "ferritin ↑ as APR → can mask iron deficiency; pair with CRP/TSAT", "cite": "AHA/CDC"},
+    {"dim": "sex", "key": "Female (menstruating)", "g": "≥30 adequate", "r": "<15 deficient", "cite": "WHO"},
+    {"dim": "condition", "key": "N18.3 CKD", "g": ">100 (>200 on ESA)", "delta": "higher target", "cite": "KDIGO 2024"}
+   ]},
+  "Vitamin B12": {
+   "base": {"g": "400–900", "y": "200–399", "r": "<200 or >1100", "cite": "lab"},
+   "var": [
+    {"dim": "medication", "key": "A10BA02 metformin", "g": "—", "delta": "chronic use depletes B12; screen periodically", "cite": "ADA"}
+   ]},
+  "BMD T-score (DEXA)": {
+   "base": {"g": "≥ −1.0", "y": "−1.0 to −2.5", "r": "≤ −2.5", "cite": "ISCD/WHO"},
+   "var": [
+    {"dim": "life_stage", "key": "Premenopausal F / men <50", "g": "use Z-score; ≤ −2.0 'below expected'", "delta": "different metric", "cite": "ISCD"},
+    {"dim": "life_stage", "key": "Postmenopausal / men ≥50", "g": "≥ −1.0 (T-score applies)", "delta": "baseline", "cite": "ISCD/WHO"}
+   ]},
+  "ALMI / lean mass index": {
+   "base": {"g": "≥ sex cut-off", "y": "low-normal", "r": "sarcopenic", "cite": "EWGSOP2"},
+   "var": [
+    {"dim": "sex", "key": "Male", "g": "≥7.0 kg/m²", "r": "<7.0", "cite": "EWGSOP2"},
+    {"dim": "sex", "key": "Female", "g": "≥5.5 kg/m²", "r": "<5.5", "cite": "EWGSOP2"}
+   ]},
+  "VO₂max (est.)": {
+   "base": {"g": "≥ sex/age p60", "y": "p20–p60", "r": "< p10", "cite": "Cooper/ACSM"},
+   "var": [
+    {"dim": "sex", "key": "by sex", "g": "—", "delta": "percentile norms differ M vs F", "cite": "Cooper/ACSM"},
+    {"dim": "age_band", "key": "by age", "g": "—", "delta": "absolute VO₂max ↓ ~10%/decade; percentile is age-normed", "cite": "Cooper/ACSM"}
+   ]},
+  "Waist circumference": {
+   "base": {"g": "<94 M / <80 F", "y": "up to 102 M / 88 F", "r": "≥102 M / ≥88 F", "cite": "IDF"},
+   "var": [
+    {"dim": "sex", "key": "Male", "g": "<94", "r": "≥102 high", "cite": "IDF"},
+    {"dim": "sex", "key": "Female", "g": "<80", "r": "≥88 high", "cite": "IDF"},
+    {"dim": "ethnicity", "key": "South/East Asian", "g": "<90 M / <80 F", "delta": "lower ethnicity-specific cut", "cite": "WHO (ethnicity-adj)"}
+   ]},
+  "Resting HR": {
+   "base": {"g": "50–69", "y": "70–84 (or <45)", "r": "≥85 or <40", "cite": "wearable/literature"},
+   "var": [
+    {"dim": "medication", "key": "C07AB beta-blocker", "g": "—", "delta": "HR ↓ ~10–15 bpm expected; CONFOUNDED — interpret with caution", "cite": "ACC/AHA 2017"},
+    {"dim": "sex", "key": "Female", "g": "—", "delta": "resting HR ~2–7 bpm higher on average", "cite": "wearable/literature"}
+   ]}
+ },
+ "med_introduces": {
+  "B01AA warfarin": {"label": "INR (introduced by warfarin)", "g": "2.0–3.0 (most indications)", "y": "1.5–1.9 / 3.1–3.5", "r": "<1.5 or >4.0; 2.5–3.5 mechanical mitral valve", "cite": "CHEST warfarin 2012"}
+ }
+}

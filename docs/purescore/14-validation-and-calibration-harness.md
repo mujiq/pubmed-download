@@ -1,4 +1,4 @@
-# 13 — Validation & Calibration Harness (PureScore 2.0)
+# 14 — Validation & Calibration Harness (PureScore 2.0)
 
 > Binding conventions: `README.md §3`. This document specifies **how PureScore 2.0 would be
 > validated and calibrated** — the headline score, every companion meta-vector dimension (Doc 05 §4),
