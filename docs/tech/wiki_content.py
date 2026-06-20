@@ -2471,7 +2471,7 @@ mermaid.initialize({startOnLoad:false,theme:"dark",securityLevel:"loose",flowcha
    s.querySelectorAll("g.node").forEach(function(g){var m=(g.id||"").match(/classId-(.+?)-\\d+$/);if(!m)return;
      g.style.cursor="pointer";g.setAttribute("title","double-click → "+m[1]+" dossier");});}
  function nodeName(t){var g=t&&t.closest&&t.closest("g.node");if(!g)return null;var m=(g.id||"").match(/classId-(.+?)-\\d+$/);return m?m[1]:null;}
- frame.addEventListener("dblclick",function(e){if(level==="areas")return;var nm=nodeName(e.target);if(nm){e.preventDefault();location.href="class-explorer.html#"+nm;}});
+ frame.addEventListener("dblclick",function(e){if(level==="areas")return;var nm=nodeName(e.target);if(nm){e.preventDefault();location.href="class-model.html#"+nm;}});
  function highlight(){var s=stage.querySelector("svg");if(!s)return;
    s.querySelectorAll("g.node").forEach(function(g){g.style.opacity=(!area||g.classList.contains(area))?"1":"0.18";});}
  function fit(){if(!natW||!natH)return;var fw=frame.clientWidth-24,fh=frame.clientHeight-24;
@@ -2585,7 +2585,7 @@ _CE_JS = """<script>
   var h=[];
   h.push('<div class="tagrow" style="gap:8px;align-items:center"><h2 style="margin:0">'+esc(c.name)+'</h2>'+chip(c.areaLabel,c.areaColor)+'<span class="chip b-mut">«'+esc(c.doc)+'»</span><span class="chip '+(c.tier==='core'?'b-teal':'b-mut')+'">'+c.tier+'</span></div>');
   if(c.purpose) h.push('<p class="lead" style="margin:8px 0">'+esc(c.purpose)+'</p>');
-  var ql=['<a class="chip b-acc" href="behemoth-class-diagram.html">← diagram</a>'];
+  var ql=['<a class="chip b-acc" href="class-model.html">← diagram</a>'];
   if(c.seqRefs.length) ql.push('<a class="chip b-acc" href="dossier-sequences.html">sequences ('+c.seqRefs.length+')</a>');
   if(c.apiRefs.length) ql.push('<a class="chip b-acc" href="dossier-api.html">API ('+c.apiRefs.length+')</a>');
   ql.push('<a class="chip b-acc" href="dossier-erd.html#'+name+'">data</a>');
@@ -2633,7 +2633,7 @@ def build_class_explorer():
          '<h1>Class Explorer</h1>',
          '<p class="lead">The per-class engineering dossier for all <b>%d classes</b> (<b>%d</b> fully curated): '
          'purpose, fields &amp; relations, data-model table, API, sequences, user stories, invariants and decisions. '
-         '<b>Double-click any node in the <a class="xref" href="behemoth-class-diagram.html">Behemoth diagram</a></b> '
+         '<b>Double-click any node in the <a class="xref" href="class-model.html#diagram">class diagram</a></b> '
          'to land on that class here. %d user stories &middot; %d endpoints &middot; %d sequences.</p>'
          % (m["total_classes"], m["core_classes"], sum(len(c["stories"]) for c in d["classes"].values()), m["api"], m["sequences"]),
          ILLUS, _CE_CSS,
@@ -2652,12 +2652,12 @@ def build_sequences():
     h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Engineering &rsaquo; Sequences</div>',
          '<h1>Runtime Sequence Diagrams</h1>',
          '<p class="lead">The dynamic choreography behind the static model — how data and control actually flow at '
-         'runtime. Each names the classes it touches (open them in the <a class="xref" href="class-explorer.html">Class '
+         'runtime. Each names the classes it touches (open them in the <a class="xref" href="class-model.html">Class '
          'Explorer</a>).</p>', ILLUS]
     for s in d["sequences"]:
         h.append('<div class="panel"><h3 id="%s">%s</h3>' % (_esc(s["id"]), _esc(s["title"])))
         h.append('<pre class="mermaid">%s</pre>' % s["mermaid"])
-        links = ", ".join('<a href="class-explorer.html#%s">%s</a>' % (_esc(cn), _esc(cn)) for cn in s.get("classes", []))
+        links = ", ".join('<a href="class-model.html#%s">%s</a>' % (_esc(cn), _esc(cn)) for cn in s.get("classes", []))
         h.append('<p class="small muted">Classes: %s</p></div>' % links)
     return "Sequences", "".join(h)
 
@@ -2725,7 +2725,7 @@ def build_api():
                     "yes" if a.get("idempotent") else "no", _esc(a["desc"])))
     h.append('</tbody></table></div>')
     for a in d["api"]:
-        cls = ", ".join('<a href="class-explorer.html#%s">%s</a>' % (_esc(cn), _esc(cn)) for cn in a.get("classes", []))
+        cls = ", ".join('<a href="class-model.html#%s">%s</a>' % (_esc(cn), _esc(cn)) for cn in a.get("classes", []))
         h.append('<div class="panel"><h3 id="%s"><span class="mono">%s %s</span></h3><p class="small">%s</p>'
                  '<p class="small muted">auth: %s &middot; idempotent: %s &middot; returns: <span class="mono">%s</span></p>'
                  '<p class="small" style="color:#ffb38a">errors: %s</p><p class="small muted">classes: %s</p></div>'
@@ -2741,7 +2741,7 @@ def build_stories():
          '<h1>User Stories &amp; Acceptance Criteria</h1>',
          '<p class="lead">The buildable backlog: <b>%d stories</b> across the curated core classes, with Gherkin '
          'acceptance criteria and edge/failure cases. Grouped by subject area; open any class in the '
-         '<a class="xref" href="class-explorer.html">Class Explorer</a>.</p>' % total, ILLUS]
+         '<a class="xref" href="class-model.html">Class Explorer</a>.</p>' % total, ILLUS]
     by_area = {}
     for cn, c in d["classes"].items():
         if c["stories"]: by_area.setdefault((c["areaLabel"], c["areaColor"]), []).append(c)
@@ -3156,8 +3156,8 @@ def build_purescore_overview():
          '<a class="xref" href="03-scoring-formula.html">scoring formula</a> with its '
          '<a class="xref" href="admin-weights.html">weights &amp; constants</a> and the 2.0 '
          '<a class="xref" href="05-critical-review-and-purescore-2.0.html">companion vector</a>. '
-         'Scored by sex: <a class="xref" href="purescore-male.html">PureScore &mdash; Male</a> &middot; '
-         '<a class="xref" href="purescore-female.html">PureScore &mdash; Female</a>.</p>', ILLUS]
+         'Scored by sex: <a class="xref" href="purescore-sex.html">PureScore &mdash; Male</a> &middot; '
+         '<a class="xref" href="purescore-sex.html">PureScore &mdash; Female</a>.</p>', ILLUS]
     h.append('<div class="diagram"><div class="dt">Inputs &rarr; pillars &amp; reservoirs &rarr; score</div>'
              '<pre class="mermaid">flowchart LR\n'
              '  LAB["Biomarkers (C/P/X)"] --> P["12 Pillars"]\n  WEAR["Wearables (+baselines)"] --> P\n'
@@ -3304,6 +3304,44 @@ def build_purescore_female():
         "iron/menstrual-loss sensitivity; CV risk rises post-menopause. Hemoglobin/HDL/waist read against female reference.",
         "Menstrual cycle (follicular/luteal phase-aware ranges) · pregnancy frame (physiologic shifts; pre-eclampsia/GDM "
         "anchors retained) · perimenopause/menopause (vasomotor, bone, CV).")
+
+def build_purescore_sex():
+    """Merged Male + Female view behind a segmented toggle (IA cleanup: was two pages)."""
+    _, mbody = build_purescore_male()
+    _, fbody = build_purescore_female()
+    def body_only(b):
+        i = b.find('<p class="lead">'); return b[i:] if i >= 0 else b
+    head = ('<div class="crumbs"><a href="index.html">Home</a> &rsaquo; PureScore &rsaquo; By sex</div>'
+            '<h1>PureScore &mdash; by sex</h1>'
+            '<p class="lead">Sex-specific reference cut-points, markers, pillar emphases and sex-gated questions. '
+            'The shared engine is in the <a class="xref" href="purescore-overview.html">Overview</a>; sex handling is '
+            '<a class="xref" href="08-sex-specific-models.html">Doc 08</a>.</p>'
+            '<div class="seg" id="sexseg"><button class="segbtn on" data-sex="male" type="button">Male</button>'
+            '<button class="segbtn" data-sex="female" type="button">Female</button></div>')
+    panels = ('<div class="sexpanel" data-sex="male">' + body_only(mbody) + '</div>'
+              '<div class="sexpanel" data-sex="female" hidden>' + body_only(fbody) + '</div>')
+    tail = ('<style>.seg{display:inline-flex;margin:12px 0;border:1px solid var(--line,#2a3340);border-radius:9px;overflow:hidden}'
+            '.segbtn{font:inherit;font-size:13px;padding:6px 18px;background:var(--bg2,#0c1320);color:inherit;border:none;cursor:pointer}'
+            '.segbtn.on{background:#2b5a86;color:#fff;font-weight:700}</style>'
+            '<script>(function(){var s=document.getElementById("sexseg");if(!s)return;'
+            's.addEventListener("click",function(e){var b=e.target.closest(".segbtn");if(!b)return;var x=b.getAttribute("data-sex");'
+            '[].forEach.call(s.querySelectorAll(".segbtn"),function(k){k.classList.toggle("on",k===b);});'
+            '[].forEach.call(document.querySelectorAll(".sexpanel"),function(p){p.hidden=(p.getAttribute("data-sex")!==x);});});})();</script>')
+    return "PureScore by sex", head + panels + tail
+
+def build_class_model():
+    """Merged class diagram + class explorer into one 'Class model' page (IA cleanup)."""
+    _, bbody = build_behemoth()
+    _, cbody = build_class_explorer()
+    def body_only(b):
+        i = b.find('</h1>'); return b[i + 5:] if i >= 0 else b
+    head = ('<div class="crumbs"><a href="index.html">Home</a> &rsaquo; System &amp; build &rsaquo; Class model</div>'
+            '<h1>Class model &mdash; domain object model</h1>'
+            '<p class="lead">The full PureScore object model two ways: the pan/zoom <b>class diagram</b> (all classes &amp; '
+            'relations) and the interactive <b>class explorer</b> (pick a class for its fields, relations, table, API and '
+            'stories). Both are derived from the same spec.</p>')
+    return "Class model", (head + '<h2 id="diagram">Class diagram</h2>' + body_only(bbody)
+                           + '<hr><h2 id="explorer">Class explorer</h2>' + body_only(cbody))
 
 
 # =================================================================== WEARABLE CORROBORATION (closes F4)

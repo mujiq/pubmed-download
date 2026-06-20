@@ -164,7 +164,7 @@ NAV = [
  ("3 · Making it personal", [(DOCMAP["08"], SHORT["08"], "08"), (DOCMAP["09"], SHORT["09"], "09"),
                  (DOCMAP["10"], SHORT["10"], "10"), ("appendix-personas.html", "Personas"),
                  ("appendix-persona-matrix.html", "Persona matrix"),
-                 ("purescore-male.html", "PureScore — Male"), ("purescore-female.html", "PureScore — Female")]),
+                 ("purescore-sex.html", "PureScore by sex")]),
  ("4 · Acting on it", [(DOCMAP["11"], SHORT["11"], "11"), (DOCMAP["12"], SHORT["12"], "12"),
                  ("appendix-adherence.html", "Adherence"), ("appendix-goals.html", "Goals"),
                  ("feedback-loop.html", "Feedback-loop demo")]),
@@ -174,7 +174,7 @@ NAV = [
                  (DOCMAP["19"], SHORT["19"], "19")]),
  ("6 · System & build", [("states.html", "Patient life-state machine"),
                  ("engagement-state-machines.html", "Engagement state machines"),
-                 ("behemoth-class-diagram.html", "Class diagram (domain model)"), ("class-explorer.html", "Class explorer"),
+                 ("class-model.html", "Class model"),
                  ("dossier-erd.html", "Data model (ERD)"), ("dossier-c4.html", "C4 architecture"),
                  ("dossier-api.html", "API contracts"), ("dossier-sequences.html", "Sequences"),
                  ("dossier-stories.html", "User stories")]),
@@ -208,13 +208,13 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "admin-weights.html":"Admin · Weights","admin-lifestyle.html":"Admin · Lifestyle",
           "admin-personas.html":"Admin · Personas","admin-governance.html":"Admin · Governance",
           "feedback-loop.html":"Live feedback-loop demo","states.html":"Patient life-state machine",
-          "behemoth-class-diagram.html":"Class diagram (domain model)",
+          "class-model.html":"Class model",
           "engagement-state-machines.html":"Engagement state machines",
           "purescore-uber-map.html":"Calculation Explorer",
           "wearable-baselines.html":"Wearable Baselines",
           "purescore-overview.html":"PureScore · Overview","purescore-wearable-baselines.html":"Baselines (Wearables)",
-          "purescore-male.html":"PureScore — Male","purescore-female.html":"PureScore — Female",
-          "class-explorer.html":"Class Explorer","dossier-sequences.html":"Sequences",
+          "purescore-sex.html":"PureScore by sex",
+          "dossier-sequences.html":"Sequences",
           "dossier-erd.html":"Data model (ERD)","dossier-c4.html":"C4 architecture",
           "dossier-api.html":"API contracts","dossier-stories.html":"User stories",
           "appendix-biomarkers.html#spreadsheet":"Biomarkers grid","appendix-wearables.html#spreadsheet":"Wearables grid","appendix-personas.html#spreadsheet":"Personas grid",
@@ -361,7 +361,7 @@ def render_index():
           '<h3>Clinician</h3><p>How the score is kept safe, contextual and reviewable. Jump to the Doctor\'s board.</p>'
           '<div class="role-links"><a href="16-safety-governance-and-regulatory.html">Safety &amp; governance</a>'
           '<a href="10-clinical-scores-integration.html">Clinical scores</a><a href="appendix-coverage-audit.html">Coverage audit</a></div></a>'
-          '<a class="card role" href="class-explorer.html"><div class="role-i">🛠️</div>'
+          '<a class="card role" href="class-model.html"><div class="role-i">🛠️</div>'
           '<h3>Engineer</h3><p>The production object model and contracts. Start with the class explorer.</p>'
           '<div class="role-links"><a href="dossier-erd.html">Data model (ERD)</a>'
           '<a href="dossier-c4.html">C4 architecture</a><a href="dossier-api.html">API contracts</a></div></a></div>'),
@@ -402,7 +402,7 @@ def render_index():
                        ("admin-governance.html","Governance & sign-off","Workflow, gates, audit")]:
         b.append('<a class="card" href="%s"><h3>%s</h3><p>%s</p></a>' % (href, t, d))
     b.append('</div><div class="section-h">Diagrams &amp; system maps</div><div class="grid c3">'
-             '<a class="card" href="behemoth-class-diagram.html"><h3>Behemoth class diagram</h3>'
+             '<a class="card" href="class-model.html"><h3>Class model</h3>'
              '<p>The full PureScore object model — markers, pillars, reservoirs, engine and feedback loop — in one class diagram.</p></a>'
              '<a class="card" href="states.html"><h3>Patient life-state machine</h3>'
              '<p>An interactive statechart of every life state a patient can occupy — a concurrent vector across Care status, '
@@ -458,12 +458,12 @@ def main():
                       ("questions-hub.html", "build_questions_hub"), ("eligibility-gating.html", "build_eligibility"),
                       ("appendix-onboarding.html", "build_onboarding"),
                       ("appendix-wearable-corroboration.html", "build_wearable_corroboration"),
-                      ("behemoth-class-diagram.html", "build_behemoth"),
+                      ("class-model.html", "build_class_model"),
                       ("purescore-uber-map.html", "build_purescore_uber"),
                       ("purescore-overview.html", "build_purescore_overview"),
                       ("purescore-wearable-baselines.html", "build_wearable_baselines"),
-                      ("purescore-male.html", "build_purescore_male"), ("purescore-female.html", "build_purescore_female"),
-                      ("class-explorer.html", "build_class_explorer"), ("dossier-sequences.html", "build_sequences"),
+                      ("purescore-sex.html", "build_purescore_sex"),
+                      ("dossier-sequences.html", "build_sequences"),
                       ("dossier-erd.html", "build_erd"), ("dossier-c4.html", "build_c4"),
                       ("dossier-api.html", "build_api"), ("dossier-stories.html", "build_stories")]:
         build = getattr(C, bname, None)
@@ -557,8 +557,8 @@ def _consistency_check():
 
 # ----------------------------------------------------------------- "Connects to" footer (auto-derived)
 _DIAGRAMS = {"purescore-uber-map.html", "purescore-uber-map.html", "states.html", "engagement-state-machines.html",
-             "behemoth-class-diagram.html", "dossier-erd.html", "dossier-c4.html", "dossier-sequences.html",
-             "class-explorer.html", "wearable-baselines.html", "purescore-wearable-baselines.html"}
+             "class-model.html", "dossier-erd.html", "dossier-c4.html", "dossier-sequences.html",
+             "class-model.html", "wearable-baselines.html", "purescore-wearable-baselines.html"}
 _GRID_OF = {"appendix-biomarkers.html": "appendix-biomarkers.html#spreadsheet", "appendix-wearables.html": "appendix-wearables.html#spreadsheet",
             "appendix-personas.html": "appendix-personas.html#spreadsheet", "appendix-lifestyles.html": "appendix-lifestyles.html#spreadsheet",
             "appendix-adherence.html": "appendix-adherence.html#spreadsheet", "appendix-goals.html": "appendix-goals.html#spreadsheet",
@@ -569,20 +569,20 @@ _CONNECTS_EXTRA = {
  "index.html": ["purescore-uber-map.html", "purescore-overview.html", DOCMAP["01"]],
  "purescore-overview.html": [DOCMAP["03"], DOCMAP["02"], "purescore-uber-map.html"],
  DOCMAP["02"]: ["appendix-biomarkers.html", "appendix-biomarkers.html#spreadsheet", DOCMAP["03"]],
- DOCMAP["03"]: ["purescore-uber-map.html", DOCMAP["04"], "behemoth-class-diagram.html"],
- DOCMAP["04"]: [DOCMAP["03"], "behemoth-class-diagram.html", "purescore-uber-map.html"],
+ DOCMAP["03"]: ["purescore-uber-map.html", DOCMAP["04"], "class-model.html"],
+ DOCMAP["04"]: [DOCMAP["03"], "class-model.html", "purescore-uber-map.html"],
  DOCMAP["05"]: ["states.html", "purescore-uber-map.html", DOCMAP["03"]],
  DOCMAP["06"]: ["dossier-erd.html", DOCMAP["07"]],
  DOCMAP["07"]: ["appendix-wearables.html", "appendix-biomarkers.html", "questions-hub.html"],
  DOCMAP["11"]: ["engagement-state-machines.html", "appendix-adherence.html", "appendix-goals.html", DOCMAP["12"]],
  DOCMAP["12"]: [DOCMAP["11"], "appendix-adherence.html"],
  DOCMAP["09"]: ["states.html", DOCMAP["08"]],
- DOCMAP["08"]: ["appendix-personas.html", "purescore-male.html", "purescore-female.html"],
+ DOCMAP["08"]: ["appendix-personas.html", "purescore-sex.html"],
  DOCMAP["16"]: ["states.html", DOCMAP["17"]],
  "appendix-coverage-audit.html": ["questions-hub.html", "appendix-question-bank.html", "states.html"],
  "questions-hub.html": ["appendix-onboarding.html", "appendix-question-bank.html", "eligibility-gating.html"],
  "states.html": [DOCMAP["09"], "appendix-goals.html", DOCMAP["05"]],
- "behemoth-class-diagram.html": ["class-explorer.html", "dossier-erd.html", DOCMAP["03"]],
+ "class-model.html": ["dossier-erd.html", DOCMAP["03"]],
 }
 def _navlabel(fn):
     for g, items in NAV:
