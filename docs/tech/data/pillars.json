@@ -225,7 +225,7 @@
   [
    "REN",
    "Renal",
-   "renal reserve · KDIGO eGFR×UACR heatmap (Doc 08)",
+   "renal reserve · KDIGO eGFR×UACR heatmap (Doc 10)",
    [
     [
      "eGFR (cystatin-C)",
@@ -454,7 +454,7 @@
      "0.3–0.7 sustained",
      ">0.7 / febrile",
      ".06",
-     "wearable (Oura/Whoop); also ENDO cycle — Doc 18",
+     "wearable (Oura/Whoop); also ENDO cycle — Doc 07",
      0
     ]
    ]
@@ -552,7 +552,7 @@
   ],
   [
    "ENDO",
-   "Endocrine & Hormonal (sex-specific, Doc 05)",
+   "Endocrine & Hormonal (sex-specific, Doc 08)",
    "allostatic/stress load · metabolic · bone reserve",
    [
     [
@@ -596,11 +596,11 @@
      "—",
      "P/X",
      1,
-     "see Doc 05 by phase/stage",
+     "see Doc 08 by phase/stage",
      "—",
      "—",
      ".34",
-     "Doc 05",
+     "Doc 08",
      0
     ],
     [

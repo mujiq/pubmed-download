@@ -136,7 +136,7 @@
     "kind": "anchor",
     "corroborated_by": []
    },
-   "source": "Doc 05 sex-specific models",
+   "source": "Doc 08 sex-specific models",
    "flag": "illustrative-reverify"
   },
   {
@@ -250,7 +250,7 @@
     "kind": "anchor",
     "corroborated_by": []
    },
-   "source": "OMICS Introductory Report; Doc 15 UAE localization",
+   "source": "OMICS Introductory Report; Doc 18 UAE localization",
    "flag": "illustrative-reverify"
   },
   {
@@ -1048,7 +1048,7 @@
      "lab.cotinine"
     ]
    },
-   "source": "OMICS Introductory Report; Doc 15 (shisha prevalence UAE)",
+   "source": "OMICS Introductory Report; Doc 18 (shisha prevalence UAE)",
    "flag": "illustrative-reverify"
   },
   {
@@ -1780,7 +1780,7 @@
     "kind": "perceived",
     "corroborated_by": []
    },
-   "source": "Goal stream (Doc 18) — steers nudge prioritization (Doc 07)",
+   "source": "Goal stream (Doc 07) — steers nudge prioritization (Doc 11)",
    "flag": "illustrative-reverify"
   }
  ]

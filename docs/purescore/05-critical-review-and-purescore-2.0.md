@@ -45,7 +45,7 @@ direction**.
 | **GLP-1 rapid loss** | BMI improves → BCM looks better | **Muscle/sarcopenia** (ALMI, grip) surfaced; modifiability flags lean-mass loss |
 | **Athlete / muscular** | Low RHR/glucose, BMI 28 (muscle), high creatinine → false eGFR drop, BCM penalty | Athlete persona + **cystatin-C-preferred eGFR**; personal baseline; BMI deferred to body-comp |
 | **"Skinny-fat" / TOFI** | Normal BMI → **false green**, missed insulin resistance | Early-warning (§5) on waist/HOMA-IR/visceral; low coverage flags "measure this" |
-| **Normal pregnancy** (flag missing) | Physiologic anemia/eGFR rise/glucose shift → multi-pillar false red | Pregnancy frame (Doc 05); **but pre-eclampsia/GDM never masked** (absolute anchors retained) |
+| **Normal pregnancy** (flag missing) | Physiologic anemia/eGFR rise/glucose shift → multi-pillar false red | Pregnancy frame (Doc 08); **but pre-eclampsia/GDM never masked** (absolute anchors retained) |
 | **Multimorbid / very elderly** | Very low worst-sensitive score; non-actionable; demoralizing | **Dual framing** (§6): absolute + progress-to-attainable; competing-risk weighting mutes irrelevant pillars |
 | **FH / high Lp(a)** | Correct red, but nudges imply lifestyle fixes it | **Modifiability** dimension (§4) marks fixed vs modifiable; nudges route to clinical/med, not blame |
 | **Dialysis (ESRD)** | eGFR ~0 → REN permanently "critical", uninformative | **ESRD-on-RRT reference frame** (§3.3): dialysis-adequacy, not eGFR |
@@ -115,7 +115,7 @@ True emergencies with corroboration are **never delayed**; isolated implausible 
 reconfirm instead of a false alarm. (Hemolyzed K⁺ → Watch+reconfirm; K⁺ 6.5 *with* peaked-T-wave
 symptom report → immediate.)
 
-**Wearable-tiered critical gate (D22, Doc 18 §2).** `device_low_quality` above is set by the
+**Wearable-tiered critical gate (D22, Doc 07 §2).** `device_low_quality` above is set by the
 wearable trust tier: a **consumer-validated or inferential** wearable anomaly maps to
 `Watch / Advisory` and **cannot reach red/critical without a clinical-grade confirmation**
 (CGM / validated cuff / single-lead ECG, or a lab). Clinical-grade wearables *can* corroborate and
@@ -129,7 +129,7 @@ computed per-pillar and rolled up.
 
 | Dim | Symbol | Definition (per pillar k, rolled up by `W_k`) | Range |
 |---|---|---|---|
-| **Confidence** | `Cf_k` | `cov_k · meanConf_k · stability_k` (coverage × source/recency quality × inverse volatility); `meanConf_k` carries the per-input trust flags & wearable tier (Doc 01 §2, Doc 18 §1–2) | 0–100 |
+| **Confidence** | `Cf_k` | `cov_k · meanConf_k · stability_k` (coverage × source/recency quality × inverse volatility); `meanConf_k` carries the per-input trust flags & wearable tier (Doc 06 §2, Doc 07 §1–2) | 0–100 |
 | **Data sufficiency** | `Su_k` | weighted fraction of pillar backed by **fresh patient** data; `Su_k < τ_su` ⇒ **INSUFFICIENT** flag (score provisional) | 0–100 |
 | **Criticality** | `Cr` | independent badge: `(max escalation tier, count of red/critical markers)` — *not* derivable from the number | tier+count |
 | **Trajectory / momentum** | `Tr_k` | robust slope of `S_k` over a window → ↑improving / →stable / ↓worsening + rate | signed |
@@ -176,7 +176,7 @@ autonomic signal is shown honestly, and reported as a tier **low / elevated / hi
    best modelled as a reservoir (Doc 04) plus this companion readout.
 
 **What `St` may do:** raise the **Early-warning** ladder (§5) to Watch/Advisory, and re-rank
-stress-reducing actions in the nudge engine (Doc 07). **What it never does:** move the headline
+stress-reducing actions in the nudge engine (Doc 11). **What it never does:** move the headline
 PureScore, set or clear a band, or trigger a critical.
 
 ## 5. Early-detection layer (cross-pillar visibility)
@@ -195,13 +195,13 @@ accumulates:
 ```
 
 Sensitivity grows with `n`; cold-start leans on population, so no hard switch. (Consistent with
-Doc 09 shrinkage.) This catches "your RHR 52→60, still green" before any band is crossed.
+Doc 13 shrinkage.) This catches "your RHR 52→60, still green" before any band is crossed.
 
 **This `z_i` is the engine's feedback term.** The same personal z drives **Stage 2b** of the core
 score (Doc 03 §2b): better-than-baseline nudges PureScore up, worse-than-baseline trends it down —
 continuously, bounded by `κ_resp` and `band_clamp` so it never relaxes a clinical anchor or clears a
 critical. One signal, three surfaces: it moves **the number**, the **Trajectory** arrow (§5.2), and
-the **Early-warning** ladder (§5.3) — the substrate of the patient feedback loop (Doc 07 §3.4).
+the **Early-warning** ladder (§5.3) — the substrate of the patient feedback loop (Doc 11 §3.4).
 
 ### 5.2 Motion & within-green gradient
 - **Trajectory**: robust slope + acceleration of each marker, pillar, and PureScore.
@@ -256,10 +256,10 @@ framed as personal failure.
   anchors + personal baseline**, and **Confidence is reduced** — we never lean on unreliable cohort
   statistics.
 - **Fairness mechanics**: race-free eGFR/CKD-EPI (2021); **robust/log transforms** for skewed
-  markers (CRP, TG, ferritin) with `Sk` surfaced; **partial pooling** for small cells (Doc 09);
-  **subgroup calibration & error-rate parity** as a release gate (Doc 09 §5, Doc 11).
+  markers (CRP, TG, ferritin) with `Sk` surfaced; **partial pooling** for small cells (Doc 13);
+  **subgroup calibration & error-rate parity** as a release gate (Doc 13 §5, Doc 16).
 - No protected-class attribute or proxy may worsen a score, price, or access (README §5.5,
-  Doc 10, Doc 11) — representativeness adjusts *confidence*, never *penalty*.
+  Doc 19, Doc 16) — representativeness adjusts *confidence*, never *penalty*.
 
 ## 8. Is PureScore actually useful? (honest verdict)
 
@@ -271,10 +271,10 @@ framed as personal failure.
   direction (§4), (c) the personal-baseline early-warning layer (§5), and (d) dual framing (§6).
   The single number is necessary but never sufficient — its value comes from the vector around it.
 - **Still required before any real use**: prospective calibration, fairness audit, and the
-  validation gates of Doc 09; clinician-in-the-loop and the governance of Doc 11. These dimensions
-  are *design*, not evidence — they must be validated, not asserted (the Babylon lesson, Doc 00).
+  validation gates of Doc 13; clinician-in-the-loop and the governance of Doc 16. These dimensions
+  are *design*, not evidence — they must be validated, not asserted (the Babylon lesson, Doc 01).
 
-## 9. New/changed constants (versioned; calibrate per Doc 09)
+## 9. New/changed constants (versioned; calibrate per Doc 13)
 | Symbol | Meaning | Default |
 |---|---|---|
 | `c_conf` | confounder down-weight (per drug×marker) | 0.5–0.8 |
@@ -285,7 +285,7 @@ framed as personal failure.
 | within-green gradient max | risk at green edge | 0.10 |
 | `Rp*` | representativeness floor → suppress cohort blend | cohort-specific |
 
-All changes are model-version bumps requiring re-validation (Doc 03 §8, Doc 09, Doc 11).
+All changes are model-version bumps requiring re-validation (Doc 03 §8, Doc 13, Doc 16).
 
 ## 10. Implementation status (interactive calculator)
 The `purescore-architecture.html` calculator now **computes** (not just illustrates) the 2.0 layer,
@@ -304,5 +304,5 @@ so the behaviour is inspectable against the edge-case personas:
 | Critical-value confirmation: isolated implausible → reconfirm, not Alert | **Live** | data-quality flag, never auto-suppresses a confirmed critical (decision **D14**) |
 
 The synthetic-history items are **demonstrations of the method**, not evidence; production requires
-real longitudinal data and the validation gates of Doc 09. Every decision behind this design is
+real longitudinal data and the validation gates of Doc 13. Every decision behind this design is
 recorded in [`decisions.md`](./decisions.md) (D1–D12).

@@ -1,15 +1,15 @@
 # 13 — Validation & Calibration Harness (PureScore 2.0)
 
 > Binding conventions: `README.md §3`. This document specifies **how PureScore 2.0 would be
-> validated and calibrated** — the headline score, every companion meta-vector dimension (Doc 12 §4),
-> and the personal-baseline early-warning layer (Doc 12 §5) — as an executable harness of **gates**.
-> It is the 2.0 extension of the anti-Babylon backbone (Doc 09 §4): *no claim ships ahead of its
-> evidence* (Doc 00 §3.1). It governs evidence; it does not assert evidence has been gathered.
+> validated and calibrated** — the headline score, every companion meta-vector dimension (Doc 05 §4),
+> and the personal-baseline early-warning layer (Doc 05 §5) — as an executable harness of **gates**.
+> It is the 2.0 extension of the anti-Babylon backbone (Doc 13 §4): *no claim ships ahead of its
+> evidence* (Doc 01 §3.1). It governs evidence; it does not assert evidence has been gathered.
 >
 > Decisions referenced: **D1** (output model: score + vector + early-warning), **D2** (tiered
 > Watch→Advisory→Alert), **D6** (empirical-Bayes personal baseline), **D7** (defensive bias),
 > **D9–D10** (seeded synthetic substrate, diagonal-covariance approx.), **D13** (log baseline for
-> skew), **D14** (reconfirm pathway). Gates inherit Doc 09 §4.6 and Doc 11 §8; nothing here relaxes
+> skew), **D14** (reconfirm pathway). Gates inherit Doc 13 §4.6 and Doc 16 §8; nothing here relaxes
 > the hard non-negotiables (README §5).
 >
 > **All thresholds, tolerances, and sample-size floors below are illustrative versioned config
@@ -23,9 +23,9 @@
 1. Each **validation object** (§1) has its own pass/fail gate — the single number, every companion
    dimension, and each early-warning tier are validated **separately**, never bundled.
 2. Every metric is reported with an **interval** and **per audited subgroup** (§6); a point estimate
-   without a CI, or an aggregate without subgroup parity, is **not a pass** (Doc 09 §4.2, §5).
+   without a CI, or an aggregate without subgroup parity, is **not a pass** (Doc 13 §4.2, §5).
 3. Synthetic data (§2a) **demonstrates the method**; it is never evidence. A claim is promoted only
-   on **prospective, real, linked** data (§2b) passing §9 with governance sign-off (Doc 11 §8).
+   on **prospective, real, linked** data (§2b) passing §9 with governance sign-off (Doc 16 §8).
 
 ---
 
@@ -34,12 +34,12 @@
 Each row is an independently gated object. "Label?" = does it admit a hard outcome label, or only a
 process/consistency criterion.
 
-| # | Object (Doc 12 ref) | What is validated | Label? | Primary gate (§) |
+| # | Object (Doc 05 ref) | What is validated | Label? | Primary gate (§) |
 |---|---|---|---|---|
 | O0 | **Headline PureScore** (§4) | risk discrimination + calibration to outcomes | yes (proxy) | §3, §4 |
 | O1 | **Confidence** `Cf` (§4) | does low `Cf` predict larger error? (error-vs-confidence monotonicity) | indirect | §3.4, §7 |
 | O2 | **Data sufficiency** `Su` (§4) | `INSUFFICIENT` flag fires iff fresh-data fraction `< τ_su`; provisional scores marked | rule | §9 (rule check) |
-| O3 | **Criticality** badge `Cr` (§4) | tier+count matches Doc 02/03 ground truth; no false-reassurance | yes | §5 (false-critical), Doc 09 §4.4 |
+| O3 | **Criticality** badge `Cr` (§4) | tier+count matches Doc 02/03 ground truth; no false-reassurance | yes | §5 (false-critical), Doc 13 §4.4 |
 | O4 | **Trajectory** `Tr` (§4) | slope sign/rate accuracy vs held-out future; lead over level-crossing | yes | §3, §5 |
 | O5 | **Volatility** `Vo` (§4) | within-patient variance estimate calibrated; damps `Cf`/`Tr` correctly | indirect | §7 |
 | O6 | **Early-warning tiers** Watch/Advisory/Alert (§5.3) | lead-time, sens/spec/**PPV at realistic prevalence**, alarm budget | yes (proxy) | **§5** |
@@ -68,22 +68,22 @@ patients with **known ground truth**, so detectors can be exercised before any r
   (hemolyzed K⁺, bad-contact SpO₂ — exercises the D14 reconfirm path), and OOD/small-cell cases.
 - **Stated limitation:** the generator encodes our *assumptions*; metrics on it measure
   self-consistency, **not** real-world performance. It can show a detector is broken; it can never
-  show it works. Any synthetic result is labelled `SYNTHETIC — not evidence` (Doc 12 §10).
+  show it works. Any synthetic result is labelled `SYNTHETIC — not evidence` (Doc 05 §10).
 
 ### 2b. Real-data requirements for true validation (the actual evidence)
 
 | Requirement | Spec |
 |---|---|
-| **Prospective longitudinal cohort** | repeated per-patient measurement over time in the *deployment* population; pre-registered protocol, pre-specified endpoints (Doc 09 §4.5) |
+| **Prospective longitudinal cohort** | repeated per-patient measurement over time in the *deployment* population; pre-registered protocol, pre-specified endpoints (Doc 13 §4.5) |
 | **Outcome labels** | linked hard outcomes: all-cause/cause-specific mortality, incident MACE, T2D/CKD progression, hospitalization; event dates for time-to-event |
-| **Linkage** | record-linkage to EHR/claims/registry/vital-records, consented (Doc 11 §4); enables the survival loss of Doc 09 §3.1 |
-| **External + temporal split** | a second site and a *later* window than training (Doc 09 §4.5) — transported models decay |
+| **Linkage** | record-linkage to EHR/claims/registry/vital-records, consented (Doc 16 §4); enables the survival loss of Doc 13 §3.1 |
+| **External + temporal split** | a second site and a *later* window than training (Doc 13 §4.5) — transported models decay |
 | **Early-warning truth** | the threshold-crossing / clinical event each Watch/Advisory/Alert is meant to anticipate, with timestamps (for lead-time §5) |
 
-### 2c. Reference-distribution sources (per Doc 09)
+### 2c. Reference-distribution sources (per Doc 13)
 
 Population CDFs `F_{i,c}` come from **NHANES / UK-Biobank-class** datasets and disease registries,
-stratified per the Doc 09 §1.1 tree, pooled per §1.3, carrying `source, sample_n, vintage` and a
+stratified per the Doc 13 §1.1 tree, pooled per §1.3, carrying `source, sample_n, vintage` and a
 **coverage flag** (own leaf vs pooled ancestor). These set reference distributions and OOD envelopes
 (§7); they are **not** outcome-label sources — discrimination/calibration (§3–4) still require §2b.
 
@@ -96,17 +96,17 @@ scored on ranking power.
 
 | Metric | Use | Target (illustrative) |
 |---|---|---|
-| **AUROC** / time-dependent AUC | overall separation; horizon-specific | ≥ target, CI lower bound ≥ incumbent (Doc 08) |
+| **AUROC** / time-dependent AUC | overall separation; horizon-specific | ≥ target, CI lower bound ≥ incumbent (Doc 10) |
 | **Harrell's / Uno's C** | time-to-event concordance (risk ordering) | ≥ target |
 | **AUPRC** | rare outcomes (AUROC flatters at low prevalence) | reported with prevalence; baseline = prevalence |
-| **NRI / IDI** | added value over FINDRISC/ASCVD/SCORE2 (Doc 09 §4.2) | PureScore must *add*, not repackage |
+| **NRI / IDI** | added value over FINDRISC/ASCVD/SCORE2 (Doc 13 §4.2) | PureScore must *add*, not repackage |
 
-All reported with **bootstrap CIs**; a point estimate alone is not a pass (Doc 09 §4.2).
+All reported with **bootstrap CIs**; a point estimate alone is not a pass (Doc 13 §4.2).
 
 **Label scarcity (a wellness score rarely has hard events):** handled with explicit caveats —
 - **Proxy / surrogate endpoints** — validated intermediate markers (HbA1c progression, UACR rise,
   BP control, VO₂max change) stand in where hard events are sparse, **flagged as surrogate** and
-  never claimed as the hard outcome. A surrogate gain is necessary, not sufficient (Doc 00 §3.1).
+  never claimed as the hard outcome. A surrogate gain is necessary, not sufficient (Doc 01 §3.1).
 - **Composite & competing risks** — composite endpoints raise event counts but are reported
   decomposed; competing risks (death before the event of interest) use cause-specific / Fine–Gray.
 - **Honest reporting** — every discrimination claim names whether its endpoint is **hard or
@@ -117,7 +117,7 @@ All reported with **bootstrap CIs**; a point estimate alone is not a pass (Doc 0
 
 ## 4. Calibration
 
-Calibration asks: do predicted risks match observed event rates? (Extends Doc 09 §4.1.)
+Calibration asks: do predicted risks match observed event rates? (Extends Doc 13 §4.1.)
 
 | Instrument | Definition | Target (illustrative) |
 |---|---|---|
@@ -129,14 +129,14 @@ Calibration asks: do predicted risks match observed event rates? (Extends Doc 09
 
 **Recalibration** when out of bounds: **Platt** (logistic) for slope/intercept drift, **isotonic**
 for monotone non-linear miscalibration (needs more data, can overfit small cells — guard with §6
-pooling). Recalibration is **versioned like any parameter change** (Doc 09 §4.1, Doc 11 §5.1) — never
+pooling). Recalibration is **versioned like any parameter change** (Doc 13 §4.1, Doc 16 §5.1) — never
 a silent threshold move (README §5; F5).
 
 ---
 
 ## 5. Early-warning evaluation (the novel part — critical)
 
-The early-warning layer (Doc 12 §5, D2) is the main clinical value-add and the highest-risk surface
+The early-warning layer (Doc 05 §5, D2) is the main clinical value-add and the highest-risk surface
 (it is where a false alarm becomes alarm fatigue and a missed signal becomes the Babylon failure).
 It is evaluated **per tier** against labelled incubation episodes (§2a synthetic for development;
 §2b real for evidence).
@@ -181,7 +181,7 @@ Per tier (Watch / Advisory / Alert), at the operating point:
 - Budget is **never** met by suppressing a genuine Alert (README §5.4; never trade sensitivity for
   quiet) — only by raising the Advisory confirmation bar (§5.2).
 
-### 5.4 False-critical rate and the reconfirm pathway (Doc 12 §3.4, D14)
+### 5.4 False-critical rate and the reconfirm pathway (Doc 05 §3.4, D14)
 
 - **False-critical rate** = isolated implausible / low-device-quality / drug-expected values that
   would *wrongly* fire the emergency cascade. The D14 path routes these to **Watch + reconfirm**
@@ -189,19 +189,19 @@ Per tier (Watch / Advisory / Alert), at the operating point:
   and confirming **no false emergency** fired.
 - **Hard counter-gate (safety):** the reconfirm path must **never** downgrade a *confirmed*
   (full-confidence, corroborated) critical. The suite asserts a true K⁺ 7.0 with corroboration still
-  fires immediately (Doc 11 §2.1) — i.e. false-reassurance rate stays ≈ 0 (Doc 09 §4.4). A single
+  fires immediately (Doc 16 §2.1) — i.e. false-reassurance rate stays ≈ 0 (Doc 13 §4.4). A single
   suppressed true emergency is a hard fail regardless of every other metric.
 
 ---
 
-## 6. Fairness & equity (ties to D7, Doc 09 §5, Doc 10/11)
+## 6. Fairness & equity (ties to D7, Doc 13 §5, Doc 19/16)
 
 Every §3–§5 metric is **recomputed per subgroup and per intersection** and must meet parity
-tolerances; the fairness audit has **veto power** (Doc 09 §5, Doc 11 §8 G7).
+tolerances; the fairness audit has **veto power** (Doc 13 §5, Doc 16 §8 G7).
 
 ### 6.1 Subgroup slices
 
-Sex (`sex`, a legitimate physiological input — Doc 09 §5.3); **life stage** (cycle phase, pregnancy,
+Sex (`sex`, a legitimate physiological input — Doc 13 §5.3); **life stage** (cycle phase, pregnancy,
 post-partum, menopause, andropause); age band; ancestry / genetic background; **representativeness /
 OOD bucket** (`Rp` tier, §7); plus their intersections (e.g. menopausal × low-`Rp` × minority).
 
@@ -213,14 +213,14 @@ OOD bucket** (`Rp` tier, §7); plus their intersections (e.g. menopausal × low-
 | **Error-rate parity** | equalized-odds-style **TPR/FPR gaps** of the critical cascade & early-warning, esp. **false-reassurance** | gap ≤ tol, CI excludes harm |
 | **Predictive parity** | PPV/NPV across slices (tie to §5.2 prevalence) | within tol |
 | **Max–min performance ratio** | worst-subgroup / best-subgroup for each metric | ≥ ratio floor (e.g. ≥ 0.8) |
-| **No-proxy hard gate** | no protected attribute **or proxy** worsens score/access/price | **zero tolerance** (Doc 10/11; README §5.5) |
+| **No-proxy hard gate** | no protected attribute **or proxy** worsens score/access/price | **zero tolerance** (Doc 19/16; README §5.5) |
 
 - **No-proxy gate (binding):** train an adversary to reconstruct each protected attribute from the
   feature set; the score's residual correlation with the attribute, after conditioning on legitimate
-  clinical need, must not worsen access (Doc 09 §5.3). `sex_at_birth`/hormonal status are *kept* as
-  clinical inputs; race-as-biology is **not** used (race-free eGFR, Doc 12 §7). Any proxy that
+  clinical need, must not worsen access (Doc 13 §5.3). `sex_at_birth`/hormonal status are *kept* as
+  clinical inputs; race-as-biology is **not** used (race-free eGFR, Doc 05 §7). Any proxy that
   worsens outcomes is removed/neutralized and the fix re-validated.
-- **Small cells:** **partial pooling** toward parent strata (Doc 09 §1.3) — never scored from noise,
+- **Small cells:** **partial pooling** toward parent strata (Doc 13 §1.3) — never scored from noise,
   never silently flattened; the audit checks both over-pooling (erases a real subgroup signal) and
   under-pooling (thin cell from noise). Subgroup recalibration is itself re-validated so fixing one
   group does not harm another.
@@ -232,32 +232,32 @@ OOD bucket** (`Rp` tier, §7); plus their intersections (e.g. menopausal × low-
 | Test | Method | Pass |
 |---|---|---|
 | **Skew / heavy-tail transform** (D13) | inject spikes in CRP/UACR/ALT/FIB-4/bilirubin; compare raw-z vs log-baseline z | log-baseline does **not** raise false anomalies; raw slope/band logic preserved |
-| **Missing-data / imputation sensitivity** | ablate inputs; perturb imputations | `Su`/`INSUFFICIENT` fires; imputed-median pillar shows **low-coverage green**, never reassurance (Doc 11 §2.4); score stable to plausible imputations |
-| **Device-quality sensitivity** | degrade wearable/assay quality | `Cf`/`Vo` respond; confounded/low-quality markers down-weighted (Doc 12 §3.2), not scored |
-| **Adversarial / out-of-range inputs** | implausible & boundary values | plausibility/unit checks (Doc 01) catch; D14 reconfirm for criticals; no crash, no false cascade |
+| **Missing-data / imputation sensitivity** | ablate inputs; perturb imputations | `Su`/`INSUFFICIENT` fires; imputed-median pillar shows **low-coverage green**, never reassurance (Doc 16 §2.4); score stable to plausible imputations |
+| **Device-quality sensitivity** | degrade wearable/assay quality | `Cf`/`Vo` respond; confounded/low-quality markers down-weighted (Doc 05 §3.2), not scored |
+| **Adversarial / out-of-range inputs** | implausible & boundary values | plausibility/unit checks (Doc 06) catch; D14 reconfirm for criticals; no crash, no false cascade |
 | **Unit-error detection** | mg/dL↔mmol/L, °F↔°C, etc. | flagged by range/plausibility; never silently scored (F6) |
 
-Robustness is reported **alongside** responsiveness (Doc 09 §4.3): a detector stable only because it
+Robustness is reported **alongside** responsiveness (Doc 13 §4.3): a detector stable only because it
 is numb fails — it must absorb noise **and** still cross promptly on a true change.
 
 ---
 
 ## 8. Drift & monitoring (post-deployment)
 
-Once live, monitored continuously, then recalibrated on cadence (extends Doc 09 §4.7, Doc 11 §5.2).
+Once live, monitored continuously, then recalibrated on cadence (extends Doc 13 §4.7, Doc 16 §5.2).
 
 | Signal | Definition | Trigger |
 |---|---|---|
-| **PSI per marker & per pillar** | `Σ (p_i − q_i)·ln(p_i/q_i)` vs training reference | PSI > 0.1 watch, > 0.25 act → OOD handling (Doc 09 §4.5) |
+| **PSI per marker & per pillar** | `Σ (p_i − q_i)·ln(p_i/q_i)` vs training reference | PSI > 0.1 watch, > 0.25 act → OOD handling (Doc 13 §4.5) |
 | **Score drift** | distribution shift of headline & each `Cf/Su/Tr/Rp` dimension | beyond control band → review |
 | **Calibration drift** | rolling slope / E/O / Brier over a moving window | out of §4 bounds → **recalibration trigger** |
 | **Early-warning drift** | rolling alarm-rate, PPV, lead-time per tier | breach of §5 budget/PPV → recalibrate or re-gate |
 
 - **Recalibration cadence:** fixed scheduled cadence (README §5.6) **plus** any drift-triggered
-  off-cadence recalibration. Each recalibration is a **model-version bump** re-passing §9 (Doc 11 §5.1).
+  off-cadence recalibration. Each recalibration is a **model-version bump** re-passing §9 (Doc 16 §5.1).
 - **Shadow mode before promotion:** any new/recalibrated version runs **in shadow** (computed,
   logged, **not surfaced**) against live data until it meets §9 on the live population; safety-relevant
-  regressions can **auto-roll-back** to the last validated version (Doc 11 §5.2).
+  regressions can **auto-roll-back** to the last validated version (Doc 16 §5.2).
 
 ---
 
@@ -265,7 +265,7 @@ Once live, monitored continuously, then recalibrated on cadence (extends Doc 09 
 
 A version of PureScore 2.0 reaches **any real-world use** only if **every** gate is green, for the
 target population **and every audited subgroup (§6)**, signed by its named owner, and (for launches/
-claim changes) the Oversight Board (Doc 11 §5.6–§5.7, §8). **Default is No-Go**; a previously-green
+claim changes) the Oversight Board (Doc 16 §5.6–§5.7, §8). **Default is No-Go**; a previously-green
 gate does **not** carry across a version bump.
 
 ```
@@ -282,9 +282,9 @@ gate does **not** carry across a version bump.
    robustness:       skew/imputation/device/adversarial/unit tests pass; responsive on true change (§7)
    drift/ops:        PSI baselines set, shadow-mode passed, rollback live, model card published     (§8)
    prospective:      pre-registered PROSPECTIVE study PASSED in the deployment population (§2b)
-   governance:       clinician sign-off + Oversight Board approval (Doc 11 §8 G1–G12)
+   governance:       clinician sign-off + Oversight Board approval (Doc 16 §8 G1–G12)
  Any failure ⇒ NO-SHIP.  Versioning/re-validation rule: ANY change to a constant, band, weight,
- model, transform, threshold, or training/cohort dataset (Doc 03 §8, Doc 12 §9) is a version bump
+ model, transform, threshold, or training/cohort dataset (Doc 03 §8, Doc 05 §9) is a version bump
  that RE-RUNS this entire gate before promotion — synthetic results never substitute for §2b.
 ```
 
@@ -296,12 +296,12 @@ gate does **not** carry across a version bump.
 PureScore 2.0 *would* have to produce — the lead-time distributions, prevalence-correct PPVs, alarm
 budgets, per-subgroup calibration, and false-critical counts that *would* justify each claim. They
 are computable today only on the **seeded synthetic cohort (§2a)**, which demonstrates the harness
-**but is not evidence** (Doc 12 §10): it can prove a detector broken, never prove it works. Real
+**but is not evidence** (Doc 05 §10): it can prove a detector broken, never prove it works. Real
 **prospective, longitudinal, outcome-linked** data (§2b), passed through the §9 gate with the
-clinical governance and sign-off of Doc 11, are hard prerequisites for any real-world use. Until
+clinical governance and sign-off of Doc 16, are hard prerequisites for any real-world use. Until
 then PureScore 2.0 — the number, the companion vector, and especially the early-warning layer — is
 **design, not evidence**, and is claimed as nothing more. That discipline *is* the Babylon lesson
-(Doc 00): no claim ships ahead of its evidence.
+(Doc 01): no claim ships ahead of its evidence.
 
 ---
 
@@ -322,10 +322,10 @@ ground-truth risk model (non-circular), and reports on a held-out test split:
   sufficient. Early-warning lead-time / per-tier PPV are explicitly **deferred** to the longitudinal
   generator (§2a, §5), not claimed by the cross-sectional harness.
 
-*Cross-references: README §3 (conventions), §5 (non-negotiables); Doc 00 §3.1 (anti-Babylon);
-Doc 01 §4.2 (reference sources); Doc 02/03 §4–§5 (critical cascade, escalation); Doc 05 (sex-specific
-/ reproductive frames); Doc 08 (incumbent clinical scores, OOD); Doc 09 (cohorts, calibration,
-discrimination, fairness, drift — this doc is its 2.0 extension); Doc 10 (actuarial firewall);
-Doc 11 §2 (escalation/fail-safe), §5 (MLOps/versioning/shadow), §8 (Go/No-Go); Doc 12 §3–§7
+*Cross-references: README §3 (conventions), §5 (non-negotiables); Doc 01 §3.1 (anti-Babylon);
+Doc 06 §4.2 (reference sources); Doc 02/03 §4–§5 (critical cascade, escalation); Doc 08 (sex-specific
+/ reproductive frames); Doc 10 (incumbent clinical scores, OOD); Doc 13 (cohorts, calibration,
+discrimination, fairness, drift — this doc is its 2.0 extension); Doc 19 (actuarial firewall);
+Doc 16 §2 (escalation/fail-safe), §5 (MLOps/versioning/shadow), §8 (Go/No-Go); Doc 05 §3–§7
 (context-aware interpretation, companion vector, early-warning, dual framing, defensive bias);
 decisions.md D1–D14 (and D15 hormonal-milieu model).*

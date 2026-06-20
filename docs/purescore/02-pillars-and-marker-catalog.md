@@ -3,7 +3,7 @@
 > Binding conventions: `README.md §3`. Bands below are **illustrative, literature/guideline-
 > anchored values for a general adult cohort** and **must be re-verified and cohort-adjusted**
 > (age, sex, disease, medication) before production (README §5.6). Sex-specific overrides are in
-> Doc 05. `T` = tier (C=Core, P=Peripheral, X=Comprehensive). `2s` = two-sided (low *and* high are
+> Doc 08. `T` = tier (C=Core, P=Peripheral, X=Comprehensive). `2s` = two-sided (low *and* high are
 > adverse). `w` = within-pillar weight (relative).
 
 Notation for bands: **green** = optimal, **yellow** = caution, **red** = critical. Where a marker
@@ -49,7 +49,7 @@ Critical markers: HbA1c, fasting glucose, triglycerides (≥500 → pancreatitis
 ---
 
 ## Pillar 3 — REN · Renal
-Reservoir links: renal reserve. KDIGO uses a 2-D (eGFR × UACR) heatmap — see Doc 08.
+Reservoir links: renal reserve. KDIGO uses a 2-D (eGFR × UACR) heatmap — see Doc 10.
 
 | Marker | T | 2s | Green | Yellow | Red | w | Source |
 |--------|---|----|-------|--------|-----|---|--------|
@@ -91,7 +91,7 @@ Reservoir links: inflammatory load (a central hub — see Doc 04 coupling).
 | IL-6 (pg/mL) | X |  | <1.5 | 1.5–3 | >3 | .14 | research |
 | Albumin (inverse acute-phase, g/dL) | C | ✔ | 4.0–5.0 | 3.5–3.9 | <3.5 | .12 | lab |
 
-Critical markers: hsCRP/WBC acute (sepsis screen → immediate escalation, Doc 11).
+Critical markers: hsCRP/WBC acute (sepsis screen → immediate escalation, Doc 16).
 
 ---
 
@@ -112,7 +112,7 @@ Critical markers: Hemoglobin (severe anaemia), platelets (bleeding risk), SpO2.
 
 ---
 
-## Pillar 7 — ENDO · Endocrine & Hormonal  (sex-specific — see Doc 05)
+## Pillar 7 — ENDO · Endocrine & Hormonal  (sex-specific — see Doc 08)
 Reservoir links: allostatic/stress load, metabolic, bone reserve.
 
 | Marker | T | 2s | Green | Yellow | Red | w | Source |
@@ -120,12 +120,12 @@ Reservoir links: allostatic/stress load, metabolic, bone reserve.
 | TSH (mIU/L) | P | ✔ | 0.5–2.5 | 2.5–4.5 / 0.3–0.5 | >4.5 or <0.3 | .22 | ATA |
 | Free T4 (ng/dL) | P | ✔ | 0.9–1.6 | borderline | out of range | .10 | ATA |
 | Cortisol rhythm (AUC / diurnal slope) | X |  | healthy slope | flattening | flat/inverted | .14 | research |
-| **Sex hormones** (estradiol, progesterone, FSH/LH, testosterone, SHBG, AMH) | P/X | ✔ | **see Doc 05 by phase/stage** | — | — | .34 | Doc 05 |
+| **Sex hormones** (estradiol, progesterone, FSH/LH, testosterone, SHBG, AMH) | P/X | ✔ | **see Doc 08 by phase/stage** | — | — | .34 | Doc 08 |
 | Fasting cortisol (µg/dL) | P | ✔ | 5–15 | 15–20 | >20 or <3 | .10 | lab |
 | Prolactin | P |  | sex-specific | borderline | high | .10 | lab |
 
 Sex-hormone bands are **not constant** — they depend on cycle phase, pregnancy trimester,
-post-partum, and menopause stage (STRAW+10), and on hormone therapy. Doc 05 is authoritative.
+post-partum, and menopause stage (STRAW+10), and on hormone therapy. Doc 08 is authoritative.
 
 ---
 
@@ -142,7 +142,7 @@ Reservoir links: adiposity (burden), muscle/strength reserve (asset), bone reser
 | BMD T-score (DEXA) | X | — | ≥ −1.0 | −1.0 to −2.5 (osteopenia) | ≤ −2.5 (osteoporosis) | .20 | ISCD/WHO |
 | Visceral adipose (DEXA/MRI) | X |  | low | moderate | high | .16 | literature |
 
-Critical markers: severe sarcopenia, osteoporosis (fracture risk → FRAX, Doc 08).
+Critical markers: severe sarcopenia, osteoporosis (fracture risk → FRAX, Doc 10).
 
 ---
 
@@ -213,7 +213,7 @@ Reservoir links: allostatic/stress load (central burden), sleep debt (bidirectio
 
 **Hard safety rule:** any positive suicidality item (PHQ-9 item 9 > 0, or equivalent) forces the
 pillar to **red/critical** *irrespective of the total*, triggers immediate crisis-escalation
-pathway (Doc 11), and is **never** averaged away by the formula (Doc 03 §6 hard floors).
+pathway (Doc 16), and is **never** averaged away by the formula (Doc 03 §6 hard floors).
 
 ---
 
@@ -223,14 +223,14 @@ pathway (Doc 11), and is **never** averaged away by the formula (Doc 03 §6 hard
 - **Respiratory** (SpO2, FEV1, smoking): folded into HEM oxygen-transport + CV; severe values
   escalate independently.
 - **Adherence / engagement** (behavioural): not scored as health, but feeds the nudge engine's
-  feasibility model (Doc 07) and the reservoir inflows (behaviours, Doc 04).
+  feasibility model (Doc 11) and the reservoir inflows (behaviours, Doc 04).
 - **Stress / allostatic load** (PSS, HRV, resting-HR, cortisol slope): modelled as the cross-cutting
-  **ALLO** reservoir (Doc 04) and surfaced to users as the **Stress-load** companion score (Doc 12
+  **ALLO** reservoir (Doc 04) and surfaced to users as the **Stress-load** companion score (Doc 05
   §4.1) — deliberately **not** a standalone pillar, since its markers already live in MCS/ENDO/CV/SLP
   and a weighted pillar would double-count that burden (D24).
 
 ## Marker weights and pillar weights
 - Within-pillar weights `w_i` above are **defaults**; they are cohort-adjusted (e.g., UACR weight
-  rises in a diabetic cohort) per Doc 03 §3 and Doc 09.
+  rises in a diabetic cohort) per Doc 03 §3 and Doc 13.
 - Pillar weights `W_k` in PureScore are personalized (cohort, life stage, goals, acute events);
   see Doc 03 §5. Defaults and the personalization multipliers live there.

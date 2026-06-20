@@ -2,9 +2,9 @@
 
 > Read `README.md` first for binding conventions (symbols `R_k`, `PureScore`, cohort `c(p)`,
 > non-negotiables esp. §5.5 *no protected-class proxy may worsen price/access/care*). This
-> document depends on Doc 00 §4 (the rejection of *"impossible to lose money"*), Doc 03 (pillar
-> risks `R_k`, stack-rank percentiles, PureScore), and Doc 09 (calibration, fairness audit,
-> credibility). Doc 09 is the *validation gate* for everything priced here. Doc 11 owns
+> document depends on Doc 01 §4 (the rejection of *"impossible to lose money"*), Doc 03 (pillar
+> risks `R_k`, stack-rank percentiles, PureScore), and Doc 13 (calibration, fairness audit,
+> credibility). Doc 13 is the *validation gate* for everything priced here. Doc 16 owns
 > governance, filings, and appeals.
 >
 > **Reading-level warning.** This is the most legally dangerous document in the spec. Every
@@ -19,7 +19,7 @@
 ## 1. Intended uses, jurisdiction, and the permitted/prohibited line
 
 ### 1.1 What this layer is and is not
-PureScore is a **wellness-grade** score (README, Doc 00). The actuarial layer is a *derived,
+PureScore is a **wellness-grade** score (README, Doc 01). The actuarial layer is a *derived,
 gated* product that maps health-state signals to expected cost **for permitted population-level
 purposes only**. It is **not** a green light to risk-rate sick individuals out of coverage. The
 default posture is: PureScore informs **prevention economics and group/portfolio management**;
@@ -53,7 +53,7 @@ The engine produces three artefacts, with escalating governance:
 - **EU — Solvency II / IDD.** Capital adequacy (SCR/MCR), technical-provisions discipline, and
   product-oversight/governance (POG) under IDD; GDPR Art. 9 special-category (health) data
   constraints and automated-decision rights (Art. 22). Gender as a rating factor is prohibited
-  for insurance pricing (Test-Achats); **so the sex-specific PureScore models (Doc 05) must not
+  for insurance pricing (Test-Achats); **so the sex-specific PureScore models (Doc 08) must not
   flow into EU premium differentiation by sex.**
 - **Others (high level).** UK (FCA/PRA, Equality Act), Canada (provincial; genetic
   non-discrimination GNDA), Australia (life insurers' moratorium on genetic results below a
@@ -99,7 +99,7 @@ For a cohort `c` (or a permitted group `G` built from cohorts), expected annual 
   cohort-relative stack-rank percentile `q_k` (Doc 03 §2). Bounded; see §2.3.
 - `μ_res(B̃)` — **reservoir-trajectory** multiplier (Doc 04): chronic accumulated burden and its
   *direction* (worsening reservoirs cost more than a stable spot value; §2.4).
-- `μ_clin(Θ)` — **validated clinical-score** multiplier from Doc 08 equations (ASCVD/SCORE2,
+- `μ_clin(Θ)` — **validated clinical-score** multiplier from Doc 10 equations (ASCVD/SCORE2,
   FINDRISC, KDIGO, FIB-4, FRAX), used as actuarial covariates where they are prospectively
   outcome-linked. **GINA/GDPR-fenced inputs excluded from any pricing use.**
 - `TREND(t)` — medical-cost trend (utilization + unit-cost inflation), a standard actuarial
@@ -113,7 +113,7 @@ The log form is the working representation (additive, auditable, easy to constra
 
 ### 2.2 From PureScore / pillar stack-rank to actuarially-sound relativities
 A score is **not** a price. Relativities must be **fitted to observed cost**, not assumed from
-the score scale. Procedure (gated by Doc 09 calibration):
+the score scale. Procedure (gated by Doc 13 calibration):
 
 1. **Bin** each pillar's risk/percentile into actuarial cells (e.g., deciles of `R_k` or `q_k`).
 2. **Fit** a GLM (gamma or Tweedie with log link for cost; or two-part frequency×severity) of
@@ -131,7 +131,7 @@ the score scale. Procedure (gated by Doc 09 calibration):
 
 > **Hard rule.** Relativities are *empirical and validated*, never asserted. A pillar that does
 > not improve out-of-sample cost prediction on the priced population gets `μ_k ≡ 1` (no effect).
-> This is the anti-Babylon discipline (Doc 00 §3.1): no claim ahead of its evidence.
+> This is the anti-Babylon discipline (Doc 01 §3.1): no claim ahead of its evidence.
 
 ### 2.3 Bounding and the "no worsening the sick" envelope
 - Each `μ_k` is clamped to a defensible, filed band (e.g., `[0.7, 1.6]`) so no single signal can
@@ -188,7 +188,7 @@ A group's own experience is noisy; the manual rate is stable but generic. Blend 
 - `Z` rises with **exposure** (member-years, claim count): large groups earn more weight on their
   own experience; tiny groups stay near manual. This is the actuarial reason **individuals are
   near-uncreditable on their own** — `Z → 0` for a single life-year of experience.
-- `K` is estimated from the book (Doc 09 credibility section). PureScore can **sharpen the manual
+- `K` is estimated from the book (Doc 13 credibility section). PureScore can **sharpen the manual
   rate** (a better `Rate_manual` via §2) and can **raise effective credibility** by explaining
   within-group heterogeneity — but it does **not** make an individual fully creditable.
 
@@ -201,7 +201,7 @@ Decompose realized individual cost variance:
 
 - **σ²_irreducible** — genuine randomness (who slips on ice, who gets a rare cancer). No score
   removes it. The tail (§2.5) lives here.
-- **σ²_model** — finite-data calibration error, drift, residual confounding (Doc 09).
+- **σ²_model** — finite-data calibration error, drift, residual confounding (Doc 13).
 - **σ²_behavioral** — moral hazard and adverse selection responses to the price itself (§4).
 
 Even a perfectly calibrated `Ĉ(p)` is the **conditional mean**; the individual outcome scatters
@@ -260,7 +260,7 @@ A health score can **worsen or mitigate** both. Naming the failure modes is the 
   sick (regressive, often illegal) without changing behavior.
 - **Mitigations:** **pay-for-improvement** (reward `dPureScore/dt > 0`, §5) rather than penalize
   state; value-based provider incentives aligned with member health; nudges/care plans (Docs
-  06/07) that lower expected cost by improving health, not by gatekeeping. Incentives must stay
+  09/11) that lower expected cost by improving health, not by gatekeeping. Incentives must stay
   within wellness-program legal caps and always offer a **reasonable alternative standard** so a
   member who *cannot* improve for medical reasons is never penalized.
 
@@ -268,7 +268,7 @@ A health score can **worsen or mitigate** both. Naming the failure modes is the 
 
 ## 5. Aligned economics — the Kaiser model (profit from improvement, never from denial)
 
-The economic thesis (Doc 00 §2.6, §3.2): **margin comes from raising PureScore**, i.e., from
+The economic thesis (Doc 01 §2.6, §3.2): **margin comes from raising PureScore**, i.e., from
 prevention and avoided downstream cost — *not* from denying care.
 
 ### 5.1 Improvement-economics math
@@ -286,18 +286,18 @@ to **avoided expected cost** via the validated §2 model:
 - **Anti-stinting guardrail:** shared-savings contracts **must** carry quality/access gates
   (no increase in avoidable ED visits, no drop in necessary-care utilization, patient-reported
   access maintained). Savings achieved by *withholding* needed care **forfeit** the payment and
-  trigger review (Doc 11). This is the explicit firewall against the HMO denial failure mode.
+  trigger review (Doc 16). This is the explicit firewall against the HMO denial failure mode.
 
 ### 5.2 Pay-for-improvement structures
 - **Member side:** rewards for engagement and measured improvement (within wellness caps;
   reasonable-alternative-standard mandatory). Never a penalty on the un-improvable sick.
 - **Provider side:** capitation/quality blends, value-based contracts paying for closed care gaps
-  and improved pillars (the nudge/care-plan engine, Docs 06/07, is the delivery mechanism).
+  and improved pillars (the nudge/care-plan engine, Docs 09/11, is the delivery mechanism).
 - **Plan side:** lower expected claims from a healthier book *is* the return; it is captured at
   the **portfolio** level (§3), aligning insurer, provider, and patient toward the same `↑PureScore`.
 
 ### 5.3 How nudges/care plans lower cost ethically
-Docs 06/07 lower `Ĉ` by draining reservoirs (`dB̃/dt < 0`) and moving pillars toward green —
+Docs 09/11 lower `Ĉ` by draining reservoirs (`dB̃/dt < 0`) and moving pillars toward green —
 i.e., by *making people healthier*. The cost reduction is a **consequence of health gain**, fully
 explainable (Doc 03 §7), and auditable against quality gates. That is the only sanctioned profit
 path in this spec.
@@ -313,7 +313,7 @@ path in this spec.
 > *group/portfolio* pricing within filed, justified, non-discriminatory bounds. Any feature that
 > fails this test is **removed**, not tuned.
 
-### 6.2 Protected-class proxy detection (hard gate, ties to Doc 09)
+### 6.2 Protected-class proxy detection (hard gate, ties to Doc 13)
 - **Proxy audit.** For every covariate (pillar, marker, reservoir, clinical score, geography),
   test predictive association with protected attributes (race/ethnicity, sex, age beyond lawful
   bands, disability, genetic info). Flag high-leverage proxies (e.g., geography → redlining;
@@ -327,10 +327,10 @@ path in this spec.
 ### 6.3 Disparate-impact and subgroup loss-ratio testing
 - **Disparate-impact tests.** Compare adverse outcomes (price level, access flags, denial-of-
   service signals) across protected subgroups; apply standard thresholds (e.g., four-fifths rule
-  as a screen, plus statistical tests) and **calibration-within-group** checks (Doc 09 fairness).
+  as a screen, plus statistical tests) and **calibration-within-group** checks (Doc 13 fairness).
 - **Subgroup loss-ratio monitoring (§3.3 by subgroup).** Continuously monitor LR, relativities,
   and access metrics by protected subgroup. A subgroup systematically **over-charged** or
-  **under-served** is a defect → halt and remediate (Doc 11). Equal LR is *necessary but not
+  **under-served** is a defect → halt and remediate (Doc 16). Equal LR is *necessary but not
   sufficient*; access and calibration parity are also required.
 
 ### 6.4 Actuarial justification, filings, transparency, appeal
@@ -341,13 +341,13 @@ path in this spec.
   explainability output (Doc 03 §7) supports member-facing reason codes.
 - **Appeal rights.** Members can contest a score, a relativity, or an adverse decision; human
   review and correction pathways are mandatory (GDPR Art. 22 automated-decision rights; general
-  due-process). Appeals route through Doc 11 governance.
+  due-process). Appeals route through Doc 16 governance.
 
 ### 6.5 Tie-in
-Doc 09 provides the calibration, credibility, drift, and fairness machinery that *gates* §2–§3.
-Doc 11 owns governance: filings, audit trail, escalation, model-version control, and the appeal
-process. This document defines **what** may be priced; Doc 09 proves it is **valid and fair**;
-Doc 11 enforces **how** it ships.
+Doc 13 provides the calibration, credibility, drift, and fairness machinery that *gates* §2–§3.
+Doc 16 owns governance: filings, audit trail, escalation, model-version control, and the appeal
+process. This document defines **what** may be priced; Doc 13 proves it is **valid and fair**;
+Doc 16 enforces **how** it ships.
 
 ---
 
@@ -358,14 +358,14 @@ Doc 11 enforces **how** it ships.
 | R1 | **Illegal individual risk-rating** | Score leaks into ACA indiv/small-group premiums or pre-existing surcharge | Health-status underwriting pre-ACA | §1.3 default-deny matrix; score fenced from individual rating; counsel + DOI gate |
 | R2 | **Proxy discrimination / redlining** | Geography or biomarker proxies race/SES; disparate price/access | Algorithmic redlining cases | §6.2 proxy audit; fence high-proxy features; §6.3 disparate-impact gate |
 | R3 | **Genetic-info underwriting** | Heritable markers (Lp(a), PRS) used in pricing | GINA/GDPR violations | §6.2 genetic fence by construction |
-| R4 | **Overpromise → "can't lose money"** | Marketing/clairvoyant-pricing claims outrun evidence | **Babylon** accuracy overclaim → insolvency | Doc 00 §4 rejection; §3.2 irreducible variance; portfolio posture only |
+| R4 | **Overpromise → "can't lose money"** | Marketing/clairvoyant-pricing claims outrun evidence | **Babylon** accuracy overclaim → insolvency | Doc 01 §4 rejection; §3.2 irreducible variance; portfolio posture only |
 | R5 | **Care denial / stinting for savings** | Shared-savings paid for withholding care | HMO denial backlash | §5.1 quality/access gates; forfeit + review on stinting |
 | R6 | **Adverse-selection spiral** | Low-risk exit / insurer cherry-picks | Death-spiral markets | §4.1 guaranteed issue, single pool, risk-adjustment, reinsurance |
 | R7 | **Moral-hazard surcharge on the sick** | Regressive wellness penalty | Punitive wellness programs | §4.2 pay-for-improvement + reasonable-alternative-standard + caps |
-| R8 | **Mis-calibration / drift** | Relativities fit on stale/biased data | Model decay | Doc 09 calibration & drift gate; `μ_k≡1` if no validated lift |
+| R8 | **Mis-calibration / drift** | Relativities fit on stale/biased data | Model decay | Doc 13 calibration & drift gate; `μ_k≡1` if no validated lift |
 | R9 | **Tail / correlated-shock insolvency** | Pandemic, pharmacy spike defeats diversification | Catastrophe losses | §3.4 reinsurance, aggregate stop-loss, capital (SCR/MCR) |
 | R10 | **Unfiled / unjustified factors** | Pricing on un-filed relativities | Unfair-discrimination findings | §6.4 file-before-price; actuarial justification required |
-| R11 | **Privacy / consent breach** | Health data used beyond consent | GDPR Art. 9 / HIPAA breaches | Doc 11 privacy governance; gated access; consented data only |
+| R11 | **Privacy / consent breach** | Health data used beyond consent | GDPR Art. 9 / HIPAA breaches | Doc 16 privacy governance; gated access; consented data only |
 | R12 | **Opaque automated adverse decision** | No explanation/appeal | GDPR Art. 22 violations | §6.4 transparency + appeal; Doc 03 §7 explainability |
 | R13 | **Up-coding risk-adjustment** | Gaming acuity to extract payment | RADV/HCC audit findings | §1.1.2 budget-neutral, audited; coding-integrity controls |
 
@@ -381,7 +381,7 @@ Doc 11 enforces **how** it ships.
 |---|---|---|
 | `μ_k` band | per-pillar relativity clamp | `[0.7, 1.6]` (filed; tighter in individual-affecting contexts) |
 | `Z` | Bühlmann credibility weight | exposure-driven; `→0` for individuals |
-| `K` | Bühlmann parameter (EPV/VHM) | estimated per book (Doc 09) |
+| `K` | Bühlmann parameter (EPV/VHM) | estimated per book (Doc 13) |
 | `LR*` | target loss ratio | within filed bounds; ≥ ACA MLR floors |
 | `A`, `A_agg` | stop-loss attachments | per reinsurance treaty (e.g., agg 125% of expected) |
 | `α` | provider shared-savings share | contracted; gated on quality/access |
@@ -389,4 +389,4 @@ Doc 11 enforces **how** it ships.
 | default-deny | any non-permitted use | **Prohibited until cleared** (§1.3) |
 
 All constants live in versioned config; any change is a model-version bump requiring
-re-validation (Doc 09), refiling where regulated, and an audit-trail entry (Doc 11).
+re-validation (Doc 13), refiling where regulated, and an audit-trail entry (Doc 16).

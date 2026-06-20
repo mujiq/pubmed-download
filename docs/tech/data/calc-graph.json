@@ -27,7 +27,7 @@
     140,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "clinical"
   },
   "apob": {
@@ -39,7 +39,7 @@
     100,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -52,7 +52,7 @@
     160,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -65,7 +65,7 @@
     85,
     "hi"
    ],
-   "doc": "18",
+   "doc": "07",
    "source": "wearable"
   },
   "hdl": {
@@ -77,7 +77,7 @@
     40,
     "lo"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -90,7 +90,7 @@
     25,
     "lo"
    ],
-   "doc": "18",
+   "doc": "07",
    "source": "wearable"
   },
   "hba1c": {
@@ -102,7 +102,7 @@
     6.5,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -115,7 +115,7 @@
     126,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -128,7 +128,7 @@
     500,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -141,7 +141,7 @@
     102,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "clinical"
   },
   "egfr": {
@@ -153,7 +153,7 @@
     45,
     "lo"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -166,7 +166,7 @@
     300,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -179,7 +179,7 @@
     6.0,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -192,7 +192,7 @@
     200,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -205,7 +205,7 @@
     2.67,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -218,7 +218,7 @@
     10,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -231,7 +231,7 @@
     20,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -244,7 +244,7 @@
     10,
     "lo"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -257,7 +257,7 @@
     50,
     "lo"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -270,7 +270,7 @@
     90,
     "lo"
    ],
-   "doc": "18",
+   "doc": "07",
    "source": "wearable"
   },
   "ferr": {
@@ -282,7 +282,7 @@
     15,
     "lo"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -295,7 +295,7 @@
     10,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -308,7 +308,7 @@
     20,
     "lo"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -321,7 +321,7 @@
     32,
     "hi"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "clinical"
   },
   "almi": {
@@ -333,7 +333,7 @@
     5.5,
     "lo"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "clinical"
   },
   "tscore": {
@@ -345,7 +345,7 @@
     -2.5,
     "lo"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "clinical"
   },
   "b12": {
@@ -357,7 +357,7 @@
     200,
     "lo"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -370,7 +370,7 @@
     4,
     "lo"
    ],
-   "doc": "01",
+   "doc": "06",
    "source": "lab",
    "imputable": true
   },
@@ -383,7 +383,7 @@
     6,
     "lo"
    ],
-   "doc": "18",
+   "doc": "07",
    "source": "wearable"
   },
   "sleepeff": {
@@ -395,7 +395,7 @@
     75,
     "lo"
    ],
-   "doc": "18",
+   "doc": "07",
    "source": "wearable"
   },
   "osa": {
@@ -407,7 +407,7 @@
     1,
     "hi"
    ],
-   "doc": "08",
+   "doc": "10",
    "source": "clinical"
   },
   "vo2": {
@@ -419,7 +419,7 @@
     30,
     "lo"
    ],
-   "doc": "18",
+   "doc": "07",
    "source": "wearable"
   },
   "steps": {
@@ -431,7 +431,7 @@
     5000,
     "lo"
    ],
-   "doc": "18",
+   "doc": "07",
    "source": "wearable"
   },
   "mvpa": {
@@ -443,7 +443,7 @@
     75,
     "lo"
    ],
-   "doc": "18",
+   "doc": "07",
    "source": "wearable"
   },
   "phq": {
@@ -455,7 +455,7 @@
     20,
     "hi"
    ],
-   "doc": "08",
+   "doc": "10",
    "source": "pro"
   },
   "gad": {
@@ -467,7 +467,7 @@
     15,
     "hi"
    ],
-   "doc": "08",
+   "doc": "10",
    "source": "pro"
   },
   "isi": {
@@ -479,7 +479,7 @@
     15,
     "hi"
    ],
-   "doc": "08",
+   "doc": "10",
    "source": "pro"
   }
  },
@@ -1016,7 +1016,7 @@
    "wearable": 0.8,
    "pro": 0.7
   },
-  "_note": "Illustrative confidence/missing-data model (Doc 01 §2 · D22 trust tiers · D33 cold-start). confidence = q_source[channel] · exp(−Δt/τ); present → Δt 0, stale → Δt = stale_dt_days, missing → 0. Missing & imputable markers impute to the age×sex×life-stage cohort median (D33) — here the marker default stands in as the illustrative cohort median; missing & non-imputable markers drop from the pillar mean and lower Confidence."
+  "_note": "Illustrative confidence/missing-data model (Doc 06 §2 · D22 trust tiers · D33 cold-start). confidence = q_source[channel] · exp(−Δt/τ); present → Δt 0, stale → Δt = stale_dt_days, missing → 0. Missing & imputable markers impute to the age×sex×life-stage cohort median (D33) — here the marker default stands in as the illustrative cohort median; missing & non-imputable markers drop from the pillar mean and lower Confidence."
  },
  "gates": [
   {
@@ -1025,7 +1025,7 @@
    "area": "gate",
    "question": "sex?",
    "attr": "sex",
-   "doc": "05",
+   "doc": "08",
    "formula": "sex ∈ {male, female} selects reference cut-points, pillar emphases and the sex-gated question set (D27).",
    "branches": [
     {
@@ -1046,7 +1046,7 @@
    "area": "gate",
    "question": "pregnant?",
    "attr": "preg",
-   "doc": "06",
+   "doc": "09",
    "formula": "Pregnancy applies physiologic-shift ranges and pre-eclampsia / GDM anchors; gates female-only items.",
    "branches": [
     {
@@ -1093,7 +1093,7 @@
    "area": "gate",
    "question": "life-stage?",
    "attr": "lifestage",
-   "doc": "06",
+   "doc": "09",
    "formula": "Life-stage selects the special frame (reproductive · pregnancy · perimenopause · andropause · older-adult).",
    "branches": [
     {
@@ -1160,7 +1160,7 @@
        "id": "conf",
        "label": "Confidence + decay",
        "formula": "confidence = q_source · exp(−Δt/τ); below floor → stale/missing → fallback (D33)",
-       "doc": "01",
+       "doc": "06",
        "branches": [
         {
          "id": "ok",
@@ -1194,7 +1194,7 @@
        "id": "cohort",
        "label": "Cohort percentile r_cohort",
        "formula": "r_cohort = F_ic(x) percentile (NHANES / UK-Biobank)",
-       "doc": "01"
+       "doc": "06"
       },
       {
        "id": "blend",
@@ -1274,44 +1274,44 @@
   "companion": {
    "label": "Companion vector",
    "formula": "(Confidence · Trajectory · early-warning) — carried alongside the scalar score",
-   "doc": "12",
+   "doc": "05",
    "nodes": {
     "confidence": {
      "label": "Confidence",
      "formula": "weighted data freshness × source quality across pillars",
-     "doc": "12"
+     "doc": "05"
     },
     "trajectory": {
      "label": "Trajectory",
      "formula": "Δ PureScore vs prior period (↑ improving / ↓ worsening)",
-     "doc": "12"
+     "doc": "05"
     },
     "ew": {
      "label": "Early-warning",
      "formula": "ON when any pillar critical or a syndromic detector fires",
-     "doc": "12"
+     "doc": "05"
     }
    }
   },
   "nudge": {
    "label": "Nudge utility U_a",
    "formula": "U_a = impact_a · p̂_a · ease_a — every recommended action has positive Δ PureScore; top-5 surfaced",
-   "doc": "07",
+   "doc": "11",
    "nodes": {
     "impact": {
      "label": "impact_a",
      "formula": "expected Δ PureScore if action a fully adopted (worst-pillar leaning)",
-     "doc": "07"
+     "doc": "11"
     },
     "phat": {
      "label": "p̂_a",
      "formula": "predicted adoption probability (recalibrated from realized adherence)",
-     "doc": "07"
+     "doc": "11"
     },
     "ease": {
      "label": "ease_a",
      "formula": "modifiability / effort gate (D16) — low-effort, high-yield first",
-     "doc": "07"
+     "doc": "11"
     }
    }
   },
@@ -1335,17 +1335,17 @@
   "actuarial": {
    "label": "Actuarial premium",
    "formula": "relative risk from PureScore → premium multiplier (firewalled, off by default)",
-   "doc": "10",
+   "doc": "19",
    "nodes": {
     "rr": {
      "label": "Relative risk",
      "formula": "RR = g(PureScore, age, sex) calibrated to cohort hazard",
-     "doc": "10"
+     "doc": "19"
     },
     "premium": {
      "label": "Premium multiplier",
      "formula": "premium = base · (1 + β · (RR − 1)); regulatory caps applied",
-     "doc": "10"
+     "doc": "19"
     }
    }
   }

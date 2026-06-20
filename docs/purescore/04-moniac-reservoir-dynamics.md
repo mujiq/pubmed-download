@@ -27,7 +27,7 @@ Two reservoir polarities:
   High = good; depletion = risk.
 
 This is the "biomoniac asset reservoir and burdens" the brief asked for, connected to
-cohort-specific lifestyle goals (Doc 06).
+cohort-specific lifestyle goals (Doc 09).
 
 ## 2. Reservoir catalogue
 
@@ -49,7 +49,7 @@ cohort-specific lifestyle goals (Doc 06).
 | OXD | Oxygen-delivery reserve | **asset** | hemoglobin, SpO₂, iron sufficiency, cardiorespiratory fitness | weeks–months | HEM, CV, FIT |
 | IRON | Iron reserve | **asset** | dietary iron, ferritin / transferrin-sat, menstrual/GI losses | weeks–months | HEM, NUT |
 
-(IDs are stable; the table is extensible per cohort — e.g., a pregnancy reservoir set in Doc 05.
+(IDs are stable; the table is extensible per cohort — e.g., a pregnancy reservoir set in Doc 08.
 VBP/OXD/IRON were promoted from the Appendix E question-bank mapping so the LIFE-stream weights
 target a single canonical reservoir set.)
 
@@ -75,7 +75,7 @@ clamped to `B_j ∈ [0, B_j^max]`. Components:
   normalizes; tiny `λ_j` (atherogenic burden, CAC) ⇒ near-permanent — *exposure integrates over
   years*. This is the explicit **time-decay** requirement.
 - **`κ_{jl}`** — **interference / multivariate dependency**: how reservoir `l` feeds `j`. `sat()`
-  bounds the coupling. Examples (sign and rough magnitude; calibrated in Doc 09):
+  bounds the coupling. Examples (sign and rough magnitude; calibrated in Doc 13):
   - `κ_{INFL,SLD} > 0` — chronic sleep debt raises inflammatory load.
   - `κ_{GLY,SLD} > 0` — sleep debt worsens glycemic control.
   - `κ_{GLY,CRF} < 0` — cardiorespiratory reserve *lowers* glycemic burden (asset protects).
@@ -85,9 +85,9 @@ clamped to `B_j ∈ [0, B_j^max]`. Components:
 
 The full `κ` matrix is a **12×12-ish signed, sparse, literature-initialized** coupling matrix
 (initial values from physiology/epidemiology), then **calibrated and regularized** against
-outcomes (Doc 09). Stability requirement: the linearized system (matrix `−Λ + K`) must be
+outcomes (Doc 13). Stability requirement: the linearized system (matrix `−Λ + K`) must be
 **Hurwitz/contractive** (all eigenvalues negative real part) so reservoirs converge rather than
-diverge — checked at every calibration (Doc 09 §5).
+diverge — checked at every calibration (Doc 13 §5).
 
 ## 4. Why this matters (the four behaviours the brief demanded)
 
@@ -116,14 +116,14 @@ its linked pillars. `ρ_k` (Doc 03 §8) caps the total contribution.
 
 ## 6. Valves (knobs) = interventions → links to nudges and care plans
 Every modifiable inflow/decay term is a **valve** an intervention can turn:
-- A behaviour nudge (Doc 07) opens a drain on `B_SLD` (sleep-hygiene) or a fill on `B_CRF`
+- A behaviour nudge (Doc 11) opens a drain on `B_SLD` (sleep-hygiene) or a fill on `B_CRF`
   (zone-2 cardio).
 - A medication changes a marker directly (statin ↓ApoB ⇒ ↓`B_ATH` inflow) — modelled as a valve
   with its own efficacy/latency.
-- Care plans (Doc 06) are **bundles of valve settings** tied to the cohort's lifestyle goals.
+- Care plans (Doc 09) are **bundles of valve settings** tied to the cohort's lifestyle goals.
 
 The nudge engine computes each action's effect by differentiating PureScore through this dynamic
-system (Doc 07 §3 sensitivities), giving an honest "this action drains X reservoir by Y over Z
+system (Doc 11 §3 sensitivities), giving an honest "this action drains X reservoir by Y over Z
 weeks ⇒ +ΔPureScore."
 
 ## 7. Numerical/operational notes
@@ -131,8 +131,8 @@ weeks ⇒ +ΔPureScore."
   the same clock but tiny `λ`. Wearable streams update daily; labs update on measurement.
 - **Missing data:** when an inflow's marker is stale, inflow uses the last value with decayed
   confidence (it does **not** reset the tank — burdens persist through missing measurements;
-  Doc 01 §5 anti-gaming).
-- **Acute events** (Doc 06) inject a transient high-`λ` reservoir and temporarily raise relevant
+  Doc 06 §5 anti-gaming).
+- **Acute events** (Doc 09) inject a transient high-`λ` reservoir and temporarily raise relevant
   `κ`/weights, then drain on recovery — the mechanism behind acute-mode entry/exit.
 - All `λ`, `κ`, `u`, set-points are **versioned parameters** calibrated and stability-checked in
-  Doc 09; none may be changed without a model-version bump and re-validation (Doc 11).
+  Doc 13; none may be changed without a model-version bump and re-validation (Doc 16).

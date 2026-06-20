@@ -3,12 +3,12 @@
   "name": "PureScore Lifestyle Axes, Archetypes & Perceived-vs-Actual model",
   "version": "1.0",
   "flag": "illustrative-reverify — design documentation, not a validated medical device (README §5.6)",
-  "idea": "Any person = a vector over independent lifestyle axes. Named archetypes are common presets (nearest-vector). The PERCEIVED persona (self-report: Q_CORE_SELF_PERSONA, Q_CORE_SELF_HEALTH, goal/PRO answers) is compared with the ACTUAL persona derived from labs + wearables + validated answers; the gap drives nudge strategy (Doc 07) and adherence framing.",
+  "idea": "Any person = a vector over independent lifestyle axes. Named archetypes are common presets (nearest-vector). The PERCEIVED persona (self-report: Q_CORE_SELF_PERSONA, Q_CORE_SELF_HEALTH, goal/PRO answers) is compared with the ACTUAL persona derived from labs + wearables + validated answers; the gap drives nudge strategy (Doc 11) and adherence framing.",
   "links": [
-   "Doc 05 sex-specific",
-   "Doc 07 nudge engine",
-   "Doc 12 companion vector (Representativeness/Modifiability)",
-   "Doc 15 UAE",
+   "Doc 08 sex-specific",
+   "Doc 11 nudge engine",
+   "Doc 05 companion vector (Representativeness/Modifiability)",
+   "Doc 18 UAE",
    "Appendix C question bank",
    "Appendix D clinical personas"
   ]
@@ -313,7 +313,7 @@
     "highly_engaged"
    ],
    "pillars": [
-    "behavioural (not scored as health, Doc 04 inflows / Doc 07 feasibility)"
+    "behavioural (not scored as health, Doc 04 inflows / Doc 11 feasibility)"
    ],
    "perceived_signal": [
     "Q_CORE_GOALS",
@@ -386,7 +386,7 @@
     "low_testosterone",
     "poor_recovery"
    ],
-   "frame": "Low RHR/glucose are adaptive (out-of-cohort, confidence lowered, Doc 12); watch energy availability."
+   "frame": "Low RHR/glucose are adaptive (out-of-cohort, confidence lowered, Doc 05); watch energy availability."
   },
   {
    "key": "shift_worker",
@@ -448,7 +448,7 @@
     "anxiety",
     "low_mood"
    ],
-   "frame": "Acute life-stage (Doc 06); tiny achievable actions, screen postpartum mood."
+   "frame": "Acute life-stage (Doc 09); tiny achievable actions, screen postpartum mood."
   },
   {
    "key": "caregiver_burnout",
@@ -488,7 +488,7 @@
     "low_bone_density",
     "sarcopenia"
    ],
-   "frame": "Protect muscle/bone reserve; resistance training + protein; age-adjusted frames (Doc 05)."
+   "frame": "Protect muscle/bone reserve; resistance training + protein; age-adjusted frames (Doc 08)."
   },
   {
    "key": "frail_elderly",
@@ -509,7 +509,7 @@
     "falls_risk",
     "osteoporosis"
    ],
-   "frame": "Falls + sarcopenia dominate; competing-risk muting of low-yield flags (Doc 12)."
+   "frame": "Falls + sarcopenia dominate; competing-risk muting of low-yield flags (Doc 05)."
   },
   {
    "key": "ramadan_faster_t2d",
@@ -528,7 +528,7 @@
     "dehydration",
     "hyperuricemia"
    ],
-   "frame": "IDF-DAR fasting safety; med-timing & hypo/dehydration rules (Doc 15)."
+   "frame": "IDF-DAR fasting safety; med-timing & hypo/dehydration rules (Doc 18)."
   },
   {
    "key": "south_asian_metabolic",
@@ -546,7 +546,7 @@
     "type_2_diabetes",
     "atherosclerosis"
    ],
-   "frame": "Normal BMI can mask central adiposity; WHO Asian cut-points; ethnicity-aware ASCVD (Doc 15)."
+   "frame": "Normal BMI can mask central adiposity; WHO Asian cut-points; ethnicity-aware ASCVD (Doc 18)."
   },
   {
    "key": "postmenopausal_bone",
@@ -565,7 +565,7 @@
     "menopause_symptoms",
     "atherosclerosis"
    ],
-   "frame": "Estrogen-loss bone & CV risk; BMD red sooner; vasomotor sleep impact (Doc 05)."
+   "frame": "Estrogen-loss bone & CV risk; BMD red sooner; vasomotor sleep impact (Doc 08)."
   },
   {
    "key": "young_optimizer",
@@ -776,7 +776,7 @@
     "atherosclerosis",
     "coronary_artery_disease"
    ],
-   "frame": "ApoB is genetic, low modifiability (Doc 12) — needs medication, not just lifestyle."
+   "frame": "ApoB is genetic, low modifiability (Doc 05) — needs medication, not just lifestyle."
   },
   {
    "key": "pregnant_active",
@@ -793,11 +793,11 @@
     "iron_deficiency_anemia",
     "type_2_diabetes (GDM)"
    ],
-   "frame": "Physiologic anemia/eGFR shifts expected (Doc 05); pre-eclampsia/GDM anchors retained."
+   "frame": "Physiologic anemia/eGFR shifts expected (Doc 08); pre-eclampsia/GDM anchors retained."
   }
  ],
  "perceived_vs_actual": {
-  "method": "For each axis, compute perceived_level from self-report (question bank GOAL/perceived items) and actual_level from objective signals (labs + wearables + validated PROs). gap = perceived_level − actual_level. The signed gap selects a nudge/communication strategy and adjusts the companion vector (Doc 12: Representativeness, Modifiability, Confidence). Large positive gap (over-estimates own health) → awareness-first; large negative gap (catastrophizing) → reassurance-first.",
+  "method": "For each axis, compute perceived_level from self-report (question bank GOAL/perceived items) and actual_level from objective signals (labs + wearables + validated PROs). gap = perceived_level − actual_level. The signed gap selects a nudge/communication strategy and adjusts the companion vector (Doc 05: Representativeness, Modifiability, Confidence). Large positive gap (over-estimates own health) → awareness-first; large negative gap (catastrophizing) → reassurance-first.",
   "gaps": [
    {
     "id": "overconfident_fitness",

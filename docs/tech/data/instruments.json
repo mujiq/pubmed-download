@@ -24,7 +24,7 @@
    ],
    "scoring": "Sum 0–27. 0–4 none/minimal · 5–9 mild · 10–14 moderate · 15–19 mod-severe · 20–27 severe.",
    "bands": "green 0–4 · yellow 5–14 · red ≥15",
-   "safety": "Item 9 > 0 forces MCS red/critical irrespective of total and fires the crisis pathway (Doc 11). Never averaged away.",
+   "safety": "Item 9 > 0 forces MCS red/critical irrespective of total and fires the crisis pathway (Doc 16). Never averaged away.",
    "src": "Kroenke 2001 (public domain)"
   },
   {
@@ -187,7 +187,7 @@
    ],
    "scoring": "Convert to MET-min/week; map to MVPA band.",
    "bands": "≥150 min MVPA green",
-   "safety": "Self-report cross-checked vs wearable steps/MVPA for plausibility (Doc 01).",
+   "safety": "Self-report cross-checked vs wearable steps/MVPA for plausibility (Doc 06).",
    "src": "IPAQ 2002"
   },
   {
@@ -330,7 +330,7 @@
    ],
    "scoring": "Sum 0–30.",
    "bands": "green <10 · yellow 10–12 · red ≥13 (likely depression)",
-   "safety": "Item 10 > 0 (self-harm) forces MCS red/critical and fires the crisis pathway (Doc 11), like PHQ-9 item 9.",
+   "safety": "Item 10 > 0 (self-harm) forces MCS red/critical and fires the crisis pathway (Doc 16), like PHQ-9 item 9.",
    "src": "Cox 1987"
   },
   {

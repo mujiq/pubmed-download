@@ -35,14 +35,14 @@ The product promise is modest by design and large in aggregate:
 7. **Conservative claims.** We under-promise. Every capability is bounded by what has been
    prospectively validated for the population in front of us.
 8. **Equity by construction.** Cohorting must reduce, not encode, disparity. No protected-class
-   proxy may worsen access, price, or care (Doc 09 fairness, Doc 11 governance).
+   proxy may worsen access, price, or care (Doc 13 fairness, Doc 16 governance).
 9. **Effortless by construction.** Every surface should remove a step the patient used to do
    themselves — ambient AI scribe, a 24/7 chat agent, frictionless scheduling, passive in-home
    tracking, and automated insurance pre-authorization — so adherence comes from *less* friction,
    not more willpower. The household is the unit of care: one shared view, individual scores, with
-   role-based access for caregivers. All of this lives **inside** the safety firewalls (Doc 18;
-   Doc 11 §4.2). Inputs are honestly flagged by type and trust — labs anchor, wearables are
-   trust-tiered, goals steer, self-report fills gaps (Doc 18 §1–2; D22).
+   role-based access for caregivers. All of this lives **inside** the safety firewalls (Doc 07;
+   Doc 16 §4.2). Inputs are honestly flagged by type and trust — labs anchor, wearables are
+   trust-tiered, goals steer, self-report fills gaps (Doc 07 §1–2; D22).
 
 ## 3. Lessons we are explicitly engineering around
 
@@ -53,13 +53,13 @@ red-flag presentations), and unsustainable unit economics; it collapsed into ins
 
 **Engineered countermeasures in PureScore:**
 - **No autonomous diagnosis or triage-to-reassurance.** PureScore is wellness-grade; red-flags
-  escalate to humans (Doc 11). We never tell a patient they are fine in a way that could mask an
+  escalate to humans (Doc 16). We never tell a patient they are fine in a way that could mask an
   emergency.
 - **Validate before scale.** Prospective, population-specific calibration and fairness audits are
-  *gates*, not afterthoughts (Doc 09). No claim ships ahead of its evidence.
+  *gates*, not afterthoughts (Doc 13). No claim ships ahead of its evidence.
 - **Transparency over mystique.** Explainable scoring, published methodology, external audit.
 - **Sustainable unit economics.** Tiering controls per-patient measurement cost; the actuarial
-  layer (Doc 10) targets *portfolio loss ratios with reinsurance*, not clairvoyant individual
+  layer (Doc 19) targets *portfolio loss ratios with reinsurance*, not clairvoyant individual
   pricing. **"Impossible to lose money" is itself a Babylon-class overpromise and is rejected as
   a design goal** — see §4.
 
@@ -69,24 +69,24 @@ proactive **care-gap closure**, and **value-based incentives** that reward keepi
 
 **Adopted into PureScore:**
 - Cohort registries drive proactive outreach and the visit cadence.
-- Care-gap logic (overdue Tier measurements, uncontrolled pillars) feeds the nudge engine (Doc 07)
-  and care plans (Doc 06).
-- The economic model rewards score *improvement* and prevention (Doc 10 value-based section).
+- Care-gap logic (overdue Tier measurements, uncontrolled pillars) feeds the nudge engine (Doc 11)
+  and care plans (Doc 09).
+- The economic model rewards score *improvement* and prevention (Doc 19 value-based section).
 
 ### 3.3 Mayo Clinic — what to emulate
 Evidence-based, **team-based** care; conservative, guideline-anchored decision support
 (AskMayoExpert-style); a destination model for complex cases; cautious public claims.
 
 **Adopted into PureScore:**
-- Guideline-anchored bands and clinician decision-support content (Doc 02, Doc 08).
+- Guideline-anchored bands and clinician decision-support content (Doc 02, Doc 10).
 - Team-based escalation: PureScore is one input to a care team, never the decision-maker.
 - Conservative communication standards for patient-facing language.
 
 ### 3.4 Others worth borrowing from
 - **Intermountain / Geisinger (ProvenCare):** standardized care pathways and outcome
-  accountability → care-plan templates (Doc 06).
+  accountability → care-plan templates (Doc 09).
 - **UK Biobank / NHANES / Framingham:** population reference distributions and validated risk
-  equations → reference ranges (Doc 01) and clinical scores (Doc 08).
+  equations → reference ranges (Doc 06) and clinical scores (Doc 10).
 - **STRAW+10, ACC/AHA, ADA, KDIGO, AASLD, Endocrine Society, USPSTF, NSF:** the guideline
   backbone for bands and staging.
 
@@ -98,13 +98,13 @@ proxy discrimination, denial of care to the sick). PureScore instead pursues a *
 legal, and durable** financial posture:
 
 - Manage risk at the **portfolio** level (loss-ratio targeting, Bühlmann credibility, reinsurance
-  / stop-loss), not by trying to perfectly price every individual (Doc 10).
+  / stop-loss), not by trying to perfectly price every individual (Doc 19).
 - Make money by **making people healthier** (value-based shared savings), not by excluding them.
 - Treat fairness, anti-adverse-selection, and regulatory compliance as **hard constraints**, not
   optimizations to be traded away.
 
 The honest version of the goal is: *"a financially sustainable model whose profit comes from
-measurable health improvement and disciplined portfolio risk management."* That is what Doc 10
+measurable health improvement and disciplined portfolio risk management."* That is what Doc 19
 designs, with the legal and fairness landmines flagged in red.
 
 ## 5. What success looks like

@@ -17,8 +17,8 @@ PureScore consumes four input domains, all keyed by `patient`, `effectiveTime`, 
 | **Lifestyle / persona / PRO** | `QuestionnaireResponse`, `Observation` (survey) | diet pattern, alcohol, smoking, stress, PHQ-9/GAD-7, life stage, goals |
 
 **Input taxonomy & trust flags.** These four domains map to the four flagged data streams
-(🧪 LAB · ⌚ WEAR · 🎯 GOAL · 📝 LIFE) defined in **Doc 18 §1**; wearable inputs are further
-**trust-tiered** there (D22) and that tiering is what sets `q_source` in §2 below. Doc 18 also
+(🧪 LAB · ⌚ WEAR · 🎯 GOAL · 📝 LIFE) defined in **Doc 07 §1**; wearable inputs are further
+**trust-tiered** there (D22) and that tiering is what sets `q_source` in §2 below. Doc 07 also
 specifies how each stream is *used* (labs anchor bands; wearables drive trajectory/early-warning;
 goals steer weighting; lifestyle fills gaps at lower confidence).
 
@@ -40,7 +40,7 @@ Goal(patient_id, goal_type, target, horizon, priority)
 
 Key rules:
 - **`sex` (Male/Female) drives physiology** — reference ranges and hormones. Rare intersex/DSD
-  cases are handled by `organ_inventory` per Doc 05, not a binary fallback.
+  cases are handled by `organ_inventory` per Doc 08, not a binary fallback.
 - Every `Measurement` carries `source` and `confidence`. A literature-fallback value has
   `source = literature_fallback` and reduced `confidence`, which lowers pillar **coverage**
   (README §4) and is surfaced to the patient and clinician.
@@ -53,14 +53,14 @@ A measurement's usable confidence combines **source quality** and **recency deca
 confidence_i(t) = q_source(source_i) · exp( -(t - effectiveTime_i) / τ_i )
 ```
 
-- `q_source`: lab venous = 1.0; **wearable — tiered (D22, Doc 18 §2):** clinical-grade
+- `q_source`: lab venous = 1.0; **wearable — tiered (D22, Doc 07 §2):** clinical-grade
   (CGM, validated cuff, single-lead ECG) = 0.85–1.0, consumer-validated (resting HR, steps,
   sleep duration) = 0.6–0.8, inferential/derived (readiness, stress, sleep-stages) = informational
   only (excluded from band-setting); consumer survey = 0.5–0.7; literature fallback = 0.2–0.4.
 - `τ_i` (recency half-life-ish): differs by marker volatility — glucose/HRV/sleep are short
   (hours–days), ApoB/HbA1c medium (weeks–months), Lp(a)/genetics effectively permanent.
 - When `confidence_i` drops below a per-marker floor, the marker is treated as **stale** and the
-  literature fallback (with its own low confidence) is blended in (Doc 09 §3, empirical Bayes).
+  literature fallback (with its own low confidence) is blended in (Doc 13 §3, empirical Bayes).
 
 ## 3. Measurement tiers (Core / Peripheral / Comprehensive)
 
@@ -81,7 +81,7 @@ BP, resting HR + HRV (wearable), height/weight/BMI/waist, fasting glucose, HbA1c
 ### 3.2 Peripheral tier
 ApoB, **Lp(a) once (lifetime, genetic)**, fasting insulin → HOMA-IR, GGT, FIB-4 inputs, ferritin
 + iron studies, TSH + free T4, UACR, cystatin-C eGFR, omega-3 index, B12/folate, magnesium,
-sex-hormone baseline panel (Doc 05), 2-week CGM, estimated VO2max, grip strength, PHQ-9/GAD-7.
+sex-hormone baseline panel (Doc 08), 2-week CGM, estimated VO2max, grip strength, PHQ-9/GAD-7.
 
 ### 3.3 Comprehensive tier
 Coronary artery calcium (CAC), DEXA (body composition + BMD/T-score), continuous CGM, NMR/ion-
@@ -93,7 +93,7 @@ PhenoAge / epigenetic BioAge, broad metabolomic/proteomic panels.
 ### 3.4 Tier triggering
 A **red** Core marker can pull forward the relevant Peripheral/Comprehensive confirmation
 (e.g., high fasting glucose → CGM + insulin; elevated ALT → FIB-4 → FibroScan). This is the
-clinical-pathway version of the critical cascade (Doc 03 §6, Doc 06 acute pathways).
+clinical-pathway version of the critical cascade (Doc 03 §6, Doc 09 acute pathways).
 
 ## 4. Reference-range strategy (literature-only mode)
 
@@ -140,7 +140,7 @@ confidence. Effects:
 - The pillar's **coverage** drops, which is shown to patient/clinician and **suppresses
   over-confident green claims** (a pillar that is "green" only because of imputed medians is
   labelled *low-coverage green*, not a clean bill of health).
-- The nudge engine (Doc 07) may surface **"measure this"** as a high-value action when an
+- The nudge engine (Doc 11) may surface **"measure this"** as a high-value action when an
   imputed marker has high potential leverage on the score.
 
 ### 4.4 Why the clinical anchor must dominate the percentile (worked rationale)
@@ -168,5 +168,5 @@ Doc 03 §2.
 
 ## 6. Privacy & security (pointer)
 All four domains are PHI. Storage, access, minimization, consent, and the special handling of
-genetic and reproductive data are specified in Doc 11 (governance) and constrained by HIPAA/GDPR
-and, for genetics, GINA (which also bounds the actuarial layer — Doc 10).
+genetic and reproductive data are specified in Doc 16 (governance) and constrained by HIPAA/GDPR
+and, for genetics, GINA (which also bounds the actuarial layer — Doc 19).

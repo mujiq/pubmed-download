@@ -4,7 +4,7 @@
   "version": "0.1",
   "flag": "illustrative — targets are examples, personalize against the patient's baseline & guidelines",
   "closes": "F3",
-  "idea": "A flat catalogue with an applicability vector (so a goal is offered to the right people) and a measurable target tied to a wearable / lab / PRO metric. Goal × persona is many-to-many. Each goal links the nudges that advance it (Doc 16 / Appendix H) and exposes a progress metric the wearable/lab scores, driving the UserGoals lifecycle (set → on-track → at-risk → achieved) on the state machine.",
+  "idea": "A flat catalogue with an applicability vector (so a goal is offered to the right people) and a measurable target tied to a wearable / lab / PRO metric. Goal × persona is many-to-many. Each goal links the nudges that advance it (Doc 12 / Appendix H) and exposes a progress metric the wearable/lab scores, driving the UserGoals lifecycle (set → on-track → at-risk → achieved) on the state machine.",
   "lifecycle": [
    "none",
    "set",
@@ -15,8 +15,8 @@
    "abandoned"
   ],
   "links": [
-   "Doc 07",
-   "Doc 16",
+   "Doc 11",
+   "Doc 12",
    "Appendix D",
    "Appendix F",
    "Appendix H",

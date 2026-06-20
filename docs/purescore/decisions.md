@@ -61,7 +61,7 @@ should it also carry an early-warning/anomaly layer?
 - C — Single number only (v0.1).
 **Decision.** A. **Rationale.** The single number is necessary for triage/communication but
 *insufficient and over-confident* alone; the vector carries its own error bars/direction and the
-early-warning layer is the main clinical value-add. **Affects.** Doc 12 §4–5; calculator companion
+early-warning layer is the main clinical value-add. **Affects.** Doc 05 §4–5; calculator companion
 strip; diagram companion band.
 
 ## D2 — Early-warning sensitivity posture
@@ -75,7 +75,7 @@ absorbs soft signals?
 - C — Conservative, confirmed-trend-only (fewer alarms, later detection).
 **Decision.** B. **Rationale.** Keeps sensitivity while protecting the patient from noise; gives
 data-error edge cases (hemolyzed K⁺, bad-contact SpO₂) a home (Watch + reconfirm). **Affects.**
-Doc 12 §5.3; calculator early-warning tiering; §3.4 confirmation logic.
+Doc 05 §5.3; calculator early-warning tiering; §3.4 confirmation logic.
 
 ## D3 — Treated-to-target / medication context
 **Question.** How should the score treat a marker controlled by medication, and markers a drug
@@ -88,7 +88,7 @@ confounds?
 - C — Controlled = fully green (keep only disease weight).
 **Decision.** A. **Rationale.** Most accurate and transparent; credits adherence without implying
 "cured"; stops β-blockers corrupting fitness. Counterfactual (B) demotivates well-treated patients
-and needs per-drug effect models. **Affects.** Doc 12 §3.1–3.2; calculator `CONFOUNDS`/`MANAGES`
+and needs per-drug effect models. **Affects.** Doc 05 §3.1–3.2; calculator `CONFOUNDS`/`MANAGES`
 tables, confidence-weighted aggregation, MNG/CNF tags.
 
 ## D4 — Age & physiologic-state adaptation
@@ -101,7 +101,7 @@ dialysis, pediatrics) without alarming healthy elders or under-flagging real ris
   extremes); add an expected-benefit modifier that de-prioritizes (not hides) low-yield flags.
 - B — Fully age/state-adjusted bands (simplest; risks under-flagging).
 - C — Absolute anchors everywhere + actionability layer only (most yellows for elders).
-**Decision.** A. **Rationale.** Truthful + non-alarmist + doesn't under-treat. **Affects.** Doc 12
+**Decision.** A. **Rationale.** Truthful + non-alarmist + doesn't under-treat. **Affects.** Doc 05
 §3.3; calculator persona band overrides (elderly/dialysis/pregnancy), eGFR exclusion frame.
 
 ## D5 — Honest-and-motivating framing for fixed burden
@@ -115,7 +115,7 @@ fixable burden (genetics, age, irreversible damage, multimorbidity)?
 - C — Competing-risk weighting only, no personal ceiling.
 **Decision.** A. **Rationale.** Rewards controllable effort without lying about absolute risk;
 `Modifiability` connects to nudges and ensures un-fixable risk isn't framed as personal failure.
-**Affects.** Doc 12 §6; calculator dual-framing readout (D11).
+**Affects.** Doc 05 §6; calculator dual-framing readout (D11).
 
 ## D6 — Personal-baseline blend & cold-start
 **Question.** How should the personal baseline (basis for early-warning z-scores) blend with
@@ -126,7 +126,7 @@ population norms, and how fast should we trust it?
 - B — Population until N readings then switch (discrete jump).
 - C — Personal-first / aggressive (max sensitivity, more noise).
 **Decision.** A. **Rationale.** Smooth, principled, no hard switch; sensitivity grows with data;
-consistent with Doc 09 shrinkage. **Affects.** Doc 12 §5.1; calculator personal-baseline z-score
+consistent with Doc 13 shrinkage. **Affects.** Doc 05 §5.1; calculator personal-baseline z-score
 (D9).
 
 ## D7 — Bias / skew / representativeness handling
@@ -139,15 +139,15 @@ heavy-tailed marker), what should happen?
 - B — Display representativeness as info only (don't change computation).
 - C — Hard gate when OOD (withhold cohort-relative parts).
 **Decision.** A. **Rationale.** Most equitable and robust; never leans on unreliable cohort stats;
-representativeness adjusts *confidence*, never *penalty*. **Affects.** Doc 12 §7; calculator `rep`
+representativeness adjusts *confidence*, never *penalty*. **Affects.** Doc 05 §7; calculator `rep`
 factor on confidence.
 
 ## D8 — Deliverable scope
 **Question.** What to build from the 7 design decisions?
 **Options.**
-- A ★ **Doc 12 + upgraded calculator + refreshed diagram.**
-- B — Doc 12 spec only.
-- C — Doc 12 + calculator (no diagram).
+- A ★ **Doc 05 + upgraded calculator + refreshed diagram.**
+- B — Doc 05 spec only.
+- C — Doc 05 + calculator (no diagram).
 **Decision.** A. **Rationale.** The interactive calculator and diagram make the behaviour
 inspectable; spec alone is harder to validate against intuition. **Affects.** All three artifacts.
 
@@ -168,7 +168,7 @@ history, but the demo only has single values. How should the calculator obtain a
 personal-baseline z-score (D6), live Trajectory/Volatility/Early-warning, time-to-threshold.
 
 ## D10 — Multivariate anomaly approximation in the demo *(auto)*
-**Question.** Doc 12 §5.3 calls for Mahalanobis multivariate anomaly, which needs a full covariance
+**Question.** Doc 05 §5.3 calls for Mahalanobis multivariate anomaly, which needs a full covariance
 matrix the demo can't credibly estimate. How to approximate "multivariate" early warning?
 **Options.**
 - A ★ **Diagonal-covariance aggregate z** — `D ≈ sqrt(Σ zᵢ²)` over independent personal-baseline
@@ -179,7 +179,7 @@ matrix the demo can't credibly estimate. How to approximate "multivariate" early
 - C — Skip multivariate in the demo (count concurrent single-marker z's only).
 **Decision.** A. **Rationale.** Captures the "many small simultaneous shifts" signal without
 pretending to a covariance estimate the demo can't support; honest and computable. The production
-spec (Doc 12) retains full Mahalanobis. **Affects.** calculator early-warning Advisory trigger.
+spec (Doc 05) retains full Mahalanobis. **Affects.** calculator early-warning Advisory trigger.
 
 ## D11 — Dual-framing math (attainable-best ceiling) *(auto)*
 **Question.** How to compute "progress to your attainable best" (D5) concretely?
@@ -191,7 +191,7 @@ spec (Doc 12) retains full Mahalanobis. **Affects.** calculator early-warning Ad
 - B — Heuristic "% of pillars green" (ignores severity/weighting).
 - C — Fixed cohort-relative percentile of achievable improvement (needs external data).
 **Decision.** A. **Rationale.** Uses the same scoring function for internal consistency; cleanly
-separates fixed vs modifiable via the existing `isModifiable` tag. **Affects.** Doc 12 §6;
+separates fixed vs modifiable via the existing `isModifiable` tag. **Affects.** Doc 05 §6;
 calculator dual-framing readout.
 
 ## D12 — Syndromic detector set *(auto)*
@@ -203,7 +203,7 @@ calculator dual-framing readout.
   resolution the demo lacks.
 - C — None (rely on aggregate anomaly only).
 **Decision.** A. **Rationale.** Highest signal-to-effort using existing markers; each maps to a
-recognised clinical construct. Extensible later. **Affects.** Doc 12 §5.3; calculator syndromic
+recognised clinical construct. Extensible later. **Affects.** Doc 05 §5.3; calculator syndromic
 detectors.
 
 ## D13 — Heavy-tailed markers → log-scale personal baseline *(auto)*
@@ -215,12 +215,12 @@ baseline z misleading (a spike dominates). How should the anomaly z handle them?
   surface a `Robust(log) handling` readout when such a marker is elevated.
 - B — Raw-scale z everywhere (simple; lets skew spikes produce false anomalies).
 - C — Winsorize/clip the tail (loses real extreme signal).
-**Decision.** A. **Rationale.** Matches Doc 12 §7 robust-transform mandate; the log scale is the
+**Decision.** A. **Rationale.** Matches Doc 05 §7 robust-transform mandate; the log scale is the
 standard robust handling for these biomarkers; raw slope/band logic is preserved for consistency.
-**Affects.** Doc 12 §4/§7; calculator `skew` tags + `baseline()` log branch + `robust` readout.
+**Affects.** Doc 05 §4/§7; calculator `skew` tags + `baseline()` log branch + `robust` readout.
 
 ## D14 — Critical-value confirmation mechanism in the demo *(auto)*
-**Question.** Doc 12 §3.4 routes an *isolated implausible* critical (hemolyzed K⁺, bad-contact
+**Question.** Doc 05 §3.4 routes an *isolated implausible* critical (hemolyzed K⁺, bad-contact
 SpO₂) to Watch+reconfirm rather than an emergency cascade. How to model this safely in the demo
 without ever auto-suppressing a genuine emergency?
 **Options.**
@@ -234,7 +234,7 @@ without ever auto-suppressing a genuine emergency?
 **Decision.** A. **Rationale.** Safety-first: the system never auto-suppresses a *confirmed*
 critical; only data the quality layer has flagged as low-confidence is held, and only pending
 reconfirmation. Mirrors the `exclude`/confidence mechanism already used for dialysis eGFR.
-**Affects.** Doc 12 §3.4; calculator `ctxOf` artifact handling, `reconfirm` readout, `labartifact`
+**Affects.** Doc 05 §3.4; calculator `ctxOf` artifact handling, `reconfirm` readout, `labartifact`
 persona.
 
 ## D15 — Sex/gender reference model (production) *(user)*
@@ -253,10 +253,10 @@ menopause, intersex)?
   rigorous but heaviest data model and most fields missing in practice.
 **Decision.** A. **Rationale.** Correct biology drives ranges (Hgb tracks the androgen milieu, not
 the birth certificate), inclusive and equitable, while remaining collectable; natal sex is retained
-where it is genuinely the governing axis (organ/genetic). Consistent with Doc 12 §2's
-"hormone-therapy-aware ranges." **Affects.** Doc 05 (authoritative production reference tables);
+where it is genuinely the governing axis (organ/genetic). Consistent with Doc 05 §2's
+"hormone-therapy-aware ranges." **Affects.** Doc 08 (authoritative production reference tables);
 calculator hormonal-context selector (natal sex + HRT + life stage) and `band()` resolution;
-new trans-HRT / menopause personas; fairness slices in Doc 13 (D17).
+new trans-HRT / menopause personas; fairness slices in Doc 14 (D17).
 **Implementation note.** Per-marker `axis` ∈ {none (sex-invariant), gonadal (current hormonal
 milieu), natal (immutable)}. Established-HRT threshold (≈6–12 mo) flips the gonadal axis; life-stage
 modifier tables (cycle/pregnancy-trimester/postpartum/peri-&post-menopause/andropause) adjust bands;
@@ -266,7 +266,7 @@ acute-danger anchors (K⁺, SpO₂, glucose extremes) stay absolute regardless o
 **Question.** How should the live nudge engine rank daily actions, and how should it use the new
 Modifiability and Trajectory companion signals?
 **Options.**
-- A ★ **Ease-weighted utility (Doc 07 §3.1) with an exact impact + Modifiability gate** —
+- A ★ **Ease-weighted utility (Doc 11 §3.1) with an exact impact + Modifiability gate** —
   `U = [ΔPureScore·ε]^α · p̂^β · (1−E)^η · ν`; impact is the **exact finite-difference ΔPureScore@30d**
   (recompute through the engine, not a lookup — preserves diminishing returns in green and refuses
   false hope on near-permanent burdens); **lifestyle actions are Modifiability-gated** (cannot move a
@@ -275,9 +275,9 @@ Modifiability and Trajectory companion signals?
   (CKD protein cap, pregnancy/lactation no-deficit, anticoagulant ω-3).
 - B — Pure impact ranking (ignore effort) — surfaces high-impact actions patients won't do.
 - C — Effort-only "easiest" (ignore impact) — trivial, low-yield actions.
-**Decision.** A. **Rationale.** Faithful to the Doc 07 spec; honest (no credit for moving an
+**Decision.** A. **Rationale.** Faithful to the Doc 11 spec; honest (no credit for moving an
 already-green or a genetically-fixed marker); when lifestyle is gated out on a fixed red, the engine
-**routes to a clinician** rather than fabricating a lifestyle fix. **Affects.** Doc 07 §10 (impl
+**routes to a clinician** rather than fabricating a lifestyle fix. **Affects.** Doc 11 §10 (impl
 status); calculator `NUDGES` library + `nudgeImpact`/`nudgeRank` + daily-nudge panel.
 
 ## D17 — Validation-harness scope, recalibration & gates *(auto)*
@@ -293,11 +293,11 @@ and how honest must its scope be?
   a calibrated probability; raw ECE is large by construction.
 - C — Full longitudinal lead-time/PPV simulation now — large build, premature without the cohort
   generator; risks over-claiming the early-warning evidence.
-**Decision.** A. **Rationale.** Faithful to Doc 13 §4 (recalibration mandatory before reading the
+**Decision.** A. **Rationale.** Faithful to Doc 14 §4 (recalibration mandatory before reading the
 score as risk); **isotonic** chosen over Platt for robustness (1-param Platt left finite-sample ECE
 at the gate boundary); scope honestly bounded to what a cross-sectional cohort can support; verdict
 encodes the Babylon discipline (synthetic ≠ evidence). **Affects.** `assets/validation_harness.js`;
-Doc 13 executable-harness section.
+Doc 14 executable-harness section.
 
 ## D18 — Race/ethnicity handling (UAE) *(user)*
 **Question.** How should the engine use race/ethnicity for the UAE population mix (Emirati/Gulf
@@ -315,9 +315,9 @@ Arab, South-Asian majority, other Arab, Filipino/SE-Asian, Western, African)?
   eGFR race-coefficient mistake.
 **Decision.** A. **Rationale.** Equitable *and* clinically complete: uses ethnicity only where a
 guideline validates a biology-based difference or a screening priority; never as a penalty; race-free
-eGFR; consistent with D7 (absence → confidence, not penalty) and the Doc 10/11 no-protected-class
-rule. **Affects.** Doc 15 (UAE localization); calculator ethnicity selector → waist/BMI cutoffs +
-screening flags + risk-equation note; evidence registry; Doc 13 ethnicity fairness slice.
+eGFR; consistent with D7 (absence → confidence, not penalty) and the Doc 19/16 no-protected-class
+rule. **Affects.** Doc 18 (UAE localization); calculator ethnicity selector → waist/BMI cutoffs +
+screening flags + risk-equation note; evidence registry; Doc 14 ethnicity fairness slice.
 
 ## D19 — Evidence registry, provenance & cold-start "ignition" *(auto)*
 **Question.** How should every band/threshold/rule/action carry its evidence, and how should the
@@ -335,7 +335,7 @@ effective range evolve from guideline → real-world cohort → personal baselin
 **Decision.** A. **Rationale.** Separates *evidence* (registry, crawler-maintained) from *engine*
 (references IDs); the ignition model makes the cold-start→personalized transition explicit and
 auditable and prevents both unsafe cold starts and over-fitting to a noisy personal baseline.
-**Affects.** Doc 14; `assets/evidence-registry.json`; calculator provenance fields + readout; Doc 09
+**Affects.** Doc 15; `assets/evidence-registry.json`; calculator provenance fields + readout; Doc 13
 (shrinkage) cross-link.
 
 ## D20 — Evidence-crawler change-control gate *(auto)*
@@ -345,13 +345,13 @@ update the engine automatically?
 - A ★ **Detect-and-stage, human-in-loop gate** — the crawler flags drift (new version, changed
   value, dead URL, superseded guideline), writes a staged proposal with diff + evidence, and a
   clinician/governance reviewer **must approve** before any band changes; a band change is a
-  model-version bump that re-triggers validation (Doc 13) and governance (Doc 11). `last_verified`
+  model-version bump that re-triggers validation (Doc 14) and governance (Doc 16). `last_verified`
   refreshes automatically; *values* never do.
 - B — Auto-apply guideline changes (fast, but an unreviewed/incorrect crawl could silently move a
   safety threshold — unacceptable).
 - C — Manual-only (no crawler) — stale guidelines, the maintenance burden this task exists to solve.
 **Decision.** A. **Rationale.** Safety-first currency: machines surface change, humans approve
-clinical impact; nothing safety-relevant moves without sign-off + re-validation. **Affects.** Doc 14
+clinical impact; nothing safety-relevant moves without sign-off + re-validation. **Affects.** Doc 15
 crawler contract; registry `review_status`/`last_verified` fields.
 
 ## D21 — UAE-localization scope & Ramadan handling *(auto)*
@@ -368,9 +368,9 @@ handle Ramadan fasting?
   tiered model.
 **Decision.** A. **Rationale.** Uses only guideline-validated, biology-based group differences; tiers
 keep it robust and maintainable; Ramadan safety is a hard rule, not a nudge; fully consistent with
-D18 (context-not-penalty) and the Doc 10/11 equity firewall. **Affects.** Doc 15; calculator
+D18 (context-not-penalty) and the Doc 19/16 equity firewall. **Affects.** Doc 18; calculator
 ethnicity/Ramadan selectors, `ethTier()`/`band()` cut-points, localization readout, `southasian` &
-`ramadan_dm` personas; Doc 16 actions; registry UAE entries.
+`ramadan_dm` personas; Doc 12 actions; registry UAE entries.
 
 ## D22 — Wearable-metric trust tiering *(user)*
 **Question.** Consumer wearables are rich but not medical-grade. How should their metrics feed
@@ -388,7 +388,7 @@ PureScore?
 **Decision.** A. **Rationale.** Uses the rich continuous signal where it is strongest (motion,
 early-warning) while keeping the headline clinical score anchored and refusing to let an inferred
 metric trigger a critical — Babylon-safe, and honest via the companion **Confidence**/data-quality
-flags. **Affects.** Doc 18 (data streams & devices); the input-type taxonomy & reliability flags;
+flags. **Affects.** Doc 07 (data streams & devices); the input-type taxonomy & reliability flags;
 companion-vector confidence weighting; deck Data-&-Experience + Day-in-the-Life sections.
 
 ## D23 — Continuous personalized scoring & feedback loop *(user)*
@@ -398,17 +398,17 @@ do biomarkers/wearables/baselines feed that without becoming clinically dishones
 - **No band jumps in the number.** Stage 1 is already `C⁰`/`C¹`-continuous; green/yellow/red are
   *labels read off the curve*, never the generator (Doc 03 §1).
 - **Within-green optimum-centering ON by default** — a small gradient toward each marker's optimum
-  so the score moves even inside green (Doc 03 §1; Doc 12 §5.2).
+  so the score moves even inside green (Doc 03 §1; Doc 05 §5.2).
 - **New Stage 2b — personal-baseline z-score** (`r_i^pers = κ_resp·tanh(z_i/2)`, `κ_resp=0.10`,
   `band_clamp`): better-than-your-baseline nudges PureScore **up**, worse trends it **down**,
   updated daily for wearables/behaviour and per-measurement for labs (Doc 03 §2b).
 - **Positive-`Δ` guarantee on the top-5** — every recommended action carries a strictly positive
   expected `ΔPureScore`; negative behaviour trends the number and the companion **Trajectory /
-  Early-warning** dimensions down (Doc 07 §3.3–§3.4; Doc 12 §5).
+  Early-warning** dimensions down (Doc 11 §3.3–§3.4; Doc 05 §5).
 **Guardrails.** Safety always dominates: `band_clamp` and the clinical/cohort `max` mean
 personalization can never relax a red, clear a critical, or flip a band; fixed/irreversible burden
 shows as low **Modifiability** so there is no false hope (D5/D16). **Affects.** Doc 03 (§1, new §2b,
-§6.1, constants), Doc 07 (§3.3–§3.4), Doc 12 (§5.1); the `tech/` interactive feedback-loop page.
+§6.1, constants), Doc 11 (§3.3–§3.4), Doc 05 (§5.1); the `tech/` interactive feedback-loop page.
 
 ## D24 — Stress as a 13th pillar? *(user)*
 **Question.** Users intuitively want a "Stress score." Should **Stress** be promoted from a
@@ -417,7 +417,7 @@ PureScore weight — and if surfaced, what should it measure? *(Lens chosen: pro
 definition chosen: physiological stress load — HRV, resting-HR, cortisol slope, sleep disruption.)*
 **Options.**
 - A ★ **Companion "Stress-load" score, not a pillar.** Surface a prominent **Stress-load** dimension
-  in the companion meta-vector (Doc 12 §4.1): physiological by definition (HRV depression, resting-HR
+  in the companion meta-vector (Doc 05 §4.1): physiological by definition (HRV depression, resting-HR
   elevation, cortisol slope, sleep disruption) blended with the existing **ALLO** allostatic-load
   reservoir (Doc 04). **Read-only** — reuses markers already owned by CV/ENDO/SLP and the ALLO
   `κ`-couplings, and carries **no weight in the PureScore aggregation**, so users get the score with
@@ -438,9 +438,9 @@ damages those pillars or the audit trail. (3) Inferred stress/readiness is **inf
 scored pillar would violate it. (4) The product goal is met without aggregation surgery: a headline
 **Stress-load: low / elevated / high** chip, paired with **Confidence**, gives users the number they
 want honestly. **Guardrails.** Stress-load never moves the headline PureScore, never sets or clears a
-band, never triggers a critical; it may only raise **Early-warning** Watch/Advisory (Doc 12 §5) and
-re-rank stress-reducing nudges (Doc 07). **Affects.** Doc 12 §4 (new companion dimension `St`, §4.1),
-Doc 02 (cross-cutting modifiers note), Doc 04 (ALLO surfaced as the chronic component), Doc 07
+band, never triggers a critical; it may only raise **Early-warning** Watch/Advisory (Doc 05 §5) and
+re-rank stress-reducing nudges (Doc 11). **Affects.** Doc 05 §4 (new companion dimension `St`, §4.1),
+Doc 02 (cross-cutting modifiers note), Doc 04 (ALLO surfaced as the chronic component), Doc 11
 (stress-down nudge ranking); the `tech/` companion-vector surfaces.
 
 ## D25 — Close the intake loop (adherence · persona-determination · goals) *(user)*
@@ -460,7 +460,7 @@ the artifacts are engine-ready (reservoir inflows, softmax posterior, applicabil
 audit *self-verifies* closure from live data rather than by hand. Depth = **comprehensive seed**: 41
 adherence check-ins (one per nudge family), the full 37-persona × 36-signal matrix, 32 goals (≥2/pillar).
 **Design notes.** (1) *Adherence* — each check-in writes `adherence ∈ [0,1]` + a reason-taxonomy code back
-to its reservoir (Doc 04), the engagement/Trajectory dimension (Doc 12), and nudge feasibility (Doc 07 §3).
+to its reservoir (Doc 04), the engagement/Trajectory dimension (Doc 05), and nudge feasibility (Doc 11 §3).
 (2) *Persona determination* — posterior = softmax over signed per-column evidence; hard sex/age/life-stage
 priors zero impossible columns first; many-to-many; resolves to the comprehensive persona set (F6). (3)
 *Goals* — applicability vector (persona · archetype · life-stage · age · sex · condition) + a wearable/lab/PRO
@@ -468,7 +468,7 @@ target + modifiability + linked nudges; drives the UserGoals lifecycle on the st
 **Guardrails.** Illustrative weights/targets — calibrate before production; adherence is self-report
 (trust-tiered, corroborated by wearables where possible); goals never relax a clinical anchor.
 **Affects.** Appendix G (auto-close F1–F3, v3 versions), new Appendices H/I/J, `data/adherence.json`,
-`data/persona-matrix.json`, `data/goals.json`; Doc 04 (reservoir inflows), Doc 07/16 (nudge↔adherence),
+`data/persona-matrix.json`, `data/goals.json`; Doc 04 (reservoir inflows), Doc 11/12 (nudge↔adherence),
 the `states.html` UserGoals lifecycle.
 
 ## D26 — Close the onboarding cluster (first-run flow · demographics · cold-start · consent) *(user)*
@@ -480,7 +480,7 @@ the `states.html` UserGoals lifecycle.
   (ordered first-run steps, demographic field-set, cold-start bootstrap + progressive profiling, consent/device
   gating) surfaced as an **Onboarding & first-run** appendix (+ a spreadsheet grid per the grid rule). Wire the
   audit's live stats so F9–F12 flip to **Addressed** on rebuild, with dated v5 versions.
-- B — Fold the spec into Doc 01/18 prose (no structured data; manual status flip; doesn't auto-verify or feed the engine).
+- B — Fold the spec into Doc 06/07 prose (no structured data; manual status flip; doesn't auto-verify or feed the engine).
 - C — Defer; leave the front-of-loop open.
 **Decision.** **A.** **Rationale.** Same proven pattern as D25 (data → builder → audit auto-verifies). The flow is
 engine-ready and integrates the pieces already built — question bank (Appx E), persona matrix (Appx I), goals
@@ -492,9 +492,9 @@ cut-points · localization). (3) *Cold-start* — a 7-item bootstrap set seeds a
 progressive profiling deepens by P1→P5 applicability. (4) *Consent/device* — privacy consent gates all capture;
 device-pairing gates wearable metrics; EHR-connect gates Patient360; actuarial layer firewalled/off by default.
 **Guardrails.** Illustrative — calibrate the bootstrap set & demographic enums before production; consent is
-informed and granular; nothing is captured before consent (Doc 11). **Affects.** Appendix G (auto-close F9–F12, v5
-versions), new Onboarding appendix + grid, `data/onboarding.json`; integrates Doc 01 (demographics), Doc 11
-(consent), Doc 14 (ignition/cold-start), Doc 15 (UAE), Doc 18 (device/household), and the `states.html` Onboarding
+informed and granular; nothing is captured before consent (Doc 16). **Affects.** Appendix G (auto-close F9–F12, v5
+versions), new Onboarding appendix + grid, `data/onboarding.json`; integrates Doc 06 (demographics), Doc 16
+(consent), Doc 15 (ignition/cold-start), Doc 18 (UAE), Doc 07 (device/household), and the `states.html` Onboarding
 sub-machine.
 
 ---
@@ -509,11 +509,11 @@ sex-binary physiological model?
 - B — Keep the D15 two-attribute (`sex_at_birth` × `gender_identity`) hormonal-milieu model.
 **Decision.** A (supersedes **D15**). **Rationale.** Product scoping decision: PureScore is split and
 presented as **PureScore — Male** and **PureScore — Female**; the engine models sex as a binary
-physiological input. **Affects.** Docs 01 §1, 05 §1 (§1.2 removed), 09 §1, 12 §2, 13 §6.1;
+physiological input. **Affects.** Docs 06 §1, 05 §1 (§1.2 removed), 09 §1, 12 §2, 13 §6.1;
 `Q_CORE_SEX` (now Male/Female, `Q_CORE_GENDER` removed); `wiki_content.PERSONAS` (transfem/transmasc
 removed); `persona-axes.json` (gender_transition archetype removed); question-bank / goals /
 persona-matrix / dossier (rebuilt); the PureScore section's Male & Female pages. Rare intersex/DSD
-remain handled via `organ_inventory` (Doc 05 §1.3).
+remain handled via `organ_inventory` (Doc 08 §1.3).
 
 ## D28 — Typed source channel per marker *(user)*
 **Question.** The audit (F7) found markers carry a free-text guideline `source` but no **typed channel**, so the
@@ -535,7 +535,7 @@ design-time classifications — re-verify edge cases (imaging folded into biomar
 production; the channel never overrides the D22 trust-tier safety rule (consumer/inferential can't drive a red).
 **Affects.** `wiki_content.marker_channel()` + `_CHANNELS`/`_CHAN_META`; Appendix A (Channel column) and the
 biomarkers grid (Channel filter, + tuple-unpacking fix); Appendix G (`source_typed`, F7 auto-close v6, §fusion
-"now typed" note); Doc 01 data model (channel enum).
+"now typed" note); Doc 06 data model (channel enum).
 
 ## D29 — Typed wearable corroboration (question → metric → tolerance) *(user)*
 **Question.** The audit (F4) found the question bank's wearable corroborations were semi-typed (`wearable.<metric>`)
@@ -555,14 +555,14 @@ semantic). **Rationale.** ~17 metrics × one tolerance is tractable and maintain
 tolerance the perceived-vs-actual gap engine (Appendix F) applies. **Guardrails.** Tolerances are design defaults
 (calibrate per device/cohort); consumer/inferential metrics never drive a band alone (D22) — only flag gaps / move
 Confidence. **Affects.** `data/wearable-corroboration.json`, new Wearable-corroboration appendix + grid; Appendix G
-(`wear_corr_typed`, F4 auto-close v6); links Appendix B (metrics), E (questions), F (gap engine), Doc 12 (Confidence).
+(`wear_corr_typed`, F4 auto-close v6); links Appendix B (metrics), E (questions), F (gap engine), Doc 05 (Confidence).
 
 ## D30 — Close the last two P2 audit items (cadence freshness-SLA · HEP/REN symptom items) *(user)*
 **Question.** Two P2 findings remained: F8 (no per-provider cadence/freshness SLA — the 'stale wearable' state had no
 threshold) and F5 (HEP/REN self-report thin). How to close them?
 **Decision.** **F8** — add a per-metric **Freshness SLA** beneath the existing cadence matrix (Appendix G §cadence):
 *expected cadence · fresh-within · stale-after · drives*. Provider determines delivery (the matrix); the SLA is the
-clinical staleness bound that fires the `states.html` Wearables→stale state and decays Confidence (Doc 12 §4); a
+clinical staleness bound that fires the `states.html` Wearables→stale state and decays Confidence (Doc 05 §4); a
 metric-level contract (not provider×metric) — cleaner and the clinically-meaningful unit. `cadence_sla` auto-closes F8.
 **F5** — take the documented-optional path and actually add it: **6 symptom/risk self-report items** to
 `data/qb-02-renal-hepatic.json` (3 REN: oedema/foamy-urine/fatigue, NSAID use, urination change; 3 HEP: RUQ/jaundice
@@ -638,31 +638,31 @@ absence of measured labs without faking certainty or hiding danger?
   instead raises a high-priority "measure this" action. Surfaced via a NEW companion dimension
   **Provenance / Source-grade** (measured-vs-imputed lab mix) plus lowered **Confidence** and **Representativeness**
   (`Rp_impute`); the headline reads **Provisional** while any scored lab is imputed. Imputed/provisional scores are
-  **excluded from the actuarial layer** (Doc 10). A real lab arriving replaces the imputed value per-marker and
+  **excluded from the actuarial layer** (Doc 19). A real lab arriving replaces the imputed value per-marker and
   confidence jumps.
 - B — Impute *all* missing clinical inputs (labs + vitals + DEXA + wearables) from cohort medians. *Rejected:* over-
   reaches the "labs only" intent and silently fabricates wearable/PRO signals.
 - C — Refuse to score until labs exist (INSUFFICIENT only). *Rejected:* abandons the cold-start patient; the engine
-  already supports neutral-prior imputation (Doc 01 §4.3) honestly.
-**Decision.** **A.** **Rationale.** Extends the existing per-marker median fallback (Doc 01 §4.3) into a formal,
+  already supports neutral-prior imputation (Doc 06 §4.3) honestly.
+**Decision.** **A.** **Rationale.** Extends the existing per-marker median fallback (Doc 06 §4.3) into a formal,
 auditable cold-start path that is *safe both ways* — never optimistic (coverage cap + no clean-green), never alarmist
 (imputed labs cannot escalate) — and *honest* (the score carries its own provenance/uncertainty rather than masquerading
-as measured). Keeping the match key to age × sex × life-stage avoids protected-class-proxy fairness risk (Doc 11 §6.1)
-and yields large, stable cells (simpler validation, Doc 09). **Design notes.** (1) *Scope* — imputable = the 20
+as measured). Keeping the match key to age × sex × life-stage avoids protected-class-proxy fairness risk (Doc 16 §6.1)
+and yields large, stable cells (simpler validation, Doc 13). **Design notes.** (1) *Scope* — imputable = the 20
 blood/urine labs only (`source:"lab"`, `imputable:true` in `calc-graph.json`); SBP/waist/body-fat/DEXA/OSA
 (`clinical`), wearables (`wearable`) and PHQ-9/GAD-7/ISI (`pro`) keep today's behaviour. (2) *Constants* —
 `q_impute=0.30` (imputed-lab confidence), `Rp_impute=0.70` (age×sex×stage match representativeness),
 `cov_green_floor=0.60` (coverage below which a pillar can't show clean-green); all illustrative, tunable, versioned.
 (3) *Vectors* — "accuracy" = Confidence + Representativeness (both lowered) + the new Provenance axis; "completeness" =
-Data-sufficiency + Coverage (both drop). (4) *Lifecycle* — acute mode and active life-stage plans (Doc 06) suppress/
-override imputation; the matched cohort must respect sex-at-birth and pregnancy/menopause stage (Doc 05); intersex →
+Data-sufficiency + Coverage (both drop). (4) *Lifecycle* — acute mode and active life-stage plans (Doc 09) suppress/
+override imputation; the matched cohort must respect sex-at-birth and pregnancy/menopause stage (Doc 08); intersex →
 individual-baseline, not cohort. **Guardrails.** All numbers illustrative — re-verify (README §5.6). Imputed labs:
-never green-clean, never critical/escalating, never priced (Doc 10), always flagged Provisional with a "measure this"
+never green-clean, never critical/escalating, never priced (Doc 19), always flagged Provisional with a "measure this"
 nudge. **Affects.** `data/calc-graph.json` (marker `source`/`imputable`, impute pipeline stage, Provenance companion
 node, cold-start demo profiles), `data/constants.json` (`q_impute`/`Rp_impute`/`cov_green_floor`), `wiki_content.py`
 (`resolve_calc_data()` + the affected mermaids 01/09/12/14 + `build_purescore_dataflow`), `assets/engine.js`
 (measured-vs-imputed scoring, Provenance/coverage, imputed-critical block), `assets/calc-explorer.js` (drawer +
-pipeline label); Docs 01/03/12 (engine truth) and 05/06/09/10/11/14/16/17/18 + eligibility-gating + admin
+pipeline label); Docs 06/03/05 (engine truth) and 05/06/09/10/11/14/16/17/18 + eligibility-gating + admin
 (propagation). Staged: Stage 1 = data SoT + this entry; Stage 2 = engine + diagrams; Stage 3 = doc/admin propagation.
 
 ## D34 — Full decision-tree explorer: missing/incomplete data, every branch shown, filter-search *(user)*

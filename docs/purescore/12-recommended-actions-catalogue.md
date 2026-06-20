@@ -1,10 +1,10 @@
 # 16 — Recommended-Actions Catalogue (Exhaustive Nudge Library, UAE-Prioritized)
 
 > Binding conventions: `README.md §3`. This document is the **exhaustive recommended-action /
-> nudge library** that Doc 07 §1.2 calls an *excerpt* of. It supplies the per-condition, typed
-> action records (same schema as Doc 07 §1.1) that the daily nudge engine filters for safety
-> (Doc 07 §5), scores for impact (Doc 07 §2), and ranks by ease-weighted utility
-> `U_a = [ΔPureScore_a(h*)]^α · p̂_a^β · (1−E_a)^η · ν_a` (Doc 07 §3.1). It is organized by the
+> nudge library** that Doc 11 §1.2 calls an *excerpt* of. It supplies the per-condition, typed
+> action records (same schema as Doc 11 §1.1) that the daily nudge engine filters for safety
+> (Doc 11 §5), scores for impact (Doc 11 §2), and ranks by ease-weighted utility
+> `U_a = [ΔPureScore_a(h*)]^α · p̂_a^β · (1−E_a)^η · ν_a` (Doc 11 §3.1). It is organized by the
 > conditions and medication classes **most prevalent in the UAE**, plus screening and adherence
 > actions.
 >
@@ -12,13 +12,13 @@
 > impact = exact finite-difference ΔPureScore — no lookup, no false hope on fixed burden) and
 > **D18** (ethnicity = *context & screening selector*, never a score penalty; absent ethnicity →
 > lower confidence, never penalty; eGFR uses the race-free CKD-EPI 2021). Every red/critical state
-> still escalates to a human clinician (README §5.1; Doc 07 §5.2; Doc 11). PureScore makes **no
-> autonomous diagnosis** (Doc 00 §3.1; Doc 11).
+> still escalates to a human clinician (README §5.1; Doc 11 §5.2; Doc 16). PureScore makes **no
+> autonomous diagnosis** (Doc 01 §3.1; Doc 16).
 >
-> **Goal-driven surfacing.** A member's declared **GOAL stream** (Doc 18 §1) lifts the goal-relevant
-> rows here via the ranking's goal-alignment bonus (Doc 07 §3.1) — this is the engine behind the
-> **goals → recommended next actions** mapping (Doc 18 §7). These rows are the same library the
-> **AI chat agent** explains and the **scheduling** surface books (Doc 18 §5).
+> **Goal-driven surfacing.** A member's declared **GOAL stream** (Doc 07 §1) lifts the goal-relevant
+> rows here via the ranking's goal-alignment bonus (Doc 11 §3.1) — this is the engine behind the
+> **goals → recommended next actions** mapping (Doc 07 §7). These rows are the same library the
+> **AI chat agent** explains and the **scheduling** surface books (Doc 07 §5).
 >
 > **Honesty mandate.** Every dose, threshold, and target below is **illustrative,
 > literature/guideline-anchored as of the cited body and year, and MUST be re-verified on the fixed
@@ -31,7 +31,7 @@
 
 ## 0. How to read each action row
 
-Each row carries the Doc 07 §1.1 fields, compacted:
+Each row carries the Doc 11 §1.1 fields, compacted:
 
 | Column | Meaning |
 |--------|---------|
@@ -43,14 +43,14 @@ Each row carries the Doc 07 §1.1 fields, compacted:
 | `E_a` | effort/burden `∈[0,1]` (0 trivial, 1 very hard) |
 | `τ_a` | latency class (immediate / days / weeks / months) |
 | `ε_a` | evidence strength `∈[0,1]` + **citation tag** (guideline body + year) |
-| `safe_a` | contraindication / safety tags screened in Doc 07 §5.1 |
+| `safe_a` | contraindication / safety tags screened in Doc 11 §5.1 |
 | `cohort_a` | cohort / ethnicity / Ramadan applicability |
 
-`VACCINE`, `SCREEN`, `MEASURE`, and `CLINICAL` are first-class (Doc 07 §1.1): "close the imputed
+`VACCINE`, `SCREEN`, `MEASURE`, and `CLINICAL` are first-class (Doc 11 §1.1): "close the imputed
 marker dominating your uncertainty" and "book the overdue screen" are legitimate, often
-highest-yield nudges (Doc 00 §2.5 cheapest-high-yield-first; Kaiser care-gap closure). Adherence
+highest-yield nudges (Doc 01 §2.5 cheapest-high-yield-first; Kaiser care-gap closure). Adherence
 (`ADHERE`) actions carry `ε_a` high because adherence efficacy is RCT-anchored, but the **quoted
-ΔPureScore is still the exact finite-difference recompute** (Doc 07 §2.5), so an already-green
+ΔPureScore is still the exact finite-difference recompute** (Doc 11 §2.5), so an already-green
 managed marker yields ~0 and the engine refuses false hope (D16).
 
 ---
@@ -108,8 +108,8 @@ Marker home: **BCM/MET**, with CV/HEP linkage.
 | id | class | dose | valve / target | pillars | E_a | τ_a | ε_a | safe_a | cohort_a |
 |----|-------|------|----------------|---------|----:|-----|-----|--------|----------|
 | OB-WAIST | MEASURE | measure waist circumference | ↑`cov_BCM`; ethnicity cutoff applied | BCM, MET | 0.10 | immediate | n/a IDF | none | **South-Asian/Arab: use ≥90/≥80 cm cutoffs (D18)** |
-| OB-DEFICIT | NUTR | modest sustained caloric deficit; high-protein | ↓`B_GLY`,`B_HEPF`; weight | MET, BCM, HEP | 0.45 | weeks–mo | 0.8 WHO/Endocrine Society 2015 | **disordered-eating hx → suppressed/reframed (Doc 07 §5.1); pregnancy/lactation no-deficit** | all |
-| OB-PROT | NUTR | protein 1.2–1.6 g/kg to preserve lean mass | fill `B_MUS` | BCM, MET | 0.35 | weeks | 0.7 Endocrine Society | **CKD ≥3b: capped/blocked (Doc 07 §5.1)** | **GLP-1/bariatric patients: muscle-preservation priority** |
+| OB-DEFICIT | NUTR | modest sustained caloric deficit; high-protein | ↓`B_GLY`,`B_HEPF`; weight | MET, BCM, HEP | 0.45 | weeks–mo | 0.8 WHO/Endocrine Society 2015 | **disordered-eating hx → suppressed/reframed (Doc 11 §5.1); pregnancy/lactation no-deficit** | all |
+| OB-PROT | NUTR | protein 1.2–1.6 g/kg to preserve lean mass | fill `B_MUS` | BCM, MET | 0.35 | weeks | 0.7 Endocrine Society | **CKD ≥3b: capped/blocked (Doc 11 §5.1)** | **GLP-1/bariatric patients: muscle-preservation priority** |
 | OB-RES | ACT | 2–3× resistance/wk (muscle preservation) | fill `B_MUS`,`B_BON` | BCM, FIT, MET | 0.55 | weeks–mo | 0.75 ACSM/WHO | severe osteoporosis → supervised | rapid-weight-loss (GLP-1) patients prioritized |
 | OB-GLP1 | ADHERE | take prescribed anti-obesity GLP-1/dual agonist | weight; ↓`B_GLY` | MET, BCM, CV | 0.15 | weeks–mo | 0.9 Endocrine Society/WHO | rx only; pair OB-PROT/OB-RES vs lean-mass loss | all; Ramadan: weekly dosing meal-time independent |
 | OB-BARI | CLINICAL | bariatric/metabolic surgery referral | care-gap; durable weight/MET | BCM, MET, CV | 0.50 | immediate | 0.85 ASMBS/IFSO | BMI ≥35 w/ comorbidity or ≥40 (ethnicity-adjusted lower in Asians) | **clinician-gated; never autonomous** |
@@ -125,7 +125,7 @@ High UAE prevalence; often undiagnosed. Marker home: **CV** (SBP/DBP, home BP), 
 | HTN-HBPM | MEASURE | home BP, 7-day AM/PM averaged | ↑`cov_CV`; resolve SBP `r_i` | CV (uncertainty) | 0.25 | immediate | n/a ACC/AHA 2017 / ESC 2024 | validated cuff; correct size | all |
 | HTN-DASH | NUTR | DASH dietary pattern | ↓vascular load; SBP `s_i` | CV, REN, MET | 0.40 | weeks | 0.8 ACC/AHA 2017 | CKD ≥3b → K⁺-aware (limit high-K⁺ DASH foods) | all; Ramadan: maintain pattern across iftar/suhoor |
 | HTN-NA | NUTR | sodium <2 g/day (<5 g salt) | ↓SBP `s_i` | CV, REN | 0.35 | weeks | 0.8 WHO/ESC 2024 | none | all |
-| HTN-WT | ACT | aerobic 150 min/wk + weight loss if high | fill `B_CRF`; ↓SBP | CV, FIT, MET | 0.45 | weeks–mo | 0.75 ACC/AHA 2017 | acute cardiac event → Doc 06 | all |
+| HTN-WT | ACT | aerobic 150 min/wk + weight loss if high | fill `B_CRF`; ↓SBP | CV, FIT, MET | 0.45 | weeks–mo | 0.75 ACC/AHA 2017 | acute cardiac event → Doc 09 | all |
 | HTN-ACEI | ADHERE | take prescribed ACE-i/ARB daily | ↓SBP `s_i`; renal protection | CV, REN | 0.10 | days–wk | 0.9 ESC 2024 / ACC/AHA 2017 | rx only; **pregnancy contraindicated (teratogen)**; hyperkalemia, cough (ACE-i); monitor K⁺/Cr | women of childbearing potential → flag |
 | HTN-CCB | ADHERE | take prescribed CCB daily | ↓SBP `s_i` | CV | 0.10 | days–wk | 0.9 ESC 2024 | rx only; edema watch | all; first-line in many Emirati regimens |
 | HTN-DIUR | ADHERE | take prescribed thiazide/loop daily | ↓SBP; volume | CV, REN | 0.10 | days | 0.85 ACC/AHA 2017 | rx only; **hypokalemia/dehydration — Ramadan caution**; gout (thiazide) | **Ramadan: dehydration risk; clinician may shift to suhoor** |
@@ -154,7 +154,7 @@ Marker home: **CV** (ApoB, LDL-C, Lp(a)).
 ## 5. Chronic kidney disease (CKD)
 
 Driven by the high diabetes/HTN burden. **eGFR uses race-free CKD-EPI 2021** (D18; README §5.5).
-Leading indicator: **UACR before eGFR** (Doc 12 §5.2). Marker home: **REN** (eGFR, UACR, K⁺).
+Leading indicator: **UACR before eGFR** (Doc 05 §5.2). Marker home: **REN** (eGFR, UACR, K⁺).
 
 | id | class | dose | valve / target | pillars | E_a | τ_a | ε_a | safe_a | cohort_a |
 |----|-------|------|----------------|---------|----:|-----|-----|--------|----------|
@@ -163,7 +163,7 @@ Leading indicator: **UACR before eGFR** (Doc 12 §5.2). Marker home: **REN** (eG
 | CKD-SGLT2 | ADHERE | take prescribed SGLT2i daily | renal protection; ↓UACR | REN, CV, MET | 0.10 | weeks–mo | 0.9 KDIGO 2024 | rx only; euglycemic DKA, volume; **hold when fasting/ill** | **Ramadan: dehydration/DKA — reassess fasting** |
 | CKD-RAASI | ADHERE | take prescribed ACE-i/ARB daily | ↓UACR; BP; renal protection | REN, CV | 0.10 | days–wk | 0.9 KDIGO 2024 | rx only; **pregnancy contraindicated**; monitor K⁺/Cr | women of childbearing potential → flag |
 | CKD-NSAID | ADHERE | **avoid NSAIDs** (OTC ibuprofen/diclofenac) | protect eGFR; avoid AKI | REN | 0.15 | immediate | 0.8 KDIGO 2024 | nephrotoxic — counsel OTC/pharmacy purchases | all CKD; common OTC in region |
-| CKD-PROT | NUTR | moderate protein 0.8 g/kg (not high-protein) | ↓hyperfiltration | REN, BCM | 0.35 | weeks–mo | 0.6 KDIGO 2024 | **overrides BCM-optimizing high-protein nudges (Doc 07 §5.1)** | CKD ≥3b: protein cap binds |
+| CKD-PROT | NUTR | moderate protein 0.8 g/kg (not high-protein) | ↓hyperfiltration | REN, BCM | 0.35 | weeks–mo | 0.6 KDIGO 2024 | **overrides BCM-optimizing high-protein nudges (Doc 11 §5.1)** | CKD ≥3b: protein cap binds |
 | CKD-NEPH | CLINICAL | nephrology referral (eGFR<30 or rapid decline) | care-gap; gate red | REN (gap) | 0.45 | immediate | n/a KDIGO 2024 | red → urgent route | all advanced CKD |
 
 ---
@@ -215,9 +215,9 @@ screening program). This is a **screening & safety context** (D18), never a pena
 ## 9. Mental health (depression / anxiety)
 
 Marker home: **MCS** (PHQ-9, GAD-7). **Hard suicidality rule (binding, never relaxed):** PHQ-9
-item-9 > 0 (or EPDS item-10 > 0 postpartum, Doc 05 §2.4) forces MCS critical and routes to **crisis
-support, never a breathing exercise** (Doc 07 §5.2; Doc 02 MCS). The nudge card is suppressed in
-favor of the escalation pathway (Doc 11).
+item-9 > 0 (or EPDS item-10 > 0 postpartum, Doc 08 §2.4) forces MCS critical and routes to **crisis
+support, never a breathing exercise** (Doc 11 §5.2; Doc 02 MCS). The nudge card is suppressed in
+favor of the escalation pathway (Doc 16).
 
 | id | class | dose | valve / target | pillars | E_a | τ_a | ε_a | safe_a | cohort_a |
 |----|-------|------|----------------|---------|----:|-----|-----|--------|----------|
@@ -248,14 +248,14 @@ Marker home: **CV/FIT** linkage + PRO symptom/peak-flow; smoking is a cross-pill
 
 ## 11. Bone health / osteoporosis
 
-Vit-D deficiency + sedentary lifestyle + postmenopausal estrogen withdrawal (Doc 05 §2.5) raise
+Vit-D deficiency + sedentary lifestyle + postmenopausal estrogen withdrawal (Doc 08 §2.5) raise
 fracture risk. Marker home: **BCM** (BMD/T-score, FRAX), with **NUT**.
 
 | id | class | dose | valve / target | pillars | E_a | τ_a | ε_a | safe_a | cohort_a |
 |----|-------|------|----------------|---------|----:|-----|-----|--------|----------|
 | BONE-FRAX | SCREEN | compute FRAX ± DXA (BMD/T-score) | fracture risk-stratify; gap | BCM (gap) | 0.35 | immediate | n/a NICE/FRAX | T-score ≤ −2.5 → treat pathway | **postmenopausal women, ≥65** |
 | BONE-VITD | ADHERE | vitamin D repletion (see §7) + calcium 1000–1200 mg/d (diet-first) | fill `B_BON` | BCM, NUT | 0.15 | weeks–mo | 0.7 Endocrine Society 2024 | hypercalcemia/stones → diet-first calcium | all deficient |
-| BONE-RES | ACT | weight-bearing + resistance 2–3×/wk | fill `B_BON`,`B_MUS` | BCM, FIT | 0.55 | weeks–mo | 0.7 ACSM/WHO | severe osteoporosis/recent fracture → **supervised-only (Doc 07 §5.1)** | postmenopausal, elderly |
+| BONE-RES | ACT | weight-bearing + resistance 2–3×/wk | fill `B_BON`,`B_MUS` | BCM, FIT | 0.55 | weeks–mo | 0.7 ACSM/WHO | severe osteoporosis/recent fracture → **supervised-only (Doc 11 §5.1)** | postmenopausal, elderly |
 | BONE-RX | ADHERE | take prescribed bisphosphonate/anti-resorptive | ↓bone-loss rate | BCM | 0.15 | months | 0.85 NICE/Endocrine Society | rx only; dental (ONJ), renal, dosing posture | osteoporosis dx |
 
 ---
@@ -266,7 +266,7 @@ fracture risk. Marker home: **BCM** (BMD/T-score, FRAX), with **NUT**.
 
 | id | class | dose | valve / target | pillars | E_a | τ_a | ε_a | safe_a | cohort_a |
 |----|-------|------|----------------|---------|----:|-----|-----|--------|----------|
-| THY-TSH | MEASURE | order TSH (± FT4) | ↑`cov_ENDO` | ENDO (uncertainty) | 0.20 | immediate | n/a ATA/Endocrine Society | **preconception target 0.5–2.5; pregnancy trimester-specific (Doc 05)** | symptomatic, preconception, postpartum |
+| THY-TSH | MEASURE | order TSH (± FT4) | ↑`cov_ENDO` | ENDO (uncertainty) | 0.20 | immediate | n/a ATA/Endocrine Society | **preconception target 0.5–2.5; pregnancy trimester-specific (Doc 08)** | symptomatic, preconception, postpartum |
 | THY-RX | ADHERE | take prescribed levothyroxine, empty stomach | TSH `s_i` | ENDO | 0.10 | weeks | 0.9 ATA | rx only; separate from iron/calcium/coffee | all; Ramadan: take at suhoor, fasting-state preserved |
 
 ### 12.2 Gout / hyperuricemia (MET/CV)
@@ -293,20 +293,20 @@ fracture risk. Marker home: **BCM** (BMD/T-score, FRAX), with **NUT**.
 | VAC-PNEU | VACCINE | pneumococcal per age/risk schedule | ↓infection burden | INF | 0.20 | immediate | 0.8 WHO/MoHAP | — | ≥65, chronic disease |
 | VAC-HPV | VACCINE | HPV per national schedule | ↓cervical-cancer risk | INF (gap) | 0.20 | immediate | 0.85 WHO | — | adolescents/eligible |
 | SCR-COLO | SCREEN | colorectal screening (FIT/colonoscopy) per age | care-gap; cancer | (gap) | 0.40 | immediate | n/a USPSTF/MoHAP | — | **age ≥45–50 per protocol** |
-| SCR-MAMMO | SCREEN | mammography per age/sex protocol | care-gap; cancer | (gap) | 0.40 | immediate | n/a USPSTF/DHA | sex/organ-inventory gated (Doc 05 §1.1) | **women per national age band** |
-| SCR-CERV | SCREEN | cervical (Pap/HPV) per protocol | care-gap; cancer | (gap) | 0.40 | immediate | n/a USPSTF/DHA | organ-inventory gated (Doc 05 §1.1) | women with cervix per age band |
+| SCR-MAMMO | SCREEN | mammography per age/sex protocol | care-gap; cancer | (gap) | 0.40 | immediate | n/a USPSTF/DHA | sex/organ-inventory gated (Doc 08 §1.1) | **women per national age band** |
+| SCR-CERV | SCREEN | cervical (Pap/HPV) per protocol | care-gap; cancer | (gap) | 0.40 | immediate | n/a USPSTF/DHA | organ-inventory gated (Doc 08 §1.1) | women with cervix per age band |
 
 ---
 
 ## 13. Cross-cutting actions
 
-### 13.1 MEASURE — close imputed-marker gaps (first-class, Doc 07 §1.1)
+### 13.1 MEASURE — close imputed-marker gaps (first-class, Doc 11 §1.1)
 
 When a pillar's dominant risk rides on an **imputed** marker (low `cov_k`, literature fallback,
 README §1), measuring it is often the **highest-yield nudge** (it resolves uncertainty rather than
 moving a value). Per-condition MEASURE rows above (`*-MSR`, `*-HBA1C`, `LIP-APOB`, `CKD-UACR`,
 `VITD-MSR`, `ANE-FER`, `THY-TSH`, …) all carry `ε_a = n/a` (they don't claim a `ΔPureScore` from a
-value move; they sharpen `cov_k` and the companion **Confidence/Data-sufficiency** vector, Doc 12
+value move; they sharpen `cov_k` and the companion **Confidence/Data-sufficiency** vector, Doc 05
 §4). They are surfaced when the imputed marker is the binding constraint.
 
 ### 13.2 ADHERE — most prevalent UAE drug classes
@@ -323,10 +323,10 @@ value move; they sharpen `cov_k` and the companion **Confidence/Data-sufficiency
 | ADH-PPI | ADHERE | proton-pump inhibitor | HEP/NUT context | 0.10 | 0.7 NICE | long-term Mg/B12/bone caveat | deprescribe-review nudge |
 
 Each `ADH-*` row is surfaced **only when prescribed** (`rx`), and the quoted `ΔPureScore` is the
-exact recompute (D16): an already-controlled (`MANAGED`, Doc 12 §3.1) marker yields ~0, so the
-engine credits *sustained* adherence via the reservoir path (Doc 07 §2.2), not a phantom value move.
+exact recompute (D16): an already-controlled (`MANAGED`, Doc 05 §3.1) marker yields ~0, so the
+engine credits *sustained* adherence via the reservoir path (Doc 11 §2.2), not a phantom value move.
 A **fixed/medication-responsive red that lifestyle cannot move routes to a clinician** rather than a
-fabricated lifestyle fix (D16; Doc 07 §8 status).
+fabricated lifestyle fix (D16; Doc 11 §8 status).
 
 ### 13.3 Ramadan-fasting adjustments (cross-cutting safety)
 
@@ -349,14 +349,14 @@ Implementing **D18** across this catalogue:
    a band**; they **never** add risk to the score for belonging to a group (README §5.5).
 2. **Ethnicity raises screening salience.** G6PD and thalassemia/hemoglobinopathy screening (§8),
    FH cascade screening under high regional consanguinity (§4) — ethnicity moves these care-gap
-   nudges up the ranking via `ν_a` (Doc 07 §3.1), not via any penalty term.
+   nudges up the ranking via `ν_a` (Doc 11 §3.1), not via any penalty term.
 3. **Absent ethnicity → lower confidence, never penalty.** When ancestry is unknown the engine
    widens to the least-penalizing validated band and **lowers the companion Confidence/
-   Representativeness vector** (Doc 12 §4, §7; D7), exactly as for absent cohort data — it never
+   Representativeness vector** (Doc 05 §4, §7; D7), exactly as for absent cohort data — it never
    substitutes a worse score.
 4. **Race-free renal function.** eGFR uses **CKD-EPI 2021 (race-free)** for every patient (§5;
-   README §5.5; Doc 12 §7) — no race coefficient, ever.
-5. **No protected-class proxy may worsen a score, price, or access** (README §5.5; Doc 10; Doc 11).
+   README §5.5; Doc 05 §7) — no race coefficient, ever.
+5. **No protected-class proxy may worsen a score, price, or access** (README §5.5; Doc 19; Doc 16).
    Ethnicity adjusts *context and screening*, the same way representativeness adjusts *confidence*,
    never *penalty*.
 
@@ -368,7 +368,7 @@ This catalogue is a **living artifact**, maintained against the project's **evid
 external citation crawler keeps the cited guideline bodies/years (ADA, KDIGO, ACC/AHA, ESC, WHO,
 IDF/IDF-DAR, Endocrine Society, NICE, ATA, AASLD/EASL, GINA/GOLD, AASM, ACR, USPSTF, and the UAE
 bodies MoHAP, DHA, DoH-AbuDhabi, Emirates Cardiac Society) **fresh on the fixed cadence** (README
-§5.6); a guideline update triggers a model-version bump and re-validation (Doc 09/11).
+§5.6); a guideline update triggers a model-version bump and re-validation (Doc 13/16).
 
 - **Conditions covered (16 sections):** T2D/prediabetes, obesity/metabolic syndrome, hypertension,
   dyslipidemia/ASCVD, CKD, NAFLD/MASLD, vitamin D deficiency, anemia/iron + hemoglobinopathy/G6PD,
@@ -376,10 +376,10 @@ bodies MoHAP, DHA, DoH-AbuDhabi, Emirates Cardiac Society) **fresh on the fixed 
   cross-cutting MEASURE, ADHERE, and Ramadan-fasting actions.
 - **Every dose/threshold is illustrative** and guideline-anchored as of the cited body+year;
   re-verify on cadence before any production use (README §5.6).
-- **Every red/critical escalates to a human** (README §5.1; Doc 07 §5.2). The hard suicidality rule
+- **Every red/critical escalates to a human** (README §5.1; Doc 11 §5.2). The hard suicidality rule
   (§9) and the medically-inadvisable-to-fast rule (§13.3) are never relaxed.
-- **No autonomous diagnosis or therapy initiation/titration** (Doc 00 §3.1; Doc 11). Medication
+- **No autonomous diagnosis or therapy initiation/titration** (Doc 01 §3.1; Doc 16). Medication
   rows act on **adherence** to an existing prescription only.
-- **Pending clinical sign-off and Doc 13 validation** of realized-vs-predicted impact (Doc 07 §6
+- **Pending clinical sign-off and Doc 14 validation** of realized-vs-predicted impact (Doc 11 §6
   feedback loop). Until then, all `ΔPureScore` contributions are illustrative (synthetic engine),
-  and the catalogue carries the Babylon discipline: synthetic ≠ evidence (Doc 00).
+  and the catalogue carries the Babylon discipline: synthetic ≠ evidence (Doc 01).

@@ -22,11 +22,11 @@ def html_of(mdpath):                            # 03-scoring-formula.md -> 03-sc
 DOCMAP = {n: html_of(p) for n, p in DOC_NUM.items()}     # for "Doc NN" linkify
 
 SHORT = {
- "00":"Vision & principles","01":"Data model & ranges","02":"Pillars & markers","03":"Scoring formula",
- "04":"Reservoir dynamics","05":"Sex-specific models","06":"Acute events & life-stage","07":"Daily nudge engine",
- "08":"Clinical scores","09":"Cohorts & validation","10":"Actuarial & insurance","11":"Safety & governance",
- "12":"PureScore 2.0","13":"Validation harness","14":"Evidence registry","15":"UAE localization",
- "16":"Actions catalogue","17":"Clinician red-team","18":"Data streams & experience",
+ "01":"Vision & principles","06":"Data model & ranges","02":"Pillars & markers","03":"Scoring formula",
+ "04":"Reservoir dynamics","08":"Sex-specific models","09":"Acute events & life-stage","11":"Daily nudge engine",
+ "10":"Clinical scores","13":"Cohorts & validation","19":"Actuarial & insurance","16":"Safety & governance",
+ "05":"PureScore 2.0","14":"Validation harness","15":"Evidence registry","18":"UAE localization",
+ "12":"Actions catalogue","17":"Clinician red-team","07":"Data streams & experience",
 }
 
 # ----------------------------------------------------------------- markdown -> html
@@ -149,29 +149,29 @@ def md_to_html(md):
 # Each chapter has a one-line blurb (NAV_BLURB). Doc number badges float; identity preserved.
 NAV = [
  ("Start here", [("index.html", "Home"), ("purescore-uber-map.html", "Calculation Explorer"),
-                 (DOCMAP["00"], SHORT["00"], "00"), ("conventions.html", "Conventions & glossary"),
+                 (DOCMAP["01"], SHORT["01"], "01"), ("conventions.html", "Conventions & glossary"),
                  ("decisions.html", "Decision log")]),
  ("1 · How scoring works", [("purescore-overview.html", "Overview"),
                  (DOCMAP["02"], SHORT["02"], "02"), (DOCMAP["03"], SHORT["03"], "03"),
-                 (DOCMAP["04"], SHORT["04"], "04"), (DOCMAP["12"], SHORT["12"], "12")]),
- ("2 · Inputs & intake", [(DOCMAP["01"], SHORT["01"], "01"), (DOCMAP["18"], SHORT["18"], "18"),
+                 (DOCMAP["04"], SHORT["04"], "04"), (DOCMAP["05"], SHORT["05"], "05")]),
+ ("2 · Inputs & intake", [(DOCMAP["06"], SHORT["06"], "06"), (DOCMAP["07"], SHORT["07"], "07"),
                  ("appendix-biomarkers.html", "Markers (all channels)"), ("appendix-wearables.html", "Wearables"),
                  ("purescore-wearable-baselines.html", "Wearable baselines"),
                  ("questions-hub.html", "Intake — overview"), ("appendix-onboarding.html", "Onboarding & first-run"),
                  ("appendix-questions.html", "Screeners & PROs"), ("appendix-question-bank.html", "Question bank"),
                  ("appendix-lifestyles.html", "Lifestyles"), ("appendix-wearable-corroboration.html", "Wearable corroboration"),
                  ("eligibility-gating.html", "Eligibility & gating"), ("appendix-coverage-audit.html", "Coverage audit")]),
- ("3 · Making it personal", [(DOCMAP["05"], SHORT["05"], "05"), (DOCMAP["06"], SHORT["06"], "06"),
-                 (DOCMAP["08"], SHORT["08"], "08"), ("appendix-personas.html", "Personas"),
+ ("3 · Making it personal", [(DOCMAP["08"], SHORT["08"], "08"), (DOCMAP["09"], SHORT["09"], "09"),
+                 (DOCMAP["10"], SHORT["10"], "10"), ("appendix-personas.html", "Personas"),
                  ("appendix-persona-matrix.html", "Persona matrix"),
                  ("purescore-male.html", "PureScore — Male"), ("purescore-female.html", "PureScore — Female")]),
- ("4 · Acting on it", [(DOCMAP["07"], SHORT["07"], "07"), (DOCMAP["16"], SHORT["16"], "16"),
+ ("4 · Acting on it", [(DOCMAP["11"], SHORT["11"], "11"), (DOCMAP["12"], SHORT["12"], "12"),
                  ("appendix-adherence.html", "Adherence"), ("appendix-goals.html", "Goals"),
                  ("feedback-loop.html", "Feedback-loop demo")]),
- ("5 · Trust & govern", [(DOCMAP["09"], SHORT["09"], "09"), (DOCMAP["13"], SHORT["13"], "13"),
-                 (DOCMAP["14"], SHORT["14"], "14"), (DOCMAP["11"], SHORT["11"], "11"),
-                 (DOCMAP["17"], SHORT["17"], "17"), (DOCMAP["15"], SHORT["15"], "15"),
-                 (DOCMAP["10"], SHORT["10"], "10")]),
+ ("5 · Trust & govern", [(DOCMAP["13"], SHORT["13"], "13"), (DOCMAP["14"], SHORT["14"], "14"),
+                 (DOCMAP["15"], SHORT["15"], "15"), (DOCMAP["16"], SHORT["16"], "16"),
+                 (DOCMAP["17"], SHORT["17"], "17"), (DOCMAP["18"], SHORT["18"], "18"),
+                 (DOCMAP["19"], SHORT["19"], "19")]),
  ("6 · System & build", [("states.html", "Patient life-state machine"),
                  ("engagement-state-machines.html", "Engagement state machines"),
                  ("behemoth-class-diagram.html", "Class diagram (domain model)"), ("class-explorer.html", "Class explorer"),
@@ -350,17 +350,17 @@ def render_index():
          '<a href="purescore-overview.html"><b>PureScore</b> scoring engine</a> (one subsystem — pillars, '
          'reservoirs, metrics &amp; weights), interpretation &amp; personalization, action &amp; engagement, and '
          'validation/governance — plus reference appendices, the engineering build and live demos. Start at '
-         '<a href="00-vision-principles-and-lessons.html">Doc 00</a>, the '
+         '<a href="01-vision-principles-and-lessons.html">Doc 01</a>, the '
          '<a href="purescore-overview.html">PureScore Overview</a>, or jump anywhere.</p></div>',
          ('<div class="section-h">Where do I start?</div><div class="grid c3 roles">'
-          '<a class="card role" href="00-vision-principles-and-lessons.html"><div class="role-i">🧭</div>'
+          '<a class="card role" href="01-vision-principles-and-lessons.html"><div class="role-i">🧭</div>'
           '<h3>New here</h3><p>Read the book front-to-back. Start with the vision, then the Overview and the system map.</p>'
           '<div class="role-links"><a href="purescore-overview.html">Overview</a>'
           '<a href="purescore-uber-map.html">How it all connects</a><a href="03-scoring-formula.html">Scoring formula</a></div></a>'
           '<a class="card role" href="admin-index.html"><div class="role-i">🩺</div>'
           '<h3>Clinician</h3><p>How the score is kept safe, contextual and reviewable. Jump to the Doctor\'s board.</p>'
-          '<div class="role-links"><a href="11-safety-governance-and-regulatory.html">Safety &amp; governance</a>'
-          '<a href="08-clinical-scores-integration.html">Clinical scores</a><a href="appendix-coverage-audit.html">Coverage audit</a></div></a>'
+          '<div class="role-links"><a href="16-safety-governance-and-regulatory.html">Safety &amp; governance</a>'
+          '<a href="10-clinical-scores-integration.html">Clinical scores</a><a href="appendix-coverage-audit.html">Coverage audit</a></div></a>'
           '<a class="card role" href="class-explorer.html"><div class="role-i">🛠️</div>'
           '<h3>Engineer</h3><p>The production object model and contracts. Start with the class explorer.</p>'
           '<div class="role-links"><a href="dossier-erd.html">Data model (ERD)</a>'
@@ -566,22 +566,22 @@ _GRID_OF = {"appendix-biomarkers.html": "appendix-biomarkers.html#spreadsheet", 
             "appendix-onboarding.html": "appendix-onboarding.html#spreadsheet", "appendix-wearable-corroboration.html": "appendix-wearable-corroboration.html#spreadsheet",
             "dossier-erd.html": "dossier-erd.html#spreadsheet"}
 _CONNECTS_EXTRA = {
- "index.html": ["purescore-uber-map.html", "purescore-overview.html", DOCMAP["00"]],
+ "index.html": ["purescore-uber-map.html", "purescore-overview.html", DOCMAP["01"]],
  "purescore-overview.html": [DOCMAP["03"], DOCMAP["02"], "purescore-uber-map.html"],
  DOCMAP["02"]: ["appendix-biomarkers.html", "appendix-biomarkers.html#spreadsheet", DOCMAP["03"]],
  DOCMAP["03"]: ["purescore-uber-map.html", DOCMAP["04"], "behemoth-class-diagram.html"],
  DOCMAP["04"]: [DOCMAP["03"], "behemoth-class-diagram.html", "purescore-uber-map.html"],
- DOCMAP["12"]: ["states.html", "purescore-uber-map.html", DOCMAP["03"]],
- DOCMAP["01"]: ["dossier-erd.html", DOCMAP["18"]],
- DOCMAP["18"]: ["appendix-wearables.html", "appendix-biomarkers.html", "questions-hub.html"],
- DOCMAP["07"]: ["engagement-state-machines.html", "appendix-adherence.html", "appendix-goals.html", DOCMAP["16"]],
- DOCMAP["16"]: [DOCMAP["07"], "appendix-adherence.html"],
- DOCMAP["06"]: ["states.html", DOCMAP["05"]],
- DOCMAP["05"]: ["appendix-personas.html", "purescore-male.html", "purescore-female.html"],
- DOCMAP["11"]: ["states.html", DOCMAP["17"]],
+ DOCMAP["05"]: ["states.html", "purescore-uber-map.html", DOCMAP["03"]],
+ DOCMAP["06"]: ["dossier-erd.html", DOCMAP["07"]],
+ DOCMAP["07"]: ["appendix-wearables.html", "appendix-biomarkers.html", "questions-hub.html"],
+ DOCMAP["11"]: ["engagement-state-machines.html", "appendix-adherence.html", "appendix-goals.html", DOCMAP["12"]],
+ DOCMAP["12"]: [DOCMAP["11"], "appendix-adherence.html"],
+ DOCMAP["09"]: ["states.html", DOCMAP["08"]],
+ DOCMAP["08"]: ["appendix-personas.html", "purescore-male.html", "purescore-female.html"],
+ DOCMAP["16"]: ["states.html", DOCMAP["17"]],
  "appendix-coverage-audit.html": ["questions-hub.html", "appendix-question-bank.html", "states.html"],
  "questions-hub.html": ["appendix-onboarding.html", "appendix-question-bank.html", "eligibility-gating.html"],
- "states.html": [DOCMAP["06"], "appendix-goals.html", DOCMAP["12"]],
+ "states.html": [DOCMAP["09"], "appendix-goals.html", DOCMAP["05"]],
  "behemoth-class-diagram.html": ["class-explorer.html", "dossier-erd.html", DOCMAP["03"]],
 }
 def _navlabel(fn):

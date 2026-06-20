@@ -51,25 +51,25 @@ Three properties make PureScore more than a weighted average of lab values:
 |---|----------|:--:|----------|
 | — | `README.md` | ✔ | This index, conventions, glossary |
 | — | `decisions.md` | ✔ | **Decision log** — every material design question, all options, and the selected one (maintained from 2026-06-14) |
-| 00 | `00-vision-principles-and-lessons.md` | ✔ | Vision, design principles, lessons from Babylon Health, Kaiser Permanente, Mayo Clinic |
-| 01 | `01-data-model-and-reference-ranges.md` | ✔ | Canonical data model (FHIR-aligned), tier definitions, literature reference-range strategy |
+| 00 | `01-vision-principles-and-lessons.md` | ✔ | Vision, design principles, lessons from Babylon Health, Kaiser Permanente, Mayo Clinic |
+| 01 | `06-data-model-and-reference-ranges.md` | ✔ | Canonical data model (FHIR-aligned), tier definitions, literature reference-range strategy |
 | 02 | `02-pillars-and-marker-catalog.md` | ✔ | The 12 pillars; full marker catalogue with tiers and green/yellow/red bands |
 | 03 | `03-scoring-formula.md` | ✔ | Core mathematics: marker → pillar → PureScore, critical cascade |
 | 04 | `04-moniac-reservoir-dynamics.md` | ✔ | Reservoirs, time-decay, interference/coupling matrix, asset vs burden |
-| 05 | `05-sex-specific-models.md` |  | Female vs male models: cycle, fertility, pregnancy, post-partum, menopause; male andropause |
-| 06 | `06-acute-events-and-life-stage-plans.md` |  | Acute-event override & revert; care/nutrition/exercise plans by life stage |
-| 07 | `07-daily-nudge-engine.md` |  | Daily top-5 easiest actions, impact attribution to PureScore/pillars |
-| 08 | `08-clinical-scores-integration.md` |  | FINDRISC, ASCVD/SCORE2, KDIGO, FIB-4, FRAX, PhenoAge/BioAge for clinicians |
-| 09 | `09-cohort-percentiles-and-validation.md` |  | Cohort construction, empirical-Bayes shrinkage, calibration, fairness, drift |
-| 10 | `10-actuarial-pricing-and-insurance.md` |  | Full pricing engine **with heavy regulatory/fairness risk flags** |
-| 11 | `11-safety-governance-and-regulatory.md` |  | Clinician-in-loop, escalation, equity, privacy, model governance |
-| 12 | `12-critical-review-and-purescore-2.0.md` | ✔ | Edge-case critique + PureScore 2.0: context-aware interpretation, companion meta-vector, personal-baseline early-warning, dual framing, bias handling |
-| 13 | `13-validation-and-calibration-harness.md` | ✔ | Validation/calibration **gates** for 2.0 (score + companion vector + early-warning): discrimination, calibration/recalibration, early-warning PPV/lead-time, fairness slices, drift, release gates. Executable: `assets/validation_harness.js` |
-| 14 | `14-evidence-registry-and-provenance.md` | ✔ | Machine-readable evidence registry, per-band provenance, the cold-start **"ignition" model** (guideline→cohort→personal baseline), external-crawler change-control. Registry: `assets/evidence-registry.json` |
-| 15 | `15-uae-localization.md` | ✔ | **UAE localization**: ethnicity-aware cut-points & screening (context, never penalty; D18), regional epidemiology, heritable-condition screening (G6PD/thalassemia/FH), vitamin-D, **Ramadan (IDF-DAR)** safety |
-| 16 | `16-recommended-actions-catalogue.md` | ✔ | **Exhaustive UAE-prioritized** action/nudge catalogue by condition (diabetes, CVD, CKD, NAFLD, vit-D, hemoglobinopathy/G6PD, mental health, respiratory, bone, Ramadan…), medication-adherence & screening, evidence-tagged |
+| 05 | `08-sex-specific-models.md` |  | Female vs male models: cycle, fertility, pregnancy, post-partum, menopause; male andropause |
+| 06 | `09-acute-events-and-life-stage-plans.md` |  | Acute-event override & revert; care/nutrition/exercise plans by life stage |
+| 07 | `11-daily-nudge-engine.md` |  | Daily top-5 easiest actions, impact attribution to PureScore/pillars |
+| 08 | `10-clinical-scores-integration.md` |  | FINDRISC, ASCVD/SCORE2, KDIGO, FIB-4, FRAX, PhenoAge/BioAge for clinicians |
+| 09 | `13-cohort-percentiles-and-validation.md` |  | Cohort construction, empirical-Bayes shrinkage, calibration, fairness, drift |
+| 10 | `19-actuarial-pricing-and-insurance.md` |  | Full pricing engine **with heavy regulatory/fairness risk flags** |
+| 11 | `16-safety-governance-and-regulatory.md` |  | Clinician-in-loop, escalation, equity, privacy, model governance |
+| 12 | `05-critical-review-and-purescore-2.0.md` | ✔ | Edge-case critique + PureScore 2.0: context-aware interpretation, companion meta-vector, personal-baseline early-warning, dual framing, bias handling |
+| 13 | `14-validation-and-calibration-harness.md` | ✔ | Validation/calibration **gates** for 2.0 (score + companion vector + early-warning): discrimination, calibration/recalibration, early-warning PPV/lead-time, fairness slices, drift, release gates. Executable: `assets/validation_harness.js` |
+| 14 | `15-evidence-registry-and-provenance.md` | ✔ | Machine-readable evidence registry, per-band provenance, the cold-start **"ignition" model** (guideline→cohort→personal baseline), external-crawler change-control. Registry: `assets/evidence-registry.json` |
+| 15 | `18-uae-localization.md` | ✔ | **UAE localization**: ethnicity-aware cut-points & screening (context, never penalty; D18), regional epidemiology, heritable-condition screening (G6PD/thalassemia/FH), vitamin-D, **Ramadan (IDF-DAR)** safety |
+| 16 | `12-recommended-actions-catalogue.md` | ✔ | **Exhaustive UAE-prioritized** action/nudge catalogue by condition (diabetes, CVD, CKD, NAFLD, vit-D, hemoglobinopathy/G6PD, mental health, respiratory, bone, Ramadan…), medication-adherence & screening, evidence-tagged |
 | 17 | `17-clinician-red-team-and-blind-spots.md` | ✔ | **Adversarial self-review**: every clinician/statistician/ethicist/regulator objection → how handled → honest residual; consolidated blind-spot register |
-| 18 | `18-data-streams-and-experience.md` | ✔ | **Input taxonomy** (lab/wearable/goal/lifestyle, flagged), **wearable trust-tiering** (D22), wearables×pillars, product surfaces (AI scribe/chat/scheduling/in-home/insurance-auth), household accounts, goals→actions |
+| 18 | `07-data-streams-and-experience.md` | ✔ | **Input taxonomy** (lab/wearable/goal/lifestyle, flagged), **wearable trust-tiering** (D22), wearables×pillars, product surfaces (AI scribe/chat/scheduling/in-home/insurance-auth), household accounts, goals→actions |
 
 Read 00 → 04 first; they define everything the later documents depend on.
 
@@ -100,7 +100,7 @@ These symbols and definitions are **binding** across all PureScore documents.
 - `r_i ∈ [0,1]` — **marker risk** (0 = optimal, 1 = maximally adverse). `r_i ≥ 0.5` ⇒ red.
 - `s_i = 100·(1 − r_i)` — **marker sub-score** (0–100).
 - `w_i` — clinical weight of marker within its pillar.
-- `tier(i) ∈ {Core, Peripheral, Comprehensive}` — measurement tier (Doc 01 §3).
+- `tier(i) ∈ {Core, Peripheral, Comprehensive}` — measurement tier (Doc 06 §3).
 
 ### 3.3 Per-pillar and overall quantities
 - `R_k ∈ [0,1]` — pillar risk; `S_k = 100·(1 − R_k)` — **pillar score**.
@@ -115,7 +115,7 @@ These symbols and definitions are **binding** across all PureScore documents.
 4. **HEP** — Hepatic
 5. **INF** — Inflammation & Immune
 6. **HEM** — Hematologic & Oxygen Transport
-7. **ENDO** — Endocrine & Hormonal (sex-specific; see Doc 05)
+7. **ENDO** — Endocrine & Hormonal (sex-specific; see Doc 08)
 8. **BCM** — Body Composition & Musculoskeletal (incl. bone density, sarcopenia)
 9. **NUT** — Nutrition & Micronutrients
 10. **SLP** — Sleep & Circadian Recovery
@@ -126,7 +126,7 @@ These symbols and definitions are **binding** across all PureScore documents.
 - **Green** = at/near clinical optimum, `r_i < 0.15`.
 - **Yellow** = caution / sub-optimal / early risk, `0.15 ≤ r_i < 0.5`.
 - **Red / critical** = clinically concerning, `r_i ≥ 0.5`; triggers pillar-critical evaluation
-  and clinician escalation pathway (Doc 11).
+  and clinician escalation pathway (Doc 16).
 
 ---
 
@@ -137,7 +137,7 @@ These symbols and definitions are **binding** across all PureScore documents.
 - **Leakage (λ)** — rate at which a reservoir drains/heals when inputs normalize.
 - **Interference (κ)** — cross-pillar coupling: one reservoir feeding another.
 - **Critical cascade** — propagation of a critical marker → pillar → PureScore.
-- **Acute mode** — temporary re-prioritization toward an acute life event (Doc 06).
+- **Acute mode** — temporary re-prioritization toward an acute life event (Doc 09).
 - **Coverage/confidence** — fraction of a pillar's weighted markers backed by *the patient's own*
   recent data vs literature fallback.
 

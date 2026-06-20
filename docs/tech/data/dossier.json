@@ -640,7 +640,7 @@
    "areaColor": "#1d4ed8",
    "doc": "Doc01",
    "tier": "core",
-   "purpose": "Logical envelope for one of the four flagged input domains — LAB (🧪), WEAR (⌚), GOAL (🎯), LIFE (📝) — as defined in Doc 01 §1 and Doc 18 §1. InputStream is not a row-level entity; it is the classification layer that tags every inbound payload before it becomes a Measurement. It resolves the trust tier and q_source floor for the stream, routes to the appropriate ingestion worker, and carries the per-stream confidence ceiling that the scoring engine applies when a patient's data comes predominantly from one stream. For WEAR, InputStream enforces D22 wearable trust tiering: clinical-grade sub-stream (CGM, validated cuff, single-lead ECG) vs consumer-validated vs inferential-only. For LIFE, it applies the survey trust floor (q_source 0.5–0.7). GOAL feeds the weighting/personalisation layer, not measurements directly.",
+   "purpose": "Logical envelope for one of the four flagged input domains — LAB (🧪), WEAR (⌚), GOAL (🎯), LIFE (📝) — as defined in Doc 06 §1 and Doc 07 §1. InputStream is not a row-level entity; it is the classification layer that tags every inbound payload before it becomes a Measurement. It resolves the trust tier and q_source floor for the stream, routes to the appropriate ingestion worker, and carries the per-stream confidence ceiling that the scoring engine applies when a patient's data comes predominantly from one stream. For WEAR, InputStream enforces D22 wearable trust tiering: clinical-grade sub-stream (CGM, validated cuff, single-lead ECG) vs consumer-validated vs inferential-only. For LIFE, it applies the survey trust floor (q_source 0.5–0.7). GOAL feeds the weighting/personalisation layer, not measurements directly.",
    "fields": [
     "flag",
     "q_source"
@@ -801,7 +801,7 @@
      "soThat": "it can accurately compute the companion Confidence dimension and suppress over-confident green claims when data is predominantly from low-trust streams",
      "acceptance": [
       "Given a patient whose marker coverage is 80% WEAR (consumer_validated) and 20% LAB, When the Confidence companion dimension is computed, Then it reflects the blended q_source ceiling and is labelled 'moderate confidence — limited lab data'",
-      "Given a patient with no LAB data and all markers from LIFE (survey, q_source 0.5–0.7), When a pillar score is 'green', Then it must be labelled 'low-coverage green' and the pillar coverage metric is visibly low (Doc 01 §4.3)",
+      "Given a patient with no LAB data and all markers from LIFE (survey, q_source 0.5–0.7), When a pillar score is 'green', Then it must be labelled 'low-coverage green' and the pillar coverage metric is visibly low (Doc 06 §4.3)",
       "Given a GOAL stream update (user sets a new weight-loss goal), When processed, Then it does NOT create a Measurement row — it updates the patient's Goal record and re-ranks nudges; q_source is not applicable to GOAL stream events"
      ],
      "edge": [
@@ -1079,7 +1079,7 @@
    "areaColor": "#1d4ed8",
    "doc": "Doc01",
    "tier": "core",
-   "purpose": "Immutable time-series record of a single observed value for one patient and one marker at a given effectiveTime. Every reading persists as its own row — the score is always re-derivable from the history. Each Measurement carries: source (lab | wearable | survey | derived | literature_fallback), trust_tier (lab_venous | clinical_grade_device | consumer_validated | inferential | survey), raw q_source (from the trust-tier table, D22), and a computed confidence_i(t) that decays with staleness (Doc 01 §2). Partitioned by (patient_id, effectiveTime) for time-series query patterns. Idempotency is enforced via an idempotency_key (source system + message id); duplicate ingestion returns 409 without creating a second row.",
+   "purpose": "Immutable time-series record of a single observed value for one patient and one marker at a given effectiveTime. Every reading persists as its own row — the score is always re-derivable from the history. Each Measurement carries: source (lab | wearable | survey | derived | literature_fallback), trust_tier (lab_venous | clinical_grade_device | consumer_validated | inferential | survey), raw q_source (from the trust-tier table, D22), and a computed confidence_i(t) that decays with staleness (Doc 06 §2). Partitioned by (patient_id, effectiveTime) for time-series query patterns. Idempotency is enforced via an idempotency_key (source system + message id); duplicate ingestion returns 409 without creating a second row.",
    "fields": [
     "x_i",
     "source",
@@ -1234,14 +1234,14 @@
      "want": "persist a new wearable SpO2 reading with its trust tier and derive q_source automatically",
      "soThat": "the scoring engine always has a correct, trust-aware confidence value without manual intervention",
      "acceptance": [
-      "Given source='wearable', device_grade='consumer_validated', value=95.0, When the measurement is persisted, Then trust_tier='consumer_validated', q_source=0.7 (midpoint of 0.6–0.8 range per Doc 01 §2, D22), and confidence_i(t=now)=0.7",
+      "Given source='wearable', device_grade='consumer_validated', value=95.0, When the measurement is persisted, Then trust_tier='consumer_validated', q_source=0.7 (midpoint of 0.6–0.8 range per Doc 06 §2, D22), and confidence_i(t=now)=0.7",
       "Given source='wearable', device_grade='inferential', value=72 (readiness score), When persisted, Then trust_tier='inferential', q_source is set to informational-only sentinel (e.g. 0.0 effective band weight), and the measurement cannot contribute to a band classification",
       "Given source='lab', device_grade=null, When persisted, Then trust_tier='lab_venous', q_source=1.0",
       "Given the same patient + marker + effectiveTime + idempotency_key already exists, When re-ingested, Then the API returns 409 and no second row is created"
      ],
      "edge": [
       "A wearable SpO2 reading of 88% with trust_tier='consumer_validated' must be stored but must NOT trigger the critical cascade without a clinical-grade confirmation — it may only raise Watch/Advisory (D22, wearable-critical-gate)",
-      "A measurement with source='literature_fallback' must never be written by the ingestion worker; it is synthesised by the scoring engine when no real measurement exists and the patient's cohort median is used as a neutral prior (Doc 01 §4.3)"
+      "A measurement with source='literature_fallback' must never be written by the ingestion worker; it is synthesised by the scoring engine when no real measurement exists and the patient's cohort median is used as a neutral prior (Doc 06 §4.3)"
      ]
     },
     {
@@ -1266,11 +1266,11 @@
      "soThat": "the system is fully auditable and a score can never be improved by deleting an unfavourable measurement",
      "acceptance": [
       "Given all Measurement rows for a patient up to timestamp T, When the scoring engine is replayed at T, Then it produces the same PureScore that was emitted live at T (deterministic replay invariant)",
-      "Given a patient deletes a red Measurement record (or it is soft-deleted), When the score is recomputed, Then coverage drops and the pillar score is not improved — the reservoir layer retains the burden accumulated by that measurement (Doc 01 §5 anti-gaming, Doc 04)"
+      "Given a patient deletes a red Measurement record (or it is soft-deleted), When the score is recomputed, Then coverage drops and the pillar score is not improved — the reservoir layer retains the burden accumulated by that measurement (Doc 06 §5 anti-gaming, Doc 04)"
      ],
      "edge": [
       "A measurement marked with data_quality_flag='artifact' (D14) is retained in the time-series with confidence forced to ~0; it is not deleted, and the QA audit trail records the flag reason",
-      "GDPR right-to-erasure requests must be handled by anonymisation, not deletion, to preserve time-series integrity for clinical audit — a legal hold flag prevents physical deletion until the retention period expires (Doc 11)"
+      "GDPR right-to-erasure requests must be handled by anonymisation, not deletion, to preserve time-series integrity for clinical audit — a legal hold flag prevents physical deletion until the retention period expires (Doc 16)"
      ]
     },
     {
@@ -1295,7 +1295,7 @@
     "A wearable-only anomaly (no clinical-grade corroboration) for a critical marker must produce at most a Watch/Advisory early-warning event — it cannot fire the CriticalCascade (D22)",
     "Idempotency_key uniqueness per (patient_id, marker_id) is a hard constraint; a duplicate ingest returns 409 without side-effects",
     "confidence_i(t) is always derived dynamically at query time from q_source and (t − effective_time) / τ_i — it is never stored as a static column to avoid staleness of the stored value",
-    "A measurement cannot improve the PureScore or clear a reservoir burden by being deleted or flagged artifact — the reservoir system retains burden from confirmed historical measurements (Doc 01 §5, Doc 04)"
+    "A measurement cannot improve the PureScore or clear a reservoir burden by being deleted or flagged artifact — the reservoir system retains burden from confirmed historical measurements (Doc 06 §5, Doc 04)"
    ],
    "decisions": [
     "D2",
@@ -1486,7 +1486,7 @@
    "areaColor": "#0e7490",
    "doc": "Doc02",
    "tier": "core",
-   "purpose": "Catalogue definition of a single measurable health signal — its LOINC code, canonical unit, within-pillar weight, green/yellow/red clinical band functions, two-sided flag, measurement tier (Core/Peripheral/Comprehensive), decay class, critical-flag, escalation rule, reservoir links, and sex-axis (none | gonadal | natal). Marker is read-only configuration; it owns no patient data. Band functions are parameterised by cohort (age, sex, disease, medication, hormonal milieu) and must be re-verified on each guideline cadence (D19, D20). Weights are defaults, cohort-adjusted at scoring time (Doc 03 §3, Doc 09).",
+   "purpose": "Catalogue definition of a single measurable health signal — its LOINC code, canonical unit, within-pillar weight, green/yellow/red clinical band functions, two-sided flag, measurement tier (Core/Peripheral/Comprehensive), decay class, critical-flag, escalation rule, reservoir links, and sex-axis (none | gonadal | natal). Marker is read-only configuration; it owns no patient data. Band functions are parameterised by cohort (age, sex, disease, medication, hormonal milieu) and must be re-verified on each guideline cadence (D19, D20). Weights are defaults, cohort-adjusted at scoring time (Doc 03 §3, Doc 13).",
    "fields": [
     "name",
     "unit",
@@ -1679,7 +1679,7 @@
       "Given a guideline bump is proposed via admin-constants, When the model-version gate runs, Then the band function for affected markers is updated only after clinician approval and re-validation (D20)"
      ],
      "edge": [
-      "Sex-hormone markers (estradiol, FSH) with sex_axis='gonadal' must resolve bands from the patient's life-stage and HRT status (Doc 05, D15); a missing life-stage falls back to natal-sex defaults with confidence penalty",
+      "Sex-hormone markers (estradiol, FSH) with sex_axis='gonadal' must resolve bands from the patient's life-stage and HRT status (Doc 08, D15); a missing life-stage falls back to natal-sex defaults with confidence penalty",
       "A marker band using cohort percentiles (HRV, VO2max) that has no reference distribution for the patient's cohort cell must fall back to the nearest super-cohort and lower confidence (D7)"
      ]
     },
@@ -2960,7 +2960,7 @@
     "Append-only: no row may be updated or deleted after insert; corrections are new snapshots referencing a correction note",
     "Determinism: given same (patient_id, set_of_measurement_ids, model_version_id), value is bit-identical across recomputes",
     "band_clamp: Stage 2b personalisation cannot set r_i below the Stage 2 clinical/cohort floor, so no personal-baseline improvement can relax a red or clear a critical",
-    "escalation = emergency MUST trigger the emergency pathway (Doc 11); no silent suppression except via confirmed data-quality confidence≈0 flag (D14)"
+    "escalation = emergency MUST trigger the emergency pathway (Doc 16); no silent suppression except via confirmed data-quality confidence≈0 flag (D14)"
    ],
    "decisions": [
     "D1",
@@ -3116,12 +3116,12 @@
      "want": "a confirmed acute-danger critical marker to unconditionally trigger the emergency escalation pathway",
      "soThat": "no clinical emergency can be silenced by healthy pillars or a high background PureScore",
      "acceptance": [
-      "Given K⁺=6.3 with escalation=emergency and confidence=1.0, When CriticalCascade runs, Then overall_status=CRITICAL, PureScore≤40, and the emergency pathway (Doc 11) is triggered within the same compute cycle",
+      "Given K⁺=6.3 with escalation=emergency and confidence=1.0, When CriticalCascade runs, Then overall_status=CRITICAL, PureScore≤40, and the emergency pathway (Doc 16) is triggered within the same compute cycle",
       "Given SpO2=88% from a consumer-tier wearable (confidence≈0 per D14/D22), When CriticalCascade runs, Then the cascade does NOT fire; an Early-warning Watch is raised instead",
       "Given SpO2=88% corroborated by a second clinical-grade device (confidence=1.0), When CriticalCascade runs, Then the cascade fires and escalation=emergency is routed to the clinician"
      ],
      "edge": [
-      "Emergency escalation must fire even if the patient has previously opted out of notifications: the safety pathway bypasses nudge-preference settings (Doc 11 compliance)"
+      "Emergency escalation must fire even if the patient has previously opted out of notifications: the safety pathway bypasses nudge-preference settings (Doc 16 compliance)"
      ]
     },
     {
@@ -3144,7 +3144,7 @@
      "want": "to distinguish reserve-deficit critical markers from acute-danger critical markers in the cascade output",
      "soThat": "the engine routes reserve-deficit reds to improvement plans rather than the emergency pathway",
      "acceptance": [
-      "Given VO2max in the very-low range (reserve-deficit critical, escalation=routine), When CriticalCascade runs, Then pillar is floored to R_crit, PureScore≤40, but escalation=routine and the improvement plan path (Doc 06) is triggered — NOT emergency",
+      "Given VO2max in the very-low range (reserve-deficit critical, escalation=routine), When CriticalCascade runs, Then pillar is floored to R_crit, PureScore≤40, but escalation=routine and the improvement plan path (Doc 09) is triggered — NOT emergency",
       "Given PHQ-9 item 9 score ≥ 3 (suicidality, escalation=emergency), When CriticalCascade runs, Then escalation=emergency and the crisis pathway is triggered immediately",
       "Given escalation field missing from the marker catalogue, When CriticalCascade runs, Then computation halts and returns an error — untagged critical markers are forbidden"
      ],
@@ -7194,7 +7194,7 @@
    "areaColor": "#be185d",
    "doc": "AppxD",
    "tier": "core",
-   "purpose": "Assigns a patient to one or more named clinical personas (e.g. healthy, prediabetic, elderly, CKD, FH, pregnancy) via a softmax posterior over objective signals. Personas carry pillar weight multipliers that amplify or dampen pillar contributions for the patient's scoring context (Doc 05/06 cohort frames), gate action eligibility, and are cross-referenced by the NudgeEngine to apply cohort-specific doses and contraindications. Assignment is many-to-many (a patient may hold multiple personas simultaneously); hard sex/age/life-stage priors zero impossible columns first (D25).",
+   "purpose": "Assigns a patient to one or more named clinical personas (e.g. healthy, prediabetic, elderly, CKD, FH, pregnancy) via a softmax posterior over objective signals. Personas carry pillar weight multipliers that amplify or dampen pillar contributions for the patient's scoring context (Doc 08/09 cohort frames), gate action eligibility, and are cross-referenced by the NudgeEngine to apply cohort-specific doses and contraindications. Assignment is many-to-many (a patient may hold multiple personas simultaneously); hard sex/age/life-stage priors zero impossible columns first (D25).",
    "fields": [
     "key",
     "age",

@@ -4,8 +4,8 @@
 > wearable metrics, user goals, lifestyle/PRO), how **consumer wearables are trust-tiered** into the
 > engine (decision **D22**), how wearable signals map across pillars, and the **product surfaces** that
 > make the patient journey effortless (AI scribe, AI chat agent, scheduling, in-home tracking,
-> insurance auth, household accounts). It feeds the companion vector (Doc 12 §4) and the nudge engine
-> (Doc 07/16). **Illustrative; consumer-grade ≠ medical-grade — flagged, not assumed (Doc 00).**
+> insurance auth, household accounts). It feeds the companion vector (Doc 05 §4) and the nudge engine
+> (Doc 11/12). **Illustrative; consumer-grade ≠ medical-grade — flagged, not assumed (Doc 01).**
 
 Decisions: **D22** (wearable tiering), D1 (output model), D6/D9 (baselines/shrinkage), D16 (nudges),
 D18/D21 (UAE), D14 (reconfirm). Companion **Confidence** carries every reliability flag.
@@ -75,23 +75,23 @@ passive sensors (sleep mat, motion, fall detection).
 | **In-home tracking** | passive scale, BP cuff, sleep mat, fall detection — care between visits, zero effort (elders/chronic) |
 | **Insurance auth** | auto-prepares pre-authorization & e-claims (UAE: DHA / Shafafiya) — fewer denials, no paperwork |
 
-All surfaces honour the firewalls: no autonomous diagnosis, payer/actuarial separation (Doc 10/11),
+All surfaces honour the firewalls: no autonomous diagnosis, payer/actuarial separation (Doc 19/16),
 hard suicidality/critical rules unchanged.
 
 ## 6. Household accounts
 A household holds **individual scores per member under one shared view**, with role-based access
 (e.g., a caregiver monitors an elder's in-home stream). Sensitive data stays member-scoped and gated
-(Doc 11); a household view never merges or cross-uses members' protected data.
+(Doc 16); a household view never merges or cross-uses members' protected data.
 
 ## 7. Goals → recommended next actions
 The engine matches each member's **declared goal** to a ranked plan (nudge engine D16 + screening +
 scheduling). Examples (illustrative): *"lower HbA1c / avoid insulin"* → Ramadan-safe med timing,
 cut refined carbs, CGM time-in-range target, book HbA1c+UACR; *"stay independent"* → fall-risk plan,
 protein + resistance, polypharmacy/renal med review, nephrology follow-up. Goals also re-weight the
-pillars the member cares about (Doc 06), within the safety rails.
+pillars the member cares about (Doc 09), within the safety rails.
 
 ## 8. Status
 Design only — device integrations, the scribe/agent surfaces, and payer connectors are **specified,
-not built**; wearable weights and confidence mappings await real-data calibration (Doc 13). The
-honesty discipline (Doc 00) applies: consumer signals are used where they are strong and flagged
+not built**; wearable weights and confidence mappings await real-data calibration (Doc 14). The
+honesty discipline (Doc 01) applies: consumer signals are used where they are strong and flagged
 where they are weak.

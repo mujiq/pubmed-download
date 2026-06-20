@@ -4,14 +4,14 @@
     "version": "0.1",
     "flag": "illustrative — design spec, re-verify before production",
     "closes": "F1",
-    "idea": "One ultra-brief check-in per nudge family, fired on the nudge's cadence (EMA-friendly). The response writes back to the reservoir it was meant to drain/fill (Doc 04) and to the engagement / Trajectory companion dimensions (Doc 12), closing the loop capture → … → nudge → adherence → capture.",
+    "idea": "One ultra-brief check-in per nudge family, fired on the nudge's cadence (EMA-friendly). The response writes back to the reservoir it was meant to drain/fill (Doc 04) and to the engagement / Trajectory companion dimensions (Doc 05), closing the loop capture → … → nudge → adherence → capture.",
     "reason_taxonomy": ["time", "salience", "side_effect", "dont_believe", "access", "cost", "asymptomatic", "regimen_complexity", "fear", "other"],
-    "scoring": "adherence ∈ [0,1] scales the reservoir inflow; a 7-day adherence EWMA feeds nudge feasibility (Doc 07 §3) so the engine stops re-serving repeatedly-skipped actions and substitutes a lower-effort alternative. A 'stopped — side effects / fear' response carries flag=clinician and routes to safety (Doc 11).",
+    "scoring": "adherence ∈ [0,1] scales the reservoir inflow; a 7-day adherence EWMA feeds nudge feasibility (Doc 11 §3) so the engine stops re-serving repeatedly-skipped actions and substitutes a lower-effort alternative. A 'stopped — side effects / fear' response carries flag=clinician and routes to safety (Doc 16).",
     "activation_model": "EHR-first. A coded ehr_trigger (ATC drug class · ICD-10 condition) auto-activates a check-in from the Patient360 knowledge graph, so we never re-ask what the record already states (no 'are you on metformin?'). If EHR coverage is absent, a one-time onboarding screener activates the same set. Lifestyle check-ins gate on a goals-style applicability vector (persona · age · sex · life-stage · goal). Nothing irrelevant ever fires.",
     "timing_model": "Dose/event-anchored. Onboarding captures the patient's actual schedule (e.g. metformin BD-with-meals, statin nightly, levothyroxine fasting-AM, bisphosphonate weekly-AM, inhaler PRN). The micro check-in then fires in a window relative to that dose/event (post-dose EMA) with a base cadence — prompts land at the right moment, never mistimed.",
-    "patient360": "Patient360 = the EHR/EMR-derived clinical-context graph (Doc 01 §1: Condition → disease flags D / ICD-10, MedicationStatement → medication classes Mx / ATC). It both activates the right check-ins and supplies corroboration (refill PDC/MPR, lab/wearable response).",
-    "coding": "ehr_trigger codes are illustrative (ATC drug class, ICD-10 condition) — re-map to production terminology (RxNorm / SNOMED CT) before use. UAE-priority items flagged per Doc 15 epidemiology.",
-    "links": ["Doc 07", "Doc 04", "Doc 12", "Doc 16", "Doc 11", "Doc 01", "Doc 15", "Appendix G", "Appendix J"]
+    "patient360": "Patient360 = the EHR/EMR-derived clinical-context graph (Doc 06 §1: Condition → disease flags D / ICD-10, MedicationStatement → medication classes Mx / ATC). It both activates the right check-ins and supplies corroboration (refill PDC/MPR, lab/wearable response).",
+    "coding": "ehr_trigger codes are illustrative (ATC drug class, ICD-10 condition) — re-map to production terminology (RxNorm / SNOMED CT) before use. UAE-priority items flagged per Doc 18 epidemiology.",
+    "links": ["Doc 11", "Doc 04", "Doc 05", "Doc 12", "Doc 16", "Doc 06", "Doc 18", "Appendix G", "Appendix J"]
   },
   "items": [
     {"ref": "ADH-001", "nudge_family": "Sleep wind-down", "pillars": ["SLP", "MCS"], "reservoir": "sleep_debt", "cadence": "daily",

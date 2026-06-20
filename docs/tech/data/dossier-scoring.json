@@ -94,7 +94,7 @@
         "Append-only: no row may be updated or deleted after insert; corrections are new snapshots referencing a correction note",
         "Determinism: given same (patient_id, set_of_measurement_ids, model_version_id), value is bit-identical across recomputes",
         "band_clamp: Stage 2b personalisation cannot set r_i below the Stage 2 clinical/cohort floor, so no personal-baseline improvement can relax a red or clear a critical",
-        "escalation = emergency MUST trigger the emergency pathway (Doc 11); no silent suppression except via confirmed data-quality confidence≈0 flag (D14)"
+        "escalation = emergency MUST trigger the emergency pathway (Doc 16); no silent suppression except via confirmed data-quality confidence≈0 flag (D14)"
       ],
       "apiRefs": ["get-score", "get-explanation", "get-model-version", "admin-constants", "ingest-measurement"],
       "seqRefs": ["ingest-recompute", "wearable-critical-gate", "acute-event"],
@@ -194,12 +194,12 @@
           "want": "a confirmed acute-danger critical marker to unconditionally trigger the emergency escalation pathway",
           "soThat": "no clinical emergency can be silenced by healthy pillars or a high background PureScore",
           "acceptance": [
-            "Given K⁺=6.3 with escalation=emergency and confidence=1.0, When CriticalCascade runs, Then overall_status=CRITICAL, PureScore≤40, and the emergency pathway (Doc 11) is triggered within the same compute cycle",
+            "Given K⁺=6.3 with escalation=emergency and confidence=1.0, When CriticalCascade runs, Then overall_status=CRITICAL, PureScore≤40, and the emergency pathway (Doc 16) is triggered within the same compute cycle",
             "Given SpO2=88% from a consumer-tier wearable (confidence≈0 per D14/D22), When CriticalCascade runs, Then the cascade does NOT fire; an Early-warning Watch is raised instead",
             "Given SpO2=88% corroborated by a second clinical-grade device (confidence=1.0), When CriticalCascade runs, Then the cascade fires and escalation=emergency is routed to the clinician"
           ],
           "edge": [
-            "Emergency escalation must fire even if the patient has previously opted out of notifications: the safety pathway bypasses nudge-preference settings (Doc 11 compliance)"
+            "Emergency escalation must fire even if the patient has previously opted out of notifications: the safety pathway bypasses nudge-preference settings (Doc 16 compliance)"
           ]
         },
         {
@@ -222,7 +222,7 @@
           "want": "to distinguish reserve-deficit critical markers from acute-danger critical markers in the cascade output",
           "soThat": "the engine routes reserve-deficit reds to improvement plans rather than the emergency pathway",
           "acceptance": [
-            "Given VO2max in the very-low range (reserve-deficit critical, escalation=routine), When CriticalCascade runs, Then pillar is floored to R_crit, PureScore≤40, but escalation=routine and the improvement plan path (Doc 06) is triggered — NOT emergency",
+            "Given VO2max in the very-low range (reserve-deficit critical, escalation=routine), When CriticalCascade runs, Then pillar is floored to R_crit, PureScore≤40, but escalation=routine and the improvement plan path (Doc 09) is triggered — NOT emergency",
             "Given PHQ-9 item 9 score ≥ 3 (suicidality, escalation=emergency), When CriticalCascade runs, Then escalation=emergency and the crisis pathway is triggered immediately",
             "Given escalation field missing from the marker catalogue, When CriticalCascade runs, Then computation halts and returns an error — untagged critical markers are forbidden"
           ],

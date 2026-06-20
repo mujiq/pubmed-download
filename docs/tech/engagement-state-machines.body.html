@@ -1,26 +1,26 @@
 <div class="crumbs"><a href="index.html">Home</a> › Diagrams & system maps › Engagement state machines</div>
 <h1>Engagement State Machines — nudges, check-ins, self-reports & adherence</h1>
-<p class="lead">The four engagement artifacts PureScore creates and consumes every day are each a <b>persisted state machine</b> with explicit technical states, guarded transitions, timeouts, retries and terminal states. This page models all of them — the <b>nudge</b> (<a class="xref" href="07-daily-nudge-engine.html">Doc 07</a>), the <b>check-in</b>, the <b>self-report</b> (<a class="xref" href="18-data-streams-and-experience.html">Doc 18</a>, <a class="xref" href="01-data-model-and-reference-ranges.html">Doc 01</a>) and the <b>adherence check</b> that closes the calibration loop (<a class="xref" href="09-cohort-percentiles-and-validation.html">Doc 09</a>).</p>
+<p class="lead">The four engagement artifacts PureScore creates and consumes every day are each a <b>persisted state machine</b> with explicit technical states, guarded transitions, timeouts, retries and terminal states. This page models all of them — the <b>nudge</b> (<a class="xref" href="11-daily-nudge-engine.html">Doc 11</a>), the <b>check-in</b>, the <b>self-report</b> (<a class="xref" href="07-data-streams-and-experience.html">Doc 07</a>, <a class="xref" href="06-data-model-and-reference-ranges.html">Doc 06</a>) and the <b>adherence check</b> that closes the calibration loop (<a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13</a>).</p>
 
 <div class="callout spec"><div class="ct">Reading the diagrams</div>
-Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions within one machine (labelled with their trigger; full guards and side-effects are in the table under each diagram). <b>Dashed edges</b> in the overview are hand-offs to <em>another</em> machine or subsystem. State colours: <span class="b-green">green</span> = adherent / ingested success, <span class="b-yellow">amber</span> = in-flight / waiting, <span class="b-red">red</span> = dropped / failed / missing, and an alert tint marks states that hand off to safety (<a class="xref" href="11-safety-governance-and-regulatory.html">Doc 11</a>). All states are auditable and every transition is append-only logged.</div>
+Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions within one machine (labelled with their trigger; full guards and side-effects are in the table under each diagram). <b>Dashed edges</b> in the overview are hand-offs to <em>another</em> machine or subsystem. State colours: <span class="b-green">green</span> = adherent / ingested success, <span class="b-yellow">amber</span> = in-flight / waiting, <span class="b-red">red</span> = dropped / failed / missing, and an alert tint marks states that hand off to safety (<a class="xref" href="16-safety-governance-and-regulatory.html">Doc 16</a>). All states are auditable and every transition is append-only logged.</div>
 
 <div class="callout note"><div class="ct">Illustrative</div>State names, enums and window/TTL defaults below are a design model, not a shipped schema — they <b>must be reconciled with the production event model and re-verified before any clinical or production use</b> (README §5.6).</div>
 
 <h2 id="overview">0 · Overview — how the four machines interconnect</h2>
 <p>The engagement layer is a closed loop: the engine emits nudges, the patient acts, adherence is verified, and the realized outcome recalibrates the next day's nudges. Check-ins and self-reports feed scoring (and, on red flags, safety) which in turn re-derives the engine's inputs.</p>
 <pre class="mermaid">flowchart LR
-  SC["Scoring + companion vector (Doc 03)"] --> NE["Nudge engine (Doc 07)"]
+  SC["Scoring + companion vector (Doc 03)"] --> NE["Nudge engine (Doc 11)"]
   NE -->|"top-5 presented"| NUD(["Nudge lifecycle (1)"])
   NUD -->|"done / partial"| AC(["Adherence check (4)"])
   NUD -.->|"self-attest"| SR(["Self-reported data (3)"])
   CI(["Check-in (2)"]) -->|"submitted PRO"| SR
   CI -->|"scored"| SC
   SR -->|"ingested (confidence-weighted)"| SC
-  AC -->|"realized adherence"| CAL["Adherence model p_hat recalibration (Doc 09)"]
+  AC -->|"realized adherence"| CAL["Adherence model p_hat recalibration (Doc 13)"]
   CAL --> NE
   AC -.->|"repeated non-adherence"| NE
-  CI -.->|"red-flag item"| SAFE["Safety / escalation (Doc 11)"]
+  CI -.->|"red-flag item"| SAFE["Safety / escalation (Doc 16)"]
   AC -.->|"disputed / harm signal"| SAFE
   classDef engine fill:#0c1726,stroke:#2b5a86,color:#cfe3ff;
   classDef machine fill:#10151e,stroke:#2ee6c9,color:#bdf5e0;
@@ -30,7 +30,7 @@ Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions 
   class SAFE safe</pre>
 
 <h2 id="nudge">1 · Nudge lifecycle</h2>
-<p>A <b>nudge</b> is an <em>instance</em> of a catalogue action (<a class="xref" href="16-recommended-actions-catalogue.html">Doc 16</a>) issued to one patient for one planning day. It is born in the candidate pool, survives the safety filter and the diversity / class-cap selection, is delivered and presented, then resolves to an observed completion that opens an adherence check and, at horizon <code>h</code>, a realized-Δ measurement that recalibrates the engine.</p>
+<p>A <b>nudge</b> is an <em>instance</em> of a catalogue action (<a class="xref" href="12-recommended-actions-catalogue.html">Doc 12</a>) issued to one patient for one planning day. It is born in the candidate pool, survives the safety filter and the diversity / class-cap selection, is delivered and presented, then resolves to an observed completion that opens an adherence check and, at horizon <code>h</code>, a realized-Δ measurement that recalibrates the engine.</p>
 <pre class="mermaid">stateDiagram-v2
   direction TB
   [*] --> Candidate : engine emits A_p
@@ -66,7 +66,7 @@ Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions 
   class FilteredOut,Dismissed,Expired,DeliveryFailed bad
   class Scheduled,Delivered,Presented,Snoozed,AwaitingMeasurement wait</pre>
 <div class="tablewrap"><table><thead><tr><th>From</th><th>Event / trigger</th><th>Guard</th><th>To</th><th>Side-effect</th></tr></thead><tbody>
-<tr><td>Candidate</td><td>daily build</td><td>fails safety / contraindication filter (Doc 07 §5)</td><td>FilteredOut</td><td>log reason; never shown</td></tr>
+<tr><td>Candidate</td><td>daily build</td><td>fails safety / contraindication filter (Doc 11 §5)</td><td>FilteredOut</td><td>log reason; never shown</td></tr>
 <tr><td>Candidate</td><td>daily build</td><td>passes safety</td><td>Ranked</td><td>compute <code>U_a = impact·p̂_a·ease</code></td></tr>
 <tr><td>Ranked</td><td>selection</td><td>outside top-5 or class-cap (≤2/class) hit</td><td>Suppressed</td><td>may carry to tomorrow</td></tr>
 <tr><td>Ranked</td><td>selection</td><td>in greedy top-5 diverse set</td><td>Selected</td><td>attach attributed ΔPureScore</td></tr>
@@ -76,7 +76,7 @@ Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions 
 <tr><td>Presented</td><td>user tap</td><td>—</td><td>Done / Partial / Dismissed</td><td>record <code>completion</code>, update <code>streak</code></td></tr>
 <tr><td>Presented / Snoozed</td><td>clock</td><td>past <code>ttl_expires_at</code> or end-of-day, no action</td><td>Expired</td><td>count as non-adherent signal</td></tr>
 <tr><td>Done / Partial</td><td>completion</td><td>—</td><td>AwaitingMeasurement</td><td><b>open Adherence check (4)</b></td></tr>
-<tr><td>AwaitingMeasurement</td><td>horizon reached</td><td><code>now ≥ issued + h</code></td><td>Measured</td><td>compute realized ΔPureScore; feed recalibration (Doc 09)</td></tr>
+<tr><td>AwaitingMeasurement</td><td>horizon reached</td><td><code>now ≥ issued + h</code></td><td>Measured</td><td>compute realized ΔPureScore; feed recalibration (Doc 13)</td></tr>
 </tbody></table></div>
 <pre class="code"><code>Nudge {
   nudge_id, action_id, patient_id, issued_date, horizon_h
@@ -130,7 +130,7 @@ Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions 
 <tr><td>InProgress</td><td>app background / exit</td><td>partial answers exist</td><td>Abandoned</td><td>persist draft; resumable in-window</td></tr>
 <tr><td>Submitted</td><td>validate</td><td>range / skip-logic / duplicate fail</td><td>Rejected → InProgress</td><td>show field errors</td></tr>
 <tr><td>Validated</td><td>score</td><td>—</td><td>Scored</td><td>compute instrument total / subscales</td></tr>
-<tr><td>Scored</td><td>safety rule</td><td>red-flag (e.g. PHQ-9 Q9 &gt; 0; severe band)</td><td>EscalationTriggered</td><td><b>hand off to safety (Doc 11)</b>; still ingest</td></tr>
+<tr><td>Scored</td><td>safety rule</td><td>red-flag (e.g. PHQ-9 Q9 &gt; 0; severe band)</td><td>EscalationTriggered</td><td><b>hand off to safety (Doc 16)</b>; still ingest</td></tr>
 <tr><td>Scored / EscalationTriggered</td><td>persist</td><td>—</td><td>Ingested</td><td>write PRO to record; feeds scoring (Doc 03)</td></tr>
 </tbody></table></div>
 <pre class="code"><code>CheckIn {
@@ -144,7 +144,7 @@ Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions 
 }</code></pre>
 
 <h2 id="selfreport">3 · Self-reported data lifecycle</h2>
-<p>A <b>self-report</b> is <em>unprompted</em> patient-volunteered data — a logged meal, a "bad night", a home BP or weight, a medication taken. Its distinctive technical states are offline capture / sync, idempotent de-duplication, plausibility validation, a <b>provenance / trust-tier tag</b> (self-report carries lower confidence than device or lab; <a class="xref" href="01-data-model-and-reference-ranges.html">Doc 01</a>, <a class="xref" href="18-data-streams-and-experience.html">Doc 18</a>), and being <em>superseded</em> when an authoritative source arrives.</p>
+<p>A <b>self-report</b> is <em>unprompted</em> patient-volunteered data — a logged meal, a "bad night", a home BP or weight, a medication taken. Its distinctive technical states are offline capture / sync, idempotent de-duplication, plausibility validation, a <b>provenance / trust-tier tag</b> (self-report carries lower confidence than device or lab; <a class="xref" href="06-data-model-and-reference-ranges.html">Doc 06</a>, <a class="xref" href="07-data-streams-and-experience.html">Doc 07</a>), and being <em>superseded</em> when an authoritative source arrives.</p>
 <pre class="mermaid">stateDiagram-v2
   direction TB
   [*] --> Drafting : user enters value
@@ -195,7 +195,7 @@ Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions 
 }</code></pre>
 
 <h2 id="adherence">4 · Adherence-check lifecycle</h2>
-<p>An <b>adherence check</b> verifies whether a recommended action was actually done — it turns a nudge completion into a calibrated outcome. It collects evidence (self-attestation, objective sensor corroboration, or none), resolves contradictions, scores an outcome, and feeds the per-patient adherence model <code>p̂_a</code> (<a class="xref" href="07-daily-nudge-engine.html">Doc 07</a> §3.2, <a class="xref" href="09-cohort-percentiles-and-validation.html">Doc 09</a>). Repeated non-adherence re-strategises future nudges.</p>
+<p>An <b>adherence check</b> verifies whether a recommended action was actually done — it turns a nudge completion into a calibrated outcome. It collects evidence (self-attestation, objective sensor corroboration, or none), resolves contradictions, scores an outcome, and feeds the per-patient adherence model <code>p̂_a</code> (<a class="xref" href="11-daily-nudge-engine.html">Doc 11</a> §3.2, <a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13</a>). Repeated non-adherence re-strategises future nudges.</p>
 <pre class="mermaid">stateDiagram-v2
   direction TB
   [*] --> Pending : opened by nudge Done/Partial
@@ -233,8 +233,8 @@ Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions 
 <tr><td>AwaitingEvidence</td><td>class rule</td><td>action has no observable signal</td><td>Unverifiable</td><td>neutral — no model update</td></tr>
 <tr><td>AwaitingEvidence</td><td>window clock</td><td>no evidence by close</td><td>Lapsed → NonAdherent</td><td>record non-adherence</td></tr>
 <tr><td>SelfAttested + SensorConfirmed</td><td>corroboration</td><td>both present, agree</td><td>Confirmed</td><td>high-confidence adherent</td></tr>
-<tr><td>SelfAttested</td><td>sensor refutes</td><td>objective signal contradicts claim</td><td>Contradicted → Disputed</td><td>flag; may route to safety / clinician (Doc 11)</td></tr>
-<tr><td>Confirmed / Probable / NonAdherent / Unverifiable</td><td>score</td><td>—</td><td>Scored → FedToCalibration</td><td>refit <code>p̂_a</code> (empirical Bayes, Doc 09); repeated non-adherence ⇒ lower ease threshold / re-strategy next nudge</td></tr>
+<tr><td>SelfAttested</td><td>sensor refutes</td><td>objective signal contradicts claim</td><td>Contradicted → Disputed</td><td>flag; may route to safety / clinician (Doc 16)</td></tr>
+<tr><td>Confirmed / Probable / NonAdherent / Unverifiable</td><td>score</td><td>—</td><td>Scored → FedToCalibration</td><td>refit <code>p̂_a</code> (empirical Bayes, Doc 13); repeated non-adherence ⇒ lower ease threshold / re-strategy next nudge</td></tr>
 </tbody></table></div>
 <pre class="code"><code>AdherenceCheck {
   check_id, nudge_id | recommendation_id, patient_id, action_class
@@ -253,9 +253,9 @@ Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions 
 <tr><td><b>Idempotency</b></td><td>all</td><td>every external event carries a key; re-delivered events are no-ops (duplicate sends, double submits, replayed syncs)</td></tr>
 <tr><td><b>Timeout / expiry</b></td><td>nudge TTL, check-in window, adherence window</td><td>a clock transition always exists to a terminal state — no machine waits forever</td></tr>
 <tr><td><b>Retry with cap</b></td><td>nudge delivery, check-in reminders</td><td>bounded retries, then degrade to a terminal/failed state; never infinite loops</td></tr>
-<tr><td><b>Absence ≠ value</b></td><td>check-in Missed, adherence Lapsed/Unverifiable</td><td>missing data widens uncertainty (Doc 12) and never imputes a favourable value</td></tr>
+<tr><td><b>Absence ≠ value</b></td><td>check-in Missed, adherence Lapsed/Unverifiable</td><td>missing data widens uncertainty (Doc 05) and never imputes a favourable value</td></tr>
 <tr><td><b>Provenance &amp; trust</b></td><td>self-report, adherence evidence</td><td>every ingested datum keeps source + trust-tier + confidence; lab &gt; device &gt; self hierarchy on conflict</td></tr>
-<tr><td><b>Safety pre-emption</b></td><td>check-in, adherence</td><td>red-flag / disputed-harm transitions hand off to safety (Doc 11) and can override the normal flow</td></tr>
+<tr><td><b>Safety pre-emption</b></td><td>check-in, adherence</td><td>red-flag / disputed-harm transitions hand off to safety (Doc 16) and can override the normal flow</td></tr>
 <tr><td><b>Append-only audit</b></td><td>all</td><td>every transition is logged with actor, timestamp and reason; state is reconstructable for governance</td></tr>
 <tr><td><b>Closed loop</b></td><td>nudge → adherence → calibration → engine</td><td>realized outcomes refit <code>p̂_a</code> and impact estimates, so tomorrow's top-5 reflects what this patient actually does</td></tr>
 </tbody></table></div>

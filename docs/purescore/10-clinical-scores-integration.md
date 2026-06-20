@@ -10,7 +10,7 @@
 > is **literature/guideline-anchored as of the cited source and must be re-verified on a fixed
 > cadence** (README §5.6) before production. Guideline thresholds (e.g. ACC/AHA risk bands, KDIGO
 > categories, FRAX intervention thresholds) change; the catalogue is a mapping spec, not a frozen
-> clinical reference. Out-of-distribution handling is delegated to Doc 09.
+> clinical reference. Out-of-distribution handling is delegated to Doc 13.
 
 ---
 
@@ -18,7 +18,7 @@
 
 PureScore is wellness-grade and patient-facing. Clinical risk scores are a **separate, gated layer**
 consumed only by credentialed clinicians (and, where lawful and separately governed, payers per
-Doc 10). The boundary is non-negotiable:
+Doc 19). The boundary is non-negotiable:
 
 1. **No auto-diagnosis.** Computing FINDRISC, ASCVD, FIB-4, FRAX, etc. produces a *risk estimate*
    for a clinician to interpret. The patient-facing app never renders these as a diagnosis or a
@@ -116,7 +116,7 @@ anchor.
 > PHQ-9 / GAD-7 are **already pillar markers** (Doc 02, MCS). Their *clinical* use here is severity
 > staging and treatment-response monitoring for the clinician. A positive PHQ-9 item 9 (or any
 > suicidality signal) forces MCS to **red/critical** and fires the crisis pathway (Doc 02 hard rule,
-> Doc 03 §4, Doc 11) **before** any clinical-score layering — C-SSRS is the structured referral
+> Doc 03 §4, Doc 16) **before** any clinical-score layering — C-SSRS is the structured referral
 > instrument the clinician applies, never an in-app autonomous triage.
 
 ### 2.7 Aging / Biological Age (cross-pillar)
@@ -129,7 +129,7 @@ anchor.
 > BioAge is presented to clinicians as a **composite contextualizer** ("biological 62 vs
 > chronological 55 — age acceleration of +7y, driven mainly by INF and MET"), aligning naturally
 > with PureScore's reservoir/burden model (Doc 04). It is **not** a diagnosis and not patient-facing
-> as such; epigenetic clocks remain research-grade pending validation (Doc 09).
+> as such; epigenetic clocks remain research-grade pending validation (Doc 13).
 
 ### 2.8 General / whole-person (cross-pillar)
 
@@ -187,7 +187,7 @@ A clinician-validated abnormal score modulates **interpretation**, not the raw v
 2. It **cannot clear** a critical pillar nor lift `PURE_CRIT_CAP` (Doc 03 §5.3). A green clinical
    score never overrides a red biomarker.
 3. It applies only after **clinician validation** (or in a labelled *provisional* state that takes
-   no care action), and every application is recorded in the audit trail (Doc 11).
+   no care action), and every application is recorded in the audit trail (Doc 16).
 
 ---
 
@@ -195,7 +195,7 @@ A clinician-validated abnormal score modulates **interpretation**, not the raw v
 
 The clinician view composes the Doc 03 §7 explainability object **plus** the §2 clinical scores into
 one decision-support surface. It is gated, audited, and team-based-care framed (Mayo Clinic
-care-team model — clinician + care team see the same explainable substrate, Doc 00).
+care-team model — clinician + care team see the same explainable substrate, Doc 01).
 
 **Layout (top to bottom):**
 
@@ -252,7 +252,7 @@ silently.
 
 Each clinical equation was derived and validated on a **specific population**, and is only reliable
 within it. The engine must know each equation's validated envelope and **flag out-of-distribution
-(OOD)** use (ties to Doc 09 — cohort construction, calibration, fairness, drift).
+(OOD)** use (ties to Doc 13 — cohort construction, calibration, fairness, drift).
 
 | Score | Known population / distribution caveats (re-verify) |
 |-------|------------------------------------------------------|
@@ -278,11 +278,11 @@ within it. The engine must know each equation's validated envelope and **flag ou
    FIB-4 in >65).
 4. **Calibration, fairness, and drift monitoring** for the whole layer — including whether borrowed
    equations are calibrated in *our* cohorts and whether OOD-flagging itself is equitable — are owned
-   by **Doc 09**; the safety/governance, audit-trail, and clinician-in-loop requirements are owned by
-   **Doc 11**. No protected-class attribute may be used to worsen access or care (README §5.5).
+   by **Doc 13**; the safety/governance, audit-trail, and clinician-in-loop requirements are owned by
+   **Doc 16**. No protected-class attribute may be used to worsen access or care (README §5.5).
 
 ---
 
 *Cross-references: Doc 02 (markers, bands), Doc 03 (`r_i`, `R_k`, `W_k`, critical cascade,
-explainability §7), Doc 04 (reservoirs, aging burdens), Doc 09 (cohorts, calibration, OOD, fairness,
-drift), Doc 10 (gated payer/actuarial layer), Doc 11 (safety, escalation, governance, audit).*
+explainability §7), Doc 04 (reservoirs, aging burdens), Doc 13 (cohorts, calibration, OOD, fairness,
+drift), Doc 19 (gated payer/actuarial layer), Doc 16 (safety, escalation, governance, audit).*

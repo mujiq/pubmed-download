@@ -6,7 +6,7 @@
 > recovery, and then *reverts* with hysteresis to long-term goals once healed; and **(B)** the
 > **life-stage care/nutrition/exercise plans** that set the default valves (Doc 04 §6) and the
 > `m_k^goal` weights (Doc 03 §5.1) for each stage. Reproductive stages (cycle, fertility,
-> pregnancy, post-partum, menopause/andropause) are **deferred to Doc 05**, which is authoritative;
+> pregnancy, post-partum, menopause/andropause) are **deferred to Doc 08**, which is authoritative;
 > this document references them but does not redefine them.
 >
 > All illustrative clinical numbers below are **literature/guideline-anchored examples and must be
@@ -30,9 +30,9 @@ The override is built entirely from primitives already defined:
 |------|-----------|--------|
 | Make the acute pillar dominate the score | spike `m_k^acute` for affected pillar(s) | Doc 03 §5.1 |
 | Give the event *memory* and a drain curve | inject transient high-`λ` **acute reservoir** `B_ACU` | Doc 04 §7 |
-| Re-aim nudges/care at recovery | swap `m_k^goal` weights + acute valve bundle | Doc 04 §6, Doc 07 |
+| Re-aim nudges/care at recovery | swap `m_k^goal` weights + acute valve bundle | Doc 04 §6, Doc 11 |
 | Don't let healthy pillars hide a danger | existing critical cascade | Doc 03 §5.3 |
-| Don't self-manage true emergencies | emergency escalation, NOT acute mode | Doc 03 §4.1, Doc 11 |
+| Don't self-manage true emergencies | emergency escalation, NOT acute mode | Doc 03 §4.1, Doc 16 |
 | Avoid flapping in/out of acute mode | entry/exit **hysteresis** | Doc 03 §6, A.6 below |
 
 Acute mode is a **display + weighting state**, never a relaxation of safety. The clinical optimal
@@ -50,7 +50,7 @@ band still dominates the cohort percentile (README §5.2), and any emergency red
 | **Acute medical — chronic-disease flare** | COPD/asthma exacerbation, IBD/RA flare, gout, CKD-on-AKI, glycemic crisis (DKA/HHS) | the chronic-condition pillar(s) | `B_ACU` superimposed on the chronic reservoir | days–weeks |
 | **Acute mental-health crisis** | acute suicidality, panic/crisis, acute psychosis, substance crisis | MCS (critical) | `B_ACU` + spike on `B_ALLO` | crisis = emergency; stabilization weeks |
 | **Acute life event** | bereavement, job loss, divorce/separation, caregiving shock, displacement | MCS, SLP, ENDO | `B_ACU` + spike on `B_ALLO`, `B_SLD` | weeks–months |
-| **Pregnancy complications** | pre-eclampsia, GDM crisis, hyperemesis, post-partum events | **see Doc 05** (authoritative) | Doc 05 pregnancy reservoir set | per Doc 05 |
+| **Pregnancy complications** | pre-eclampsia, GDM crisis, hyperemesis, post-partum events | **see Doc 08** (authoritative) | Doc 08 pregnancy reservoir set | per Doc 08 |
 
 Notes:
 - A single event may light up multiple pillars (sepsis → INF + HEM + REN + MET). The override
@@ -89,11 +89,11 @@ the injected `B_ACU` magnitude, and the routing.
 |------|------------------------------|-------------------------------------|----------------|---------|
 | **A0 — provisional** | single uncorroborated medium-confidence source | ×1.2 (soft) | small, fast `λ` | watch; PRO prompt; **no** display takeover |
 | **A1 — mild** | corroborated, self-managed (e.g., minor URI, minor sprain, acute grief week 1) | ×1.5 | moderate | acute-mode display; recovery nudges |
-| **A2 — moderate** | corroborated, needs clinical follow-up (flare needing meds, post-op week 1–2, AKI stage 1 resolving) | ×2.0 | large | acute-mode display; **care-team task** (Doc 11) |
-| **A3 — severe / emergency** | any **emergency** acute-danger red (Doc 03 §4.1): sepsis screen, SpO2 <92%, K⁺ ≥5.6, Tn rise, suicidality, MI/AKI-acute | n/a — **bypasses** self-managed acute mode | n/a | **immediate human escalation** (Doc 11); cascade caps PureScore ≤ 40 |
+| **A2 — moderate** | corroborated, needs clinical follow-up (flare needing meds, post-op week 1–2, AKI stage 1 resolving) | ×2.0 | large | acute-mode display; **care-team task** (Doc 16) |
+| **A3 — severe / emergency** | any **emergency** acute-danger red (Doc 03 §4.1): sepsis screen, SpO2 <92%, K⁺ ≥5.6, Tn rise, suicidality, MI/AKI-acute | n/a — **bypasses** self-managed acute mode | n/a | **immediate human escalation** (Doc 16); cascade caps PureScore ≤ 40 |
 
 **Hard safety boundary (A3).** Emergency acute-danger reds **do not** enter self-managed acute mode.
-They route straight to the emergency pathway (Doc 11) via the existing cascade (Doc 03 §5.3): the
+They route straight to the emergency pathway (Doc 16) via the existing cascade (Doc 03 §5.3): the
 pillar is critical, `PureScore ≤ PURE_CRIT_CAP`, `overall_status = CRITICAL`, and a human is engaged.
 Acute mode (A0–A2) is for **sub-emergency** recovery the patient can self-manage *with* care-team
 visibility — never a substitute for escalation. The reserve-deficit reds of Doc 03 §4.1 (e.g., very
@@ -115,11 +115,11 @@ While an event is **active** (A1/A2), the override applies four coupled changes:
    feeds a chronic tank (sepsis → `B_INFL`; MI → permanent step on `B_ATH`; AKI → possible permanent
    `RENR` loss), that coupling persists after `B_ACU` drains — honest reversibility (Doc 04 §4.4).
 
-3. **Acute valve bundle (Doc 04 §6) + re-aimed nudges (Doc 07).** Swap the long-term valve settings
+3. **Acute valve bundle (Doc 04 §6) + re-aimed nudges (Doc 11).** Swap the long-term valve settings
    for an **acute recovery bundle**: rest/deload, hydration, protein for catabolic events, sleep
    protection, medication adherence, wound/symptom monitoring, graded return. `m_k^goal` is
    temporarily repointed from long-term goals to **recovery goals**. The nudge engine's top-5
-   (Doc 07) becomes recovery-first.
+   (Doc 11) becomes recovery-first.
 
 4. **Acute-mode display.** The headline communicates *"recovering from an acute event"* rather than a
    bare number drop, shows the recovery trajectory (`B_ACU` drain curve), suppresses long-term
@@ -169,12 +169,12 @@ flapping (Doc 03 §6).
 
 ### A.7 Safety summary (non-negotiable)
 
-- Emergency acute-danger reds (Doc 03 §4.1) → **immediate human escalation** (Doc 11), never
+- Emergency acute-danger reds (Doc 03 §4.1) → **immediate human escalation** (Doc 16), never
   self-managed acute mode.
 - Acute mode never lowers a clinical-anchor risk and never averages away a critical pillar.
 - Uncertainty defaults to caution (README §5.4): a borderline wearable-only signal stays provisional
   (softer) — but a borderline *emergency* signal escalates, not waits.
-- Every entry/exit and weight change is explainable and audited (Doc 03 §7, Doc 11).
+- Every entry/exit and weight change is explainable and audited (Doc 03 §7, Doc 16).
 
 ---
 
@@ -188,14 +188,14 @@ defines, chosen for the patient's stage and cohort:
 1. **`m_k^goal` weights** (Doc 03 §5.1) — which pillars the stage emphasizes.
 2. **Valve bundles** (Doc 04 §6) — the standing intervention/nudge settings that fill assets
    (`B_CRF`, `B_MUS`, `B_BON`, `B_MICR`) and drain burdens (`B_SLD`, `B_INFL`, `B_ADI`, `B_ALLO`).
-3. **Measurement cadence** by tier (Core/Peripheral/Comprehensive, Doc 01 §3) — how often each
+3. **Measurement cadence** by tier (Core/Peripheral/Comprehensive, Doc 06 §3) — how often each
    marker class is refreshed, which also drives **coverage/confidence** (Doc 03 §3).
 
 Plans are **adaptive**: when a pillar goes yellow/red, the plan auto-escalates that pillar's cadence,
 opens the relevant valves harder, and raises its `m_k^goal` (B.7). Reproductive-stage plans
-(pregnancy, post-partum, peri/menopause, andropause) are **deferred to Doc 05**.
+(pregnancy, post-partum, peri/menopause, andropause) are **deferred to Doc 08**.
 
-**Named good practices borrowed (Doc 00):**
+**Named good practices borrowed (Doc 01):**
 - **Kaiser Permanente** — *panel management* (every patient on a panel has a known care-gap list) and
   *care-gap closure* (proactive outreach when a Tier-1/2 measurement or screening is overdue). In
   PureScore, the cadence tables below *are* the panel/care-gap list; an overdue cell is a care gap.
@@ -211,7 +211,7 @@ opens the relevant valves harder, and raises its `m_k^goal` (B.7). Reproductive-
 |-------|--------------|------------------------------|--------------------------|
 | **Adolescent** | ~12–17 | MCS, SLP, FIT, NUT, BCM (peak bone) | build `B_BON`, `B_CRF`; protect `B_SLD`, `B_ALLO` |
 | **Young adult** | ~18–34 | FIT, MCS, MET, SLP | build `B_CRF`/`B_MUS`; establish baselines |
-| **Reproductive years** | ~18–45 | ENDO, NUT, MET, MCS (+ Doc 05) | **see Doc 05** (cycle/fertility/pregnancy) |
+| **Reproductive years** | ~18–45 | ENDO, NUT, MET, MCS (+ Doc 08) | **see Doc 08** (cycle/fertility/pregnancy) |
 | **Midlife** | ~35–55 | CV, MET, MCS, SLP, FIT | first `B_ATH`/`B_GLY`/`B_ADI` accrual; catch early |
 | **Older adult** | ~55–74 | CV, MET, BCM, FIT, MCS, REN | preserve `B_MUS`/`B_BON`/`B_CRF`; manage `B_ATH` |
 | **Frail / geriatric** | ~75+ | BCM, FIT, MCS, NUT, SLP | **anti-sarcopenia/anti-fall**; protect reserves, deprescribe-aware |
@@ -229,9 +229,9 @@ and cohort.
 |-------|------------------------|---------------------|------------------------|----------------------------------|
 | **Adolescent** | annual: BP, BMI, mood (PHQ-A/GAD), sleep | as-indicated: lipids if risk, ferritin | rarely | immunizations, vision, substance/risk, **mental-health & sleep check-in every visit**; goal: bone-building activity, sleep regularity |
 | **Young adult** | 1–2 yr: BP, BMI, glucose/A1c, mood, sleep, activity | 2–3 yr: lipids/ApoB, vit D, Lp(a) **once** | baseline body-comp if available | establish lifestyle baselines; CRF baseline; mental-health & sleep first-class |
-| **Reproductive yrs** | per Doc 05 | per Doc 05 | per Doc 05 | **see Doc 05** (cycle, fertility, pregnancy, post-partum) |
-| **Midlife** | annual: BP, A1c, lipids/ApoB, BMI/waist, mood, sleep, activity | 1–2 yr: HOMA-IR, ALT/FIB-4, UACR, TSH, omega-3 | 5–10 yr: CAC **once** if intermediate risk; DEXA if risk | cancer screening per guideline; ASCVD/SCORE2 (Doc 08); **sleep apnea screen** if signs |
-| **Older adult** | annual: BP, A1c, lipids, eGFR/UACR, BMI, mood, sleep, **gait speed/grip** | 1–2 yr: FIB-4, B12, vit D, TSH | DEXA (FRAX, Doc 08); body-comp/ALMI | cancer + bone screening; **fall-risk & cognition check**; polypharmacy review |
+| **Reproductive yrs** | per Doc 08 | per Doc 08 | per Doc 08 | **see Doc 08** (cycle, fertility, pregnancy, post-partum) |
+| **Midlife** | annual: BP, A1c, lipids/ApoB, BMI/waist, mood, sleep, activity | 1–2 yr: HOMA-IR, ALT/FIB-4, UACR, TSH, omega-3 | 5–10 yr: CAC **once** if intermediate risk; DEXA if risk | cancer screening per guideline; ASCVD/SCORE2 (Doc 10); **sleep apnea screen** if signs |
+| **Older adult** | annual: BP, A1c, lipids, eGFR/UACR, BMI, mood, sleep, **gait speed/grip** | 1–2 yr: FIB-4, B12, vit D, TSH | DEXA (FRAX, Doc 10); body-comp/ALMI | cancer + bone screening; **fall-risk & cognition check**; polypharmacy review |
 | **Frail / geriatric** | 6–12 mo: BP (orthostatic), A1c (relaxed targets), eGFR, **grip/gait/ALMI**, mood, nutrition (albumin, weight trend) | as-tolerated | sparing (burden-aware) | **fall-risk, cognition, nutrition (sarcopenia), deprescribing, goals-of-care**; avoid overtreatment |
 
 Every cell is owned by a **care-team role** (Mayo team-based): app/nudge engine for self-measured
@@ -248,7 +248,7 @@ the plan opens valves on `B_MICR` (fill) and `B_INFL`/`B_ADI`/`B_GLY` (drain).
 |-------|--------------|-------------|----------------------------------------|
 | **Adolescent** | balanced, adequate-energy Mediterranean-style | Ca + vit D (bone), iron (esp. menstruating), protein for growth | disordered-eating screen before any restriction; iron if ferritin low (NUT/HEM) |
 | **Young adult** | Mediterranean | fiber ≥25–30 g, omega-3 index ≥8%, limit ultra-processed/alcohol | athlete: periodized fueling; vegan: B12/iron/omega-3 supplementation |
-| **Reproductive yrs** | per Doc 05 | folate/iron pre-conception (Doc 05) | **see Doc 05** (pregnancy/lactation nutrition) |
+| **Reproductive yrs** | per Doc 08 | folate/iron pre-conception (Doc 08) | **see Doc 08** (pregnancy/lactation nutrition) |
 | **Midlife** | Mediterranean / DASH if BP-yellow | sodium ↓ (DASH) if BP↑; protein ~1.0–1.2 g/kg; weight regulation | **MET-yellow/red**: lower glycemic-load, time-restricted eating consideration; **HEP fat**: cut alcohol/fructose; **CKD**: protein/K⁺/phosphate per KDIGO |
 | **Older adult** | Mediterranean + **higher protein** | protein **1.2–1.5 g/kg** (anti-sarcopenia), vit D/Ca/B12, fiber | **on metformin**: monitor B12; **on diuretics/ACEi**: watch K⁺/Na⁺; **anticoagulant**: vit-K-consistent intake |
 | **Frail / geriatric** | **energy- & protein-dense**, texture-appropriate | protein **≥1.2–1.5 g/kg**, leucine-rich, vit D, hydration; **liberalize** restrictive diets | de-emphasize tight glycemic/lipid restriction (overtreatment risk); address appetite, dentition, social eating; screen malnutrition (albumin, weight loss) |
@@ -268,14 +268,14 @@ fall risk in older stages.
 |-------|------------------------------|-----------|--------------------|---------------------------------|
 | **Adolescent** | ≥60 min/day MVPA, varied; some vigorous | bodyweight/light, technique-first | sport/skill-based | build `B_BON` (impact/jumping); avoid early overspecialization |
 | **Young adult** | ≥150 (≥300 ideal) min/wk; build VO2max | 2–3×/wk full-body | as desired | establish `B_CRF`/`B_MUS` baseline; progressive overload |
-| **Reproductive yrs** | per Doc 05 (pregnancy modifications) | per Doc 05 | per Doc 05 | **see Doc 05** |
+| **Reproductive yrs** | per Doc 08 (pregnancy modifications) | per Doc 08 | per Doc 08 | **see Doc 08** |
 | **Midlife** | 150–300 min/wk zone-2 + 1–2 vigorous (VO2max) | 2–3×/wk progressive | core/mobility | titrate vigorous by **CRF reserve** & CV status; symptom-limited if CV-yellow |
 | **Older adult** | 150 min/wk zone-2, intervals as tolerated | **2–3×/wk, protein-paired (anti-sarcopenia)** | **2–3×/wk balance** (fall prevention) | dose by `B_MUS`/`B_BON`; pre-screen CV; osteoporosis → avoid high-impact/flexion loading |
 | **Frail / geriatric** | short, frequent, low-intensity (chair/walk) | **resistance is the priority valve** (power training), supervised | **balance/gait first-class** (Otago-style) | start low, progress slow; supervise; fall-history → balance before vigorous; pain/orthopedic-aware |
 
 **Reserve-deficit reds drive this plan, not emergencies.** A very low VO2max (Doc 03 §4.1 reserve
 deficit) is a **priority-improvement** target here: raise `m_FIT^goal`, open the `B_CRF` fill valve,
-and put graded zone-2 in the Doc 07 top-5 — never an emergency escalation.
+and put graded zone-2 in the Doc 11 top-5 — never an emergency escalation.
 
 ### B.6 Sleep and mental-health as first-class plan components
 
@@ -285,7 +285,7 @@ with its own cadence, goals, and valves:
 | Component | Cadence (all stages) | Goals / valves | Escalation |
 |-----------|----------------------|----------------|------------|
 | **Sleep (SLP)** | wearable nightly; 14-day review; **OSA screen** if signs | 7–9 h, regularity, efficiency; drain `B_SLD`; protect from shift/jet-lag | suspected mod–severe OSA → sleep-medicine referral (Doc 02 SLP) |
-| **Mental health (MCS)** | PHQ-9/GAD-7 + WHO-5 on a fixed cadence (more often in adolescents, midlife stress, older-adult isolation) | mood, anxiety, **loneliness/social connection**, stress; drain `B_ALLO` | PHQ-9 item-9 / acute crisis → **immediate escalation** (Doc 02 MCS, Doc 11), and Part A acute-life-event plan for sub-crisis stressors |
+| **Mental health (MCS)** | PHQ-9/GAD-7 + WHO-5 on a fixed cadence (more often in adolescents, midlife stress, older-adult isolation) | mood, anxiety, **loneliness/social connection**, stress; drain `B_ALLO` | PHQ-9 item-9 / acute crisis → **immediate escalation** (Doc 02 MCS, Doc 16), and Part A acute-life-event plan for sub-crisis stressors |
 
 These blocks also interlock with Part A: an **acute life event** (bereavement, job loss, caregiving)
 opens the MCS recovery plan and protects sleep, then reverts to the stage's long-term mental-health
@@ -298,9 +298,9 @@ ProvenCare pathway branching):
 
 | Pillar status | Automatic plan changes |
 |---------------|------------------------|
-| **Yellow** | (1) raise that pillar's Tier-2/3 **cadence** (close the measurement gap); (2) open its valves harder (Doc 04 §6) — e.g., MET-yellow → glycemic-load nutrition + zone-2 fill on `B_CRF`; (3) bump `m_k^goal` so the nudge engine (Doc 07) prioritizes it; (4) outreach if self-measures are overdue |
+| **Yellow** | (1) raise that pillar's Tier-2/3 **cadence** (close the measurement gap); (2) open its valves harder (Doc 04 §6) — e.g., MET-yellow → glycemic-load nutrition + zone-2 fill on `B_CRF`; (3) bump `m_k^goal` so the nudge engine (Doc 11) prioritizes it; (4) outreach if self-measures are overdue |
 | **Red (reserve-deficit)** | priority-improvement plan: strong valve bundle + high-leverage nudges + clinician task (Doc 03 §4.1) — e.g., low VO2max, osteoporosis, sarcopenia |
-| **Red (acute-danger)** | **Part A**: emergency → escalation (Doc 11); sub-emergency corroborated → acute mode (A.4) |
+| **Red (acute-danger)** | **Part A**: emergency → escalation (Doc 16); sub-emergency corroborated → acute mode (A.4) |
 | **Recovered** | step cadence/valves/`m_k^goal` back down with the same **hysteresis** as Part A so the plan doesn't flap (Doc 03 §6) |
 
 This is the explicit tie between **status → plan**: the plan is a function of pillar state, so a
@@ -312,7 +312,7 @@ ask, and relaxes again when MET returns to green.
 Each plan ultimately resolves to **valve settings tied to cohort-specific lifestyle goals**
 (Doc 04 §6): the stage + disease flags `D` + medication classes `Mx` select which assets to fill and
 which burdens to drain, at what intensity, with what cadence, owned by which care-team role. That is
-the same object the nudge engine differentiates through (Doc 04 §6, Doc 07 §3) to attribute
+the same object the nudge engine differentiates through (Doc 04 §6, Doc 11 §3) to attribute
 "+ΔPureScore" to each action — so a life-stage plan and a daily nudge are the same machinery at
 different time-scales, and an acute event (Part A) is that machinery temporarily re-pointed at
 recovery and then handed back.
@@ -322,10 +322,10 @@ recovery and then handed back.
 ### Cross-references
 - Acute reservoir mechanics & valves: **Doc 04 §6, §7**.
 - `m_k^acute`, `m_k^goal`, critical cascade, hysteresis: **Doc 03 §5, §6**.
-- Emergency escalation vs reserve-deficit reds: **Doc 03 §4.1**, **Doc 11**.
-- Reproductive-stage care/nutrition/exercise & pregnancy complications: **Doc 05 (authoritative)**.
-- Daily nudges & impact attribution: **Doc 07**. Clinical scores (ASCVD, KDIGO, FRAX, FIB-4): **Doc 08**.
+- Emergency escalation vs reserve-deficit reds: **Doc 03 §4.1**, **Doc 16**.
+- Reproductive-stage care/nutrition/exercise & pregnancy complications: **Doc 08 (authoritative)**.
+- Daily nudges & impact attribution: **Doc 11**. Clinical scores (ASCVD, KDIGO, FRAX, FIB-4): **Doc 10**.
 
 > Reminder (README §5.6): every illustrative threshold, interval, dose, and reservoir constant here is
 > **literature-anchored and must be re-verified on a fixed cadence** and cohort-adjusted before
-> production; all constants are versioned and changes require re-validation (Doc 09) and audit (Doc 11).
+> production; all constants are versioned and changes require re-validation (Doc 13) and audit (Doc 16).

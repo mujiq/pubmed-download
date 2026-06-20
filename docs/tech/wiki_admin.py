@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Doctor's-board admin screen mockups (high-fidelity, static) for the PureScore tech wiki.
 These are DESIGN mockups for the quarterly clinical-configuration review board. Non-functional:
-buttons and fields are illustrative. Governance: Doc 11 §5, release gates Doc 13, evidence Doc 14."""
+buttons and fields are illustrative. Governance: Doc 16 §5, release gates Doc 14, evidence Doc 15."""
 
 from wiki_content import (_esc, ILLUS, PILLARS, PILLAR_W, CONSTANTS, QSOURCE,
                           INSTRUMENTS, PERSONAS, WEARABLES, _rngbar)
@@ -24,9 +24,9 @@ GOV_NOTE = ('<div class="callout note"><div class="ct">How this board works</div
   'Every configuration item below is owned by a clinical lead and <b>reviewed each quarter</b>. '
   'A proposed change moves <b>Draft → Under review → Approved / Changes-requested → Versioned</b>. '
   'Approval requires panel quorum + chair sign-off, and <b>any change is a model-version bump that '
-  'must pass the release gates</b> (<a class="xref" href="13-validation-and-calibration-harness.html">Doc 13</a>), '
-  'update the evidence registry (<a class="xref" href="14-evidence-registry-and-provenance.html">Doc 14</a>), '
-  'and is written to the immutable audit log (<a class="xref" href="11-safety-governance-and-regulatory.html">Doc 11</a> §4.3, §5).</div>')
+  'must pass the release gates</b> (<a class="xref" href="14-validation-and-calibration-harness.html">Doc 14</a>), '
+  'update the evidence registry (<a class="xref" href="15-evidence-registry-and-provenance.html">Doc 15</a>), '
+  'and is written to the immutable audit log (<a class="xref" href="16-safety-governance-and-regulatory.html">Doc 16</a> §4.3, §5).</div>')
 
 # config-domain registry shown on the dashboard
 DOMAINS = [
@@ -35,9 +35,9 @@ DOMAINS = [
  ("Lifestyle / PRO instruments","admin-lifestyle.html","Dr. N. Okoye (Psychiatry)", 12, "2026-03-10","ok","No change; PHQ-9 safety rule locked"),
  ("Personas &amp; cohort frames","admin-personas.html","Dr. R. Costa (Internal Med)", 15, "2026-03-11","ok","Pregnancy T3 frame proposed"),
  ("Wearable trust tiers (D22)","appendix-wearables.html","Dr. K. Lin (Cardiology)", 15, "2026-03-12","review","CGM weight 0.85→0.9 proposed"),
- ("UAE localization &amp; Ramadan","15-uae-localization.html","Dr. F. Al-Sayed (Endocrinology)", 9, "2026-03-09","ok","IDF-DAR 2024 verified"),
+ ("UAE localization &amp; Ramadan","18-uae-localization.html","Dr. F. Al-Sayed (Endocrinology)", 9, "2026-03-09","ok","IDF-DAR 2024 verified"),
  ("Reservoir / dynamics params","04-moniac-reservoir-dynamics.html","Dr. L. Haddad (Biostatistics)", 11, "2026-03-12","ok","λ/κ unchanged"),
- ("Escalation thresholds","11-safety-governance-and-regulatory.html","Dr. A. Rahman (Chair)", 18, "2026-03-12","chg","Sepsis screen WBC cut under revision"),
+ ("Escalation thresholds","16-safety-governance-and-regulatory.html","Dr. A. Rahman (Chair)", 18, "2026-03-12","chg","Sepsis screen WBC cut under revision"),
 ]
 
 def build_admin_index():
@@ -125,9 +125,9 @@ def build_admin_lab():
              '<div><div class="small muted">Proposed (ESC/EAS 2025)</div>'
              '<p>Green <span class="chip b-green">&lt;80 (&lt;55 very-high-risk)</span> · Red <span class="chip b-red">≥100</span></p></div></div>'
              '<p class="small"><b>Rationale:</b> lower very-high-risk target per updated secondary-prevention guidance. '
-             '<b>Evidence:</b> registry entry <code>EV-APOB-2025</code> (<a class="xref" href="14-evidence-registry-and-provenance.html">Doc 14</a>). '
+             '<b>Evidence:</b> registry entry <code>EV-APOB-2025</code> (<a class="xref" href="15-evidence-registry-and-provenance.html">Doc 15</a>). '
              '<b>Impact sim:</b> affects 4.1% of cohort by ≤2 PureScore pts; no new criticals (re-validation pending, '
-             '<a class="xref" href="13-validation-and-calibration-harness.html">Doc 13</a>).</p>'
+             '<a class="xref" href="14-validation-and-calibration-harness.html">Doc 14</a>).</p>'
              '<div class="toolbar"><span class="btn ok">Approve</span><span class="btn warn">Request changes</span>'
              '<span class="btn">Defer to next cycle</span><span class="btn">View impact report</span></div></div>')
     return "Admin · Lab ranges", "".join(h)
@@ -157,7 +157,7 @@ def build_admin_weights():
                  '<td class="small muted">%s</td><td>%s</td></tr>' % (_esc(sym), _esc(mean), _esc(val), _esc(ref), stt))
     h.append('</tbody></table></div></div>')
     # imputation / q_source
-    h.append('<div class="panel"><h3>Imputation &amp; confidence policy <span class="muted small">q_source — Doc 01 §2; D22</span></h3>'
+    h.append('<div class="panel"><h3>Imputation &amp; confidence policy <span class="muted small">q_source — Doc 06 §2; D22</span></h3>'
              '<p class="small muted">When the patient\'s own data is missing or low-grade, the value is imputed from the '
              'cohort/literature with a reduced confidence that lowers pillar coverage and caps how green a pillar can display.</p>'
              '<div class="tablewrap"><table><thead><tr><th>Source</th><th>q_source</th><th>Handling</th></tr></thead><tbody>')
@@ -187,7 +187,7 @@ def build_admin_lifestyle():
          '<div class="callout safety"><div class="ct">Locked governance item</div>The <b>PHQ-9 item-9 suicidality '
          'hard rule</b> (forces MCS critical, fires crisis pathway) is a <b>locked safety control</b> — it cannot be '
          'edited in a routine quarterly cycle; changing it requires a full safety review '
-         '(<a class="xref" href="11-safety-governance-and-regulatory.html">Doc 11</a> §2.2).</div>',
+         '(<a class="xref" href="16-safety-governance-and-regulatory.html">Doc 16</a> §2.2).</div>',
          '<div class="tablewrap"><table><thead><tr><th>Instrument</th><th>Pillar</th><th>Items</th>'
          '<th>Scoring</th><th>Bands</th><th>Cadence</th><th>Status</th></tr></thead><tbody>']
     for q in INSTRUMENTS:
@@ -206,7 +206,7 @@ def build_admin_personas():
          _adminbar("Persona / cohort-frame review"),
          '<p class="lead">Cohort frames adjust interpretation (ranges, weight multipliers, confidence) without ever '
          'relaxing the clinical safety anchor. Detail in <a class="xref" href="appendix-personas.html">Appendix D</a>; '
-         'sex frames <a class="xref" href="05-sex-specific-models.html">Doc 05</a>.</p>', ILLUS,
+         'sex frames <a class="xref" href="08-sex-specific-models.html">Doc 08</a>.</p>', ILLUS,
          '<div class="tablewrap"><table><thead><tr><th>Persona</th><th>Age</th><th>rep → Confidence</th>'
          '<th>Weight multipliers</th><th>Frame</th><th>Status</th></tr></thead><tbody>']
     for i,(k, label, age, meds, rep, wm, note) in enumerate(PERSONAS):
@@ -234,10 +234,10 @@ def build_admin_governance():
          '  D["Draft<br/>proposer + rationale + evidence"] --> R["Under review<br/>panel"]\n'
          '  R -->|quorum + chair| A["Approved"]\n'
          '  R -->|concerns| C["Changes requested"] --> D\n'
-         '  A --> G{"release gates<br/>Doc 13"}\n'
-         '  G -->|pass| V["Versioned &amp; released<br/>+ evidence registry (Doc 14)"]\n'
+         '  A --> G{"release gates<br/>Doc 14"}\n'
+         '  G -->|pass| V["Versioned &amp; released<br/>+ evidence registry (Doc 15)"]\n'
          '  G -->|fail| C\n'
-         '  V --> AU["Immutable audit log (Doc 11)"]</pre></div>',
+         '  V --> AU["Immutable audit log (Doc 16)"]</pre></div>',
          '<div class="grid c2"><div class="panel"><h3>Sign-off panel · %s</h3>'
          '<div class="tablewrap"><table><tbody>'
          '<tr><td>Dr. A. Rahman <span class="small muted">— Chair</span></td><td class="right">%s</td></tr>'
@@ -251,10 +251,10 @@ def build_admin_governance():
             _st("ok","✓ signed"), _st("rev","pending")),
          '<div class="panel"><h3>Gates every change must clear</h3><ul class="small">'
          '<li><b>Release gates</b> — discrimination, calibration, early-warning PPV/lead-time, fairness slices, drift '
-         '(<a class="xref" href="13-validation-and-calibration-harness.html">Doc 13</a>)</li>'
-         '<li><b>Evidence registry</b> — provenance, citation, vintage updated (<a class="xref" href="14-evidence-registry-and-provenance.html">Doc 14</a>)</li>'
-         '<li><b>No-proxy fairness</b> — no protected-class proxy worsens access/price/care (<a class="xref" href="11-safety-governance-and-regulatory.html">Doc 11</a> §6)</li>'
-         '<li><b>Model-version bump</b> + re-validation before scale (<a class="xref" href="09-cohort-percentiles-and-validation.html">Doc 09</a>)</li></ul></div></div>',
+         '(<a class="xref" href="14-validation-and-calibration-harness.html">Doc 14</a>)</li>'
+         '<li><b>Evidence registry</b> — provenance, citation, vintage updated (<a class="xref" href="15-evidence-registry-and-provenance.html">Doc 15</a>)</li>'
+         '<li><b>No-proxy fairness</b> — no protected-class proxy worsens access/price/care (<a class="xref" href="16-safety-governance-and-regulatory.html">Doc 16</a> §6)</li>'
+         '<li><b>Model-version bump</b> + re-validation before scale (<a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13</a>)</li></ul></div></div>',
          '<div class="panel"><h3>Audit log <span class="muted small">immutable · who / what / when / why</span></h3>'
          '<div class="tablewrap"><table><thead><tr><th>When</th><th>Who</th><th>Item</th><th>Change</th><th>Why</th></tr></thead><tbody>'
          '<tr><td class="small mono">2026-06-14 09:12</td><td class="small">Dr. L. Haddad</td><td class="small">constant κ</td><td class="small">add 0.10 (Stage 2b)</td><td class="small muted">D23 continuous responsiveness</td></tr>'

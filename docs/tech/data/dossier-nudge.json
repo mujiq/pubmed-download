@@ -186,7 +186,7 @@
       "decisions": ["D5", "D16", "D19", "D20"]
     },
     "ClinicalPersona": {
-      "purpose": "Assigns a patient to one or more named clinical personas (e.g. healthy, prediabetic, elderly, CKD, FH, pregnancy) via a softmax posterior over objective signals. Personas carry pillar weight multipliers that amplify or dampen pillar contributions for the patient's scoring context (Doc 05/06 cohort frames), gate action eligibility, and are cross-referenced by the NudgeEngine to apply cohort-specific doses and contraindications. Assignment is many-to-many (a patient may hold multiple personas simultaneously); hard sex/age/life-stage priors zero impossible columns first (D25).",
+      "purpose": "Assigns a patient to one or more named clinical personas (e.g. healthy, prediabetic, elderly, CKD, FH, pregnancy) via a softmax posterior over objective signals. Personas carry pillar weight multipliers that amplify or dampen pillar contributions for the patient's scoring context (Doc 08/09 cohort frames), gate action eligibility, and are cross-referenced by the NudgeEngine to apply cohort-specific doses and contraindications. Assignment is many-to-many (a patient may hold multiple personas simultaneously); hard sex/age/life-stage priors zero impossible columns first (D25).",
       "stories": [
         {
           "id": "US-CLINICALPERSONA-1",

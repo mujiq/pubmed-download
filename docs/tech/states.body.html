@@ -2,9 +2,9 @@
 <h1>Patient Life-State Machine — the Uber statechart</h1>
 <p class="lead">One <b>mega nested statechart</b> of every life state a patient can occupy — three concurrent regions
 (<b>Care status</b>, <b>Life stage</b>, <b>Engagement</b>) with all eight sub-machines expanded inline:
-acute-event (<a class="xref" href="06-acute-events-and-life-stage-plans.html">Doc 06</a> A0–A3), chronic management,
-pregnancy/reproductive &amp; menopause &amp; andropause (<a class="xref" href="05-sex-specific-models.html">Doc 05</a>),
-aging/frailty, onboarding, and the crisis pathway (<a class="xref" href="11-safety-governance-and-regulatory.html">Doc 11</a>).
+acute-event (<a class="xref" href="09-acute-events-and-life-stage-plans.html">Doc 09</a> A0–A3), chronic management,
+pregnancy/reproductive &amp; menopause &amp; andropause (<a class="xref" href="08-sex-specific-models.html">Doc 08</a>),
+aging/frailty, onboarding, and the crisis pathway (<a class="xref" href="16-safety-governance-and-regulatory.html">Doc 16</a>).
 <b>Wheel = zoom · drag = pan · double-click a box = zoom to that section · ⛶ fullscreen.</b> Pick a persona to light up
 the live state-vector; filter by sex / age / condition to prune impossible states; switch detail level to tame density.</p>
 
@@ -106,19 +106,19 @@ mermaid.initialize({startOnLoad:false, theme:"dark", securityLevel:"loose",
 function S(id,label,band,d,notes){return {id:id,label:label,band:band,d:d,notes:notes||[]};}
 const CARE=[
   S("Well","Well / maintenance","green","No active disease; maintenance scoring, longevity nudges.",["<b>Exit:</b> Watch → At-risk; acute detection → Acute."]),
-  S("AtRisk","At-risk / pre-clinical","gold","Sub-clinical drift caught by personal-baseline early-warning before any band crosses.",["<b>Doc 12 §5</b> Watch/Advisory."]),
-  S("Acute","Acute event","red","Composite — optimize→triage&recover; reverts with hysteresis (Doc 06).",["Double-click to zoom into the acute sub-machine (A0–A3)."]),
-  S("Chronic","Chronic / managed","acc","Composite — diagnosed condition(s) under management (MANAGED, Doc 12 §3.1).",["Pillar keeps disease-weight even when controlled."]),
-  S("Crisis","Crisis / emergency","red","Composite — A3 acute-danger / suicidality → immediate human escalation (Doc 11).",["Cascade caps PureScore ≤40."]),
-  S("Palliative","Palliative / end-of-life","mut","Competing-risk weighting mutes longevity pillars; comfort & function goals.",["Dual-framing → progress-to-attainable (Doc 12 §6)."]),
+  S("AtRisk","At-risk / pre-clinical","gold","Sub-clinical drift caught by personal-baseline early-warning before any band crosses.",["<b>Doc 05 §5</b> Watch/Advisory."]),
+  S("Acute","Acute event","red","Composite — optimize→triage&recover; reverts with hysteresis (Doc 09).",["Double-click to zoom into the acute sub-machine (A0–A3)."]),
+  S("Chronic","Chronic / managed","acc","Composite — diagnosed condition(s) under management (MANAGED, Doc 05 §3.1).",["Pillar keeps disease-weight even when controlled."]),
+  S("Crisis","Crisis / emergency","red","Composite — A3 acute-danger / suicidality → immediate human escalation (Doc 16).",["Cascade caps PureScore ≤40."]),
+  S("Palliative","Palliative / end-of-life","mut","Competing-risk weighting mutes longevity pillars; comfort & function goals.",["Dual-framing → progress-to-attainable (Doc 05 §6)."]),
 ];
 const LIFE=[
   S("Pediatric","Pediatric (gated)","mut","Out of v0.1 scope — percentile/Tanner frames; gated, never adult bands.",["Gate: age <18."]),
   S("Adult","Healthy adult","green","Reference frame; standard pillar bands.",["Branches to reproductive / climacteric / aging tracks."]),
-  S("Reproductive","Reproductive / pregnancy","acc","Composite — cycle→fertility→pregnancy journey (sex-gated, Doc 05).",["Pre-eclampsia/GDM anchors never masked."]),
+  S("Reproductive","Reproductive / pregnancy","acc","Composite — cycle→fertility→pregnancy journey (sex-gated, Doc 08).",["Pre-eclampsia/GDM anchors never masked."]),
   S("Postpartum","Post-partum","gold","Recovery + lactation; mood screening weighted up.",["Reverts to cycling/Adult."]),
-  S("Menopause","Menopause","gold","Composite — peri→post-menopause; estrogen-loss CV & bone risk (Doc 05).",["BMD red sooner; vasomotor sleep impact."]),
-  S("Andropause","Andropause","gold","Composite — age-related testosterone decline; symptom-anchored (Doc 05).",["Lifestyle-first; TRT if confirmed & indicated."]),
+  S("Menopause","Menopause","gold","Composite — peri→post-menopause; estrogen-loss CV & bone risk (Doc 08).",["BMD red sooner; vasomotor sleep impact."]),
+  S("Andropause","Andropause","gold","Composite — age-related testosterone decline; symptom-anchored (Doc 08).",["Lifestyle-first; TRT if confirmed & indicated."]),
   S("Aging","Aging / frailty","acc","Composite — robust→pre-frail→frail→dependent (Fried phenotype).",["Pre-frail is reversible."]),
 ];
 const ENG=[
@@ -127,7 +127,7 @@ const ENG=[
   S("Churn","At risk of churn","gold","Declining engagement; feasibility model adapts.",["Re-engage → Active, or lapse → Dormant."]),
   S("Dormant","Dormant / lapsed","mut","No data inflow; confidence decays, score stale.",["Reactivate, or Off-board."]),
   S("Reactivated","Reactivated","acc","Returned after lapse; baseline refreshed.",["→ Active."]),
-  S("Offboarded","Off-boarded","mut","Account closed or deceased — terminal.",["Append-only audit retained (Doc 11)."]),
+  S("Offboarded","Off-boarded","mut","Account closed or deceased — terminal.",["Append-only audit retained (Doc 16)."]),
 ];
 
 /* ============ sub-machines: label, substates (detail), body (mermaid inner) ============ */
@@ -219,9 +219,9 @@ ChurnO --> DormantO : no activity
 DormantO --> ActiveO : reactivated`},
   crisis:{label:"Crisis pathway", states:[
     S("Trigger","Trigger","red","A3 acute-danger red / suicidality endorsed.",["PHQ-9 item 9, sepsis screen, K⁺≥5.6, SpO₂<92, Tn rise…"]),
-    S("Triage","Safety triage","red","Rapid risk assessment + plausibility check.",["Artifact? (Doc 12 §3.4) vs real."]),
+    S("Triage","Safety triage","red","Rapid risk assessment + plausibility check.",["Artifact? (Doc 05 §3.4) vs real."]),
     S("Reassure","Reconfirm / reassure","gold","Implausible/isolated value → reconfirm, not alarm.",["Corroboration would escalate."]),
-    S("Escalation","Human escalation","red","Clinician-in-the-loop safety hand-off (Doc 11).",[]),
+    S("Escalation","Human escalation","red","Clinician-in-the-loop safety hand-off (Doc 16).",[]),
     S("EmergencyServices","Emergency services","red","Imminent danger → 999/ED pathway.",[]),
     S("UrgentCare","Urgent care","red","Same-day clinical contact.",[]),
     S("Stabilized","Stabilized","gold","Acute danger handled.",[]),

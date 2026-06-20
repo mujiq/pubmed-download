@@ -43,7 +43,7 @@ dominates but cannot make `r>1`. The colour zones in README §3.5 fall out direc
 arbitrarily small change in `r_i`. There are **no discrete band jumps in the number** — the
 green/yellow/red bands are *labels read off the continuous curve* (`r<0.15`/`<0.5`/`≥0.5`), never
 the generator of the score. This is what lets a single day's action register as a real, visible
-score change (§6.1; Doc 07; Doc 12).
+score change (§6.1; Doc 11; Doc 05).
 
 **Within-band optimum-centering is ON by default.** The true best value sits at the band centre
 `m_i` (e.g., HDL keeps improving above the lower edge), so even *inside green* there is a gentle
@@ -56,12 +56,12 @@ it can never, by itself, change a band or a status.
 
 ## 2. Stage 2 — Blend with cohort percentile (safety-dominant)
 
-The cohort percentile (Doc 01 §4.2) personalizes the score and powers stack-ranking, but it may
+The cohort percentile (Doc 06 §4.2) personalizes the score and powers stack-ranking, but it may
 only **raise** concern, never lower it below the clinical anchor:
 
 ```
  r_i^cohort = g(q_i)        # maps an adverse percentile to risk; g(0.5)=0, rises toward tails
- r_i        = max( r_i^clin ,  φ · r_i^cohort )           # φ = 0.6 default  (Doc 01 §4.4)
+ r_i        = max( r_i^clin ,  φ · r_i^cohort )           # φ = 0.6 default  (Doc 06 §4.4)
 ```
 
 - `g(q)` is `0` near the healthy side and rises as the value becomes unusually adverse *for the
@@ -69,7 +69,7 @@ only **raise** concern, never lower it below the clinical anchor:
 - For a **healthy** reference cohort, `g` flags being an outlier on the bad side even while still
   technically in-range — an early-warning property.
 - For a **diseased** cohort, the `max(...)` guarantees the clinical anchor cannot be diluted by
-  looking "good for a sick group" (the HbA1c-7.5%-in-diabetics example, Doc 01 §4.4).
+  looking "good for a sick group" (the HbA1c-7.5%-in-diabetics example, Doc 06 §4.4).
 
 **Stack-ranking (for display and the actuarial layer)** uses `q_i` and pillar percentiles
 directly; it is presentation/analytics, not a relaxation of `r_i`.
@@ -81,7 +81,7 @@ directly; it is presentation/analytics, not a relaxation of `r_i`.
 Stage 2 personalizes *across people*; Stage 2b personalizes *across time for one person*, so the
 score visibly tracks short-term action. Each marker carries a robust **personal baseline**
 `μ_i^p, σ_i^p` (empirical-Bayes, log-scaled for heavy-tailed markers; cold-start shrinks to cohort
-— Doc 12 §5.1, Doc 14 ignition), giving a **personal z-score** oriented so *adverse = positive*:
+— Doc 05 §5.1, Doc 15 ignition), giving a **personal z-score** oriented so *adverse = positive*:
 
 ```
  z_i = sign_adverse · (x_i − μ_i^p) / σ_i^p
@@ -103,9 +103,9 @@ A bounded, smooth gradient turns recent personal movement into a small score cha
   before any band is crossed.
 - **Cadence.** `μ_i^p, σ_i^p` and `z_i` update on each new reading: daily for wearables/behaviours
   (sleep, steps, HRV, resting HR, CGM, stress check-ins), per-measurement for labs. The fast
-  channels are exactly the modifiable ones the nudge engine acts on (Doc 07), closing the loop.
+  channels are exactly the modifiable ones the nudge engine acts on (Doc 11), closing the loop.
 - Stage 2b is also the substrate for the **Trajectory/momentum** and **Early-warning** companion
-  dimensions (Doc 12 §4–§5): the same `z_i` stream that nudges the number drives the arrows.
+  dimensions (Doc 05 §4–§5): the same `z_i` stream that nudges the number drives the arrows.
 
 ---
 
@@ -116,7 +116,7 @@ power mean with exponent γ > 1** (a soft-max over risks), with weights scaled b
 confidence, plus an additive **reservoir term** carrying chronic burden (Doc 04).
 
 ```
- ŵ_i = w_i · confidence_i           # low-confidence/imputed markers contribute less (Doc 01 §2)
+ ŵ_i = w_i · confidence_i           # low-confidence/imputed markers contribute less (Doc 06 §2)
 
            ⎛  Σ_{i∈k} ŵ_i · r_i^γ  ⎞^{1/γ}
  R_k^mark = ⎜ ───────────────────── ⎟           γ = 3 (default; higher ⇒ more worst-case-sensitive)
@@ -131,7 +131,7 @@ confidence, plus an additive **reservoir term** carrying chronic burden (Doc 04)
   bounds how much chronic burden can move a pillar on top of its current markers.
 - **Coverage** `cov_k = Σ ŵ_i over observed / Σ w_i over all` is reported alongside `R_k`. Low
   coverage caps how *green* a pillar may be displayed (a pillar that is green only via imputed
-  medians is shown as *low-coverage green*, Doc 01 §4.3).
+  medians is shown as *low-coverage green*, Doc 06 §4.3).
 
 `S_k = 100 · (1 − R_k)`.
 
@@ -161,8 +161,8 @@ pillar critical."*
 Doc 02 (FIT) notes some reds are **reserve deficits** (e.g., very low VO2max) — serious but not
 emergencies — vs **acute-danger reds** (e.g., K⁺ 6.2, SpO2 88%, suicidality). Both floor the
 pillar, but only **acute-danger reds** trigger the immediate clinician/crisis escalation pathway
-(Doc 11); reserve-deficit reds drive **priority improvement** plans (Doc 06) and high-leverage
-nudges (Doc 07). The marker catalogue tags each critical marker with `escalation ∈ {emergency,
+(Doc 16); reserve-deficit reds drive **priority improvement** plans (Doc 09) and high-leverage
+nudges (Doc 11). The marker catalogue tags each critical marker with `escalation ∈ {emergency,
 urgent, routine}`.
 
 ---
@@ -177,8 +177,8 @@ urgent, routine}`.
   SLP carry the largest defaults).
 - `m_k^cohort`: raises pillars central to the patient's conditions/meds (diabetic ⇒ MET, REN, CV
   up; CKD ⇒ REN up; on statin ⇒ CV interpretation adjusts).
-- `m_k^goal`: raises pillars tied to the patient's stated goals (Doc 06/07).
-- `m_k^acute`: spikes during an acute event (Doc 06); reverts with hysteresis on recovery.
+- `m_k^goal`: raises pillars tied to the patient's stated goals (Doc 09/11).
+- `m_k^acute`: spikes during an acute event (Doc 09); reverts with hysteresis on recovery.
 
 ### 5.2 Aggregate risk (worst-sensitive again)
 ```
@@ -197,7 +197,7 @@ away by healthy pillars:
  if  ∃ k with status_k == critical:
        PureScore = min( PureScore° , PURE_CRIT_CAP )          # PURE_CRIT_CAP = 40
        overall_status = CRITICAL
-       if any critical marker has escalation == emergency:  trigger emergency pathway (Doc 11)
+       if any critical marker has escalation == emergency:  trigger emergency pathway (Doc 16)
  else:
        PureScore = PureScore°
        overall_status = (R_total ≥ 0.30 ? AT_RISK : ON_TRACK)
@@ -223,24 +223,24 @@ A 58-y-old man, otherwise green pillars, presents K⁺ = 6.3 mmol/L (REN critica
   threshold for K⁺").
 - **Anti-flap:** status transitions (esp. critical→non-critical) use hysteresis and require either
   a confirming measurement or sustained reservoir drainage (Doc 04 λ), so the headline doesn't
-  oscillate on noise. Acute-mode entry/exit hysteresis is in Doc 06.
+  oscillate on noise. Acute-mode entry/exit hysteresis is in Doc 09.
 
 ### 6.1 Responsiveness & the patient feedback loop
 The score is engineered to **move with behaviour** so the patient gets feedback, while staying
 clinically honest:
 1. **Every modifiable action has a non-zero, continuous `ΔPureScore`.** Because Stages 1–2b are
-   smooth, the exact finite-difference recompute the nudge engine uses (Doc 07 §2.5) returns a real
+   smooth, the exact finite-difference recompute the nudge engine uses (Doc 11 §2.5) returns a real
    gradient — not a lookup, not zero-until-a-threshold. The **top-5 actions are selected to each
-   carry a strictly positive expected `ΔPureScore@h`** (Doc 07 §3): doing them moves the number up.
+   carry a strictly positive expected `ΔPureScore@h`** (Doc 11 §3): doing them moves the number up.
 2. **Negative behaviour trends down.** A missed-sleep streak, a sedentary week, rising stress, or a
    regressing wearable metric pushes `z_i` adverse → `r_i` up → PureScore down, and shows as
    **↓ Trajectory** on the affected pillars and, if it accelerates, an **Early-warning** flag
-   (Doc 12 §4–§5) — before any band is crossed.
+   (Doc 05 §4–§5) — before any band is crossed.
 3. **Honest ceiling.** Responsiveness is bounded by `κ_resp` and `band_clamp`: fixed/irreversible burden
    (genetics, age, established disease) does **not** fake-improve from short-term effort — it shows
-   as low **Modifiability** (Doc 12 §4) so the engine never sells false hope (D5/D16).
+   as low **Modifiability** (Doc 05 §4) so the engine never sells false hope (D5/D16).
 4. **The loop:** measure → personal-baseline `z` (2b) → continuous score + companion trends →
-   top-5 easiest positive-`Δ` actions (Doc 07) → patient acts → next measurement moves `z` → score
+   top-5 easiest positive-`Δ` actions (Doc 11) → patient acts → next measurement moves `z` → score
    and arrows update. The interactive demonstration of this loop is the `tech/` feedback-loop page.
 
 ## 7. Explainability output (every score ships with this)
@@ -251,7 +251,7 @@ For any score the engine emits:
 4. The personalization weights `W_k` and *why* they were set (cohort/goal/acute).
 5. Confidence/coverage caveats and any literature-fallback markers.
 
-This object is the substrate for the nudge engine (Doc 07) and the clinician view (Doc 08).
+This object is the substrate for the nudge engine (Doc 11) and the clinician view (Doc 10).
 
 ## 8. Default constants (all tunable, all versioned)
 | Symbol | Meaning | Default |
@@ -267,4 +267,4 @@ This object is the substrate for the nudge engine (Doc 07) and the clinician vie
 | zone cuts | green/yellow/red on `r` | 0.15 / 0.50 |
 
 Constants are stored in a versioned config; any change is a model-version bump requiring
-re-validation (Doc 09) and is recorded in the audit trail (Doc 11).
+re-validation (Doc 13) and is recorded in the audit trail (Doc 16).

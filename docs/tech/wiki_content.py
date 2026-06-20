@@ -135,37 +135,37 @@ def write_calc_data():
 
 # ----------------------------------------------------------------- per-doc summaries
 SUMMARY = {
- "00":"Vision, design principles, and the institutional lessons (Babylon / Kaiser / Mayo) PureScore is engineered around.",
- "01":"Canonical FHIR-aligned data model, the four flagged input streams, measurement tiers, provenance/confidence, and literature reference-range strategy.",
+ "01":"Vision, design principles, and the institutional lessons (Babylon / Kaiser / Mayo) PureScore is engineered around.",
+ "06":"Canonical FHIR-aligned data model, the four flagged input streams, measurement tiers, provenance/confidence, and literature reference-range strategy.",
  "02":"The 12 pillars and the full marker catalogue — tiers, two-sidedness, green/yellow/red bands, within-pillar weights and sources.",
  "03":"The deterministic marker→pillar→PureScore math, continuous personalized scoring (Stage 2b), the critical cascade and the feedback loop.",
  "04":"MONIAC reservoir dynamics: stocks, leakage, cross-pillar interference and valves that give PureScore memory.",
- "05":"Sex-specific models: cycle, fertility, pregnancy, post-partum, menopause, andropause, and hormone-therapy-aware ranges.",
- "06":"Acute-event override & revert, and care/nutrition/exercise plans by life stage.",
- "07":"The daily top-5 nudge engine: impact-attributed, ease-weighted, diverse, safe — every action a positive ΔPureScore.",
- "08":"Validated clinical scores (FINDRISC, ASCVD/SCORE2, KDIGO, FIB-4, FRAX, PhenoAge) integrated for clinicians — feeding max risk, never relaxing it.",
- "09":"Cohort construction, empirical-Bayes shrinkage, calibration, fairness slices and drift monitoring.",
- "10":"The actuarial/pricing layer — gated, firewalled, and heavily flagged for regulatory & fairness risk.",
- "11":"Clinician-in-the-loop safety, escalation tiers, the crisis pathway, FMEA, privacy/consent and model governance.",
- "12":"The critical review and PureScore 2.0: context-aware interpretation, the companion meta-vector, personal-baseline early-warning, dual framing.",
- "13":"Validation & calibration gates for 2.0 — discrimination, calibration, early-warning PPV/lead-time, fairness, drift, release gates.",
- "14":"Machine-readable evidence registry, per-band provenance and the cold-start ‘ignition’ model (guideline → cohort → personal).",
- "15":"UAE localization: ethnicity-aware cut-points & screening (context, never penalty), regional epidemiology and Ramadan (IDF-DAR) safety.",
- "16":"The exhaustive, UAE-prioritized recommended-action / nudge library by condition, with adherence & screening actions.",
+ "08":"Sex-specific models: cycle, fertility, pregnancy, post-partum, menopause, andropause, and hormone-therapy-aware ranges.",
+ "09":"Acute-event override & revert, and care/nutrition/exercise plans by life stage.",
+ "11":"The daily top-5 nudge engine: impact-attributed, ease-weighted, diverse, safe — every action a positive ΔPureScore.",
+ "10":"Validated clinical scores (FINDRISC, ASCVD/SCORE2, KDIGO, FIB-4, FRAX, PhenoAge) integrated for clinicians — feeding max risk, never relaxing it.",
+ "13":"Cohort construction, empirical-Bayes shrinkage, calibration, fairness slices and drift monitoring.",
+ "19":"The actuarial/pricing layer — gated, firewalled, and heavily flagged for regulatory & fairness risk.",
+ "16":"Clinician-in-the-loop safety, escalation tiers, the crisis pathway, FMEA, privacy/consent and model governance.",
+ "05":"The critical review and PureScore 2.0: context-aware interpretation, the companion meta-vector, personal-baseline early-warning, dual framing.",
+ "14":"Validation & calibration gates for 2.0 — discrimination, calibration, early-warning PPV/lead-time, fairness, drift, release gates.",
+ "15":"Machine-readable evidence registry, per-band provenance and the cold-start ‘ignition’ model (guideline → cohort → personal).",
+ "18":"UAE localization: ethnicity-aware cut-points & screening (context, never penalty), regional epidemiology and Ramadan (IDF-DAR) safety.",
+ "12":"The exhaustive, UAE-prioritized recommended-action / nudge library by condition, with adherence & screening actions.",
  "17":"Adversarial self-review: every clinician/statistician/ethicist/regulator objection → how handled → honest residual.",
- "18":"Input taxonomy & trust flags, wearable trust-tiering (D22), wearables×pillars, the effortless product surfaces and household accounts.",
+ "07":"Input taxonomy & trust flags, wearable trust-tiering (D22), wearables×pillars, the effortless product surfaces and household accounts.",
 }
 
 # ----------------------------------------------------------------- per-doc mermaid
 MERMAID = {
- "00":("Lessons → principles", """flowchart LR
+ "01":("Lessons → principles", """flowchart LR
   B["Babylon<br/>overclaim, opaque"] -->|avoid| P(("PureScore"))
   K["Kaiser<br/>care-gap closure"] -->|emulate| P
   M["Mayo<br/>clinician-in-loop"] -->|emulate| P
   P --> S["Safety dominates"]
   P --> X["Explainable"]
   P --> E["Effortless"]"""),
- "01":("Four streams → measurement", """flowchart TD
+ "06":("Four streams → measurement", """flowchart TD
   L["LAB · clinical-grade"] --> M["Measurement<br/>source + confidence"]
   W["WEAR · tiered (D22)"] --> M
   G["GOAL · intent"] --> M
@@ -191,60 +191,60 @@ MERMAID = {
   RES -->|leak λ| H["heal / decay"]
   RES -->|interference κ| RES2[("coupled reservoir")]
   RES --> RK["pillar risk + ρ·B̃"]"""),
- "05":("Hormonal milieu → ranges", """flowchart TD
+ "08":("Hormonal milieu → ranges", """flowchart TD
   N["natal sex"] --> B["physiology baseline"]
   H["hormone milieu<br/>cycle / preg / meno / HRT"] --> B
   B --> R["phase-aware reference ranges"]"""),
- "06":("Acute mode lifecycle", """stateDiagram-v2
+ "09":("Acute mode lifecycle", """stateDiagram-v2
   [*] --> Baseline
   Baseline --> AcuteMode : life event (override weights)
   AcuteMode --> Baseline : recovery + hysteresis
   AcuteMode --> AcuteMode : escalation unaffected"""),
- "07":("The daily nudge loop", """flowchart LR
-  SC["score + companion vector"] --> CAND["candidate actions (Doc 16)"]
+ "11":("The daily nudge loop", """flowchart LR
+  SC["score + companion vector"] --> CAND["candidate actions (Doc 12)"]
   CAND --> SAFE["safety / contraindication filter"]
   SAFE --> U["U_a = impact · adherence · ease"]
   U --> TOP["top-5 · diverse · positive Δ"]
   TOP --> ACT["patient acts"] --> SC"""),
- "08":("Clinical scores feed max", """flowchart LR
+ "10":("Clinical scores feed max", """flowchart LR
   M["markers"] --> CS["FINDRISC · ASCVD/SCORE2<br/>KDIGO · FIB-4 · FRAX"]
   CS --> MX["feed the max risk"]
   MX -.never.-> RX["relax r_i / clear critical"]"""),
- "09":("Cohort & shrinkage", """flowchart TD
+ "13":("Cohort & shrinkage", """flowchart TD
   P["patient"] --> C["cohort stratum<br/>age × sex × D × Mx"]
   C --> EB["empirical-Bayes shrinkage"]
   EB --> CAL["calibration · fairness · drift"]"""),
- "10":("Gated actuarial firewall", """flowchart LR
+ "19":("Gated actuarial firewall", """flowchart LR
   S["PureScore (wellness)"] -. separate consent .-> ACT["actuarial layer"]
   ACT --> FW["firewall: no protected-class proxy<br/>may worsen price/access"]"""),
- "11":("Escalation tiers", """flowchart TD
+ "16":("Escalation tiers", """flowchart TD
   R["red / critical marker"] --> E{"escalation tier"}
   E -->|emergency| ER["seek care now + on-call clinician"]
   E -->|urgent| UR["expedited reconfirm"]
   E -->|routine| RT["clinician follow-up"]"""),
- "12":("Number → companion vector", """flowchart LR
+ "05":("Number → companion vector", """flowchart LR
   N["PureScore number"] --> CV["companion vector"]
   CV --> CF["Confidence"] & TR["Trajectory"] & EW["Early-warning"]
   CV --> MO["Modifiability"] & CRb["Criticality"] & RP["Representativeness"]"""),
- "13":("Release gates", """flowchart LR
+ "14":("Release gates", """flowchart LR
   M["model + config change"] --> G["gates:<br/>discrimination · calibration<br/>PPV/lead-time · fairness · drift"]
   G -->|all pass| REL["release"]
   G -->|any fail| BLK["blocked + audit"]"""),
- "14":("Cold-start ignition", """flowchart LR
+ "15":("Cold-start ignition", """flowchart LR
   GUIDE["guideline band"] --> COH["cohort distribution"] --> PERS["personal baseline"]
   GUIDE --> REG[("evidence registry<br/>provenance + vintage")]
   COH --> REG"""),
- "15":("Ethnicity = context", """flowchart TD
+ "18":("Ethnicity = context", """flowchart TD
   E["ethnicity"] --> CTX["context + screening selector"]
   CTX -.never.-> PEN["score penalty"]
   R["Ramadan"] --> SAFE["IDF-DAR med timing<br/>+ fast-break safety rule"]"""),
- "16":("Condition → ranked actions", """flowchart LR
+ "12":("Condition → ranked actions", """flowchart LR
   COND["condition / med class"] --> LIB["typed action library"]
-  GOAL["goal stream (Doc 18)"] --> RANK["rank by U_a"]
+  GOAL["goal stream (Doc 07)"] --> RANK["rank by U_a"]
   LIB --> RANK --> TOP["top-5"]"""),
  "17":("Objection → residual", """flowchart LR
   OBJ["objection<br/>(clinician / stats / ethics / reg)"] --> H["how handled"] --> RES["honest residual + register"]"""),
- "18":("Streams → score → surfaces", """flowchart TD
+ "07":("Streams → score → surfaces", """flowchart TD
   LAB["LAB · anchor"] --> SC(("PureScore"))
   WEAR["WEAR · tiered"] --> SC
   GOAL["GOAL · steer"] --> SC
@@ -356,7 +356,7 @@ def build_biomarkers():
     h.append('</tbody></table></div>')
     h.append('<p class="small muted">★ = critical marker — a red value can make its pillar critical and cascade '
              'PureScore into the critical band (<a class="xref" href="03-scoring-formula.html">Doc 03</a> §4). '
-             'Sex-specific overrides: <a class="xref" href="05-sex-specific-models.html">Doc 05</a>.</p>')
+             'Sex-specific overrides: <a class="xref" href="08-sex-specific-models.html">Doc 08</a>.</p>')
     return "Appendix A · Markers (all channels)", "".join(h)
 
 def build_wearables():
@@ -364,8 +364,8 @@ def build_wearables():
          '<h1>Appendix B — Wearable Metrics &amp; Trust Tiers</h1>',
          '<p class="lead">Every wearable signal, its abstraction layer (raw → aggregated → derived), '
          'its <b>trust tier</b> (D22), the confidence weight <code>q_source</code> it earns, the pillars it feeds and '
-         'representative devices. See <a class="xref" href="18-data-streams-and-experience.html">Doc 18</a> and '
-         '<a class="xref" href="01-data-model-and-reference-ranges.html">Doc 01</a> §2.</p>', ILLUS,
+         'representative devices. See <a class="xref" href="07-data-streams-and-experience.html">Doc 07</a> and '
+         '<a class="xref" href="06-data-model-and-reference-ranges.html">Doc 06</a> §2.</p>', ILLUS,
          '<div class="tagrow" style="margin:10px 0 16px">'
          '<span class="chip b-green">clinical-grade ≈ lab</span>'
          '<span class="chip b-acc">consumer-validated · discounted</span>'
@@ -373,7 +373,7 @@ def build_wearables():
          '<div class="callout safety"><div class="ct">Safety rule (D22)</div>A consumer or inferential wearable '
          'anomaly may raise <b>Watch/Advisory</b> but <b>cannot drive a red/critical without a clinical-grade '
          'confirmation</b> (CGM / validated cuff / single-lead ECG, or a lab). '
-         '(<a class="xref" href="12-critical-review-and-purescore-2.0.html">Doc 12</a> §3.4)</div>',
+         '(<a class="xref" href="05-critical-review-and-purescore-2.0.html">Doc 05</a> §3.4)</div>',
          '<div class="callout note"><div class="ct">Marker pipeline</div>ingest &amp; <b>trust-tier (you are here)</b> &rarr; <a class="xref" href="appendix-biomarkers.html">bands (Appendix A · Markers)</a> &rarr; <a class="xref" href="purescore-wearable-baselines.html">personal baseline (Baselines · Wearables)</a> &middot; aggregated via <b>Terra</b> (below).</div>',
          '<div class="tablewrap"><table><thead><tr><th>Metric</th><th>Layer</th><th>Trust tier</th>'
          '<th>q_source</th><th>Pillars</th><th>Devices</th><th>Role</th></tr></thead><tbody>']
@@ -397,7 +397,7 @@ def build_wearables():
       ("Body","HR · HRV · SpO₂ · skin temp · glucose · BP · ECG/AFib · body-comp","CV · MET · HEM · ENDO · INF",'<span class="chip b-green">banded (Appendix A); ECG = alert</span>'),
       ("Activity / Daily","steps · distance · calories · active-duration · MET-min · HR-zones","FIT · MET · CV",'<span class="chip b-acc">steps/MVPA banded; volume metrics feed FIT</span>'),
       ("Sleep","total + stage durations · efficiency · latency · HR/HRV · respiration","SLP · MCS · CV",'<span class="chip b-acc">duration/efficiency/regularity banded; stages informational (D22)</span>'),
-      ("Menstruation","cycle phase · period · ovulation · temp shift","ENDO (Doc 05)",'<span class="chip b-mut">routed to sex-specific models (Doc 05)</span>'),
+      ("Menstruation","cycle phase · period · ovulation · temp shift","ENDO (Doc 08)",'<span class="chip b-mut">routed to sex-specific models (Doc 08)</span>'),
       ("Nutrition","calories · macros · hydration","NUT (lifestyle)",'<span class="chip b-mut">routed to NUT via lifestyle / question bank</span>')]:
         h.append('<tr><td><b>%s</b></td><td class="small">%s</td><td class="small muted">%s</td><td>%s</td></tr>' % (fam, ex, feeds, cov))
     h.append('</tbody></table></div>')
@@ -416,8 +416,8 @@ def build_questions():
          '<a class="xref" href="appendix-question-bank.html">Question bank (E)</a> and the '
          '<a class="xref" href="appendix-lifestyles.html">Lifestyles (F)</a> model — the bank\'s '
          '<code>validated_by</code> links escalate a crude item to the matching instrument here. They are the '
-         '<span class="flag fl-life">LIFE</span> stream (<a class="xref" href="18-data-streams-and-experience.html">'
-         'Doc 18</a> §1) and the MCS/behavioural markers of '
+         '<span class="flag fl-life">LIFE</span> stream (<a class="xref" href="07-data-streams-and-experience.html">'
+         'Doc 07</a> §1) and the MCS/behavioural markers of '
          '<a class="xref" href="02-pillars-and-marker-catalog.html">Doc 02</a>.</p>', ILLUS,
          '<p class="small muted"><b>%d instruments</b> across mental-health, sleep, respiratory/atopy, '
          'metabolic/activity, substance, frailty, cognition and sex-specific domains.</p>' % len(INSTRUMENTS)]
@@ -444,8 +444,8 @@ def build_personas():
          '<h1>Appendix D — Personas &amp; Edge Cases</h1>',
          '<p class="lead">The cohort/edge-case personas that exercise the engine — each with age, medications, '
          'representativeness <code>rep</code> (drives Confidence), pillar weight multipliers, and the interpretation '
-         'frame they test. Used by <a class="xref" href="05-sex-specific-models.html">Doc 05</a>, '
-         '<a class="xref" href="15-uae-localization.html">Doc 15</a> and the live calculator.</p>', ILLUS,
+         'frame they test. Used by <a class="xref" href="08-sex-specific-models.html">Doc 08</a>, '
+         '<a class="xref" href="18-uae-localization.html">Doc 18</a> and the live calculator.</p>', ILLUS,
          '<div class="tablewrap"><table><thead><tr><th>Persona</th><th>Age</th><th>Meds</th>'
          '<th>rep</th><th>Weight multipliers</th><th>Frame it tests</th></tr></thead><tbody>']
     for (k, label, age, meds, rep, wm, note) in PERSONAS:
@@ -526,7 +526,7 @@ def build_question_bank():
          '<b>applicability vector</b> (sex · age · life-stage · persona) and signed weights onto the 12 '
          '<a class="xref" href="02-pillars-and-marker-catalog.html">pillars</a> and MONIAC '
          '<a class="xref" href="04-moniac-reservoir-dynamics.html">reservoirs</a>. The <span class="flag fl-life">'
-         'LIFE</span> stream (<a class="xref" href="18-data-streams-and-experience.html">Doc 18</a>); '
+         'LIFE</span> stream (<a class="xref" href="07-data-streams-and-experience.html">Doc 07</a>); '
          'validated PROs are in <a class="xref" href="appendix-questions.html">Appendix C</a>.</p>'
          % (m["total_questions"], n_sec, m["total_conditions"], m.get("ref_scheme", "DOM-NNN")), ILLUS]
     h.append('<div class="diagram"><div class="dt">Answer → score → nudge → adherence, and the question chain</div>'
@@ -535,7 +535,7 @@ def build_question_bank():
              '  Q --> M["response: direction · magnitude · signed weight"]\n'
              '  M --> P["pillar Δrisk (Doc 03)"]\n  M --> R["reservoir inflow (Doc 04)"]\n'
              '  P --> PS(("PureScore"))\n  R --> PS\n'
-             '  PS --> N["top-5 nudges (Doc 07/16)"] --> AD["adherence"] --> R\n'
+             '  PS --> N["top-5 nudges (Doc 11/12)"] --> AD["adherence"] --> R\n'
              '  PS --> PA["perceived vs actual (Appendix F)"]</pre></div>')
     h.append('<div class="callout note"><div class="ct">Reference & chain</div>'
              '<code>ref</code> = 3-letter section code + sequence (e.g. <code>CMB-001</code>); '
@@ -723,7 +723,7 @@ def build_questions_hub():
     h.append('<div class="callout note"><div class="ct">Connected to onboarding</div>'
              'Onboarding (phase ①) captures identity, baseline medical history and the screeners (sex, BMI, smoking, '
              'alcohol). Those answers <b>gate</b> phases ② and ③ — see <a class="xref" href="eligibility-gating.html">Eligibility '
-             '&amp; gating</a> and the data-streams experience (<a class="xref" href="18-data-streams-and-experience.html">Doc 18</a>).</div>')
+             '&amp; gating</a> and the data-streams experience (<a class="xref" href="07-data-streams-and-experience.html">Doc 07</a>).</div>')
     return "Questions & intake · overview", "".join(h)
 
 # =================================================================== ELIGIBILITY & GATING
@@ -805,9 +805,9 @@ def build_purescore_dataflow():
   LB["Labs (venous · DTC)"] -->|biomarkers| SYS
   EHR["Patient360 (EHR/EMR)"] -->|conditions · meds| SYS
   SYS(["PureScore engine"]) --> SCORE["PureScore 0–100 + bands"]
-  SYS --> COMP["Companion vector (Doc 12)"]
-  SYS --> NUD["Top-5 nudges (Doc 07)"]
-  SYS --> ESC["Crisis escalation (Doc 11)"]
+  SYS --> COMP["Companion vector (Doc 05)"]
+  SYS --> NUD["Top-5 nudges (Doc 11)"]
+  SYS --> ESC["Crisis escalation (Doc 16)"]
   CLIN["Clinician"] -->|review · sign-off| SYS
   classDef ext fill:#0c1726,stroke:#2b5a86,color:#cfe3ff;
   class PT,WE,LB,EHR,CLIN ext"""
@@ -842,17 +842,17 @@ def build_purescore_dataflow():
   G4 -->|yes| FLOOR["status CRITICAL · R_k ← max(R_k, 0.60) — never averaged away"]
   G4 -->|no| STAT["status from R_k bands"]
   FLOOR --> G5{"acute-danger red?"}
-  G5 -->|yes| ESCAL["crisis / clinician escalation — Doc 11"]
+  G5 -->|yes| ESCAL["crisis / clinician escalation — Doc 16"]
   G5 -->|no| TOT["R_total = δ-power-mean over W_k pillars"]
   STAT --> TOT
   ESCAL --> TOT
   TOT --> G6{"acute event active?"}
-  G6 -->|yes| ACUTE["apply acute weights m_k_acute · override→revert — Doc 06"]
+  G6 -->|yes| ACUTE["apply acute weights m_k_acute · override→revert — Doc 09"]
   G6 -->|no| FINAL["PureScore = 100·(1 − R_total)"]
   ACUTE --> FINAL
   FINAL --> G7{"pillar green only via imputed medians?"}
   G7 -->|yes| LCG["label 'low-coverage green' — suppress over-confident green"]
-  G7 -->|no| DONE["PureScore + bands + companion vector (Doc 12)"]
+  G7 -->|no| DONE["PureScore + bands + companion vector (Doc 05)"]
   LCG --> DONE
   classDef gate fill:#1d1a0c,stroke:#edb14a,color:#ffe6b0;
   classDef danger fill:#1a0f15,stroke:#f0606e,color:#ffd0d6;
@@ -863,13 +863,13 @@ def build_purescore_dataflow():
          '<p class="lead">The end-to-end data flow of a PureScore computation — ingestion → marker risk → pillar risk → '
          'score → outputs — with <b>every decision gate and rule</b> made explicit. Leveled: <b>L0</b> context, '
          '<b>L1</b> pipeline + data stores, <b>L2</b> the full gate flow; the table below enumerates each rule with its '
-         'source §. Derived from <a class="xref" href="01-data-model-and-reference-ranges.html">Doc 01</a>, '
+         'source §. Derived from <a class="xref" href="06-data-model-and-reference-ranges.html">Doc 06</a>, '
          '<a class="xref" href="02-pillars-and-marker-catalog.html">02</a>, '
          '<a class="xref" href="03-scoring-formula.html">03</a>, '
          '<a class="xref" href="04-moniac-reservoir-dynamics.html">04</a>, '
-         '<a class="xref" href="06-acute-events-and-life-stage-plans.html">06</a>, '
-         '<a class="xref" href="11-safety-governance-and-regulatory.html">11</a>, '
-         '<a class="xref" href="12-critical-review-and-purescore-2.0.html">12</a>.</p>', ILLUS]
+         '<a class="xref" href="09-acute-events-and-life-stage-plans.html">06</a>, '
+         '<a class="xref" href="16-safety-governance-and-regulatory.html">11</a>, '
+         '<a class="xref" href="05-critical-review-and-purescore-2.0.html">12</a>.</p>', ILLUS]
     h.append('<div class="callout spec"><div class="ct">Reading the levels</div>'
              'Rounded boxes are <b>processes</b>, cylinders are <b>data stores</b>, diamonds are <b>decision gates</b>. '
              '<span class="b-yellow">Amber</span> = a gate; <span class="b-red">red</span> = a safety floor / escalation that '
@@ -886,11 +886,11 @@ def build_purescore_dataflow():
              '<th>Condition → action</th><th>Source</th></tr></thead><tbody>')
     rules = [
       ("G0", "Upstream", "Eligibility gating", "only valid/relevant questions captured (sex/age/show_if) before any input reaches scoring", "Eligibility &amp; gating"),
-      ("G1", "Ingest", "Confidence floor", "confidence = q_source · recency-decay; if &lt; per-marker floor → mark stale, blend literature fallback at low confidence", "Doc 01 §2"),
-      ("G2", "Ingest", "Missing data", "no usable measurement → impute cohort median, source=literature_fallback, reduce pillar coverage", "Doc 01 §4.3"),
-      ("G3", "Ingest", "Wearable trust tier (D22)", "inferential metric → informational only (cannot set a band); clinical-grade may drive a band with confirmation", "Doc 18 §2"),
+      ("G1", "Ingest", "Confidence floor", "confidence = q_source · recency-decay; if &lt; per-marker floor → mark stale, blend literature fallback at low confidence", "Doc 06 §2"),
+      ("G2", "Ingest", "Missing data", "no usable measurement → impute cohort median, source=literature_fallback, reduce pillar coverage", "Doc 06 §4.3"),
+      ("G3", "Ingest", "Wearable trust tier (D22)", "inferential metric → informational only (cannot set a band); clinical-grade may drive a band with confirmation", "Doc 07 §2"),
       ("G4", "Marker", "Continuous band", "risk read off a continuous curve; green &lt;0.15 / yellow &lt;0.5 / red ≥0.5 (labels, not cliffs)", "Doc 03 §1"),
-      ("G5", "Marker", "Cohort max rule", "r_i = max(r_i^clin, φ·r_i^cohort), φ=0.6 — cohort can only RAISE concern, never dilute the clinical anchor", "Doc 03 §2 · Doc 01 §4.4"),
+      ("G5", "Marker", "Cohort max rule", "r_i = max(r_i^clin, φ·r_i^cohort), φ=0.6 — cohort can only RAISE concern, never dilute the clinical anchor", "Doc 03 §2 · Doc 06 §4.4"),
       ("G6", "Marker", "Personalization clamp", "r_i = band_clamp(… + r_i^pers); can't relax a red, clear a critical, or by itself flip a band", "Doc 03 §2b"),
       ("G7", "Marker", "Critical exclusion", "personalization disabled for critical markers (𝟙[non-critical])", "Doc 03 §2b"),
       ("G8", "Pillar", "Confidence weighting", "each marker's weight is scaled by its confidence — low-confidence inputs contribute less", "Doc 03 §3"),
@@ -899,11 +899,11 @@ def build_purescore_dataflow():
       ("G11", "Pillar", "Critical-marker override", "∃ critical-marker red → status critical; R_k ← max(R_k, 0.60) hard floor", "Doc 03 §4/§6 · Doc 02"),
       ("G12", "Score", "δ-power-mean (across)", "R_total = δ-power-mean over pillars with weights W_k", "Doc 03 §5.2"),
       ("G13", "Score", "Critical cascade", "a single critical marker floors its pillar and is never averaged away by the formula", "Doc 03 §6 · Doc 02"),
-      ("G14", "Safety", "Acute-danger escalation", "acute-danger red → immediate clinician / crisis pathway (independent of the scalar score)", "Doc 11 · Doc 03 §6"),
-      ("G15", "Modifier", "Acute-event override", "acute event active → apply acute weights m_k^acute, override then revert on resolution", "Doc 06"),
-      ("G16", "Modifier", "Sex / life-stage model", "select hormone-/cycle-/pregnancy-/menopause-aware ranges before banding", "Doc 05 · Doc 06"),
-      ("G17", "Output", "Coverage suppression", "pillar 'green' only via imputed medians → label low-coverage green, never a clean bill", "Doc 01 §4.3 · Doc 03"),
-      ("G18", "Output", "Companion vector", "emit Confidence / Trajectory / early-warning alongside the scalar score", "Doc 12"),
+      ("G14", "Safety", "Acute-danger escalation", "acute-danger red → immediate clinician / crisis pathway (independent of the scalar score)", "Doc 16 · Doc 03 §6"),
+      ("G15", "Modifier", "Acute-event override", "acute event active → apply acute weights m_k^acute, override then revert on resolution", "Doc 09"),
+      ("G16", "Modifier", "Sex / life-stage model", "select hormone-/cycle-/pregnancy-/menopause-aware ranges before banding", "Doc 08 · Doc 09"),
+      ("G17", "Output", "Coverage suppression", "pillar 'green' only via imputed medians → label low-coverage green, never a clean bill", "Doc 06 §4.3 · Doc 03"),
+      ("G18", "Output", "Companion vector", "emit Confidence / Trajectory / early-warning alongside the scalar score", "Doc 05"),
     ]
     for gid, stage, rule, cond, src in rules:
         h.append('<tr><td class="mono small">%s</td><td class="small">%s</td><td class="small"><b>%s</b></td>'
@@ -987,7 +987,7 @@ def build_purescore_dataflow():
     SCO = """flowchart LR
   RK["pillar risks R_k"] --> PM2["δ-power-mean over W_k → R_total"]
   PM2 --> AC{"acute event?"}
-  AC -->|yes| AW["apply acute weights (Doc 06)"]
+  AC -->|yes| AW["apply acute weights (Doc 09)"]
   AC -->|no| PS["PureScore = 100·(1 − R_total)"]
   AW --> PS
   PS --> CG{"low coverage?"}
@@ -1022,7 +1022,7 @@ def build_purescore_dataflow():
 
     h.append('<div class="callout note"><div class="ct">Keep this in sync</div>'
              'This diagram is <b>derived</b> from the scoring docs. Per the wiki guide (<code>CLAUDE.md</code> · diagram '
-             'dependency map), any change to Docs 01–06, 11, 12 or the admin weights <b>must</b> trigger a review of this '
+             'dependency map), any change to the scoring docs or the admin weights <b>must</b> trigger a review of this '
              'page and the other system diagrams, with the impact noted.</div>')
     return "PureScore calculation — data flow", "".join(h)
 
@@ -1360,8 +1360,8 @@ def build_lifestyles():
              '<pre class="mermaid">flowchart LR\n'
              '  SR["self-report (perceived)"] --> GAP{"gap"}\n'
              '  OBJ["labs + wearables + PRO (actual)"] --> GAP\n'
-             '  GAP --> NUDGE["strategy + companion vector (Doc 12)"]\n'
-             '  NUDGE --> ACT["nudges (Doc 07/16)"] --> AD["adherence"] --> OBJ</pre></div>')
+             '  GAP --> NUDGE["strategy + companion vector (Doc 05)"]\n'
+             '  NUDGE --> ACT["nudges (Doc 11/12)"] --> AD["adherence"] --> OBJ</pre></div>')
     # axes
     h.append('<h2 id="axes">Lifestyle axes</h2>')
     h.append('<p class="small muted">Any person is a vector over these independent axes. Each axis names the '
@@ -1491,7 +1491,7 @@ _SCN = [
   "lab/clinical (level)", "—"),
  ("CONF",   lambda c: ("L" in c or "Wc" in c) and ("Ww" in c or "Wi" in c),
   "Conflict (consumer red, lab green)", "trust hierarchy — lab/clinical wins; consumer anomaly → reconfirm, raise Watch only",
-  "high", "lab/clinical", "Doc 12 §3.4 · D22 — no false red"),
+  "high", "lab/clinical", "Doc 05 §3.4 · D22 — no false red"),
 ]
 _CONF_COL = {"high": "b-green", "very high": "b-green", "medium": "b-acc", "low–med": "b-yellow"}
 
@@ -1533,7 +1533,7 @@ _CALCS = {
                  "Personal baseline = trimmed 30-night mean ± SD; z = (x−μ)/σ feeds Stage-2b (κ·tanh(z/2), Doc 03 §2b)."),
  "Resting HR": ("Lowest stable HR during sleep/inactivity; bpm; exclude wake/motion.",
                 "Daily = sleeping-HR minimum or 10th-pct; 7-day median for trend.",
-                "Used raw; combined with HRV for the autonomic/stress companion (Doc 12 §4.1).",
+                "Used raw; combined with HRV for the autonomic/stress companion (Doc 05 §4.1).",
                 "30-day personal baseline; β-blocker/illness flagged as confounders (down-weighted)."),
  "Sleep efficiency": ("Per-session = time-asleep ÷ time-in-bed; %.",
                 "Nightly value; 7-night mean + regularity (onset-time SD) tracked separately.",
@@ -1554,11 +1554,11 @@ _CALCS = {
  "eGFR": ("Computed from serum creatinine (± cystatin-C), age, sex; mL/min/1.73m².",
                 "Per-draw; trend across draws (slope = decline rate).",
                 "CKD-EPI 2021 (race-free); cystatin-C variant when available.",
-                "Personal slope vs prior draws; pregnancy/elderly frames shift expectation (Doc 05)."),
+                "Personal slope vs prior draws; pregnancy/elderly frames shift expectation (Doc 08)."),
  "ApoB / non-HDL": ("Single immunoassay (ApoB) or calculated non-HDL = TC − HDL; mg/dL.",
                 "Per-draw; trend across draws under therapy.",
                 "ApoB preferred particle-count proxy; med-responsiveness modelled (modifiability).",
-                "Personal target vs guideline (e.g. <80 high-risk); FH = low modifiability (Doc 12)."),
+                "Personal target vs guideline (e.g. <80 high-risk); FH = low modifiability (Doc 05)."),
  "Blood pressure": ("Single cuff reading; mmHg; clinical-grade cuff = clinical tier.",
                 "Average of ≥2 readings/sitting; 7-day home-BP mean (preferred).",
                 "MAP, pulse-pressure derived; white-coat / masked detected vs clinic.",
@@ -1748,7 +1748,7 @@ def build_coverage_audit():
              '  SCORE --> MATCH["3 Wearable-match<br/>%d/%d corroborated<br/>PARTIAL"]\n'
              '  MATCH --> PER["4 Persona determine<br/>no input→persona map<br/>GAP"]\n'
              '  PER --> GOAL["5 Goals<br/>no catalogue<br/>GAP"]\n'
-             '  GOAL --> NUDGE["6 Nudge (Doc 07/16)<br/>OK"]\n'
+             '  GOAL --> NUDGE["6 Nudge (Doc 11/12)<br/>OK"]\n'
              '  NUDGE --> ADH["7 Adherence<br/>%d check-ins<br/>GAP"]\n'
              '  ADH -.loop broken.-> CAP</pre></div>' % (total, corr_n, total, adher_n))
     h.append('<h3 id="scorecard">Loop-stage scorecard</h3>')
@@ -1769,7 +1769,7 @@ def build_coverage_audit():
        "gap", "No <i>input→persona</i> matrix (F2); %d determination weights" % persona_det_n),
       ("5", "User goals", "Goals referenced in prose; no structured catalogue",
        "gap", "Nothing for the UserGoals stream to bind to (F3)"),
-      ("6", "Nudge (Doc 07/16)", "Actions catalogue + daily top-5 engine consume pillar/reservoir Δ",
+      ("6", "Nudge (Doc 11/12)", "Actions catalogue + daily top-5 engine consume pillar/reservoir Δ",
        "ok", "— well specified upstream"),
       ("7", "Adherence check-ins", "%d adherence items" % adher_n,
        "gap", "Loop never closes (F1): completed/skipped nudges don't feed reservoirs (Doc 04)"),
@@ -1789,16 +1789,16 @@ def build_coverage_audit():
     h.append('<div class="tablewrap"><table><thead><tr><th>Onboarding dimension</th><th>Where defined / owner</th>'
              '<th>Read</th><th>Finding</th></tr></thead><tbody>')
     ob_rows = [
-      ("First-run flow &amp; sequence", "— <i>no owning doc</i> (Doc 18 lists effortless surfaces, not an intake flow)", "gap", "F9"),
-      ("Demographics — sex · gender · DOB", "Doc 01 §1.1 <code>Patient</code>; drives physiology (Doc 05)", "ok", "—"),
-      ("Demographics — ethnicity · locale · occupation · language · household role", "implicit in Doc 01 (trailing <code>…</code>); ethnicity used in §4.2 + Doc 15", "warn", "F10"),
+      ("First-run flow &amp; sequence", "— <i>no owning doc</i> (Doc 07 lists effortless surfaces, not an intake flow)", "gap", "F9"),
+      ("Demographics — sex · gender · DOB", "Doc 06 §1.1 <code>Patient</code>; drives physiology (Doc 08)", "ok", "—"),
+      ("Demographics — ethnicity · locale · occupation · language · household role", "implicit in Doc 06 (trailing <code>…</code>); ethnicity used in §4.2 + Doc 18", "warn", "F10"),
       ("Lifestyle / PRO question content", "Appx C (PROs) · Appx E (bank) · Appx F (axes)", "ok", "—"),
-      ("Goals capture", "Appx J · Doc 18 §7", "ok", "F3"),
+      ("Goals capture", "Appx J · Doc 07 §7", "ok", "F3"),
       ("Persona inference from intake", "Appx I (signal→persona matrix)", "ok", "F2"),
-      ("Cold-start — marker priors", "Doc 01 §4.3 (median fallback) · Doc 14 (ignition)", "ok", "—"),
+      ("Cold-start — marker priors", "Doc 06 §4.3 (median fallback) · Doc 15 (ignition)", "ok", "—"),
       ("Cold-start — question order / progressive profiling", "— <i>undocumented</i>", "gap", "F11"),
-      ("Consent / privacy in first-run", "Doc 11 owns consent; not sequenced into intake", "warn", "F12"),
-      ("Device / wearable pairing in first-run", "Doc 18 §2/§4 lists devices; not sequenced into intake", "warn", "F12"),
+      ("Consent / privacy in first-run", "Doc 16 owns consent; not sequenced into intake", "warn", "F12"),
+      ("Device / wearable pairing in first-run", "Doc 07 §2/§4 lists devices; not sequenced into intake", "warn", "F12"),
     ]
     for dim, where, kind, find in ob_rows:
         h.append('<tr><td><b>%s</b></td><td class="small">%s</td><td>%s</td><td class="small mono">%s</td></tr>'
@@ -1901,7 +1901,7 @@ def build_coverage_audit():
     h.append('<div class="callout note"><div class="ct">Staleness contract</div>The per-metric freshness contract the '
              'cadence trace was missing: <b>fresh-within</b> (data newer than this is trusted at full weight), '
              '<b>stale-after</b> (older → the <a class="xref" href="states.html">Wearables → stale</a> state fires and '
-             'Confidence decays, Doc 12 §4). Provider determines <i>how</i> a metric is delivered (matrix above); the '
+             'Confidence decays, Doc 05 §4). Provider determines <i>how</i> a metric is delivered (matrix above); the '
              'SLA window is the <i>clinical</i> staleness bound, mostly metric-driven.</div>')
     h.append('<div class="tablewrap"><table><thead><tr><th>Metric</th><th>Expected cadence</th>'
              '<th>Fresh within</th><th>Stale after</th><th>Drives</th></tr></thead><tbody>')
@@ -2062,10 +2062,10 @@ def build_adherence():
          '<p class="lead">%s</p>' % _esc(m["idea"]), ILLUS]
     h.append('<div class="diagram"><div class="dt">How an adherence answer closes the loop</div>'
              '<pre class="mermaid">flowchart LR\n'
-             '  NUD["nudge (Doc 07/16)"] --> ASK["micro check-in (this appendix)"]\n'
+             '  NUD["nudge (Doc 11/12)"] --> ASK["micro check-in (this appendix)"]\n'
              '  ASK --> R["response · adherence ∈ [0,1] + reason"]\n'
-             '  R --> RES["reservoir inflow (Doc 04)"]\n  R --> ENG["engagement / Trajectory (Doc 12)"]\n'
-             '  R --> FEAS["nudge feasibility (Doc 07 §3)"] --> NUD</pre></div>')
+             '  R --> RES["reservoir inflow (Doc 04)"]\n  R --> ENG["engagement / Trajectory (Doc 05)"]\n'
+             '  R --> FEAS["nudge feasibility (Doc 11 §3)"] --> NUD</pre></div>')
     # gating / timing / source model (how we avoid asking irrelevant questions)
     h.append('<div class="callout spec"><div class="ct">Activation — only relevant check-ins fire</div>%s</div>' % _esc(m.get("activation_model", "")))
     h.append('<div class="callout note"><div class="ct">Timing — captured at onboarding</div>%s</div>' % _esc(m.get("timing_model", "")))
@@ -2166,7 +2166,7 @@ def build_persona_matrix():
              '  A["answers + derived flags + wearable/lab thresholds"] --> S["matched signals"]\n'
              '  P["hard priors: sex · age · life-stage · requires"] --> Z["zero impossible columns"]\n'
              '  S --> SUM["Σ signed weights per persona"] --> Z --> SM["softmax → posterior"]\n'
-             '  SM --> FRAME["persona frame (Doc 05/12) · cohort · nudge tilt"]</pre></div>')
+             '  SM --> FRAME["persona frame (Doc 08/05) · cohort · nudge tilt"]</pre></div>')
     h.append('<div class="callout note"><div class="ct">Worked example</div>A 52-y male, South-Asian, waist above '
              'the Asian cut-point, HbA1c 6.1%, &lt;5k steps/day → signals <code>south_asian_ancestry</code> (+3 '
              'south_asian_metabolic), <code>hba1c_pre</code> (+3 prediabetic), <code>waist_high_asian_cut</code> '
@@ -2221,7 +2221,7 @@ def build_goals():
     h.append('<p class="small muted">%d goals · ≥2 per pillar · each keyed by an applicability vector and a '
              'wearable/lab/PRO target. Source: <code>data/goals.json</code>. Drives the UserGoals lifecycle on the '
              '<a class="xref" href="states.html">state machine</a>; nudges from '
-             '<a class="xref" href="appendix-adherence.html">Appendix H</a> / Doc 16.</p>' % len(goals))
+             '<a class="xref" href="appendix-adherence.html">Appendix H</a> / Doc 12.</p>' % len(goals))
     by_p = {}
     for g in goals:
         by_p.setdefault(g["pillar"], []).append(g)
@@ -2515,7 +2515,7 @@ def build_behemoth():
          '<p class="lead">A single uber class diagram mapping <b>every concept across <code>docs/</code></b> &mdash; '
          'scoring (<a class="xref" href="03-scoring-formula.html">Doc 03</a>), reservoirs '
          '(<a class="xref" href="04-moniac-reservoir-dynamics.html">Doc 04</a>), the 2.0 companion vector '
-         '(<a class="xref" href="12-critical-review-and-purescore-2.0.html">Doc 12</a>), streams, sex/acute, '
+         '(<a class="xref" href="05-critical-review-and-purescore-2.0.html">Doc 05</a>), streams, sex/acute, '
          'nudges, governance, the question bank (<a class="xref" href="appendix-question-bank.html">Appx E</a>), '
          'lifestyles/personas (<a class="xref" href="appendix-lifestyles.html">Appx F</a>) and the tooling/'
          'calculator/UI. <b>%d classes</b> across <b>%d colour-coded subject areas</b>; live counts: '
@@ -3046,8 +3046,8 @@ def build_onboarding():
     h.append('<div class="diagram"><div class="dt">First-run sequence — install → first score → progressive profiling</div>'
              '<pre class="mermaid">flowchart LR\n  %s</pre></div>' % nodes)
     h.append('<div class="callout safety"><div class="ct">Consent first</div>No PII or health data is captured before the '
-             'privacy &amp; data-use consent step; device-pairing and EHR-connect gate the streams they unlock (Doc 11 · Doc 18 · D22). '
-             'The actuarial layer is firewalled and off by default (Doc 10).</div>')
+             'privacy &amp; data-use consent step; device-pairing and EHR-connect gate the streams they unlock (Doc 16 · Doc 07 · D22). '
+             'The actuarial layer is firewalled and off by default (Doc 19).</div>')
     # steps
     h.append('<h2 id="steps">First-run steps <span class="small muted">· <a class="xref" href="appendix-onboarding.html#spreadsheet">spreadsheet ↗</a></span></h2>')
     h.append('<div class="tablewrap"><table><thead><tr><th>#</th><th>Phase</th><th>Screen</th><th>Captures</th>'
@@ -3155,7 +3155,7 @@ def build_purescore_overview():
          '<a class="xref" href="04-moniac-reservoir-dynamics.html">reservoirs</a>, then a single score via the '
          '<a class="xref" href="03-scoring-formula.html">scoring formula</a> with its '
          '<a class="xref" href="admin-weights.html">weights &amp; constants</a> and the 2.0 '
-         '<a class="xref" href="12-critical-review-and-purescore-2.0.html">companion vector</a>. '
+         '<a class="xref" href="05-critical-review-and-purescore-2.0.html">companion vector</a>. '
          'Scored by sex: <a class="xref" href="purescore-male.html">PureScore &mdash; Male</a> &middot; '
          '<a class="xref" href="purescore-female.html">PureScore &mdash; Female</a>.</p>', ILLUS]
     h.append('<div class="diagram"><div class="dt">Inputs &rarr; pillars &amp; reservoirs &rarr; score</div>'
@@ -3166,7 +3166,7 @@ def build_purescore_overview():
              '  PS --> CV["Companion vector"]\n  PS --> SEX["by sex: Male / Female"]</pre></div>')
     h.append('<div class="tagrow" style="margin:6px 0"><span class="tier C">C</span> Core '
              '<span class="tier P">P</span> Peripheral <span class="tier X">X</span> Comprehensive '
-             '&nbsp;&middot;&nbsp; metrics tiers drive coverage &amp; confidence (Doc 01 §4.3)</div>')
+             '&nbsp;&middot;&nbsp; metrics tiers drive coverage &amp; confidence (Doc 06 §4.3)</div>')
     h.append('<div class="tablewrap"><table><thead><tr><th>Pillar</th><th>base W_k</th><th>Reservoirs</th>'
              '<th>Metrics C/P/X</th><th>Wearables</th><th>Questions</th></tr></thead><tbody>')
     for pid, pname, res, rows in PILLARS:
@@ -3208,7 +3208,7 @@ def build_wearable_baselines():
          '<h1>Baselines (Wearables)</h1>',
          '<p class="lead">Each wearable metric is scored against a <b>personal baseline</b> (empirical-Bayes μ/σ that '
          'shrinks from the cohort prior toward the patient as data accrues &mdash; '
-         '<a class="xref" href="12-critical-review-and-purescore-2.0.html">Doc 12 §5.1</a>), not a fixed cut-point. '
+         '<a class="xref" href="05-critical-review-and-purescore-2.0.html">Doc 05 §5.1</a>), not a fixed cut-point. '
          'The personal z-score it produces drives Stage 2b of the <a class="xref" href="03-scoring-formula.html">'
          'score</a>, the Trajectory arrow and the Early-warning ladder. Trust tier (D22) caps how far a signal can '
          'move a band.</p>', ILLUS,
@@ -3258,7 +3258,7 @@ def _build_purescore_sex(sex, label, markers, emphasis, lifestage):
          '<p class="lead">The %s view of the scoring engine: sex-specific reference cut-points, %s-specific markers, '
          'pillar-weight emphases and the %d %s-gated questions. The shared engine (formula, reservoirs, companion '
          'vector) is in the <a class="xref" href="purescore-overview.html">Overview</a>; sex handling is '
-         '<a class="xref" href="05-sex-specific-models.html">Doc 05</a>.</p>' % (label.lower(), label.lower(), len(gated), label.lower()),
+         '<a class="xref" href="08-sex-specific-models.html">Doc 08</a>.</p>' % (label.lower(), label.lower(), len(gated), label.lower()),
          ILLUS]
     h.append('<div class="callout note"><div class="ct">Pillar emphasis (%s)</div>%s</div>' % (_esc(label), _esc(emphasis)))
     # sex-specific markers (curated)
@@ -3335,7 +3335,7 @@ def build_wearable_corroboration():
              '<pre class="mermaid">flowchart LR\n'
              '  SR["self-report answer (perceived)"] --> CMP{"|Δ| &gt; tolerance?"}\n'
              '  WM["wearable metric (actual, Appendix B)"] --> CMP\n'
-             '  CMP -->|yes| GAP["perceived↔actual gap (Appendix F)\\nlower Confidence (Doc 12)"]\n'
+             '  CMP -->|yes| GAP["perceived↔actual gap (Appendix F)\\nlower Confidence (Doc 05)"]\n'
              '  CMP -->|no| OK["corroborated → higher Confidence"]</pre></div>')
     h.append('<div class="callout note"><div class="ct">Tolerance</div>%s</div>' % _esc(m["tolerance_semantics"]))
     h.append('<div class="callout note"><div class="ct">Normalized</div>%s</div>' % _esc(m["normalizes"]))

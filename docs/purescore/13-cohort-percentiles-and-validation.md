@@ -2,12 +2,12 @@
 
 > Binding conventions: `README.md §3`. This document is authoritative for **how cohorts `c(p)` are
 > constructed**, how the percentile CDFs `F_{i,c}` are estimated and shrunk (the empirical-Bayes
-> layer Doc 01 §2/§4 defers here), how the free parameters of the scoring and reservoir engines
+> layer Doc 06 §2/§4 defers here), how the free parameters of the scoring and reservoir engines
 > (`φ`, `W_k`, `λ_j`, `κ_{jl}`, `u_{kj}`, `ρ_k`) are **calibrated, regularized, and
 > stability-checked**, and how the whole system is **validated, fairness-audited, drift-monitored,
 > versioned, and made reproducible**.
 >
-> This is the **anti-Babylon backbone** (Doc 00 §3.1): *no claim ships ahead of its evidence*.
+> This is the **anti-Babylon backbone** (Doc 01 §3.1): *no claim ships ahead of its evidence*.
 > Everything here is a **gate**, not a report. Positioning stays wellness-grade,
 > clinician-in-the-loop (README §1); nothing here relaxes the hard non-negotiables (README §5).
 >
@@ -24,8 +24,8 @@
 2. Every displayed percentile and every shrunken estimate has a **stated uncertainty**.
 3. No parameter (`λ, κ, u, W, φ, ρ`) reaches production without passing **calibration, discrimination,
    reliability, stability, prospective, and fairness** gates, all recorded against a model version.
-4. Cohorting **reduces, not encodes, disparity** (Doc 00 principle 8); the fairness audit (§5) has
-   veto power over shipping and constrains the actuarial layer (Doc 10) and governance (Doc 11).
+4. Cohorting **reduces, not encodes, disparity** (Doc 01 principle 8); the fairness audit (§5) has
+   veto power over shipping and constrains the actuarial layer (Doc 19) and governance (Doc 16).
 
 ---
 
@@ -38,7 +38,7 @@ tree is built coarse→fine so that every leaf has a chain of ancestors to borro
 
 ```
  level 0  ALL                                   (grand mean / global prior)
- level 1  sex                                   (sex_at_birth — drives physiology, Doc 01 §1.1)
+ level 1  sex                                   (sex_at_birth — drives physiology, Doc 06 §1.1)
  level 2  sex × age_band                        (age bands: 18–29, 30–39, …, 80+; marker-specific)
  level 3  sex × age_band × D_primary            (primary disease flag: T2D, CKD, ASCVD, MASLD, …)
  level 4  sex × age_band × D_primary × Mx_class (medication class: statin, GLP-1/insulin, RAASi, …)
@@ -47,8 +47,8 @@ tree is built coarse→fine so that every leaf has a chain of ancestors to borro
 
 - **Age banding** is marker-specific: renal and bone markers need finer age resolution than, say,
   vitamin D. Bands are stored per `MarkerDef`, not globally.
-- **Sex** is `sex` (Male/Female) for physiology (Doc 01 §1.1); rare intersex/DSD handling follows
-  Doc 05 via organ inventory.
+- **Sex** is `sex` (Male/Female) for physiology (Doc 06 §1.1); rare intersex/DSD handling follows
+  Doc 08 via organ inventory.
 - **Disease flags `D`** and **medication classes `Mx`** are sets; the leaf is their full
   conjunction. Most patients carry 0–3 flags, so leaves are sparse — hence pooling (§1.3).
 
@@ -96,8 +96,8 @@ of its own sample mean `x̄_{i,c}` and its parent estimate `μ̂_{i,parent}`:
 - `τ_i²` (between-leaf variance) and `σ_i²` are themselves estimated by REML / the method of
   moments across the tree; large `τ_i` (leaves genuinely differ, e.g. eGFR across CKD stages) keeps
   more local detail, small `τ_i` pools harder.
-- This is the same **Bühlmann-credibility** machinery the actuarial layer reuses (Doc 10) and is the
-  population-data realization of the "empirical-Bayes mention" in Doc 01 §4.
+- This is the same **Bühlmann-credibility** machinery the actuarial layer reuses (Doc 19) and is the
+  population-data realization of the "empirical-Bayes mention" in Doc 06 §4.
 
 For the full **percentile curve** (not just the mean) we pool quantiles with the same `B` weight, or
 equivalently fit a parametric/semi-parametric quantile model (e.g., **GAMLSS / LMS** with
@@ -117,7 +117,7 @@ A patient rarely belongs to a single tidy leaf:
   **binding score** it uses the single most-specific credible leaf to avoid double counting.
 - **Conflict rule:** where overlapping cohorts disagree, the **safety-dominant** rule (README §5.2)
   still holds — the clinical anchor `r_i^clin` is cohort-independent and always wins; the percentile
-  blend `φ·r_i^cohort` can only *raise* concern (Doc 01 §4.4, Doc 03 §2). A patient cannot be made to
+  blend `φ·r_i^cohort` can only *raise* concern (Doc 06 §4.4, Doc 03 §2). A patient cannot be made to
   look healthy by selecting a sicker comparison cohort.
 - **Cohort membership is logged** with the score (§6) so any percentile claim is reproducible and
   auditable.
@@ -134,12 +134,12 @@ There are **two distinct shrinkage problems**, and the document keeps them separ
 
 ### 2.1 Estimating `F_{i,c}` from population data
 
-`F_{i,c}` (the cohort CDF used for `q_i`) is built from the population datasets named in Doc 01 §4.2
+`F_{i,c}` (the cohort CDF used for `q_i`) is built from the population datasets named in Doc 06 §4.2
 (NHANES, UK-Biobank-class, disease registries), stratified per the tree of §1.1, pooled per §1.3,
-and stored as a `ReferenceDist` (Doc 01 §1.1) carrying `source`, `sample_n`, `vintage`. Each curve
+and stored as a `ReferenceDist` (Doc 06 §1.1) carrying `source`, `sample_n`, `vintage`. Each curve
 ships with a **coverage flag**: which leaf level actually supplied it (own leaf vs pooled ancestor),
 so a percentile derived mostly from a grandparent stratum is labelled as such — the percentile
-analogue of *low-coverage green* (Doc 01 §4.3, Doc 03 §3).
+analogue of *low-coverage green* (Doc 06 §4.3, Doc 03 §3).
 
 Disease-specific registries are used where the general-population percentile would mislead (a CKD
 patient ranked against the general population would look catastrophic on eGFR by construction); the
@@ -173,7 +173,7 @@ shrink the patient's noisy observed mean toward the cohort median:
   never on the shrunken value, so shrinkage can never soften a red. (Per README §5.4, uncertainty
   defaults to caution: when shrinkage and raw disagree on the dangerous side, the raw value governs
   escalation.)
-- `confidence_i` (Doc 01 §2) feeds `n_{p,i}` as an effective count (a stale or wearable-derived value
+- `confidence_i` (Doc 06 §2) feeds `n_{p,i}` as an effective count (a stale or wearable-derived value
   counts as a fraction of a clean lab), unifying recency decay with shrinkage.
 
 ### 2.3 Producing display and actuarial stack-rank percentiles
@@ -184,9 +184,9 @@ shrink the patient's noisy observed mean toward the cohort median:
   point.
 - **Pillar / PureScore percentiles** rank `S_k` and PureScore within the cohort using the same
   pooled `F`; these are **presentation/analytics, not a relaxation of `r_i`** (Doc 03 §2).
-- **Actuarial layer (Doc 10)** consumes the *same* pooled, shrunken percentiles and their intervals
+- **Actuarial layer (Doc 19)** consumes the *same* pooled, shrunken percentiles and their intervals
   — never a separate, looser estimate — and inherits the cohort credibility weights as Bühlmann
-  credibility. The fairness constraints of §5 bind that consumption (Doc 10, Doc 11).
+  credibility. The fairness constraints of §5 bind that consumption (Doc 19, Doc 16).
 
 ---
 
@@ -228,7 +228,7 @@ and validated intermediate endpoints. The loss couples the dynamic system to out
   within the band; it cannot make CAC "heal" or sleep debt permanent.
 - **`W_k`, `φ`, `ρ_k`:** ridge toward the Doc 03 defaults (`φ=0.6`, `ρ_k≈0.2`, `W_k^base`); bounded so
   no single pillar/cohort multiplier can dominate; `φ < 1` is a hard cap (cohort can never override the
-  clinical anchor — Doc 01 §4.4).
+  clinical anchor — Doc 06 §4.4).
 - All fits use **nested cross-validation** (inner = hyperparameters, outer = honest performance) with
   patient-grouped, **temporally-ordered** folds (train past → test future) to prevent leakage.
 
@@ -258,7 +258,7 @@ contagion (Doc 04 §4.3) is damped, not explosive.
 
 **How it is enforced:** the constraint is **part of the optimization** (§3.1) — projected gradient /
 the diagonal-dominance inequality keeps every candidate `Θ` inside the stable set; any `Θ` that fails
-is rejected and **cannot be promoted to a model version** (Doc 04 §7, Doc 11). A failed stability check
+is rejected and **cannot be promoted to a model version** (Doc 04 §7, Doc 16). A failed stability check
 is a hard release blocker, logged with the offending eigenpair for audit.
 
 ---
@@ -266,7 +266,7 @@ is a hard release blocker, logged with the offending eigenpair for audit.
 ## 4. Validation (the anti-Babylon backbone)
 
 No capability is claimed beyond what is **prospectively validated for the population in front of us**
-(Doc 00 §2.7, §3.1). Validation is organized as **gates**; each must pass for the target population
+(Doc 01 §2.7, §3.1). Validation is organized as **gates**; each must pass for the target population
 *and every audited subgroup* (§5) before the corresponding claim ships.
 
 ### 4.1 Calibration (do predicted risks match observed outcomes?)
@@ -285,7 +285,7 @@ No capability is claimed beyond what is **prospectively validated for the popula
   time-to-event (survival) formulation; **time-dependent AUC**.
 - **AUPRC** for rare outcomes (where AUROC flatters), and **Net Reclassification Improvement / IDI**
   versus the incumbent clinical scores PureScore claims to add to (FINDRISC, ASCVD/SCORE2, etc.,
-  Doc 08) — PureScore must *add* discrimination, not merely re-package them.
+  Doc 10) — PureScore must *add* discrimination, not merely re-package them.
 - Reported with **bootstrap confidence intervals**; a point estimate without an interval is not a
   pass.
 
@@ -304,7 +304,7 @@ The critical cascade (Doc 03 §4–5, README §5.1/§5.4) exists to **never tell
 fine**. It is validated as a **screening test for true emergencies**:
 
 - **Sensitivity (recall) for true emergencies is the dominant metric** — a missed emergency (false
-  reassurance) is the Babylon failure mode (Doc 00 §3.1) and is weighted far above a false alarm. The
+  reassurance) is the Babylon failure mode (Doc 01 §3.1) and is weighted far above a false alarm. The
   operating point is chosen at a **high-sensitivity** target (e.g. ≥ 0.99 for `escalation=emergency`
   markers), accepting lower specificity by design.
 - Report **sensitivity, specificity, PPV, NPV** for the `escalation ∈ {emergency, urgent, routine}`
@@ -319,7 +319,7 @@ fine**. It is validated as a **screening test for true emergencies**:
 
 - **Retrospective/internal performance never authorizes scaling.** A claim is promoted only after
   **prospective** validation in the deployment population (pre-registered protocol, pre-specified
-  endpoints and analysis), echoing Doc 00 §3.1 *"validate before scale"*.
+  endpoints and analysis), echoing Doc 01 §3.1 *"validate before scale"*.
 - **External & temporal validation:** performance is re-demonstrated on an **external site** and on a
   **later time window** than training (temporal split), because guideline drift, assay changes, and
   population shift erode transported models.
@@ -343,7 +343,7 @@ fine**. It is validated as a **screening test for true emergencies**:
    stability:          −Λ+K Hurwitz with margin ε (§3.3)
    prospective:        pre-registered prospective study PASSED in deployment population
    fairness:           §5 audit PASSED (no subgroup parity violation, no proxy)
- Any failure ⇒ NO-SHIP. (Doc 00 §3.1; Doc 11 governance sign-off.)
+ Any failure ⇒ NO-SHIP. (Doc 01 §3.1; Doc 16 governance sign-off.)
 ```
 
 ### 4.7 Drift monitoring and recalibration cadence
@@ -360,17 +360,17 @@ Once live, the model is monitored continuously for three drift types, then recal
   monitored AUC. A drop is a **recalibration trigger**.
 - **Cadence & versioning:** scheduled recalibration on a fixed cadence (README §5.6) **plus**
   drift-triggered off-cadence recalibration. Every recalibration is a **model-version bump** requiring
-  re-passing §4.6 (including fairness §5) and is recorded in the audit trail (§6, Doc 11). Reference
-  ranges/guidelines are re-verified on the same discipline (README §5.6, Doc 01).
+  re-passing §4.6 (including fairness §5) and is recorded in the audit trail (§6, Doc 16). Reference
+  ranges/guidelines are re-verified on the same discipline (README §5.6, Doc 06).
 
 ---
 
 ## 5. Fairness & equity audit (veto power over shipping)
 
-**Binding principle (Doc 00 §8):** *cohorting must reduce, not encode, disparity; no protected-class
+**Binding principle (Doc 01 §8):** *cohorting must reduce, not encode, disparity; no protected-class
 attribute or proxy may worsen access, price, or care* (README §5.5). The fairness audit is a **gate
-with veto power** (§4.6), not a post-hoc check, and it **constrains the actuarial layer (Doc 10) and
-governance (Doc 11)**.
+with veto power** (§4.6), not a post-hoc check, and it **constrains the actuarial layer (Doc 19) and
+governance (Doc 16)**.
 
 ### 5.1 Protected dimensions audited
 
@@ -399,11 +399,11 @@ Every §4 metric is recomputed **per subgroup and per intersection**, and must m
   Inspect feature→protected mutual information and the score's residual correlation with the protected
   attribute after conditioning on legitimate clinical need.
 - **Legitimate vs illegitimate use:** `sex_at_birth` is a **legitimate physiological** input
-  (reference ranges, hormones — Doc 01 §1.1, Doc 05) and is *kept*. Variables that act as **proxies for
+  (reference ranges, hormones — Doc 06 §1.1, Doc 08) and is *kept*. Variables that act as **proxies for
   race/SES with no causal clinical justification** (e.g. ZIP code, certain utilization patterns) are
   **removed or neutralized**; race is **not** used as a biological correction unless a specific,
   defensible, guideline-endorsed and re-verified justification exists (the field has retired several
-  race-based corrections, e.g. eGFR — Doc 01/Doc 08 must track this).
+  race-based corrections, e.g. eGFR — Doc 06/Doc 10 must track this).
 - **Mitigation:** reweighting, constrained optimization with fairness constraints in the loss (§3.1),
   and **subgroup recalibration**; mitigations are themselves re-validated (§4) so fixing one group
   does not silently harm another.
@@ -415,15 +415,15 @@ from parents rather than being scored from noise or denied a score — provided 
 **clinically real** subgroup difference. The audit checks both failure modes: (a) **over-pooling** that
 flattens a genuine subgroup signal, and (b) **under-pooling** that scores a thin subgroup from noise.
 A cohort scheme that **widens** an outcome disparity (worse calibration, worse false-reassurance for a
-protected group) is rejected — that is the literal meaning of *"reduce, not encode"* (Doc 00 §8).
+protected group) is rejected — that is the literal meaning of *"reduce, not encode"* (Doc 01 §8).
 
 ### 5.5 Constraint on downstream layers
 
-- **Actuarial layer (Doc 10):** consumes only audited, fairness-passed percentiles; **no
-  protected-class proxy may enter pricing**, and the portfolio posture (Doc 00 §4, Doc 10) is bound by
+- **Actuarial layer (Doc 19):** consumes only audited, fairness-passed percentiles; **no
+  protected-class proxy may enter pricing**, and the portfolio posture (Doc 01 §4, Doc 19) is bound by
   GINA/anti-discrimination law. The fairness audit's veto extends to any actuarial use.
-- **Governance (Doc 11):** owns the sign-off; a failed fairness gate is escalated and blocks release;
-  the audit, its tolerances, and any waiver are recorded and externally reviewable (Doc 00 §3.1
+- **Governance (Doc 16):** owns the sign-off; a failed fairness gate is escalated and blocks release;
+  the audit, its tolerances, and any waiver are recorded and externally reviewable (Doc 01 §3.1
   transparency).
 
 ---
@@ -435,9 +435,9 @@ Doc 03 §6 determinism). The lineage chain:
 
 ```
  score_record = {
-   patient inputs (values, source, confidence, effectiveTime),   # Doc 01
+   patient inputs (values, source, confidence, effectiveTime),   # Doc 06
    cohort_id + pooling path (which leaf/ancestors supplied F),    # §1
-   reference_dist versions (source, sample_n, vintage),           # Doc 01 §4.2
+   reference_dist versions (source, sample_n, vintage),           # Doc 06 §4.2
    parameter_version Θ = {φ, W, ρ, λ, κ, u} + config hash,        # Doc 03 §8, Doc 04 §7
    model_version + code commit,                                   # §3, §4.6
    computed: r_i, R_k, B_j, B̃_k, PureScore, status, binding constraint,   # Doc 03 §7
@@ -453,19 +453,19 @@ Doc 03 §6 determinism). The lineage chain:
 - **Lineage:** the chain above ties a displayed number to its inputs, cohort, reference distributions,
   parameters, and the validation evidence current at compute time — so an auditor can both *reproduce*
   the number and *check it was authorized* by passing evidence (no claim ahead of its evidence,
-  Doc 00 §3.1).
+  Doc 01 §3.1).
 - **Reproducibility:** because the pipeline is deterministic given `{inputs, Θ, reference dists}`
   (Doc 03 §6), replaying a `score_record` reproduces the exact score, percentile, intervals, and
-  binding constraint — the substrate for clinician review (Doc 08), governance audit (Doc 11), and any
+  binding constraint — the substrate for clinician review (Doc 10), governance audit (Doc 16), and any
   external/regulatory examination.
 
 ---
 
 ## 7. Cross-references
 
-- Cohort definition & safety dominance: README §3.1, §5.2, §5.4 — Doc 01 §4.4.
-- Percentile sources & median fallback: Doc 01 §4.2–§4.3; confidence/recency: Doc 01 §2.
+- Cohort definition & safety dominance: README §3.1, §5.2, §5.4 — Doc 06 §4.4.
+- Percentile sources & median fallback: Doc 06 §4.2–§4.3; confidence/recency: Doc 06 §2.
 - Scoring parameters fed/constrained here: Doc 03 §2 (`φ`), §3 (`ρ_k`), §5 (`W_k`), §8 (defaults).
 - Reservoir parameters & the stability promise redeemed in §3.3: Doc 04 §3, §5, §7.
-- Anti-Babylon principles, equity principle 8, "validate before scale": Doc 00 §2–§4.
-- Downstream constraints: actuarial layer Doc 10; safety/governance/privacy Doc 11.
+- Anti-Babylon principles, equity principle 8, "validate before scale": Doc 01 §2–§4.
+- Downstream constraints: actuarial layer Doc 19; safety/governance/privacy Doc 16.

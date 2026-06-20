@@ -3,7 +3,7 @@
 > Binding conventions: `README.md §3`. This document is authoritative for the **ENDO** sex-hormone
 > bands deferred from Doc 02, and for how **sex at birth × reproductive stage** modifies pillar
 > weights `W_k` (Doc 03 §5), ENDO marker bands (`[L_i^opt, U_i^opt]`), the reservoir set (Doc 04),
-> and escalation thresholds (Doc 03 §4 / Doc 11). Positioning is **wellness-grade,
+> and escalation thresholds (Doc 03 §4 / Doc 16). Positioning is **wellness-grade,
 > clinician-in-the-loop** (README §1). Every red/critical state still escalates to a human; nothing
 > here relaxes the hard non-negotiables (README §5).
 >
@@ -102,7 +102,7 @@ via the BON reserve depletion path (§4.3).
 
 ### 2.2 Fertility / preconception
 
-Activated by goal flag `goal = conception` (Doc 06) or clinician order. Adds targeted markers and
+Activated by goal flag `goal = conception` (Doc 09) or clinician order. Adds targeted markers and
 shifts thyroid targets:
 
 | Marker | Optimal (illustrative, re-verify) | Notes / source |
@@ -183,7 +183,7 @@ The pre-eclampsia critical-cascade is the headline pregnancy safety rule and is 
 ```
 
 This realizes the brief's requirement: **BP + proteinuria → pre-eclampsia emergency escalation**,
-with `PURE_CRIT_CAP = 40` (Doc 03 §5.3) and immediate human handoff (Doc 11). Severe-range BP alone
+with `PURE_CRIT_CAP = 40` (Doc 03 §5.3) and immediate human handoff (Doc 16). Severe-range BP alone
 escalates even without proteinuria (current ACOG criteria — illustrative, re-verify). The hard
 suicidality rule (Doc 02 MCS) and acute-sepsis rule remain active throughout pregnancy.
 
@@ -202,7 +202,7 @@ Activated for ~12 months post-delivery (the "fourth trimester" extending to a ye
   abnormal ⇒ ENDO yellow→red per thyroid bands, clinician-routed.
 - **Anemia:** post-partum hemoglobin recovery tracked; persistent low ⇒ HEM, iron repletion (NUT).
 - **Lactation & nutrition pillar:** if breastfeeding, NUT raises targets (energy, iodine, choline,
-  vitamin D, continued folate; hydration) and the nudge engine (Doc 07) avoids aggressive
+  vitamin D, continued folate; hydration) and the nudge engine (Doc 11) avoids aggressive
   caloric-deficit nudges; certain medication/alcohol nudges gain lactation-safety caveats. Iodine
   and vitamin D bands shift to lactation reference.
 
@@ -226,7 +226,7 @@ Stage-driven interpretation and surveillance (illustrative, re-verify):
   hard MCS rules.
 - **Accelerated bone loss → BON reserve.** Postmenopausal estrogen withdrawal accelerates bone loss;
   the engine **increases the BON reserve depletion rate** (Doc 04 `λ`/inflow for BON) and raises BCM
-  weight; BMD/T-score and FRAX (Doc 08) gain salience. Low estradiol here is interpreted via bone &
+  weight; BMD/T-score and FRAX (Doc 10) gain salience. Low estradiol here is interpreted via bone &
   CV risk, not as a benign number.
 - **Cardiovascular risk inflection:** CV weight `W_CV` rises across the transition (loss of
   estrogen's vascular protection); lipid/BP bands unchanged but pillar salience up.
@@ -278,7 +278,7 @@ exogenous testosterone links to **HEM** (high hematocrit red).
 ## 4. How sex / stage modifies the four engine surfaces
 
 This section is the precise mapping back to Docs 02–04. All multipliers are **defaults, versioned,
-re-verify on cadence** (README §5.6; Doc 09 calibrates).
+re-verify on cadence** (README §5.6; Doc 13 calibrates).
 
 ### 4.1 Pillar weights `W_k` — life-stage multipliers `m_k^{life-stage}` (Doc 03 §5.1)
 `m_k^{life-stage}` is a new factor in `W_k = W_k^base · m_k^cohort · m_k^{life-stage} · m_k^goal ·
@@ -310,7 +310,7 @@ Doc 02 Pillar 7.
 - Pregnancy adds the **pre-eclampsia/HELLP emergency cascade** (§2.3.4).
 - Post-partum adds **EPDS** as a second depression instrument with its own self-harm hard rule
   (§2.4), additive to the PHQ-9 item-9 rule.
-- All sex-specific reds still route through Doc 11 with the correct `escalation ∈ {emergency,
+- All sex-specific reds still route through Doc 16 with the correct `escalation ∈ {emergency,
   urgent, routine}` tag (Doc 03 §4.1).
 
 ---
@@ -358,7 +358,7 @@ Doc 02 Pillar 7.
 
 ---
 
-## 6. Equity & safety notes for reproductive data (ties to Doc 11)
+## 6. Equity & safety notes for reproductive data (ties to Doc 16)
 
 1. **Data minimization / do not over-collect.** Pregnancy, fertility, cycle, and gender data are
    collected **only** when they materially improve the score or care, with explicit purpose, and
@@ -366,20 +366,20 @@ Doc 02 Pillar 7.
    a score — it degrades to lower confidence (§1) instead.
 2. **Heightened privacy.** Pregnancy and fertility status are sensitive in many jurisdictions
    (employment, insurance, legal). These fields get the strictest access controls, are excluded
-   from the actuarial/payer layer (Doc 10) and from any pricing/access decision, and are never used
+   from the actuarial/payer layer (Doc 19) and from any pricing/access decision, and are never used
    to *worsen* access, pricing, or care (README §5.5). Granular consent and revocation are
-   honored per Doc 11.
+   honored per Doc 16.
 3. **Respectful communication.** Physiological bands are explained in clinical terms tied to
    `organ_inventory` and life stage, never as a verdict on the person.
 4. **No autonomous reproductive diagnosis.** PCOS, FHA, hypogonadism, pre-eclampsia, GDM, thyroid
    disease, and prostate concerns are **flagged with explanation and escalated**, never diagnosed by
    the score (README §5.1). Uncertainty defaults to caution (README §5.4).
 5. **Equity of reference ranges.** Where population ranges were derived in non-representative
-   cohorts, affected bands are flagged for re-derivation (Doc 09 fairness/drift); intersex and
+   cohorts, affected bands are flagged for re-derivation (Doc 13 fairness/drift); intersex and
    gender-diverse patients use individual-baseline scoring rather than a forced population band
    (§1.3).
 6. **All thresholds re-verified on cadence** before production (README §5.6); reproductive guidance
-   changes (e.g. ACOG/ADA updates) trigger a model-version bump (Doc 09/11).
+   changes (e.g. ACOG/ADA updates) trigger a model-version bump (Doc 13/16).
 
 ---
 
@@ -399,4 +399,4 @@ behaviour is inspectable. Mapping to the spec above:
 
 **Demonstration personas:** `pregnancy` (T2 frame), `menopause` (postmenopausal CV/bone up-weight, BMD red sooner). The full production system applies the §3 classification and
 §4–5 tables across the entire Doc 02 catalogue. Every numeric band remains **illustrative pending
-clinical sign-off and Doc 13 validation** — the Babylon lesson (Doc 00).
+clinical sign-off and Doc 14 validation** — the Babylon lesson (Doc 01).

@@ -690,7 +690,7 @@
       "cadence": "quarterly",
       "refresh": "periodic",
       "perceived_actual": { "kind": "perceived", "corroborated_by": ["lab.25_OH_vitD"] },
-      "source": "OMICS Introductory Report; Holick vitamin D deficiency review; Doc 15 UAE localization",
+      "source": "OMICS Introductory Report; Holick vitamin D deficiency review; Doc 18 UAE localization",
       "flag": "illustrative-reverify"
     },
     {

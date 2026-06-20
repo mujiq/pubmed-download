@@ -6,8 +6,8 @@
   "closes": "F2",
   "method": "Persona posterior = softmax over per-column evidence sums. Hard priors (sex · age · life-stage · requires) zero out impossible columns BEFORE the soft evidence is summed, so e.g. a pregnancy column can never light up for a male. Many-to-many by construction: one signal supports several personas, and each persona is supported by many signals. A signal's value comes from a question answer (Appendix E), a derived flag, or a wearable/lab threshold.",
   "links": [
+   "Doc 08",
    "Doc 05",
-   "Doc 12",
    "Appendix D",
    "Appendix E",
    "Appendix F"

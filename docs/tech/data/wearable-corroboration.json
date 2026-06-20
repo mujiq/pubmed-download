@@ -5,9 +5,9 @@
     "flag": "illustrative — tolerances are design defaults, calibrate per device/cohort before production",
     "closes": "F4",
     "idea": "Types the 'wearable-match' stage: the question bank's free-text-ish wearable.<metric> corroborations are normalized to a canonical wearable metric (Appendix B), assigned a typed source channel, and given a per-metric TOLERANCE — the agreement band between the self-reported answer (perceived) and the wearable actual, beyond which a perceived↔actual gap is flagged. This makes stage-3 auditable: every wearable corroboration resolves to a metric + tolerance the gap engine can apply.",
-    "tolerance_semantics": "|perceived − actual| > tolerance ⇒ flag a perceived-vs-actual gap (Appendix F) and lower Confidence (Doc 12). Consumer/inferential metrics never drive a band on their own (D22).",
+    "tolerance_semantics": "|perceived − actual| > tolerance ⇒ flag a perceived-vs-actual gap (Appendix F) and lower Confidence (Doc 05). Consumer/inferential metrics never drive a band on their own (D22).",
     "normalizes": "Casing/alias variants collapse to one id (wearable.hrv = wearable.HRV; wearable.SpO2 = wearable.spo2; wearable.resting_hr = wearable.resting_HR; wearable.steps ≈ wearable.step_count).",
-    "links": ["Doc 12", "Doc 18", "Appendix B", "Appendix E", "Appendix F", "Appendix G", "D22"]
+    "links": ["Doc 05", "Doc 07", "Appendix B", "Appendix E", "Appendix F", "Appendix G", "D22"]
   },
   "metrics": [
     {"id": "resting_hr", "name": "Resting HR", "appendix_b": "Resting HR", "channel": "wearable-consumer", "tolerance": "±5 bpm", "aliases": ["wearable.resting_hr", "wearable.resting_HR"], "perceived_actual": "self-rated fitness / palpitations vs measured resting HR"},

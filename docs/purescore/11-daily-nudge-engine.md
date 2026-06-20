@@ -7,8 +7,8 @@
 >
 > It consumes: the scored state (Doc 03), reservoirs `B_j(t)` and their `λ_j, κ, u_{kj}` (Doc 04),
 > the marker catalogue and critical/escalation tags (Doc 02), acute-mode weights `m_k^acute`
-> (Doc 06). It feeds: care plans (Doc 06), validation/recalibration (Doc 09), governance/escalation
-> (Doc 11). It is bound by the anti-Babylon principle (Doc 00 §3.1): **no overpromising, no dark
+> (Doc 09). It feeds: care plans (Doc 09), validation/recalibration (Doc 13), governance/escalation
+> (Doc 16). It is bound by the anti-Babylon principle (Doc 01 §3.1): **no overpromising, no dark
 > patterns, no triage-to-reassurance.**
 
 The engine is a four-stage pipeline run on the daily clock `Δ = 1 day`:
@@ -40,12 +40,12 @@ and rank deterministically.
 | evidence | `ε_a ∈ [0,1]` | evidence strength (RCT/meta-analysis = high; mechanistic/observational = low) |
 | dose | `d_a` | prescribed dose/frequency (e.g., "+1500 steps/day", "+20 g fiber") |
 | safety tags | `safe_a` | contraindication keys (cohort `D`, meds `Mx`, acute flags) it must be screened against |
-| cohort tags | `cohort_a` | life-stage / sex / age-band applicability (Doc 05/06) |
+| cohort tags | `cohort_a` | life-stage / sex / age-band applicability (Doc 08/09) |
 | horizon shape | `g_a(h)` | the fraction of full effect realized by horizon `h` (§2.3) |
 
 `tier`-style economy applies: **`MEASURE` and `CLINICAL` actions** are first-class — "measure the
 marker that is currently imputed and dominating your uncertainty" is a legitimate, often
-highest-yield nudge (Doc 00 §2.5 cheapest-high-yield-first; Kaiser care-gap closure, Doc 00 §3.2).
+highest-yield nudge (Doc 01 §2.5 cheapest-high-yield-first; Kaiser care-gap closure, Doc 01 §3.2).
 
 ### 1.2 Library excerpt (illustrative, literature-anchored — re-verify per README §5.6)
 
@@ -54,7 +54,7 @@ highest-yield nudge (Doc 00 §2.5 cheapest-high-yield-first; Kaiser care-gap clo
 | SLP-WIND | SLEEP | fixed wind-down + 30 min earlier lights-out | drain `B_SLD` (sleep-hygiene) | SLP, →MCS,MET,CV | 0.25 | days | 0.7 | none |
 | SLP-REG | SLEEP | constant sleep/wake time ±30 min | `B_SLD` regularity inflow ↓ | SLP, →ALLO | 0.35 | days–wk | 0.6 | shift-worker (re-tag) |
 | ACT-STEPS | ACT | +1500 steps/day | fill `B_CRF`; ↓`B_GLY` (κ) | FIT, MET, CV | 0.20 | weeks | 0.8 | unstable angina, acute MSK injury |
-| ACT-Z2 | ACT | 2× zone-2 cardio 30 min/wk | fill `B_CRF` strongly | FIT, CV, MET | 0.55 | weeks–mo | 0.8 | acute cardiac event (Doc 06) |
+| ACT-Z2 | ACT | 2× zone-2 cardio 30 min/wk | fill `B_CRF` strongly | FIT, CV, MET | 0.55 | weeks–mo | 0.8 | acute cardiac event (Doc 09) |
 | ACT-RES | ACT | 2× resistance 20 min/wk | fill `B_MUS`, `B_BON` | BCM, FIT, MET | 0.55 | weeks–mo | 0.7 | severe osteoporosis → supervised |
 | NUT-FIBER | NUTR | +10 g fiber/day | ↓`B_GLY` inflow, diet-quality `s_i`↑ | NUT, MET, →INFL | 0.30 | weeks | 0.7 | active flare IBD/stricture |
 | NUT-O3 | NUTR | omega-3 to index ≥8 | ↓`B_INFL` inflow; omega-3 `s_i`↑ | NUT, INF, →CV | 0.20 | weeks–mo | 0.6 | anticoagulant (bleeding) |
@@ -68,7 +68,7 @@ highest-yield nudge (Doc 00 §2.5 cheapest-high-yield-first; Kaiser care-gap clo
 | MSR-VITD | MEASURE | order 25-OH vit D | ↑coverage `cov_NUT` | NUT | 0.30 | immediate | n/a | none |
 | CLN-FU | CLINICAL | book overdue clinician follow-up | care-gap close; gate red markers | (pillar of gap) | 0.45 | immediate | n/a | red-flag ⇒ urgent route |
 
-This is an excerpt; the production library is cohort-partitioned (Doc 06 care-plan templates supply
+This is an excerpt; the production library is cohort-partitioned (Doc 09 care-plan templates supply
 the per-cohort action sets and doses).
 
 ---
@@ -165,7 +165,7 @@ and then through the **same** chain-rule tail (a)+(b) plus `∂R_k/∂B̃_k = ρ
 - `g_a(h) ∈ [0,1]` is the action's realization curve (a marker that needs 6 weeks contributes
   little of its effect at `h = 7 d`); it is consistent with the target tank's `λ_j`.
 - `ε_a` (evidence strength) **down-weights the claim** for weakly-evidenced actions — a
-  conservative-claims tax (Doc 00 §2.7). Low evidence ⇒ smaller promised number, never a bigger one.
+  conservative-claims tax (Doc 01 §2.7). Low evidence ⇒ smaller promised number, never a bigger one.
 
 ### 2.4 Attribution (what the card must show)
 
@@ -228,7 +228,7 @@ For each safety-passing action (§5), define the daily utility
 - `α, β` default `1.0`; raising `β` and `η` over `α` is the *ease-first* posture. All versioned (§7).
 - `ν_a` — novelty/timing factor: small bonus for an action that closes the binding constraint or a
   care-gap, small penalty for one shown-and-ignored many times (anti-nag; §4.4). It **also carries a
-  goal-alignment bonus**: the patient's declared **GOAL stream** (Doc 18 §1, §7) sets `h*` and lifts
+  goal-alignment bonus**: the patient's declared **GOAL stream** (Doc 07 §1, §7) sets `h*` and lifts
   actions that advance the goal (e.g. "lower HbA1c" → glycemic actions rank up), within the safety
   rails — the goal steers ranking but never overrides a critical or a contraindication (§1).
 
@@ -243,13 +243,13 @@ high-impact action nobody will do, nor a trivially-easy action that does nothing
 |---------|--------|
 | effort `E_a`, latency `τ_a` | action record |
 | **personal history with this action/class** — completion rate, streak length, recency | nudge feedback log (§6) |
-| similar-patient base rate (empirical-Bayes shrinkage to cohort) | Doc 09 |
+| similar-patient base rate (empirical-Bayes shrinkage to cohort) | Doc 13 |
 | context fit — time-of-day, calendar load, current acute mode, weather/season for ACT | device/context |
 | friction — does it need a new device/purchase/appointment | action record |
 | momentum — current streak in the same `class_a`, habit-stacking opportunity | feedback log |
 
 Cold-start (no history): `p̂_a` falls back to the **cohort base rate** with wide uncertainty, and we
-shrink toward it (empirical Bayes, Doc 09). As the patient acts, the personal terms dominate.
+shrink toward it (empirical Bayes, Doc 13). As the patient acts, the personal terms dominate.
 The model is **recalibrated** against realized completion (§6) — a real probability, not a guess.
 
 ### 3.3 Selection: greedy, diverse, safe (the actual top-5)
@@ -279,13 +279,13 @@ greedy submodular pick (a small facility-location / determinantal flavour):
   zero-impact actions (e.g. an already-optimal managed marker, D16). So *acting on the list always
   moves the number up*; the patient gets immediate, honest feedback. If no positive-`Δ` modifiable
   action exists (everything green/at-optimum, or all remaining risk is fixed), the engine says so
-  rather than inventing a nudge (Doc 12 Modifiability; D5).
+  rather than inventing a nudge (Doc 05 Modifiability; D5).
 
 ### 3.4 Negative feedback (the other direction)
 The loop is symmetric. Regression — a missed-sleep streak, a sedentary week, rising stress, a
 worsening wearable trend — pushes the personal z-score adverse (Doc 03 §2b), so PureScore **trends
 down** and the affected pillars show **↓ Trajectory**, escalating to an **Early-warning** flag if it
-accelerates (Doc 12 §4–§5). The engine surfaces this as a *gentle, non-alarming* "slipping" signal
+accelerates (Doc 05 §4–§5). The engine surfaces this as a *gentle, non-alarming* "slipping" signal
 with the single easiest recovery action — never a scold, never a discrete cliff, and never masking a
 real clinical change behind "you're improving vs your own bad week" (safety dominates, Doc 03 §2b
 `band_clamp`).
@@ -317,7 +317,7 @@ Each of the 5 cards shows:
 - Progress is shown as **realized reservoir drainage / score movement**, tying the streak to the
   actual `B_j(t)` trajectory the patient is changing.
 
-### 4.3 Anti-Babylon honesty rules (binding — Doc 00 §3.1)
+### 4.3 Anti-Babylon honesty rules (binding — Doc 01 §3.1)
 
 - **No overpromising.** The quoted `ΔPureScore_a(h)` is the `ε_a`-discounted, exactly-recomputed,
   horizoned number (§2.3/§2.5). We never inflate, never quote a 90-day number as if it were today's.
@@ -326,13 +326,13 @@ Each of the 5 cards shows:
 - **No triage-to-reassurance.** A good nudge list **never** implies "you're fine." If anything in the
   state is red/critical, the card leads with escalation, not with tips (§5).
 - **Explainable or absent.** If an action's impact can't be traced through §2, it is not shown
-  (Doc 00 §2.2).
+  (Doc 01 §2.2).
 
 ### 4.4 Anti-nag / fatigue control
 
 `ν_a` decays an action repeatedly surfaced and ignored; the engine rotates and respects a daily nudge
 **budget** (default ≤5 surfaced, and a weekly "big lever" cadence) so the product is sustainable to
-attend to (Doc 00 §2.5 burden control extends to attention, not just measurement cost).
+attend to (Doc 01 §2.5 burden control extends to attention, not just measurement cost).
 
 ---
 
@@ -349,28 +349,28 @@ clears against `D`, `Mx`, and current acute flags. Worked guards:
   are **blocked or capped**, regardless of how good it looks for BCM/MET — the brief's explicit case.
   REN reservoir/marker state vetoes the MET/BCM-optimizing action.
 - **Anticoagulated / bleeding risk:** high-dose `NUT-O3`, certain supplements blocked.
-- **Acute cardiac / unstable angina:** `ACT-Z2`, high-intensity ACT blocked (Doc 06 acute mode).
+- **Acute cardiac / unstable angina:** `ACT-Z2`, high-intensity ACT blocked (Doc 09 acute mode).
 - **Osteoporosis / recent fracture:** high-impact ACT → supervised-only variant.
 - **Hypotension / falls:** aggressive BP-lowering behavioural stacking flagged.
 - **Disordered-eating history:** calorie-restriction / weight-framed nudges suppressed; reframed.
-- **Pregnancy / postpartum / menopause stage:** Doc 05 toggles eligibility & doses.
+- **Pregnancy / postpartum / menopause stage:** Doc 08 toggles eligibility & doses.
 
-A blocked action is **logged with reason** (auditable, Doc 11) and never silently re-surfaces.
+A blocked action is **logged with reason** (auditable, Doc 16) and never silently re-surfaces.
 
 ### 5.2 Red-flag routing (escalation, not nudges)
 
 If the scored state contains any **acute-danger red** with `escalation ∈ {emergency, urgent}`
 (Doc 03 §4.1 / Doc 02 critical markers — e.g. K⁺ 6.3, SpO2 88%, PHQ-9 item-9 > 0), the engine does
-**not** produce a tips card. It surfaces the **escalation pathway** (Doc 11) as the only action and
+**not** produce a tips card. It surfaces the **escalation pathway** (Doc 16) as the only action and
 suppresses lifestyle nudges. *A suicidality item routes to crisis support, never to a breathing
-exercise.* This is the anti-Babylon missed-red-flag countermeasure (Doc 00 §3.1).
+exercise.* This is the anti-Babylon missed-red-flag countermeasure (Doc 01 §3.1).
 
-### 5.3 Acute-mode reweighting (Doc 06)
+### 5.3 Acute-mode reweighting (Doc 09)
 
 When acute mode is active (`m_k^acute` spiked, Doc 03 §5.1), the engine **reweights nudges toward
 recovery and the acute pillar**: effort caps tighten (favor very-low-`E_a` recovery actions), the
 diversity cap yields to acute-relevant actions, and contraindications from the acute event apply.
-On recovery (hysteresis, Doc 06), weights revert and the normal library re-opens.
+On recovery (hysteresis, Doc 09), weights revert and the normal library re-opens.
 
 ### 5.4 Reserve-deficit reds → priority nudges (not alarms)
 
@@ -380,7 +380,7 @@ a feasible starting dose — never an alarm, never an unsafe jump.
 
 ---
 
-## 6. Feedback loop — realized vs predicted, recalibration (ties to Doc 09)
+## 6. Feedback loop — realized vs predicted, recalibration (ties to Doc 13)
 
 The engine logs, for every surfaced action, a closed loop:
 
@@ -393,20 +393,20 @@ The engine logs, for every surfaced action, a closed loop:
 ### 6.1 Two calibration targets
 
 1. **Adherence model (`p̂_a`).** Compare predicted vs realized completion; refit `θ` (§3.2) per
-   patient and pool to cohort (empirical Bayes, Doc 09). Brier score / calibration curve tracked.
+   patient and pool to cohort (empirical Bayes, Doc 13). Brier score / calibration curve tracked.
 2. **Sensitivity / impact model.** Compare **predicted `ΔPureScore_a(h)`** against the **realized**
    change attributable to the action (de-confounded against other actions and natural drift using the
    reservoir state equations as the counterfactual baseline). Systematic over-prediction ⇒ shrink the
    relevant `e_a`, `g_a(h)`, or `κ`/`λ` estimates — i.e. the **valve efficacies and reservoir
-   parameters are themselves recalibrated** (Doc 04 §7 versioned params; Doc 09 §5 stability re-check
+   parameters are themselves recalibrated** (Doc 04 §7 versioned params; Doc 13 §5 stability re-check
    so the Jacobian stays Hurwitz).
 
 ### 6.2 Honesty enforcement via the loop
 
-Because realized vs predicted is measured and surfaced (and audited, Doc 11), the engine is
+Because realized vs predicted is measured and surfaced (and audited, Doc 16), the engine is
 **structurally prevented from overpromising**: a consistently-optimistic action self-corrects
 downward. This is the quantitative anti-Babylon guarantee — claims are forced to track evidence
-(Doc 00 §3.1, §2.7), and any parameter change is a model-version bump requiring Doc 09
+(Doc 01 §3.1, §2.7), and any parameter change is a model-version bump requiring Doc 13
 re-validation.
 
 ---
@@ -427,8 +427,8 @@ re-validation.
 | `ε_a` tax | evidence-strength discount on quoted Δ | applied always |
 
 Constants live in the versioned config; any change is a model-version bump requiring re-validation
-(Doc 09) and an audit-trail entry (Doc 11). Valve efficacies `e_a`, realization curves `g_a(h)`, and
-the reservoir parameters they ride on (`λ_j, κ, u_{kj}`) are **calibrated, not asserted** (§6, Doc 09).
+(Doc 13) and an audit-trail entry (Doc 16). Valve efficacies `e_a`, realization curves `g_a(h)`, and
+the reservoir parameters they ride on (`λ_j, κ, u_{kj}`) are **calibrated, not asserted** (§6, Doc 13).
 
 ---
 
@@ -475,4 +475,4 @@ The calculator implements the daily-nudge pipeline live:
 Demonstrated: prediabetic → "cut refined carbs +5.7" on the binding MET pillar; elderly → resistance +
 protein (sarcopenia); CKD → BP-adherence + sodium (protein gated out); **FH → lifestyle cannot move
 genetic ApoB (gated to ~0) → clinician referral surfaces.** All ΔPureScore values are illustrative
-(synthetic engine), pending Doc 13 validation of realized-vs-predicted impact (the §6 feedback loop).
+(synthetic engine), pending Doc 14 validation of realized-vs-predicted impact (the §6 feedback loop).

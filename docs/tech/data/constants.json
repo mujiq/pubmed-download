@@ -56,13 +56,13 @@
    "q_impute",
    "cohort-imputed lab confidence weight (no measured value)",
    "0.30",
-   "Doc 01 §4.3"
+   "Doc 06 §4.3"
   ],
   [
    "Rp_impute",
    "representativeness of an age×sex×life-stage cohort match",
    "0.70",
-   "Doc 12 §7"
+   "Doc 05 §7"
   ],
   [
    "cov_green_floor",

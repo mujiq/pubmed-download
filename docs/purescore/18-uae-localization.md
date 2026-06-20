@@ -4,12 +4,12 @@
 > Emirates** population: ethnicity-aware reference frames and screening (decision **D18** — *context
 > & screening, never penalty*), regionally prevalent disease/medication priorities, heritable-condition
 > screening, near-universal vitamin-D deficiency, and **Ramadan-fasting** safety. It binds bands/rules
-> to the evidence registry (Doc 14; D19) and feeds the action catalogue (Doc 16).
+> to the evidence registry (Doc 15; D19) and feeds the action catalogue (Doc 12).
 >
 > Decisions: **D18** (ethnicity), **D15** (hormonal-milieu sex model), **D19** (evidence/provenance),
 > **D21** (UAE-localization scope & Ramadan handling). **All cut-points are illustrative, guideline-
 > anchored, re-verify on cadence; every red/critical still escalates to a human; no autonomous
-> diagnosis (Doc 00/11).** Acute-danger anchors are never relaxed.
+> diagnosis (Doc 01/16).** Acute-danger anchors are never relaxed.
 
 ---
 
@@ -34,7 +34,7 @@ the score's penalty; absence lowers **Confidence**, never the score (D7).
 | **eGFR** | **race-free CKD-EPI 2021** — no race coefficient, ever | `EVD-REN-EGFR-RACEFREE-002` |
 | **Absent ethnicity** | standard cut-points + **lower Confidence**, no penalty | D7/D18 |
 
-**Hard rule (Doc 10/11):** ethnicity, nationality, or migration status may **never** worsen a score,
+**Hard rule (Doc 19/16):** ethnicity, nationality, or migration status may **never** worsen a score,
 price, or access. The engine has *no* ethnicity term in any risk multiplier; it only selects which
 *validated, biology-based* reference applies and what to *screen*.
 
@@ -67,26 +67,26 @@ When `ramadan = fasting`, the engine applies **IDF-DAR** practical guidance (`EV
   not a nudge.
 - Nudge tone and timing adapt (no daytime caloric/exercise nudges that conflict with the fast).
 
-## 6. Prevalent diseases & medications (priority map → Doc 16)
+## 6. Prevalent diseases & medications (priority map → Doc 12)
 | Priority | Conditions | Prevalent medications |
 |---|---|---|
 | Very high | T2D / prediabetes, obesity/metabolic syndrome, dyslipidemia/ASCVD, vitamin-D deficiency | metformin, **SGLT2i, GLP-1 RA**, statins/ezetimibe, ACE-i/ARB |
 | High | hypertension, CKD, NAFLD/MASLD, hemoglobinopathy/anemia | CCB, diuretics, β-blockers, insulin, DPP-4i, iron |
 | Notable | thyroid, gout/hyperuricemia, OSA, depression/anxiety, asthma/COPD (sandstorm/AQ), osteoporosis | levothyroxine, urate-lowering, SSRIs, inhalers, vitamin-D/Ca, antiplatelets, PPIs |
 
-The full, evidence-tagged action set per condition is **Doc 16**.
+The full, evidence-tagged action set per condition is **Doc 12**.
 
 ## 7. Guideline bodies tracked (registry)
 International (ADA, ACC/AHA, ESC/EAS/ESH, KDIGO, WHO, IDF, Endocrine Society, ATA, AASLD/EASL, NICE,
 USPSTF, ACSM, EWGSOP2, WPATH, STRAW+10, ACOG, IADPSG) **and UAE/regional**: **MoHAP, DHA,
 DoH-Abu-Dhabi, Emirates Cardiac Society, Emirates Diabetes & Endocrine Society, IDF-DAR**, and the
-UAE **premarital genetic-screening program**. The external crawler (Doc 14 §6) keeps these current
+UAE **premarital genetic-screening program**. The external crawler (Doc 15 §6) keeps these current
 under the human-in-loop gate (D20).
 
 ## 8. Equity & data protection
 - Ethnicity, nationality, genetic-carrier, and pregnancy data are **sensitive**: strictest access
-  controls, **excluded from the actuarial/payer layer** (Doc 10), never used to worsen access/pricing
-  (README §5.5; Doc 11). Data-minimization — collected only when it improves care.
+  controls, **excluded from the actuarial/payer layer** (Doc 19), never used to worsen access/pricing
+  (README §5.5; Doc 16). Data-minimization — collected only when it improves care.
 - Under-represented groups lower **Confidence/representativeness** (D7) and **suppress unreliable
   cohort percentiles** — they never fabricate certainty or penalty.
 
@@ -99,4 +99,4 @@ under the human-in-loop gate (D20).
 - Personas: `southasian` (WHO Asian cut-points flag cardiometabolic risk a normal-range BMI misses) and
   `ramadan_dm` (Gulf-Arab T2D fasting → med-timing/hypoglycemia safety).
 - The production system applies the full §3/§6 sets across the Doc 02 catalogue; numbers are
-  illustrative pending clinical sign-off + Doc 13 validation (the Babylon lesson, Doc 00).
+  illustrative pending clinical sign-off + Doc 14 validation (the Babylon lesson, Doc 01).

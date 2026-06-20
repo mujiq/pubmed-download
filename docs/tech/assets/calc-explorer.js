@@ -13,10 +13,10 @@
   function js(o){ return JSON.stringify(o,null,1); }
   function zoneColor(z){ return z==="red"?"#f0606e":z==="yellow"?"#edc14a":z==="green"?"#3ad6a0":"#5b7790"; }
   function pct(x){ return Math.round(x*100)+"%"; }
-  var DOCFILE={ "00":"00-vision-principles-and-lessons.html","01":"01-data-model-and-reference-ranges.html",
+  var DOCFILE={ "01":"01-vision-principles-and-lessons.html","06":"06-data-model-and-reference-ranges.html",
     "02":"02-pillars-and-marker-catalog.html","03":"03-scoring-formula.html","04":"04-moniac-reservoir-dynamics.html",
-    "05":"05-sex-specific-models.html","06":"06-acute-events-and-life-stage-plans.html","08":"08-clinical-scores-integration.html",
-    "10":"10-actuarial-pricing-and-insurance.html","12":"12-critical-review-and-purescore-2.0.html","18":"18-data-streams-and-experience.html" };
+    "08":"08-sex-specific-models.html","09":"09-acute-events-and-life-stage-plans.html","10":"10-clinical-scores-integration.html",
+    "19":"19-actuarial-pricing-and-insurance.html","05":"05-critical-review-and-purescore-2.0.html","07":"07-data-streams-and-experience.html" };
   function docHref(d){ return DOCFILE[d]||d; }
   function docLabel(d){ return /\.html$/.test(d)?d.replace(".html",""):("Doc "+d); }
   var NOW = (function(){ try { return Date.now(); } catch(e){ return 0; } })();

@@ -13,7 +13,7 @@
 >
 > **Honesty:** the registry is *seeded* from authoritative bodies; URLs/DOIs and currency are
 > maintained by the crawler (§6). No band here is evidence until clinically signed off and validated
-> (Doc 13). Nothing relaxes the hard non-negotiables (README §5).
+> (Doc 14). Nothing relaxes the hard non-negotiables (README §5).
 
 ---
 
@@ -38,7 +38,7 @@ cranked with glow-plugs/starter and then runs on its own combustion.
 |---|---|---|---|
 | **Crank** | glow-plug + starter | **Clinical guideline anchor** (registry band) | cold start: no/О little patient data |
 | **Warm-up** | idling on starter assist | **Real-world cohort range** (NHANES/UK-Biobank-class + local cohort percentile) | some cohort data; sparse personal data |
-| **Running** | self-sustaining combustion | **Personal baseline** (z-score vs the patient's own history) | personal series established (Doc 12 §5) |
+| **Running** | self-sustaining combustion | **Personal baseline** (z-score vs the patient's own history) | personal series established (Doc 05 §5) |
 
 The **effective optimum/center** used for interpretation and anomaly detection is a weighted blend:
 
@@ -58,7 +58,7 @@ with weights that **shift over time by data accrual** (empirical-Bayes, D6/D9):
 **Safety invariants (why the anchor never fully leaves):**
 - The **clinical anchor floors the safety side**: a personal baseline can *tighten* a band but may
   **not move a critical/acute-danger anchor** (K⁺, SpO₂, glucose extremes) — those stay absolute
-  regardless of `θ` (Doc 03 §4, Doc 12 §3.4). The crank is always available.
+  regardless of `θ` (Doc 03 §4, Doc 05 §3.4). The crank is always available.
 - `θ_pers` is gated by **personal-baseline quality** (volatility, coverage); a noisy baseline keeps
   more weight on the cohort/anchor (prevents over-fitting to noise).
 - Low **representativeness** (D7) suppresses `θ_coh` (`φ→0`) — don't warm up on an ill-fitting cohort;
@@ -85,7 +85,7 @@ Every interpreted quantity carries provenance so the card and the auditor see th
 }
 ```
 
-The companion-vector **Confidence** (Doc 12 §4) is partly a read-out of `θ` quality and evidence grade;
+The companion-vector **Confidence** (Doc 05 §4) is partly a read-out of `θ` quality and evidence grade;
 **Representativeness** gates `θ_coh`; **Volatility** gates `θ_pers`.
 
 ## 4. Evidence registry schema (`assets/evidence-registry.json`)
@@ -109,9 +109,9 @@ The companion-vector **Confidence** (Doc 12 §4) is partly a read-out of `θ` qu
 ID convention is append-only: a superseded guideline is **kept** (audit trail) and linked, never deleted.
 
 ## 5. How the engine references evidence
-- Each **marker band** (Doc 02), **critical rule** (Doc 03 §4), **sex/stage modifier** (Doc 05),
-  **risk-equation choice** (Doc 08), and **action** (Doc 07/16) declares `evidence_ids[]`.
-- A CI check (Doc 13 release gate) **fails the build if any band/rule/action lacks a resolvable
+- Each **marker band** (Doc 02), **critical rule** (Doc 03 §4), **sex/stage modifier** (Doc 08),
+  **risk-equation choice** (Doc 10), and **action** (Doc 11/12) declares `evidence_ids[]`.
+- A CI check (Doc 14 release gate) **fails the build if any band/rule/action lacks a resolvable
   evidence ID**, or references an `id` whose `review_status` is `change-proposed` without sign-off.
 - The calculator demonstrates this: representative markers/actions carry `evd` arrays surfaced in the
   pillar breakdown and the provenance readout.
@@ -123,8 +123,8 @@ The crawler keeps the registry **current**; it never silently changes the engine
  (1) MONITOR   each registry source (body guideline index, DOI, URL) on a cadence (default 30 d).
  (2) DETECT    new edition / changed threshold / dead URL / superseding statement / retraction.
  (3) STAGE     write a change-proposal: evidence diff, old→new value, affected applies_to[], severity.
- (4) GATE      a clinician/governance reviewer MUST approve (Doc 11). review_status: change-proposed→approved.
- (5) APPLY     approval = model-version bump → re-run Doc 13 validation + fairness → ship via shadow→prod.
+ (4) GATE      a clinician/governance reviewer MUST approve (Doc 16). review_status: change-proposed→approved.
+ (5) APPLY     approval = model-version bump → re-run Doc 14 validation + fairness → ship via shadow→prod.
  (6) REFRESH   last_verified updates automatically every cycle; VALUES never auto-change (safety).
 ```
 
@@ -147,4 +147,4 @@ screening** program. (Seed set in `assets/evidence-registry.json`; the crawler e
 - Calculator — representative markers and nudges carry `evd` IDs; the pillar breakdown shows the
   governing citation and the **ignition stage** (crank/warm-up/running) for the selected pillar.
 - CI evidence-completeness check and the live crawler are **specified, not yet built** (design, not
-  evidence — Doc 00).
+  evidence — Doc 01).
