@@ -1347,7 +1347,7 @@ a.ce-chip:hover{border-color:#2ee6c9;color:#fff}
 <script src="assets/calc-data.js"></script>
 <script src="assets/engine.js"></script>
 <script src="assets/calc-explorer.js"></script>"""
-    return "PureScore uber-map", body
+    return "Calculation Explorer", body
 
 # =================================================================== APPENDIX F — lifestyles & personas
 def build_lifestyles():
@@ -1848,7 +1848,7 @@ def build_coverage_audit():
              'carries a <b>typed source channel</b> — <code>marker_channel()</code> resolves each to one of '
              '{biomarker-lab · wearable-clinical · wearable-consumer · wearable-inferential · self-report · derived}, '
              'shown as the <b>Channel</b> column in <a class="xref" href="appendix-biomarkers.html">Appendix A</a> '
-             '(filterable on the <a class="xref" href="grid-biomarkers.html">grid</a>). The fusion rules below are '
+             '(filterable on the <a class="xref" href="appendix-biomarkers.html#spreadsheet">grid</a>). The fusion rules below are '
              'therefore <b>programmatically enforceable</b>, not just illustrative.</div>'
              % source_typed)
     # master scenario rule table
@@ -2510,8 +2510,8 @@ def build_behemoth():
     if warns:
         try: print("  [behemoth] drift vs baseline: " + "; ".join(warns))
         except Exception: pass
-    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Diagrams & system maps &rsaquo; Behemoth class diagram</div>',
-         '<h1>Behemoth Class Diagram</h1>',
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; System &amp; build &rsaquo; Class diagram (domain model)</div>',
+         '<h1>Class diagram — domain model</h1>',
          '<p class="lead">A single uber class diagram mapping <b>every concept across <code>docs/</code></b> &mdash; '
          'scoring (<a class="xref" href="03-scoring-formula.html">Doc 03</a>), reservoirs '
          '(<a class="xref" href="04-moniac-reservoir-dynamics.html">Doc 04</a>), the 2.0 companion vector '
@@ -2559,7 +2559,7 @@ def build_behemoth():
     colors = "{" + ",".join('"%s":"%s"' % (k, f) for k, _l, f, _s in _BM_AREAS) + "}"
     h.append('<script>window.BM_AREA_COLORS=%s;</script>' % colors)
     h.append(_BM_JS)
-    return "Behemoth Class Diagram", "".join(h)
+    return "Class diagram (domain model)", "".join(h)
 
 
 # =================================================================== ENGINEERING DOSSIER (per-class explorer + 5 index pages)
@@ -3049,7 +3049,7 @@ def build_onboarding():
              'privacy &amp; data-use consent step; device-pairing and EHR-connect gate the streams they unlock (Doc 11 · Doc 18 · D22). '
              'The actuarial layer is firewalled and off by default (Doc 10).</div>')
     # steps
-    h.append('<h2 id="steps">First-run steps <span class="small muted">· <a class="xref" href="grid-onboarding.html">spreadsheet ↗</a></span></h2>')
+    h.append('<h2 id="steps">First-run steps <span class="small muted">· <a class="xref" href="appendix-onboarding.html#spreadsheet">spreadsheet ↗</a></span></h2>')
     h.append('<div class="tablewrap"><table><thead><tr><th>#</th><th>Phase</th><th>Screen</th><th>Captures</th>'
              '<th>Gating</th><th>Why</th></tr></thead><tbody>')
     for s in d["steps"]:
@@ -3340,7 +3340,7 @@ def build_wearable_corroboration():
     h.append('<div class="callout note"><div class="ct">Tolerance</div>%s</div>' % _esc(m["tolerance_semantics"]))
     h.append('<div class="callout note"><div class="ct">Normalized</div>%s</div>' % _esc(m["normalizes"]))
     h.append('<p class="small muted">%d canonical metrics resolve all 23 of the bank\'s <code>wearable.*</code> '
-             'corroboration refs · <a class="xref" href="grid-wearable-corroboration.html">spreadsheet ↗</a></p>' % len(reg["metrics"]))
+             'corroboration refs · <a class="xref" href="appendix-wearable-corroboration.html#spreadsheet">spreadsheet ↗</a></p>' % len(reg["metrics"]))
     h.append('<div class="tablewrap"><table><thead><tr><th>Metric</th><th>Canonical (Appx B)</th><th>Channel</th>'
              '<th>Tolerance</th><th>Questions</th><th>Perceived ↔ actual</th><th>Aliases (normalized)</th></tr></thead><tbody>')
     for mt in sorted(reg["metrics"], key=lambda x: -counts.get(x["id"], 0)):

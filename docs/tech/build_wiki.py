@@ -148,57 +148,49 @@ def md_to_html(md):
 # inputs → personalize → act → trust & govern → see the system → build → reference/tools.
 # Each chapter has a one-line blurb (NAV_BLURB). Doc number badges float; identity preserved.
 NAV = [
- ("Start here", [("index.html", "Home"), ("purescore-uber-map.html", "How it all connects"),
+ ("Start here", [("index.html", "Home"), ("purescore-uber-map.html", "Calculation Explorer"),
                  (DOCMAP["00"], SHORT["00"], "00"), ("conventions.html", "Conventions & glossary"),
                  ("decisions.html", "Decision log")]),
  ("1 · How scoring works", [("purescore-overview.html", "Overview"),
                  (DOCMAP["02"], SHORT["02"], "02"), (DOCMAP["03"], SHORT["03"], "03"),
                  (DOCMAP["04"], SHORT["04"], "04"), (DOCMAP["12"], SHORT["12"], "12")]),
- ("2 · The inputs (what feeds it)", [(DOCMAP["01"], SHORT["01"], "01"), (DOCMAP["18"], SHORT["18"], "18"),
-                 ("appendix-biomarkers.html", "A · Markers (all channels)"), ("appendix-wearables.html", "B · Wearables"),
-                 ("purescore-wearable-baselines.html", "Baselines (Wearables)"),
-                 ("questions-hub.html", "Intake — overview"), ("appendix-onboarding.html", "K · Onboarding & first-run"),
-                 ("appendix-questions.html", "C · Screeners & PROs"), ("appendix-question-bank.html", "E · Question bank"),
-                 ("appendix-lifestyles.html", "F · Lifestyles"), ("appendix-wearable-corroboration.html", "L · Wearable corroboration"),
-                 ("eligibility-gating.html", "Eligibility & gating")]),
+ ("2 · Inputs & intake", [(DOCMAP["01"], SHORT["01"], "01"), (DOCMAP["18"], SHORT["18"], "18"),
+                 ("appendix-biomarkers.html", "Markers (all channels)"), ("appendix-wearables.html", "Wearables"),
+                 ("purescore-wearable-baselines.html", "Wearable baselines"),
+                 ("questions-hub.html", "Intake — overview"), ("appendix-onboarding.html", "Onboarding & first-run"),
+                 ("appendix-questions.html", "Screeners & PROs"), ("appendix-question-bank.html", "Question bank"),
+                 ("appendix-lifestyles.html", "Lifestyles"), ("appendix-wearable-corroboration.html", "Wearable corroboration"),
+                 ("eligibility-gating.html", "Eligibility & gating"), ("appendix-coverage-audit.html", "Coverage audit")]),
  ("3 · Making it personal", [(DOCMAP["05"], SHORT["05"], "05"), (DOCMAP["06"], SHORT["06"], "06"),
-                 (DOCMAP["08"], SHORT["08"], "08"), ("appendix-personas.html", "D · Personas"),
-                 ("appendix-persona-matrix.html", "I · Persona matrix"),
+                 (DOCMAP["08"], SHORT["08"], "08"), ("appendix-personas.html", "Personas"),
+                 ("appendix-persona-matrix.html", "Persona matrix"),
                  ("purescore-male.html", "PureScore — Male"), ("purescore-female.html", "PureScore — Female")]),
  ("4 · Acting on it", [(DOCMAP["07"], SHORT["07"], "07"), (DOCMAP["16"], SHORT["16"], "16"),
-                 ("appendix-adherence.html", "H · Adherence"), ("appendix-goals.html", "J · Goals"),
+                 ("appendix-adherence.html", "Adherence"), ("appendix-goals.html", "Goals"),
                  ("feedback-loop.html", "Feedback-loop demo")]),
  ("5 · Trust & govern", [(DOCMAP["09"], SHORT["09"], "09"), (DOCMAP["13"], SHORT["13"], "13"),
                  (DOCMAP["14"], SHORT["14"], "14"), (DOCMAP["11"], SHORT["11"], "11"),
                  (DOCMAP["17"], SHORT["17"], "17"), (DOCMAP["15"], SHORT["15"], "15"),
-                 (DOCMAP["10"], SHORT["10"], "10"), ("appendix-coverage-audit.html", "G · Coverage audit")]),
- ("6 · See the system (maps)", [("purescore-dataflow.html", "PureScore calculation DFD"),
-                 ("states.html", "Patient life-state machine"), ("engagement-state-machines.html", "Engagement state machines"),
-                 ("behemoth-class-diagram.html", "Behemoth class diagram"), ("wearable-baselines.html", "Wearable baselines (mobile)")]),
- ("7 · Build it (engineering)", [("class-explorer.html", "Class explorer"), ("dossier-erd.html", "Data model (ERD)"),
-                 ("dossier-c4.html", "C4 architecture"), ("dossier-api.html", "API contracts"),
-                 ("dossier-sequences.html", "Sequences"), ("dossier-stories.html", "User stories")]),
- ("8 · Reference — data tables", [("grid-questions.html", "Question bank"), ("grid-biomarkers.html", "Biomarkers"),
-                 ("grid-wearables.html", "Wearables"), ("grid-personas.html", "Personas"),
-                 ("grid-lifestyles.html", "Lifestyles"), ("grid-adherence.html", "Adherence"),
-                 ("grid-goals.html", "Goals"), ("grid-persona-matrix.html", "Persona matrix"),
-                 ("grid-onboarding.html", "Onboarding"), ("grid-wearable-corroboration.html", "Wearable corroboration"),
-                 ("grid-erd.html", "Data model (ERD)")]),
- ("9 · Doctor's board (admin)", [("admin-index.html", "Dashboard"), ("admin-lab-ranges.html", "Lab ranges"),
+                 (DOCMAP["10"], SHORT["10"], "10")]),
+ ("6 · System & build", [("states.html", "Patient life-state machine"),
+                 ("engagement-state-machines.html", "Engagement state machines"),
+                 ("behemoth-class-diagram.html", "Class diagram (domain model)"), ("class-explorer.html", "Class explorer"),
+                 ("dossier-erd.html", "Data model (ERD)"), ("dossier-c4.html", "C4 architecture"),
+                 ("dossier-api.html", "API contracts"), ("dossier-sequences.html", "Sequences"),
+                 ("dossier-stories.html", "User stories")]),
+ ("7 · Admin (clinician config)", [("admin-index.html", "Dashboard"), ("admin-lab-ranges.html", "Lab ranges"),
                  ("admin-weights.html", "Weights & constants"), ("admin-lifestyle.html", "Lifestyle / PRO"),
                  ("admin-personas.html", "Personas & frames"), ("admin-governance.html", "Governance & sign-off")]),
 ]
 NAV_BLURB = {
  "Start here": "Orient yourself — what PureScore is and how the pieces connect.",
  "1 · How scoring works": "The core engine: pillars → markers → score, reservoirs, and PureScore 2.0.",
- "2 · The inputs (what feeds it)": "Where the data comes from: labs, wearables, and the question intake.",
+ "2 · Inputs & intake": "Where the data comes from: labs, wearables, the question intake, and coverage.",
  "3 · Making it personal": "Context that reshapes the score: sex, life-stage, conditions, personas.",
  "4 · Acting on it": "Turning the score into nudges, actions, adherence and goals.",
- "5 · Trust & govern": "Validation, safety, evidence, fairness, localization and the audit.",
- "6 · See the system (maps)": "Diagrams that show the whole machine end-to-end.",
- "7 · Build it (engineering)": "The production object model: classes, ERD, C4, API, stories.",
- "8 · Reference — data tables": "Sortable/filterable spreadsheets of every catalogue.",
- "9 · Doctor's board (admin)": "The clinician configuration & sign-off surfaces.",
+ "5 · Trust & govern": "Validation, safety, evidence, fairness, localization and actuarial.",
+ "6 · System & build": "The whole machine end-to-end: state machines, the object model, ERD, C4, API, stories.",
+ "7 · Admin (clinician config)": "The clinician configuration & sign-off surfaces.",
 }
 
 # prev/next follows the sidebar reading order exactly (derived from NAV)
@@ -210,25 +202,24 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "appendix-coverage-audit.html":"Appendix G · Coverage audit","appendix-adherence.html":"Appendix H · Adherence",
           "appendix-persona-matrix.html":"Appendix I · Persona matrix","appendix-goals.html":"Appendix J · Goals",
           "questions-hub.html":"Questions & intake","eligibility-gating.html":"Eligibility & gating",
-          "appendix-onboarding.html":"Appendix K · Onboarding & first-run","grid-onboarding.html":"Onboarding grid",
-          "appendix-wearable-corroboration.html":"Appendix L · Wearable corroboration","grid-wearable-corroboration.html":"Wearable-corroboration grid",
+          "appendix-onboarding.html":"Appendix K · Onboarding & first-run","appendix-onboarding.html#spreadsheet":"Onboarding grid",
+          "appendix-wearable-corroboration.html":"Appendix L · Wearable corroboration","appendix-wearable-corroboration.html#spreadsheet":"Wearable-corroboration grid",
           "admin-index.html":"Admin · Dashboard","admin-lab-ranges.html":"Admin · Lab ranges",
           "admin-weights.html":"Admin · Weights","admin-lifestyle.html":"Admin · Lifestyle",
           "admin-personas.html":"Admin · Personas","admin-governance.html":"Admin · Governance",
           "feedback-loop.html":"Live feedback-loop demo","states.html":"Patient life-state machine",
-          "behemoth-class-diagram.html":"Behemoth Class Diagram",
+          "behemoth-class-diagram.html":"Class diagram (domain model)",
           "engagement-state-machines.html":"Engagement state machines",
-          "purescore-dataflow.html":"PureScore calculation — data flow",
-          "purescore-uber-map.html":"PureScore uber-map",
+          "purescore-uber-map.html":"Calculation Explorer",
           "wearable-baselines.html":"Wearable Baselines",
           "purescore-overview.html":"PureScore · Overview","purescore-wearable-baselines.html":"Baselines (Wearables)",
           "purescore-male.html":"PureScore — Male","purescore-female.html":"PureScore — Female",
           "class-explorer.html":"Class Explorer","dossier-sequences.html":"Sequences",
           "dossier-erd.html":"Data model (ERD)","dossier-c4.html":"C4 architecture",
           "dossier-api.html":"API contracts","dossier-stories.html":"User stories",
-          "grid-biomarkers.html":"Biomarkers grid","grid-wearables.html":"Wearables grid","grid-personas.html":"Personas grid",
-          "grid-lifestyles.html":"Lifestyles grid","grid-adherence.html":"Adherence grid","grid-goals.html":"Goals grid",
-          "grid-persona-matrix.html":"Persona-matrix grid","grid-questions.html":"Question-bank grid","grid-erd.html":"Data-model grid"}
+          "appendix-biomarkers.html#spreadsheet":"Biomarkers grid","appendix-wearables.html#spreadsheet":"Wearables grid","appendix-personas.html#spreadsheet":"Personas grid",
+          "appendix-lifestyles.html#spreadsheet":"Lifestyles grid","appendix-adherence.html#spreadsheet":"Adherence grid","appendix-goals.html#spreadsheet":"Goals grid",
+          "appendix-persona-matrix.html#spreadsheet":"Persona-matrix grid","appendix-question-bank.html#spreadsheet":"Question-bank grid","dossier-erd.html#spreadsheet":"Data-model grid"}
 for n in DOCMAP: PTITLE[DOCMAP[n]] = "Doc %s · %s" % (n, SHORT[n])
 
 def sidebar(active):
@@ -419,7 +410,7 @@ def render_index():
              'filtered by sex, age, condition and persona.</p></a>'
              '<a class="card" href="purescore-uber-map.html"><h3>PureScore uber-map</h3>'
              '<p>Interactive full-lifecycle map — pan/zoom, click a box for its calc, 10 sample profiles with step-through animation.</p></a>'
-             '<a class="card" href="purescore-dataflow.html"><h3>PureScore calculation — data flow</h3>'
+             '<a class="card" href="purescore-uber-map.html"><h3>PureScore calculation — data flow</h3>'
              '<p>Leveled data-flow diagram of the full marker→pillar→score pipeline with every decision gate and rule.</p></a>'
              '<a class="card" href="engagement-state-machines.html"><h3>Engagement state machines</h3>'
              '<p>Technical lifecycle states for nudges, check-ins, self-reports and adherence checks — Mermaid state diagrams with transition tables and data fields.</p></a></div>'
@@ -433,12 +424,12 @@ def render_index():
              '<p class="lead" style="margin:-4px 0 10px">Flat, sortable &amp; per-column-filterable grids of the catalog data '
              '— biomarkers, wearables, personas, lifestyles, adherence, goals, persona-matrix, the %d-item question bank and the data model.</p>'
              '<div class="grid c3">') % NQ)
-    for href, t, d in [("grid-questions.html","Question bank grid","%d questions · sort/filter every column" % NQ),
-                       ("grid-biomarkers.html","Biomarkers grid","Every marker · pillar, bands, weight, source"),
-                       ("grid-goals.html","Goals grid","Goals by applicability · persona, target, modifiability"),
-                       ("grid-adherence.html","Adherence grid","Check-ins · family, reservoir, responses"),
-                       ("grid-persona-matrix.html","Persona-matrix grid","Signal×persona weights (long form)"),
-                       ("grid-erd.html","Data-model grid","Every entity column across the ERD")]:
+    for href, t, d in [("appendix-question-bank.html#spreadsheet","Question bank grid","%d questions · sort/filter every column" % NQ),
+                       ("appendix-biomarkers.html#spreadsheet","Biomarkers grid","Every marker · pillar, bands, weight, source"),
+                       ("appendix-goals.html#spreadsheet","Goals grid","Goals by applicability · persona, target, modifiability"),
+                       ("appendix-adherence.html#spreadsheet","Adherence grid","Check-ins · family, reservoir, responses"),
+                       ("appendix-persona-matrix.html#spreadsheet","Persona-matrix grid","Signal×persona weights (long form)"),
+                       ("dossier-erd.html#spreadsheet","Data-model grid","Every entity column across the ERD")]:
         b.append('<a class="card" href="%s"><h3>%s</h3><p>%s</p></a>' % (href, t, d))
     b.append('</div>')
     page("index.html", "Home", "".join(b))
@@ -451,6 +442,13 @@ def main():
     render_simple("README.md", "conventions.html", "Conventions & glossary", "Conventions & glossary")
     render_simple("decisions.md", "decisions.html", "Decision log", "Decision log")
     # builders resolved by name at call time so a not-yet-present builder (multi-agent edits) is skipped, not fatal
+    # IA cleanup: each dataset's companion grid is folded into its appendix as a "Spreadsheet view" (no standalone grid pages)
+    MERGE_GRID = {"appendix-biomarkers.html": "build_grid_biomarkers", "appendix-wearables.html": "build_grid_wearables",
+                  "appendix-personas.html": "build_grid_personas", "appendix-lifestyles.html": "build_grid_lifestyles",
+                  "appendix-adherence.html": "build_grid_adherence", "appendix-goals.html": "build_grid_goals",
+                  "appendix-persona-matrix.html": "build_grid_persona_matrix", "appendix-question-bank.html": "build_grid_questions",
+                  "appendix-onboarding.html": "build_grid_onboarding", "appendix-wearable-corroboration.html": "build_grid_wearable_corroboration",
+                  "dossier-erd.html": "build_grid_erd"}
     for fn, bname in [("appendix-biomarkers.html", "build_biomarkers"), ("appendix-wearables.html", "build_wearables"),
                       ("appendix-questions.html", "build_questions"), ("appendix-personas.html", "build_personas"),
                       ("appendix-question-bank.html", "build_question_bank"), ("appendix-lifestyles.html", "build_lifestyles"),
@@ -458,27 +456,28 @@ def main():
                       ("appendix-adherence.html", "build_adherence"), ("appendix-persona-matrix.html", "build_persona_matrix"),
                       ("appendix-goals.html", "build_goals"),
                       ("questions-hub.html", "build_questions_hub"), ("eligibility-gating.html", "build_eligibility"),
-                      ("appendix-onboarding.html", "build_onboarding"), ("grid-onboarding.html", "build_grid_onboarding"),
+                      ("appendix-onboarding.html", "build_onboarding"),
                       ("appendix-wearable-corroboration.html", "build_wearable_corroboration"),
-                      ("grid-wearable-corroboration.html", "build_grid_wearable_corroboration"),
                       ("behemoth-class-diagram.html", "build_behemoth"),
-                      ("purescore-dataflow.html", "build_purescore_dataflow"),
                       ("purescore-uber-map.html", "build_purescore_uber"),
                       ("purescore-overview.html", "build_purescore_overview"),
                       ("purescore-wearable-baselines.html", "build_wearable_baselines"),
                       ("purescore-male.html", "build_purescore_male"), ("purescore-female.html", "build_purescore_female"),
                       ("class-explorer.html", "build_class_explorer"), ("dossier-sequences.html", "build_sequences"),
                       ("dossier-erd.html", "build_erd"), ("dossier-c4.html", "build_c4"),
-                      ("dossier-api.html", "build_api"), ("dossier-stories.html", "build_stories"),
-                      ("grid-biomarkers.html", "build_grid_biomarkers"), ("grid-wearables.html", "build_grid_wearables"),
-                      ("grid-personas.html", "build_grid_personas"), ("grid-lifestyles.html", "build_grid_lifestyles"),
-                      ("grid-adherence.html", "build_grid_adherence"), ("grid-goals.html", "build_grid_goals"),
-                      ("grid-persona-matrix.html", "build_grid_persona_matrix"), ("grid-questions.html", "build_grid_questions"),
-                      ("grid-erd.html", "build_grid_erd")]:
+                      ("dossier-api.html", "build_api"), ("dossier-stories.html", "build_stories")]:
         build = getattr(C, bname, None)
         if build is None:
             print("  ! skip %s — wiki_content.%s not defined yet" % (fn, bname)); continue
-        tab, body = build(); page(fn, tab, body)
+        tab, body = build()
+        if fn in MERGE_GRID:                       # fold the companion grid in as an in-page "Spreadsheet view"
+            gb = getattr(C, MERGE_GRID[fn], None)
+            if gb is not None:
+                _, gbody = gb(); gi = gbody.find('<div class="dgwrap">')
+                if gi >= 0:
+                    body += ('<h2 id="spreadsheet" style="margin-top:30px">Spreadsheet view</h2>'
+                             '<p class="small muted">The same catalogue, flat &amp; sortable.</p>' + gbody[gi:])
+        page(fn, tab, body)
     for fn, build in A.ADMIN_PAGES:
         tab, body = build(); page(fn, tab, body)
     built = len(ORDER)
@@ -557,22 +556,22 @@ def _consistency_check():
     print("  [consistency] OK — count claims match live data" if not warn else "  [consistency] %d drift(s) above" % warn)
 
 # ----------------------------------------------------------------- "Connects to" footer (auto-derived)
-_DIAGRAMS = {"purescore-uber-map.html", "purescore-dataflow.html", "states.html", "engagement-state-machines.html",
+_DIAGRAMS = {"purescore-uber-map.html", "purescore-uber-map.html", "states.html", "engagement-state-machines.html",
              "behemoth-class-diagram.html", "dossier-erd.html", "dossier-c4.html", "dossier-sequences.html",
              "class-explorer.html", "wearable-baselines.html", "purescore-wearable-baselines.html"}
-_GRID_OF = {"appendix-biomarkers.html": "grid-biomarkers.html", "appendix-wearables.html": "grid-wearables.html",
-            "appendix-personas.html": "grid-personas.html", "appendix-lifestyles.html": "grid-lifestyles.html",
-            "appendix-adherence.html": "grid-adherence.html", "appendix-goals.html": "grid-goals.html",
-            "appendix-persona-matrix.html": "grid-persona-matrix.html", "appendix-question-bank.html": "grid-questions.html",
-            "appendix-onboarding.html": "grid-onboarding.html", "appendix-wearable-corroboration.html": "grid-wearable-corroboration.html",
-            "dossier-erd.html": "grid-erd.html"}
+_GRID_OF = {"appendix-biomarkers.html": "appendix-biomarkers.html#spreadsheet", "appendix-wearables.html": "appendix-wearables.html#spreadsheet",
+            "appendix-personas.html": "appendix-personas.html#spreadsheet", "appendix-lifestyles.html": "appendix-lifestyles.html#spreadsheet",
+            "appendix-adherence.html": "appendix-adherence.html#spreadsheet", "appendix-goals.html": "appendix-goals.html#spreadsheet",
+            "appendix-persona-matrix.html": "appendix-persona-matrix.html#spreadsheet", "appendix-question-bank.html": "appendix-question-bank.html#spreadsheet",
+            "appendix-onboarding.html": "appendix-onboarding.html#spreadsheet", "appendix-wearable-corroboration.html": "appendix-wearable-corroboration.html#spreadsheet",
+            "dossier-erd.html": "dossier-erd.html#spreadsheet"}
 _CONNECTS_EXTRA = {
  "index.html": ["purescore-uber-map.html", "purescore-overview.html", DOCMAP["00"]],
  "purescore-overview.html": [DOCMAP["03"], DOCMAP["02"], "purescore-uber-map.html"],
- DOCMAP["02"]: ["appendix-biomarkers.html", "grid-biomarkers.html", DOCMAP["03"]],
- DOCMAP["03"]: ["purescore-dataflow.html", DOCMAP["04"], "behemoth-class-diagram.html"],
- DOCMAP["04"]: [DOCMAP["03"], "behemoth-class-diagram.html", "purescore-dataflow.html"],
- DOCMAP["12"]: ["states.html", "purescore-dataflow.html", DOCMAP["03"]],
+ DOCMAP["02"]: ["appendix-biomarkers.html", "appendix-biomarkers.html#spreadsheet", DOCMAP["03"]],
+ DOCMAP["03"]: ["purescore-uber-map.html", DOCMAP["04"], "behemoth-class-diagram.html"],
+ DOCMAP["04"]: [DOCMAP["03"], "behemoth-class-diagram.html", "purescore-uber-map.html"],
+ DOCMAP["12"]: ["states.html", "purescore-uber-map.html", DOCMAP["03"]],
  DOCMAP["01"]: ["dossier-erd.html", DOCMAP["18"]],
  DOCMAP["18"]: ["appendix-wearables.html", "appendix-biomarkers.html", "questions-hub.html"],
  DOCMAP["07"]: ["engagement-state-machines.html", "appendix-adherence.html", "appendix-goals.html", DOCMAP["16"]],

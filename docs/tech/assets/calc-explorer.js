@@ -363,7 +363,7 @@
   function rtotal(){ var n=PR.nodes.r_total; return { id:"r_total", label:"R_total (overall risk)", area:"score", formula:n.formula, consts:["delta"], doc:"03", ctx:{},
       val:function(R){ return "R_tot = "+R.Rtot.toFixed(3); }, kids:function(){ return Object.keys(D.pillars).map(pillar); } }; }
   function pillar(pid){ var P=D.pillars[pid], n=PR.nodes.pillar;
-    return { id:"p_"+pid, label:P.label, area:"pillar", formula:n.formula, consts:["rho","r_crit"], doc:P.doc, grid:"grid-biomarkers.html", ctx:{pid:pid},
+    return { id:"p_"+pid, label:P.label, area:"pillar", formula:n.formula, consts:["rho","r_crit"], doc:P.doc, grid:"appendix-biomarkers.html#spreadsheet", ctx:{pid:pid},
       json:js({weight:P.weight,markers:P.markers,critical:P.critical,reservoirs:P.reservoirs}),
       val:function(R){ var d=R.detail[pid]; return "R="+d.R.toFixed(2)+" · "+pct(d.coverage)+(d.crit?" ⚑":"")+(d.lowCoverage?" ⚠":""); },
       kids:function(){ var k=[]; if(P.reservoirs.length) k.push(resContrib(pid)); P.markers.forEach(function(m){ k.push(marker(pid,m)); }); return k; } }; }
@@ -377,7 +377,7 @@
       val:function(R){ return "L = "+R.res.coupled[rid].toFixed(2); },
       kids:function(){ return rr.inputs.map(function(inp){ return leaf(inp[0], pid); }); } }; }
   function marker(pid,m){ var mm=D.markers[m], P=D.pillars[pid], isC=P.critical.indexOf(m)>=0;
-    return { id:"m_"+pid+"_"+m, label:mm.label+(isC?" ⚑":""), area:"marker", ctx:{pid:pid,mid:m}, ismarker:true, doc:mm.doc, grid:"grid-biomarkers.html",
+    return { id:"m_"+pid+"_"+m, label:mm.label+(isC?" ⚑":""), area:"marker", ctx:{pid:pid,mid:m}, ismarker:true, doc:mm.doc, grid:"appendix-biomarkers.html#spreadsheet",
       formula:"r off band th=["+mm.th[0]+", "+mm.th[1]+", "+mm.th[2]+"] · channel "+mm.source+(mm.imputable?" · imputable":""),
       json:js(mm),
       val:function(R){ var md=R.detail[pid].markers[m]; return md.included?("r="+(md.r!=null?md.r.toFixed(2):"—")+" "+md.zone):"dropped"; },
@@ -398,7 +398,7 @@
   function leaf(m, pid){ var mm=D.markers[m];
     return { id:"leaf_"+pid+"_"+m, label:mm.label+" — raw input", area:"capture", leaf:m, pid:pid, ctx:{pid:pid,mid:m},
       formula:"editable raw input · "+mm.unit+" · default "+mm.default+" · channel "+mm.source+(mm.imputable?" · cohort-fallback":" · drop if missing"),
-      doc:mm.doc, grid:"grid-biomarkers.html", json:js(mm),
+      doc:mm.doc, grid:"appendix-biomarkers.html#spreadsheet", json:js(mm),
       val:function(){ var st=state.st[m]||"present"; var used=(st==="missing")?(mm.imputable?(mm.default+" (cohort)"):"dropped"):markerVal(m); return used+" "+mm.unit+(st!=="present"?(" · "+st):""); } }; }
   function questionnaire(pid,m){ var inst=D.instruments[m];
     return { id:"q_"+pid+"_"+m, label:inst.id+" — "+inst.items.length+" items (answer to score)", area:"capture", doc:"08", ctx:{pid:pid,mid:m}, instm:m,

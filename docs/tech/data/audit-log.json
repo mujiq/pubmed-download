@@ -87,7 +87,7 @@
         {"date": "2026-06-19", "tag": "v2", "status": "open",
          "body": "Surfaced by this revision's source-tagging pass: markers carry a free-text guideline <code>source</code> but no typed <b>channel</b> ({biomarker-lab · wearable-clinical · wearable-consumer · wearable-inferential · self-report · derived}), so the multi-source fusion rules (<a href=\"#fusion\">§ Source fusion</a>) can't be enforced programmatically. <b>Fix:</b> add a <code>channel</code> enum per marker in the data model (Doc 01)."},
         {"date": "2026-06-19", "tag": "v6", "status": "addressed",
-         "body": "<b>Built (D28):</b> every marker now resolves to a <b>typed source channel</b> via <code>marker_channel()</code> in <code>wiki_content.py</code> — one of {biomarker-lab · wearable-clinical · wearable-consumer · wearable-inferential · self-report · derived}. Surfaced as the <b>Channel</b> column in <a href=\"appendix-biomarkers.html\">Appendix A</a> and as a filterable column on the <a href=\"grid-biomarkers.html\">biomarkers grid</a>; the §-fusion rules are now programmatically enforceable. <code>source_typed &gt; 0</code> (80 markers) auto-verifies."}
+         "body": "<b>Built (D28):</b> every marker now resolves to a <b>typed source channel</b> via <code>marker_channel()</code> in <code>wiki_content.py</code> — one of {biomarker-lab · wearable-clinical · wearable-consumer · wearable-inferential · self-report · derived}. Surfaced as the <b>Channel</b> column in <a href=\"appendix-biomarkers.html\">Appendix A</a> and as a filterable column on the <a href=\"appendix-biomarkers.html#spreadsheet\">biomarkers grid</a>; the §-fusion rules are now programmatically enforceable. <code>source_typed &gt; 0</code> (80 markers) auto-verifies."}
       ]
     },
     {
