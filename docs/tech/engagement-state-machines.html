@@ -39,64 +39,184 @@ Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions 
   class NUD,CI,SR,AC machine
   class SAFE safe</pre>
 
-<h2 id="nudge">1 · Nudge lifecycle</h2>
-<p>A <b>nudge</b> is an <em>instance</em> of a catalogue action (<a class="xref" href="12-recommended-actions-catalogue.html">Doc 12</a>) issued to one patient for one planning day. It is born in the candidate pool, survives the safety filter and the diversity / class-cap selection, is delivered and presented, then resolves to an observed completion that opens an adherence check and, at horizon <code>h</code>, a realized-Δ measurement that recalibrates the engine.</p>
-<pre class="mermaid">stateDiagram-v2
+<h2 id="nudge">1 · Nudge engine — states &amp; delivery</h2>
+<p>A <b>nudge</b> is an instance of a catalogue action (<a class="xref" href="12-recommended-actions-catalogue.html">Doc 12</a>) selected by the engine (<a class="xref" href="11-daily-nudge-engine.html">Doc 11</a> §1–§8) and <b>delivered</b> per §9. Use the <b>view</b> tabs for the four facets — the full <b>lifecycle</b>, the engagement-vs-critical <b>firewall &amp; channels</b>, <b>when</b> across a day, and the <b>decision gates</b> — and the <b>focus</b> chips to dim one class. Critical states are red; engagement states amber/green.</p>
+
+<div class="nv" id="nv">
+  <div class="nv-bar">
+    <span class="nv-lab">View</span>
+    <button class="nv-tab on" data-view="life" type="button">Lifecycle</button>
+    <button class="nv-tab" data-view="fire" type="button">Firewall &amp; channels</button>
+    <button class="nv-tab" data-view="when" type="button">When · day</button>
+    <button class="nv-tab" data-view="gate" type="button">Decision gates</button>
+    <span class="nv-grow"></span>
+    <span class="nv-lab">Focus</span>
+    <button class="nv-chip on" data-focus="eng" type="button">engagement</button>
+    <button class="nv-chip on" data-focus="crit" type="button">safety-critical</button>
+  </div>
+
+  <div class="nv-view" data-view="life"><pre class="mermaid">stateDiagram-v2
   direction TB
   [*] --> Candidate : engine emits A_p
-  Candidate --> FilteredOut : safety fail
+  Candidate --> FilteredOut : fails safety (§5)
   Candidate --> Ranked : passes safety
   Ranked --> Suppressed : not top-5 / class-cap
-  Ranked --> Selected : in top-5
-  Selected --> Scheduled : enqueue delivery
-  Scheduled --> DeliveryFailed : push error
-  DeliveryFailed --> Scheduled : retry
-  DeliveryFailed --> Expired : retries exhausted
-  Scheduled --> Delivered : push / in-app sent
-  Delivered --> Presented : impression
-  Presented --> Snoozed : user defers
+  Ranked --> Selected : in top-5 (digest)
+  Selected --> Scheduled : enqueue (send-time = max p-hat)
+  Scheduled --> QuietHeld : engagement in quiet hours
+  QuietHeld --> Scheduled : next window
+  Scheduled --> Attempt : send-time reached
+  Attempt --> Delivered : channel ok
+  Attempt --> Fallback : channel failed / unreachable
+  Fallback --> Attempt : next channel in ladder
+  Fallback --> InboxOnly : engagement, push off
+  Fallback --> Escalated : critical, all channels failed
+  InboxOnly --> Presented : on app open
+  Delivered --> Presented : engagement impression
+  Delivered --> AwaitingAck : safety-critical
+  AwaitingAck --> Acknowledged : patient acks
+  AwaitingAck --> Escalated : no ack in TTL
+  Escalated --> Acknowledged : human reaches patient
+  Presented --> Snoozed : defer
   Snoozed --> Scheduled : re-arm
   Snoozed --> Expired : snooze cap / EOD
-  Presented --> Dismissed : user rejects
   Presented --> Done : completed
   Presented --> Partial : partly done
-  Presented --> Expired : TTL / end-of-day
+  Presented --> Dismissed : rejected
+  Presented --> Expired : TTL / EOD
   Done --> AwaitingMeasurement : open adherence check
   Partial --> AwaitingMeasurement
-  AwaitingMeasurement --> Measured : realized Δ at horizon h
+  AwaitingMeasurement --> Measured : realized delta at horizon h
+  Measured --> Dormant : no opens N days
+  Dormant --> ReEngage : win-back (decreasing)
+  ReEngage --> Scheduled : accepted
+  ReEngage --> StopOutreach : ignored x3
+  Acknowledged --> [*]
   Measured --> [*]
   Dismissed --> [*]
   FilteredOut --> [*]
   Suppressed --> [*]
   Expired --> [*]
+  StopOutreach --> [*]
   classDef good fill:#10241c,stroke:#3ad6a0,color:#bdf5e0;
   classDef bad fill:#1a0f15,stroke:#f0606e,color:#ffd0d6;
   classDef wait fill:#1d1a0c,stroke:#edb14a,color:#ffe6b0;
-  class Done,Partial,Measured good
-  class FilteredOut,Dismissed,Expired,DeliveryFailed bad
-  class Scheduled,Delivered,Presented,Snoozed,AwaitingMeasurement wait</pre>
-<div class="tablewrap"><table><thead><tr><th>From</th><th>Event / trigger</th><th>Guard</th><th>To</th><th>Side-effect</th></tr></thead><tbody>
-<tr><td>Candidate</td><td>daily build</td><td>fails safety / contraindication filter (Doc 11 §5)</td><td>FilteredOut</td><td>log reason; never shown</td></tr>
-<tr><td>Candidate</td><td>daily build</td><td>passes safety</td><td>Ranked</td><td>compute <code>U_a = impact·p̂_a·ease</code></td></tr>
-<tr><td>Ranked</td><td>selection</td><td>outside top-5 or class-cap (≤2/class) hit</td><td>Suppressed</td><td>may carry to tomorrow</td></tr>
-<tr><td>Ranked</td><td>selection</td><td>in greedy top-5 diverse set</td><td>Selected</td><td>attach attributed ΔPureScore</td></tr>
-<tr><td>Selected → Scheduled → Delivered</td><td>delivery</td><td>channel available; else retry to max, then <code>Expired</code></td><td>Delivered</td><td><code>delivered_at</code>; idempotent send key</td></tr>
-<tr><td>Delivered</td><td>render</td><td>card shown</td><td>Presented</td><td><code>presented_at</code> (impression)</td></tr>
-<tr><td>Presented</td><td>user defer</td><td><code>snooze_count &lt; max</code></td><td>Snoozed → Scheduled</td><td><code>snooze_count++</code>; re-arm time</td></tr>
-<tr><td>Presented</td><td>user tap</td><td>—</td><td>Done / Partial / Dismissed</td><td>record <code>completion</code>, update <code>streak</code></td></tr>
-<tr><td>Presented / Snoozed</td><td>clock</td><td>past <code>ttl_expires_at</code> or end-of-day, no action</td><td>Expired</td><td>count as non-adherent signal</td></tr>
-<tr><td>Done / Partial</td><td>completion</td><td>—</td><td>AwaitingMeasurement</td><td><b>open Adherence check (4)</b></td></tr>
-<tr><td>AwaitingMeasurement</td><td>horizon reached</td><td><code>now ≥ issued + h</code></td><td>Measured</td><td>compute realized ΔPureScore; feed recalibration (Doc 13)</td></tr>
+  classDef crit fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;
+  class Done,Partial,Measured,Acknowledged good
+  class FilteredOut,Dismissed,Expired,StopOutreach,Suppressed bad
+  class Scheduled,QuietHeld,Attempt,Delivered,Presented,Snoozed,Fallback,InboxOnly,AwaitingMeasurement,Dormant,ReEngage wait
+  class AwaitingAck,Escalated crit</pre></div>
+
+  <div class="nv-view" data-view="fire"><pre class="mermaid">flowchart TB
+  M["nudge message"] --> CL{"class?"}
+  CL -->|engagement| E0["best-effort: respects quiet hours, caps, opt-out"]:::wait
+  CL -->|safety-critical| C0["guaranteed: bypasses quiet hours, caps, opt-out"]:::crit
+  E0 --> EP["push (if permission granted)"]:::wait
+  EP -->|granted| EDONE["delivered"]:::good
+  EP -->|denied| EINBOX["in-app inbox only"]:::wait
+  C0 --> CF["fan-out ALL reachable at once"]:::crit
+  CF --> CPUSH["push (time-sensitive)"]:::crit
+  CF --> CSMS["SMS"]:::crit
+  CF --> CWA["WhatsApp"]:::crit
+  CF --> CTAKE["in-app takeover"]:::crit
+  CPUSH --> ACK{"acknowledged in TTL?"}
+  CSMS --> ACK
+  CWA --> ACK
+  CTAKE --> ACK
+  ACK -->|yes| CRES["resolved + audited"]:::good
+  ACK -->|no| CESC["human escalation: care-team / on-call / emergency contact"]:::crit
+  classDef good fill:#10241c,stroke:#3ad6a0,color:#bdf5e0;
+  classDef wait fill:#1d1a0c,stroke:#edb14a,color:#ffe6b0;
+  classDef crit fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;</pre></div>
+
+  <div class="nv-view" data-view="when"><pre class="mermaid">flowchart LR
+  Q1["00:00–07:00 · quiet — engagement held"]:::wait --> AW["07:00–18:00 · active window"]:::wait
+  AW --> DG["18:00–21:00 · digest send · time = max p-hat"]:::good
+  DG --> Q2["21:00–24:00 · quiet — held"]:::wait
+  CRIT["SAFETY-CRITICAL · any time · overrides quiet"]:::crit -.->|may fire during| Q1
+  CRIT -.-> AW
+  CRIT -.-> DG
+  CRIT -.-> Q2
+  classDef wait fill:#1d1a0c,stroke:#edb14a,color:#ffe6b0;
+  classDef good fill:#10241c,stroke:#3ad6a0,color:#bdf5e0;
+  classDef crit fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;</pre></div>
+
+  <div class="nv-view" data-view="gate"><pre class="mermaid">flowchart TB
+  S(["message ready"]) --> G1{"class?"}
+  G1 -->|safety-critical| CSEND["bypass gates → fan-out + require ack"]:::crit
+  G1 -->|engagement| G2{"category opt-in?"}
+  G2 -->|no| DROP["do not send · inbox keeps record"]:::bad
+  G2 -->|yes| G3{"within quiet hours?"}
+  G3 -->|yes| DEFER["defer to next window"]:::wait
+  G3 -->|no| G4{"daily cap left?"}
+  G4 -->|no| HOLD["hold / merge into digest"]:::wait
+  G4 -->|yes| G5{"channel reachable?"}
+  G5 -->|push on| SEND["deliver (push)"]:::good
+  G5 -->|push off| INBOX["in-app inbox only"]:::wait
+  classDef good fill:#10241c,stroke:#3ad6a0,color:#bdf5e0;
+  classDef wait fill:#1d1a0c,stroke:#edb14a,color:#ffe6b0;
+  classDef bad fill:#1a0f15,stroke:#f0606e,color:#ffd0d6;
+  classDef crit fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;</pre></div>
+</div>
+
+<style>
+.nv{border:1px solid var(--line,#243042);border-radius:12px;padding:10px;margin:12px 0;background:var(--bg2,#0b1119)}
+.nv-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.nv-lab{font-size:11px;color:var(--dim,#8aa0b6);text-transform:uppercase;letter-spacing:.04em;margin:0 2px}
+.nv-tab,.nv-chip{font:inherit;font-size:12.5px;padding:5px 11px;border-radius:8px;border:1px solid var(--line,#2a3340);background:var(--bg,#0c1320);color:inherit;cursor:pointer}
+.nv-tab.on{background:#2b5a86;border-color:#2b5a86;color:#fff;font-weight:700}
+.nv-chip.on{background:#10241c;border-color:#3ad6a0;color:#bdf5e0}
+.nv-grow{flex:1}
+.nv-view{overflow:auto}
+.nv-view pre.mermaid{background:transparent;text-align:center}
+.nv.dim-crit .crit{opacity:.14}
+.nv.dim-eng .good,.nv.dim-eng .wait,.nv.dim-eng .bad{opacity:.14}
+</style>
+<script>(function(){
+  var nv=document.getElementById("nv"); if(!nv) return;
+  function setView(v){
+    [].forEach.call(nv.querySelectorAll(".nv-view"),function(el){el.style.display=(el.getAttribute("data-view")===v)?"block":"none";});
+    [].forEach.call(nv.querySelectorAll(".nv-tab"),function(b){b.classList.toggle("on",b.getAttribute("data-view")===v);});
+  }
+  [].forEach.call(nv.querySelectorAll(".nv-tab"),function(b){b.addEventListener("click",function(){setView(b.getAttribute("data-view"));});});
+  function focus(){
+    var eng=nv.querySelector('.nv-chip[data-focus="eng"]').classList.contains("on");
+    var crit=nv.querySelector('.nv-chip[data-focus="crit"]').classList.contains("on");
+    if(!eng && !crit){eng=true;crit=true;}
+    nv.classList.toggle("dim-crit", eng && !crit);
+    nv.classList.toggle("dim-eng", crit && !eng);
+  }
+  [].forEach.call(nv.querySelectorAll(".nv-chip"),function(c){c.addEventListener("click",function(){c.classList.toggle("on");focus();});});
+  // mermaid (startOnLoad, module-scoped) renders all blocks on DOMContentLoaded; hide non-active AFTER that
+  window.addEventListener("load",function(){ setTimeout(function(){ setView("life"); focus(); },60); });
+})();</script>
+
+<div class="tablewrap"><table><thead><tr><th>From</th><th>Trigger</th><th>Guard</th><th>To</th></tr></thead><tbody>
+<tr><td>Candidate</td><td>daily build</td><td>passes / fails safety (§5)</td><td>Ranked / FilteredOut</td></tr>
+<tr><td>Ranked</td><td>selection</td><td>in greedy top-5 / class-cap hit</td><td>Selected / Suppressed</td></tr>
+<tr><td>Selected</td><td>enqueue</td><td>send-time = max <code>p̂</code>; coalesced into the daily digest (§9.3)</td><td>Scheduled</td></tr>
+<tr><td>Scheduled</td><td>clock</td><td>engagement &amp; inside quiet hours (§9.4)</td><td>QuietHeld → Scheduled (next window)</td></tr>
+<tr><td>Scheduled</td><td>send-time</td><td>—</td><td>Attempt</td></tr>
+<tr><td>Attempt</td><td>channel send</td><td>ok / fail (§9.2 ladder)</td><td>Delivered / Fallback</td></tr>
+<tr><td>Fallback</td><td>ladder</td><td>next channel · or push-off (eng) · or all-failed (crit)</td><td>Attempt / InboxOnly / Escalated</td></tr>
+<tr><td>Delivered</td><td>class</td><td>engagement vs safety-critical (§9.1)</td><td>Presented / AwaitingAck</td></tr>
+<tr><td>AwaitingAck</td><td>ack clock</td><td>ack received / none within <code>ack_TTL</code></td><td>Acknowledged / Escalated</td></tr>
+<tr><td>Presented</td><td>user / clock</td><td>—</td><td>Done · Partial · Dismissed · Snoozed · Expired</td></tr>
+<tr><td>Done / Partial</td><td>completion</td><td>—</td><td>AwaitingMeasurement → Measured (realized Δ @h)</td></tr>
+<tr><td>Measured</td><td>dormancy</td><td>no opens N days (§9.9)</td><td>Dormant → ReEngage → Scheduled / StopOutreach (ignored ×3)</td></tr>
 </tbody></table></div>
 <pre class="code"><code>Nudge {
   nudge_id, action_id, patient_id, issued_date, horizon_h
+  delivery_class: engagement | safety_critical          // §9.1 firewall
   status: candidate | filtered_out | ranked | suppressed | selected
-        | scheduled | delivered | presented | snoozed
-        | done | partial | dismissed | expired
-        | awaiting_measurement | measured
+        | scheduled | quiet_held | attempt | delivered | fallback | inbox_only
+        | presented | snoozed | done | partial | dismissed | expired
+        | awaiting_ack | acknowledged | escalated
+        | awaiting_measurement | measured | dormant | re_engage | stop_outreach
+  channel: in_app | push | sms | whatsapp | email        // §9.2
+  channels_tried[], delivered_at, presented_at, ack_at, escalated_at
   U_a, p_hat, impact_delta, ease, rank, class_a
-  delivered_at, presented_at, completed_at, snooze_count, ttl_expires_at
-  completion: done|partial|dismissed|snoozed   realized_delta, measured_at
+  snooze_count, ttl_expires_at, completion, realized_delta, measured_at
 }</code></pre>
 
 <h2 id="checkin">2 · Check-in lifecycle</h2>
