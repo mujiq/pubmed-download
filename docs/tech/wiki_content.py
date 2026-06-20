@@ -187,7 +187,7 @@ SUMMARY = {
  "04":"MONIAC reservoir dynamics: stocks, leakage, cross-pillar interference and valves that give PureScore memory.",
  "08":"Sex-specific models: cycle, fertility, pregnancy, post-partum, menopause, andropause, and hormone-therapy-aware ranges.",
  "09":"Acute-event override & revert, and care/nutrition/exercise plans by life stage.",
- "11":"The daily top-5 nudge engine: impact-attributed, ease-weighted, diverse, safe — every action a positive ΔPureScore.",
+ "11":"The daily top-5 nudge engine (impact-attributed, ease-weighted, diverse, safe) plus the delivery engine: channels, send-time, quiet hours, consent, PHI-safe payloads and guaranteed safety-critical escalation.",
  "10":"Validated clinical scores (FINDRISC, ASCVD/SCORE2, KDIGO, FIB-4, FRAX, PhenoAge) integrated for clinicians — feeding max risk, never relaxing it.",
  "13":"Cohort construction, empirical-Bayes shrinkage, calibration, fairness slices and drift monitoring.",
  "19":"The actuarial/pricing layer — gated, firewalled, and heavily flagged for regulatory & fairness risk.",
@@ -250,7 +250,8 @@ MERMAID = {
   CAND --> SAFE["safety / contraindication filter"]
   SAFE --> U["U_a = impact · adherence · ease"]
   U --> TOP["top-5 · diverse · positive Δ"]
-  TOP --> ACT["patient acts"] --> SC"""),
+  TOP --> DELIV["deliver · channel · send-time · quiet hours · consent"]
+  DELIV --> ACT["patient acts"] --> SC"""),
  "10":("Clinical scores feed max", """flowchart LR
   M["markers"] --> CS["FINDRISC · ASCVD/SCORE2<br/>KDIGO · FIB-4 · FRAX"]
   CS --> MX["feed the max risk"]
@@ -383,7 +384,12 @@ def build_biomarkers():
         '<button class="rv-vb" data-view="B">Inline matrix</button>'
         '<button class="rv-vb" data-view="C">Range ruler</button>'
         '<button class="rv-vb" data-view="D">Context selector</button>'
+        '<span class="rv-sep"></span>'
+        '<button class="rv-btn" id="rvExpand">expand all</button>'
+        '<button class="rv-btn" id="rvCollapse">collapse all</button>'
+        '<a class="rv-btn" href="reference-range-resolver.html">slice/dice resolver &rsaquo;</a>'
         '<span class="rv-hint" id="rvHint">&#9651; marks markers whose reference range shifts by sex / age / life-stage / condition / medication — click to explore (each variation carries its own citation).</span></div>'
+        '<div class="rv-pillars" id="rvPillars"></div>'
         '<div class="rv-ctx" id="rvCtx" style="display:none">'
         '<select id="rvSex" class="rv-sel"><option value="">sex…</option><option value="male">Male</option><option value="female">Female</option></select>'
         '<select id="rvAge" class="rv-sel"><option value="">age…</option><option value="young">&lt;40</option><option value="mid">40–64</option><option value="older">65+</option></select>'
@@ -423,6 +429,39 @@ def build_biomarkers():
              '<span class="cite-key"><span class="cite-dot d"></span>document-level</span></p>')
     h.append(_CITE_ASSETS); h.append(_RANGE_ASSETS)
     return "Appendix A · Markers (all channels)", "".join(h)
+
+def build_range_resolver():
+    flow = ('flowchart LR\n'
+            '  B["base range<br/>(appendix)"] --> SX{"sex?"}\n'
+            '  SX --> AG{"age band?"}\n'
+            '  AG --> LS{"life-stage?<br/>(sex/age-gated)"}\n'
+            '  LS --> CO{"condition?<br/>(ICD-10)"}\n'
+            '  CO --> MD{"medication?<br/>(ATC)"}\n'
+            '  MD --> EF["EFFECTIVE range<br/>+ citation"]\n'
+            '  classDef k fill:#0c1726,stroke:#2b5a86,color:#cfe0f5;\n  class B,EF k')
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Reference &rsaquo; Reference-range resolver</div>',
+         '<h1>Reference-range Resolver <span class="small muted">&middot; how a range is sliced &amp; diced by context</span></h1>',
+         '<p class="lead">A base reference range is adjusted by the patient’s <b>sex &middot; age &middot; life-stage &middot; condition &middot; medication</b>. '
+         'This page shows the <b>resolution order</b> and lets you <b>step through</b> any marker + context to see each slice applied — '
+         'with the citation behind every shift — so a developer or clinician can verify the effective range. '
+         'Single source of truth: <code>data/range-variations.json</code>. Illustrative (README &sect;5.6).</p>', ILLUS,
+         '<div class="diagram"><div class="dt">Resolution order &middot; precedence: medication / condition &gt; life-stage &gt; sex / age</div>'
+         '<pre class="mermaid">%s</pre></div>' % flow,
+         '<h2 id="resolver">Step-through resolver</h2>',
+         '<p class="small muted">Pick a marker and a context; incompatible options are auto-disabled (a male cannot be pregnant). Each step shows what changed and its citation.</p>',
+         '<div class="rr-tool">'
+         '<select id="rrMarker" class="rv-sel"></select>'
+         '<select id="rrSex" class="rv-sel"><option value="">sex…</option><option value="male">Male</option><option value="female">Female</option></select>'
+         '<select id="rrAge" class="rv-sel"><option value="">age…</option><option value="young">&lt;40</option><option value="mid">40–64</option><option value="older">65+</option></select>'
+         '<select id="rrLife" class="rv-sel"><option value="">life-stage…</option><option value="pregnancy">Pregnancy</option><option value="postmenopause">Post-menopause</option></select>'
+         '<select id="rrCond" class="rv-sel"></select><select id="rrMed" class="rv-sel"></select>'
+         '<button class="rv-btn" id="rrRun">resolve &rarr;</button></div>'
+         '<div id="rrOut" class="rr-out"></div>',
+         '<div class="callout note"><div class="ct">Referenced everywhere</div>These ranges are the single source rendered on '
+         '<a class="xref" href="appendix-biomarkers.html">Appendix A · Markers</a> (4 views), the sex-specific model, and the '
+         'Doctor’s-board lab-ranges page. Every variation’s citation opens its source in a new tab.</div>',
+         _CITE_ASSETS, _RANGE_ASSETS, '<script src="assets/resolver.js"></script>']
+    return "Reference-range resolver", "".join(h)
 
 def build_wearables():
     h = ['<div class="crumbs"><a href="index.html">Home</a> › Reference › Wearable metrics</div>',
@@ -3356,6 +3395,10 @@ def _build_purescore_sex(sex, label, markers, emphasis, lifestage):
     for q in gated[:40]:
         h.append('<li><span class="mono">%s</span> — %s</li>' % (_esc(q.get("ref", "")), _esc(q.get("text", ""))))
     h.append('</ul>')
+    h.append('<div class="callout note"><div class="ct">Reference ranges by context</div>Sex is one of several axes that shift a '
+             'marker’s range. Step through sex / age / life-stage / condition / medication in the '
+             '<a class="xref" href="reference-range-resolver.html">Reference-range resolver</a>; per-marker variations + citations are on '
+             '<a class="xref" href="appendix-biomarkers.html">Appendix A · Markers</a>.</div>')
     return "PureScore — %s" % label, "".join(h)
 
 def build_purescore_male():
@@ -3412,7 +3455,7 @@ def build_class_model():
 
 def build_production_gaps():
     """Production-readiness gap analysis for the patient-facing mobile app ('Gaps & roadmap' chapter)."""
-    sev = {"missing": '<span class="chip b-red">missing</span>', "partial": '<span class="chip b-yellow">partial</span>'}
+    sev = {"missing": '<span class="chip b-red">missing</span>', "partial": '<span class="chip b-yellow">partial</span>', "addressed": '<span class="chip b-green">addressed</span>'}
     GROUPS = [
      ("Identity &amp; security", [
        ("Auth &amp; identity", "missing", "Consent/privacy policy (Doc 16)",
@@ -3435,8 +3478,8 @@ def build_production_gaps():
         "Loading, no-data, retry, connectivity-loss and stale-data indicators across every screen."),
      ]),
      ("Engagement &amp; care", [
-       ("Notification &amp; nudge delivery", "partial", "Nudge selection U_a (Doc 11)",
-        "Delivery channel, scheduling, quiet hours, deep-links, opt-in, streaks / re-engagement."),
+       ("Notification &amp; nudge delivery", "addressed", "Doc 11 §9 delivery engine: 2 classes (engagement vs safety-critical), channels + fallback ladder, send-time, quiet hours, caps, consent, PHI-safe payloads, deep-links, streaks, measurement, guaranteed critical escalation",
+        "Build + validate: server/outbox, push/SMS/WhatsApp/email, ack/escalation, delivery SLOs (Doc 14)."),
        ("Care-team &amp; crisis UX", "partial", "Escalation tiers + crisis pathway policy (Doc 16)",
         "On-device emergency surfacing (push takeover, &lsquo;call 999/112&rsquo;), clinician messaging, telehealth, scheduling, disclaimers."),
        ("Device / wearable integration UX", "partial", "Trust tiers (D22), streams (Doc 07)",
@@ -3457,17 +3500,18 @@ def build_production_gaps():
     ]
     nmiss = sum(1 for _, items in GROUPS for it in items if it[1] == "missing")
     npart = sum(1 for _, items in GROUPS for it in items if it[1] == "partial")
+    naddr = sum(1 for _, items in GROUPS for it in items if it[1] == "addressed")
     h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Gaps &amp; roadmap &rsaquo; Production readiness</div>',
          '<h1>Production readiness &mdash; gap analysis</h1>',
          '<p class="lead">What a <b>production-grade, patient-facing mobile app</b> still needs beyond this methodology + '
          'backend spec (scope excludes CI/CD &amp; deployment). <span class="chip b-red">missing</span> = no spec yet; '
-         '<span class="chip b-yellow">partial</span> = policy/partial only. Sibling gap surfaces in this chapter: '
+         '<span class="chip b-yellow">partial</span> = policy/partial only; <span class="chip b-green">addressed</span> = now specified. Sibling gap surfaces in this chapter: '
          '<a class="xref" href="17-clinician-red-team-and-blind-spots.html">Clinician red-team &amp; blind-spots</a> and '
          '<a class="xref" href="appendix-coverage-audit.html">Coverage audit</a>.</p>', ILLUS,
          '<div class="callout note"><div class="ct">Two to treat as near-term</div>'
          '<b>Colour-blind-safe status</b> &mdash; green/yellow/red alone fails ~8% of male users; add a redundant icon/label cue. '
          '<b>On-device security + auth</b> &mdash; the largest truly-missing surface for PHI, and it gates app-store / medical review.</div>',
-         '<p class="small muted">%d areas &middot; %d missing &middot; %d partial.</p>' % (nmiss + npart, nmiss, npart)]
+         '<p class="small muted">%d areas &middot; %d missing &middot; %d partial &middot; %d addressed.</p>' % (nmiss + npart + naddr, nmiss, npart, naddr)]
     for gname, items in GROUPS:
         h.append('<h2>%s</h2><div class="tablewrap"><table><thead><tr><th>Area</th><th>Status</th>'
                  '<th>What exists today</th><th>What a patient app needs</th></tr></thead><tbody>' % gname)

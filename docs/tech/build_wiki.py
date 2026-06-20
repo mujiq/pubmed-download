@@ -23,7 +23,7 @@ DOCMAP = {n: html_of(p) for n, p in DOC_NUM.items()}     # for "Doc NN" linkify
 
 SHORT = {
  "01":"Vision & principles","06":"Data model & ranges","02":"Pillars & markers","03":"Scoring formula",
- "04":"Reservoir dynamics","08":"Sex-specific models","09":"Acute events & life-stage","11":"Daily nudge engine",
+ "04":"Reservoir dynamics","08":"Sex-specific models","09":"Acute events & life-stage","11":"Nudge engine & delivery",
  "10":"Clinical scores","13":"Cohorts & validation","19":"Actuarial & insurance","16":"Safety & governance",
  "05":"PureScore 2.0","14":"Validation harness","15":"Evidence registry","18":"UAE localization",
  "12":"Actions catalogue","17":"Clinician red-team","07":"Data streams & experience",
@@ -155,7 +155,8 @@ NAV = [
                  (DOCMAP["02"], SHORT["02"], "02"), (DOCMAP["03"], SHORT["03"], "03"),
                  (DOCMAP["04"], SHORT["04"], "04"), (DOCMAP["05"], SHORT["05"], "05")]),
  ("2 · Inputs & intake", [(DOCMAP["06"], SHORT["06"], "06"), (DOCMAP["07"], SHORT["07"], "07"),
-                 ("appendix-biomarkers.html", "Markers (all channels)"), ("appendix-wearables.html", "Wearables"),
+                 ("appendix-biomarkers.html", "Markers (all channels)"), ("reference-range-resolver.html", "Reference-range resolver"),
+                 ("appendix-wearables.html", "Wearables"),
                  ("purescore-wearable-baselines.html", "Wearable baselines"),
                  ("questions-hub.html", "Intake — overview"), ("appendix-onboarding.html", "Onboarding & first-run"),
                  ("appendix-questions.html", "Screeners & PROs"), ("appendix-question-bank.html", "Question bank"),
@@ -200,7 +201,8 @@ NAV_BLURB = {
 ORDER = [it[0] for grp, items in NAV for it in items]
 PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
           "production-gaps.html":"Production readiness — gaps",
-          "appendix-biomarkers.html":"Appendix A · Markers (all channels)","appendix-wearables.html":"Appendix B · Wearables",
+          "appendix-biomarkers.html":"Appendix A · Markers (all channels)","reference-range-resolver.html":"Reference-range resolver",
+          "appendix-wearables.html":"Appendix B · Wearables",
           "appendix-questions.html":"Appendix C · Screeners & PROs","appendix-personas.html":"Appendix D · Personas",
           "appendix-question-bank.html":"Appendix E · Question bank","appendix-lifestyles.html":"Appendix F · Lifestyles",
           "appendix-coverage-audit.html":"Appendix G · Coverage audit","appendix-adherence.html":"Appendix H · Adherence",
@@ -455,7 +457,7 @@ def main():
                   "appendix-persona-matrix.html": "build_grid_persona_matrix", "appendix-question-bank.html": "build_grid_questions",
                   "appendix-onboarding.html": "build_grid_onboarding", "appendix-wearable-corroboration.html": "build_grid_wearable_corroboration",
                   "dossier-erd.html": "build_grid_erd"}
-    for fn, bname in [("appendix-biomarkers.html", "build_biomarkers"), ("appendix-wearables.html", "build_wearables"),
+    for fn, bname in [("appendix-biomarkers.html", "build_biomarkers"), ("reference-range-resolver.html", "build_range_resolver"), ("appendix-wearables.html", "build_wearables"),
                       ("appendix-questions.html", "build_questions"), ("appendix-personas.html", "build_personas"),
                       ("appendix-question-bank.html", "build_question_bank"), ("appendix-lifestyles.html", "build_lifestyles"),
                       ("appendix-coverage-audit.html", "build_coverage_audit"),

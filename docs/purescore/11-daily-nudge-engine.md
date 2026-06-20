@@ -1,4 +1,4 @@
-# 11 — The Daily Nudge Engine (Top-5 Easiest Actions, Impact-Attributed)
+# 11 — The Daily Nudge Engine & Delivery (Top-5 Easiest Actions, Impact-Attributed)
 
 > Binding conventions: `README.md §3`. This document defines how PureScore converts the
 > explainability object (Doc 03 §7) and the reservoir dynamics (Doc 04) into a **daily action
@@ -10,6 +10,10 @@
 > (Doc 09). It feeds: care plans (Doc 09), validation/recalibration (Doc 13), governance/escalation
 > (Doc 16). It is bound by the anti-Babylon principle (Doc 01 §3.1): **no overpromising, no dark
 > patterns, no triage-to-reassurance.**
+>
+> **§9 (delivery)** specifies how the selected action reaches the patient — channels, send-time,
+> quiet hours, frequency caps, consent and PHI-safe payloads — and how **safety-critical** alerts
+> (Doc 16) are delivered with guaranteed escalation, firewalled from best-effort engagement.
 
 The engine is a four-stage pipeline run on the daily clock `Δ = 1 day`:
 
@@ -459,7 +463,125 @@ honest about horizon and uncertainty, no overpromise.
 
 ---
 
-## 8. Implementation status (interactive calculator) — decision D16
+## 9. Delivery engine — getting the selected nudge to the patient
+
+> §1–§8 decide *which* action to surface and *what* honest number to attach. This section defines
+> *how* it reaches the patient on a real mobile app — channels, timing, consent, privacy — and the
+> firewall between best-effort **engagement** and guaranteed **safety-critical** delivery. It reuses
+> the adherence model (§3.2) and feedback loop (§6) and is bound by the anti-Babylon rules (§4.3).
+
+### 9.1 Two delivery classes (the firewall)
+
+Every outbound message is exactly one class; they never mix.
+
+| Property | ENGAGEMENT | SAFETY-CRITICAL |
+|---|---|---|
+| Source | top-5 nudges (§3), streaks / re-engagement (§9.9), digests | acute-danger red, escalation emergency/urgent (Doc 03 §4.1, Doc 16) |
+| Legal basis | explicit opt-in (marketing-adjacent) | duty-of-care / vital-interest / contract (transactional) |
+| Quiet hours · caps · opt-out | **respected** | **bypassed** |
+| Channels | in-app + push (→ fallback) | **all reachable at once** |
+| Acknowledgement | not required | **required**; no ack within TTL → human escalation |
+| Patient can silence | yes (per-category, §9.6) | **no** (legal duty, not a toggle) |
+
+**Hard rules.** (1) Only a Doc 16 escalation tag mints a critical — the engine may **never** promote an engagement nudge to critical to bypass limits (a dark pattern). (2) A critical can **never** be suppressed by opt-out, quiet hours, or a cap. (3) Crisis *content/pathway* is owned by Doc 16; this section owns only its *delivery mechanics*. (4) **Dependents / household (Doc 07):** a dependent's safety-critical routes to the responsible caregiver/proxy per consent, in addition to the patient.
+
+### 9.2 Channels & the fallback ladder
+
+| Channel | Tier | Used for | Constraints |
+|---|---|---|---|
+| In-app inbox | system-of-record | every message, persisted | no OS permission; seen only on app open |
+| Push (APNs/FCM) | primary engagement | daily digest, time-sensitive criticals | needs OS permission; **best-effort, no delivery guarantee** |
+| SMS | fallback + critical | critical fan-out, push-off patients | telecom; PHI-safe only; STOP handling (§9.6) |
+| WhatsApp (Business API) | fallback + critical | MENA-prevalent reach | pre-approved PHI-safe templates; opt-in |
+| Email | records / digest | weekly digest, receipts, exports | not for time-critical |
+
+Per-patient, per-channel **reachability** = granted / denied / provisional / undetermined, plus deliverability health (token validity, recent SMS/WhatsApp success). Channel choice is a function of (class, priority, reachability).
+
+- **Engagement ladder:** push (if granted) → else in-app inbox only. SMS/WhatsApp are **reserved for critical** (fatigue + cost), never used for ordinary nudges.
+- **Critical ladder:** in-app takeover **+** push **+** SMS **+** WhatsApp fired *together* (speed dominates); collect acks; no ack within `ack_TTL` → **human escalation** (care-team / on-call clinician, or the consented emergency contact) + audit (Doc 16). A critical is **never silently dropped** — total channel failure also escalates to a human. (Criticals are confirmation-gated upstream — Doc 05 §3.4 / Doc 16 — so fan-out is never triggered by unconfirmed noise.)
+
+### 9.3 Scheduling & send-time
+
+- **Clock.** Engagement runs on the daily nudge clock `Δ` (§1); the day's top-5 are coalesced into **one** digest push, not five pings (attention budget, §4.4).
+- **Send-time.** Pick the time in the allowed window that maximises `p̂_a` — §3.2 already carries a time-of-day / calendar-load feature, so delivery **reuses** the adherence model rather than inventing a second one.
+- **Circadian / context.** Sleep wind-down in the evening, movement when typically active, measurement in clinic hours.
+- **Ramadan / fasting (Doc 18).** During fasting hours, suppress food/med-timing nudges and shift to *suhoor/iftar* windows.
+- **Timezone & travel.** Local-time, DST- and travel-aware.
+
+### 9.4 Quiet hours & Do-Not-Disturb
+
+Default engagement quiet window **21:00–07:00 local** (patient-configurable); OS DND/Focus respected where exposed; engagement due in quiet hours defers to the next window (or drops if stale). **Critical overrides** quiet hours and DND (iOS time-sensitive / critical-alert entitlement; Android high-importance) — a genuine emergency must wake the patient.
+
+### 9.5 Frequency caps, arbitration & cross-channel dedup
+
+- **Caps (engagement only):** ≤1 daily digest push + the weekly "big-lever" cadence (§4.4); a per-day push ceiling (default 2) incl. reminders; cooldown after a dismiss; the `ν_a` anti-nag decay (§4.4) extends to delivery (a repeatedly-ignored nudge stops being pushed).
+- **Arbitration** when messages compete: critical > care-gap/appointment/result-ready > daily digest > streak/milestone > re-engagement > weekly digest. Lower items yield or merge. **Criticals are never batched, coalesced or rate-limited.**
+- **Cross-channel dedup:** an engagement message is delivered on **one** channel — never push *and* SMS the same nudge. (Critical fan-out is deliberate, not duplication.)
+
+### 9.6 Consent, opt-in & OS permissions (regulatory)
+
+- **Transactional vs marketing.** Safety-critical, appointment and result-ready messages are **transactional / duty-of-care** (UAE PDPL & GDPR vital-interest/contract) — not gated by marketing consent. Daily nudges, streaks, tips and re-engagement are **engagement** and need **explicit opt-in**.
+- **Granular categories** (patient toggles): *Safety alerts* (always on, not disableable), *Daily plan*, *Streaks & milestones*, *Care reminders*, *Weekly digest*, *Research/product* — each mapped to a class + legal basis.
+- **OS permission priming:** an in-context pre-prompt precedes the system push dialog; if push is denied, engagement degrades to the in-app inbox and **safety still reaches the patient** via SMS/WhatsApp.
+- **STOP / unsubscribe** (SMS/WhatsApp/email) disables **engagement on that channel only** and **never** safety-critical (separate legal basis) — disclosed at opt-in.
+- All consent & preference changes are **versioned and audited** (Doc 16).
+
+### 9.7 PHI-safe payloads (privacy by construction)
+
+- **Default: no health specifics in any payload** — no marker, value or diagnosis. Generic teaser + deep-link only (*"Your PureScore plan is ready"*; critical: *"Urgent health alert — open PureScore now"*). The marker/value is **never** on a lock screen, watch or synced/mirrored surface.
+- Health detail is revealed **only after in-app authentication** (biometric/passcode) — delivery therefore depends on the on-device-security work (see *Production readiness — gaps*).
+- **Opt-in richer previews** let a patient consciously accept the lock-screen trade-off.
+- SMS/WhatsApp/email bodies follow the same rule (PHI-free body, auth-gated deep-link); WhatsApp templates are pre-approved PHI-safe; all notification copy is reviewed so health detail can't leak.
+- Because payloads are PHI-safe, third-party channel processors (APNs/FCM, SMS, WhatsApp) **never handle PHI** — which also satisfies processor / data-residency constraints (PDPL/GDPR).
+
+### 9.8 Deep-links & in-notification actions
+
+- Every message **deep-links** to its exact destination via a route registry keyed by message type / `class_a`: nudge → its card; critical → the Doc 16 escalation/crisis screen; result-ready → score detail; appointment → booking. A locked app lands on auth first, then routes through (no PHI pre-auth).
+- **Quick actions** feed the §6 feedback log directly: engagement → *Done / Snooze / Remind tonight / Dismiss*; critical → *I'm safe / I need help / Call now* (dials local emergency services — 999/112 in the UAE).
+
+### 9.9 Streaks, lifecycle & re-engagement (non-manipulative)
+
+- **Streaks** reuse §4.2 (mechanistically true, tied to real reservoir drainage — never a slot machine). Delivery adds an **honest** streak-at-risk reminder and milestone acknowledgement; a streak is **never** held hostage, a missed day reported neutrally (§4.3).
+- **Lifecycle / dormancy:** declining engagement (no opens for N days) triggers re-engagement at a **decreasing** cadence that eventually **stops** (no infinite win-back spam); win-backs lead with real value — the easiest positive-`Δ` action or a high-yield *measure-this* — never guilt.
+- **Negative-trend** signals (§3.4) are delivered gently as a "slipping" nudge with one easy recovery action — alarming wording is reserved for genuine criticals.
+
+### 9.10 Measurement & the feedback loop (extends §6; validated per Doc 14)
+
+- **Per-message telemetry:** queued → sent → delivered (receipt) → displayed → opened/tapped → action (done/partial/snooze/dismiss) → realized ΔPureScore @h. Event payloads are **PHI-safe** (IDs/enums only).
+- This **closes the §6 loop**: channel/time efficacy recalibrates send-time and `p̂_a` (§3.2); deliverability (token validity, SMS/WhatsApp rates) is monitored.
+- **Critical-path SLOs** (validated per Doc 14, governed per Doc 16): time-to-deliver, time-to-ack, unacknowledged-escalation rate, and **false-alarm rate** — alarm fatigue is an explicit outcome metric, not an afterthought (§4.4).
+- Delivery experiments (send-time, copy, channel) are confined to **engagement**; safety-critical delivery is **never A/B-tested**.
+
+### 9.11 Reliability & safety guarantees
+
+- **Idempotency** keys prevent duplicate sends on retry; per-patient ordering; a durable outbox.
+- **Retry / backoff** on transient channel failure, then the fallback ladder (§9.2).
+- **Criticals are guaranteed-attempt:** persisted until acknowledged; all-channel failure or no-ack-within-TTL → human escalation + audit (Doc 16). Never silently lost.
+- **Localization (Doc 18):** RTL/Arabic templates, locale formatting, culturally-appropriate timing.
+- **Accessibility:** payloads never convey critical meaning by colour/sound alone; the in-app inbox is screen-reader- and dynamic-type-friendly (see the accessibility gap).
+
+### 9.12 Default constants (versioned)
+
+| Symbol | Meaning | Default |
+|---|---|---|
+| quiet hours | engagement no-send window (local) | 21:00–07:00 |
+| push cap | engagement pushes/day (incl. reminders) | 2 |
+| digest | coalesce daily top-5 into one push | on |
+| `ack_TTL` | critical no-ack → human escalation | 15 min (emergency) / 4 h (urgent) |
+| re-engage | dormancy → win-back cadence → stop | 7 d → weekly → stop after 3 |
+| big-lever | weekly high-effort cadence (§4.4) | 1 / week |
+
+All tunable and versioned; any change is a model-version bump (Doc 14) with an audit entry (Doc 16).
+
+### 9.13 Worked example — one critical, one digest
+
+**02:10 local — K⁺ 6.4 mmol/L, confirmed (Doc 16 emergency).** Class = SAFETY-CRITICAL. Quiet hours (21:00–07:00) are **overridden**; in-app takeover **+** push (time-sensitive) **+** SMS **+** WhatsApp fire together, every payload PHI-safe: *"Urgent health alert — open PureScore now."* The patient taps at 02:14 → ack logged, routed (post-auth) to the Doc 16 crisis screen (*Call 999 / I'm safe / I need help*). Had no ack arrived by 02:25 (`ack_TTL` 15 min), the on-call clinician / care-team is paged and the event audited. No marker or value ever appeared on the lock screen.
+
+**19:30 local (next day) — daily top-5 ready.** Class = ENGAGEMENT. One **digest** push (not five) at the send-time that maximises `p̂` (early evening, before the 21:00 quiet start), PHI-safe teaser *"Your PureScore plan is ready"* deep-linking to the plan. SMS/WhatsApp are **not** used. Had push been disabled, the digest would simply wait in the in-app inbox. Quick actions (*Done / Snooze / Dismiss*) feed the §6 loop.
+
+The two messages share **nothing** — different class, legal basis, channel set, quiet-hours behaviour and ack policy — which is the firewall (§9.1) made concrete.
+
+## 10. Implementation status (interactive calculator) — decision D16
 
 The calculator implements the daily-nudge pipeline live:
 
@@ -471,6 +593,7 @@ The calculator implements the daily-nudge pipeline live:
 | Ranking §3.1 — `U=[ΔPure·ε]^α·p̂^β·(1−E)^η·ν` | `nudgeRank()` (α=β=1, η=1.5; `p̂` cold-start cohort proxy from effort; `ν` bonus for the binding/worst pillar — Trajectory-aware) |
 | Safety/contraindication §5; diversity | CKD protein cap, pregnancy/lactation no-deficit caveat, anticoagulant ω-3 caveat; per-class cap of 2 |
 | Adherence-only / clinical-gap nudges first-class | `MED-*` shown only when prescribed (`rx`); **fixed/medication-responsive red routes to a clinician referral** instead of a fabricated lifestyle fix |
+| **Delivery engine (§9)** — channels, send-time, quiet hours, caps, consent, PHI-safe payloads, critical escalation | **Spec only** — production server + app + 3rd-party channels (push/SMS/WhatsApp); not modelled in the illustrative calculator |
 
 Demonstrated: prediabetic → "cut refined carbs +5.7" on the binding MET pillar; elderly → resistance +
 protein (sarcopenia); CKD → BP-adherence + sodium (protein gated out); **FH → lifestyle cannot move

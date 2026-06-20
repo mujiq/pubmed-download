@@ -47,6 +47,7 @@
 | D32 | Calculation Explorer (audit tree + map) on a JSON-canonical shared engine | LOCKED | user | 2026-06-20 |
 | D33 | Cohort-matched cold-start: impute missing LAB biomarkers from age×sex×life-stage cohort medians | LOCKED | user | 2026-06-20 |
 | D34 | Full decision-tree explorer: missing/incomplete data, every branch shown, filter-search | LOCKED | user | 2026-06-20 |
+| D35 | Notification & nudge delivery: 2-class (engagement vs safety-critical) multi-channel engine, PHI-safe payloads, guaranteed critical escalation | LOCKED | user | 2026-06-20 |
 
 ---
 
@@ -698,6 +699,14 @@ before production); cohort median is illustrated by the marker default (real bui
 branch + gate evaluation), `assets/calc-explorer.js` (◇ gate/branch nodes, data-state controls, stream presets,
 filter-search, coverage readout), `wiki_content.py` `build_purescore_uber()` (search/stream/coverage markup + CSS).
 Builds on **D32**, visualises **D33**.
+
+## D35 — Notification & nudge delivery engine *(user)*
+**Question.** Doc 11 §1–§8 select *which* nudge to surface; nothing specified *how* it reaches the patient on a real mobile app, nor how a safety-critical alert (Doc 16) is delivered.
+**Options.**
+- A ★ **Two-class delivery engine, added as Doc 11 §9.** A firewall between best-effort **engagement** (top-5 / streaks / digests) and guaranteed **safety-critical** (Doc 16 emergency/urgent). Tiered channels — in-app inbox + push for engagement; SMS + WhatsApp + email reserved for fallback/critical/records — with a fallback ladder. Engagement respects quiet hours, frequency caps and per-category opt-in; criticals bypass them, fan out across all reachable channels, require acknowledgement, and escalate to a human on no-ack TTL. **PHI-safe payloads by default** (generic teaser + auth-gated deep-link; no marker/value on lock screens), with opt-in richer previews. Send-time reuses the §3.2 adherence model; Ramadan / quiet-hours / timezone aware; measurement closes the §6 loop and is validated per Doc 14.
+- B — Single pipeline with a priority flag (criticals just skip quiet hours). *Rejected:* no guaranteed delivery / ack / human-escalation for emergencies; push-off patients unreachable.
+- C — Defer critical delivery to Doc 16, engagement only here. *Rejected:* leaves the actual critical delivery mechanics unspecified.
+**Decision.** **A.** **Rationale.** A patient app must (i) reach a patient in an emergency even with push disabled and outside hours, with acknowledgement and human fallback; and (ii) never leak PHI to lock screens or third-party channel vendors, nor use dark patterns on engagement. The two-class firewall delivers both while reusing the existing selection / adherence / feedback machinery. **Design notes.** Form: **extends Doc 11** (new §9.1–§9.13; the duplicate "§8 Implementation status" renumbered to §10). Channels: in-app + push + SMS + WhatsApp + email with a fallback ladder; criticals fan out and are confirmation-gated upstream (Doc 05 §3.4). Consent: transactional (duty-of-care) vs marketing (explicit opt-in); STOP never disables safety; dependents / household route to the consented caregiver (Doc 07). Privacy: PHI-safe payloads ⇒ channel vendors never process PHI (PDPL/GDPR processor / residency mitigation). Constants (quiet hours 21:00–07:00, push cap 2/day, ack_TTL 15 min / 4 h, re-engage 7 d→weekly→stop) are versioned. **Guardrails.** No engagement→critical promotion; criticals never coalesced / rate-limited / silenced; delivery A/B-tests confined to engagement, never safety; all numbers illustrative — build + validate before use. **Affects.** `11-daily-nudge-engine.md` (new §9, §10 renumber, title), `tech/build_wiki.py` (`SHORT`), `tech/wiki_content.py` (`SUMMARY`, nudge `MERMAID` delivery node, `build_production_gaps` row → *addressed*). Depends on Doc 16 (escalation), Doc 05 (confirmation), Doc 07 (streams/household), Doc 18 (localization), Doc 14 (validation SLOs).
 
 ### Maintenance notes
 - New decisions append as `D24+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and

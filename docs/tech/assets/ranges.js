@@ -38,7 +38,11 @@
       ".rv-track i.g{background:rgba(58,214,160,.18);color:#bff0d0}.rv-track i.y{background:rgba(237,193,74,.18);color:#f0dca0}.rv-track i.r{background:rgba(240,96,110,.18);color:#ffc2c9}" +
       ".rv-rnote{font-size:10px;color:#6b7d92;margin-top:4px}" +
       "tr.rv-shift{outline:1px solid #2b5a86;background:rgba(73,198,216,.05)}" +
-      ".rv-applied{font-size:10px;color:#edc14a;border:1px solid #7a5f24;border-radius:5px;padding:0 5px;margin-left:4px}";
+      ".rv-applied{font-size:10px;color:#edc14a;border:1px solid #7a5f24;border-radius:5px;padding:0 5px;margin-left:4px}" +
+      ".rv-sep{width:10px}.rv-sel:disabled{opacity:.4}.rv-sel option:disabled{color:#5b7790}" +
+      ".rv-pillars{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 10px}" +
+      ".rv-pill{font-size:10.5px;padding:2px 10px;border-radius:12px;border:1px solid #2a3a4d;background:#0c1320;color:#9bb0c5;cursor:pointer;user-select:none}" +
+      ".rv-pill.on{background:#16335e;border-color:#3a6ea5;color:#fff}";
     document.head.appendChild(st);
   }
 
@@ -129,6 +133,45 @@
     clearExpansions();
     if (v !== "D") ctxReset();
   }
+  /* ---- conditional dropdown cascade (compat rules + auto-resolve) ---- */
+  function opt(sel, fn){ var e = document.getElementById(sel); if (e) [].forEach.call(e.options, fn); return e; }
+  function cascade(){
+    var cm = R._compat || {}, ls = cm.life_stage || {}, cc = cm.condition || {};
+    var sex = val("rvSex"), age = val("rvAge"), life = val("rvLife");
+    var lifeSel = opt("rvLife", function (o){ if (!o.value) return; var r = ls[o.value];
+      var okS = !r || !r.sex || !sex || r.sex.indexOf(sex) >= 0, okA = !r || !r.age || !age || r.age.indexOf(age) >= 0; o.disabled = !(okS && okA); });
+    if (lifeSel && lifeSel.value && lifeSel.options[lifeSel.selectedIndex].disabled) lifeSel.value = "";
+    life = lifeSel ? lifeSel.value : life;
+    var rule = life ? ls[life] : null;
+    opt("rvSex", function (o){ if (!o.value) return; o.disabled = !!(rule && rule.sex && rule.sex.indexOf(o.value) < 0); });
+    if (rule && rule.sex && rule.sex.length === 1){ var ss = document.getElementById("rvSex"); if (ss) ss.value = rule.sex[0]; sex = rule.sex[0]; }
+    var ageSel = opt("rvAge", function (o){ if (!o.value) return; o.disabled = !!(rule && rule.age && rule.age.indexOf(o.value) < 0); });
+    if (ageSel && ageSel.value && ageSel.options[ageSel.selectedIndex].disabled) ageSel.value = "";
+    age = ageSel ? ageSel.value : age;
+    opt("rvCond", function (o){ if (!o.value) return; var r = cc[o.value];
+      var okS = !r || !r.sex || !sex || r.sex.indexOf(sex) >= 0, okA = !r || !r.age || !age || r.age.indexOf(age) >= 0; o.disabled = !(okS && okA); });
+    var cs = document.getElementById("rvCond"); if (cs && cs.value && cs.options[cs.selectedIndex].disabled) cs.value = "";
+  }
+  /* ---- expand / collapse all ---- */
+  function expandAll(){ [].forEach.call(document.querySelectorAll(".rv-name"), function (n){ var tr = rowEl(n); if (tr && !tr._rvexp) toggle(n); }); }
+  /* ---- per-pillar filter ---- */
+  function pillarSecs(){ return [].filter.call(document.querySelectorAll("h2[id]"), function (h){ return /^[a-z]{2,4}$/.test(h.getAttribute("id")); }); }
+  function showPillars(list){ pillarSecs().forEach(function (h){ var show = !list || list.indexOf(h.getAttribute("id")) >= 0;
+    h.style.display = show ? "" : "none"; var el = h.nextElementSibling;
+    while (el && el.tagName !== "H2"){ el.style.display = show ? "" : "none"; el = el.nextElementSibling; } }); }
+  function buildPillars(){ var host = document.getElementById("rvPillars"); if (!host) return;
+    var secs = pillarSecs(); if (!secs.length) return;
+    host.innerHTML = '<span class="rv-pill on" data-pf="all">all pillars</span>' +
+      secs.map(function (h){ return '<span class="rv-pill on" data-pf="' + h.getAttribute("id") + '">' + esc(h.getAttribute("id").toUpperCase()) + "</span>"; }).join("");
+    [].forEach.call(host.querySelectorAll(".rv-pill"), function (ch){ ch.onclick = function (){
+      var pf = ch.getAttribute("data-pf");
+      if (pf === "all"){ [].forEach.call(host.querySelectorAll(".rv-pill"), function (c){ c.classList.add("on"); }); showPillars(null); return; }
+      ch.classList.toggle("on"); host.querySelector('.rv-pill[data-pf="all"]').classList.remove("on");
+      var on = []; [].forEach.call(host.querySelectorAll(".rv-pill"), function (c){ var k = c.getAttribute("data-pf"); if (k !== "all" && c.classList.contains("on")) on.push(k); });
+      if (!on.length){ [].forEach.call(host.querySelectorAll(".rv-pill"), function (c){ c.classList.add("on"); }); showPillars(null); }
+      else showPillars(on);
+    }; });
+  }
   function init(){
     [].forEach.call(document.querySelectorAll(".rv-vb"), function (b){ b.onclick = function (){ setView(b.getAttribute("data-view")); }; });
     [].forEach.call(document.querySelectorAll(".rv-name"), function (n){
@@ -136,8 +179,12 @@
       n.onkeydown = function (e){ if (e.key === "Enter" && state.view !== "D") toggle(n); };
     });
     populateCtx();
+    ["rvSex", "rvAge", "rvLife", "rvCond", "rvMed"].forEach(function (id){ var e = document.getElementById(id); if (e) e.addEventListener("change", cascade); });
+    cascade(); buildPillars();
     var a = document.getElementById("rvApply"); if (a) a.onclick = ctxApply;
     var r = document.getElementById("rvReset"); if (r) r.onclick = ctxReset;
+    var ex = document.getElementById("rvExpand"); if (ex) ex.onclick = expandAll;
+    var co = document.getElementById("rvCollapse"); if (co) co.onclick = function (){ clearExpansions(); };
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();

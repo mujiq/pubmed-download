@@ -194,6 +194,16 @@
    "section": "Target INR 2.0–3.0 (2.5–3.5 mechanical mitral valve)",
    "anchor": "document",
    "verified": true
+  },
+  "ACR gout 2020": {
+   "kind": "guideline",
+   "cite": "FitzGerald JD, et al. 2020 American College of Rheumatology Guideline for the Management of Gout. Arthritis Care Res. 2020;72(6):744–760.",
+   "doi": "10.1002/acr.24180",
+   "pmid": "32391934",
+   "url": "https://doi.org/10.1002/acr.24180",
+   "section": "Treat-to-target serum urate <6 mg/dL on urate-lowering therapy",
+   "anchor": "document",
+   "verified": true
   }
  },
  "aliases": {

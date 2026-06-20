@@ -335,6 +335,148 @@
    "meds": [
     "A11CC"
    ]
+  },
+  "E55.9": {
+   "name": "Vitamin D deficiency",
+   "comorbid": [
+    "osteoporosis",
+    "falls",
+    "fatigue"
+   ],
+   "pillars": [
+    "nut",
+    "bcm"
+   ],
+   "markers": [
+    "vitd"
+   ],
+   "meds": [
+    "A11CC"
+   ]
+  },
+  "O24.4": {
+   "name": "Gestational diabetes (GDM)",
+   "comorbid": [
+    "pre-eclampsia",
+    "macrosomia",
+    "type 2 diabetes"
+   ],
+   "pillars": [
+    "met",
+    "endo"
+   ],
+   "markers": [
+    "glu",
+    "hba1c"
+   ],
+   "meds": [
+    "A10A"
+   ],
+   "sex": "female"
+  },
+  "E78.01": {
+   "name": "Familial hypercholesterolaemia",
+   "comorbid": [
+    "premature CAD",
+    "atherosclerosis"
+   ],
+   "pillars": [
+    "cv"
+   ],
+   "markers": [
+    "ldl",
+    "apob"
+   ],
+   "meds": [
+    "C10AA"
+   ]
+  },
+  "D56.9": {
+   "name": "Thalassaemia / haemoglobinopathy",
+   "comorbid": [
+    "microcytic anaemia",
+    "iron overload"
+   ],
+   "pillars": [
+    "hem"
+   ],
+   "markers": [
+    "hb",
+    "ferr"
+   ],
+   "meds": []
+  },
+  "D55.0": {
+   "name": "G6PD deficiency",
+   "comorbid": [
+    "haemolysis (oxidant-triggered)"
+   ],
+   "pillars": [
+    "hem"
+   ],
+   "markers": [
+    "hb"
+   ],
+   "meds": []
+  },
+  "M10": {
+   "name": "Gout / hyperuricaemia",
+   "comorbid": [
+    "CKD",
+    "hypertension",
+    "metabolic syndrome"
+   ],
+   "pillars": [
+    "ren",
+    "met"
+   ],
+   "markers": [],
+   "meds": [
+    "M04AA"
+   ]
+  },
+  "I48": {
+   "name": "Atrial fibrillation",
+   "comorbid": [
+    "stroke",
+    "heart failure"
+   ],
+   "pillars": [
+    "cv"
+   ],
+   "markers": [],
+   "meds": [
+    "B01AA",
+    "B01AF"
+   ]
+  },
+  "J45": {
+   "name": "Asthma",
+   "comorbid": [
+    "allergy",
+    "GERD"
+   ],
+   "pillars": [],
+   "markers": [],
+   "meds": [
+    "R03BA",
+    "R03AC"
+   ]
+  },
+  "E29.1": {
+   "name": "Male hypogonadism",
+   "comorbid": [
+    "sarcopenia",
+    "low BMD",
+    "metabolic syndrome"
+   ],
+   "pillars": [
+    "endo",
+    "bcm"
+   ],
+   "markers": [],
+   "meds": [],
+   "sex": "male"
   }
  },
  "meds": {
@@ -463,6 +605,116 @@
    "manages": [],
    "confounds": [],
    "introduces": "INR"
+  },
+  "B01AF": {
+   "name": "DOAC (apixaban/rivaroxaban)",
+   "class": "direct oral anticoagulant",
+   "manages": [],
+   "confounds": []
+  },
+  "A10A": {
+   "name": "Insulin",
+   "class": "insulin",
+   "manages": [
+    "hba1c",
+    "glu"
+   ],
+   "confounds": []
+  },
+  "A10BJ": {
+   "name": "GLP-1 receptor agonist",
+   "class": "incretin mimetic",
+   "manages": [
+    "hba1c",
+    "glu",
+    "waist"
+   ],
+   "confounds": []
+  },
+  "A10BB": {
+   "name": "Sulfonylurea",
+   "class": "sulfonylurea",
+   "manages": [
+    "hba1c",
+    "glu"
+   ],
+   "confounds": []
+  },
+  "C03AA": {
+   "name": "Thiazide diuretic",
+   "class": "antihypertensive",
+   "manages": [
+    "sbp"
+   ],
+   "confounds": [
+    "k",
+    "glu"
+   ]
+  },
+  "C03CA": {
+   "name": "Loop diuretic",
+   "class": "diuretic",
+   "manages": [
+    "sbp"
+   ],
+   "confounds": [
+    "k"
+   ]
+  },
+  "M04AA": {
+   "name": "Allopurinol",
+   "class": "urate-lowering",
+   "manages": [],
+   "confounds": []
+  },
+  "G03A": {
+   "name": "Combined oral contraceptive",
+   "class": "hormonal",
+   "manages": [],
+   "confounds": [
+    "tg",
+    "hdl"
+   ]
+  },
+  "G03C": {
+   "name": "Menopausal HRT (oestrogen)",
+   "class": "hormonal",
+   "manages": [],
+   "confounds": [
+    "hdl",
+    "tg"
+   ]
+  },
+  "A02BC": {
+   "name": "Proton-pump inhibitor",
+   "class": "acid suppression",
+   "manages": [],
+   "confounds": [
+    "b12"
+   ]
+  },
+  "H02AB": {
+   "name": "Systemic corticosteroid",
+   "class": "glucocorticoid",
+   "manages": [],
+   "confounds": [
+    "glu",
+    "wbc"
+   ]
+  },
+  "R03BA": {
+   "name": "Inhaled corticosteroid",
+   "class": "respiratory",
+   "manages": [],
+   "confounds": []
+  },
+  "R03AC": {
+   "name": "Short-acting beta-agonist",
+   "class": "respiratory",
+   "manages": [],
+   "confounds": [
+    "rhr"
+   ]
   }
  }
 }

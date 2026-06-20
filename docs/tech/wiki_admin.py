@@ -130,6 +130,10 @@ def build_admin_lab():
              '<a class="xref" href="14-validation-and-calibration-harness.html">Doc 14</a>).</p>'
              '<div class="toolbar"><span class="btn ok">Approve</span><span class="btn warn">Request changes</span>'
              '<span class="btn">Defer to next cycle</span><span class="btn">View impact report</span></div></div>')
+    h.append('<div class="callout note"><div class="ct">Context-dependent ranges</div>These cut-points shift by sex / age / '
+             'life-stage / condition / medication. Verify the effective range for any patient context in the '
+             '<a class="xref" href="reference-range-resolver.html">Reference-range resolver</a>; full per-marker variations are on '
+             '<a class="xref" href="appendix-biomarkers.html">Appendix A · Markers</a> (single source: <code>data/range-variations.json</code>).</div>')
     return "Admin · Lab ranges", "".join(h)
 
 def build_admin_weights():

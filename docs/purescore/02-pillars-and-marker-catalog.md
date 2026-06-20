@@ -3,7 +3,9 @@
 > Binding conventions: `README.md §3`. Bands below are **illustrative, literature/guideline-
 > anchored values for a general adult cohort** and **must be re-verified and cohort-adjusted**
 > (age, sex, disease, medication) before production (README §5.6). Sex-specific overrides are in
-> Doc 08. `T` = tier (C=Core, P=Peripheral, X=Comprehensive). `2s` = two-sided (low *and* high are
+> Doc 08; full per-context range variations (sex/age/life-stage/condition/medication) with citations are in
+> the [Reference-range resolver](reference-range-resolver.html) and [Appendix A · Markers](appendix-biomarkers.html)
+> (single source: `data/range-variations.json`). `T` = tier (C=Core, P=Peripheral, X=Comprehensive). `2s` = two-sided (low *and* high are
 > adverse). `w` = within-pillar weight (relative).
 
 Notation for bands: **green** = optimal, **yellow** = caution, **red** = critical. Where a marker
