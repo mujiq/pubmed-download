@@ -27,7 +27,7 @@
   "c4": {
     "containers": [
       { "id": "patient_app", "name": "Patient App (web/mobile)", "tech": "client", "desc": "score, companion vector, daily nudges, questionnaires" },
-      { "id": "clinician_board", "name": "Doctor's Board (admin)", "tech": "client", "desc": "ranges, weights, personas, governance sign-off" },
+      { "id": "clinician_board", "name": "Clinician console (admin)", "tech": "client", "desc": "ranges, weights, personas, governance sign-off" },
       { "id": "api", "name": "API Gateway", "tech": "service", "desc": "auth, idempotency, routing, rate limits" },
       { "id": "ingestion", "name": "Ingestion Service", "tech": "workers", "desc": "stream normalization, trust-tier tagging, dedup" },
       { "id": "scoring", "name": "Scoring Engine", "tech": "service", "desc": "marker→pillar→PureScore + companion vector" },

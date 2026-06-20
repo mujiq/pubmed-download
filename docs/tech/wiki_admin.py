@@ -9,7 +9,7 @@ from wiki_content import (_esc, ILLUS, PILLARS, PILLAR_W, CONSTANTS, QSOURCE,
 QUARTER = "Q3 2026"
 def _crumb(label):
     return ('<div class="crumbs"><a href="index.html">Home</a> › '
-            '<a href="admin-index.html">Doctor\'s board</a> › %s</div>' % _esc(label))
+            '<a href="admin-index.html">Admin (clinician config)</a> › %s</div>' % _esc(label))
 
 def _adminbar(sub):
     return ('<div class="admin-top"><div><b style="color:#fff;font-size:15px">PureScore — Clinical '
@@ -44,7 +44,7 @@ def build_admin_index():
     flagged = sum(1 for d in DOMAINS if d[5] in ("chg",))
     review = sum(1 for d in DOMAINS if d[5] == "review")
     due = sum(1 for d in DOMAINS if d[5] == "due")
-    h = [_crumb("Dashboard"), '<h1>Doctor\'s Board — Configuration Dashboard</h1>',
+    h = [_crumb("Dashboard"), '<h1>Admin — Configuration dashboard</h1>',
          _adminbar("Quarterly clinical configuration review"),
          '<p class="lead">Every clinical knob in PureScore — lab ranges, weights, questionnaires, personas, '
          'wearable tiers — surfaced for the clinical board to review, challenge and sign off each quarter. '

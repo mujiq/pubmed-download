@@ -106,7 +106,7 @@
    },
    {
     "id": "clinician_board",
-    "name": "Doctor's Board (admin)",
+    "name": "Clinician console (admin)",
     "tech": "client",
     "desc": "ranges, weights, personas, governance sign-off"
    },

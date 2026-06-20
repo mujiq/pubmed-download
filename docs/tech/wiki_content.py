@@ -2690,7 +2690,7 @@ def build_erd():
 def build_c4():
     d = _dossier(); c4 = d["c4"]
     flow = ("flowchart LR\n"
-            "  PA[\"Patient App\"] --> API[\"API Gateway\"]\n  CB[\"Doctor's Board\"] --> API\n"
+            "  PA[\"Patient App\"] --> API[\"API Gateway\"]\n  CB[\"Clinician console\"] --> API\n"
             "  WH[\"Wearable webhooks\"] --> ING[\"Ingestion\"]\n  LF[\"Lab feed FHIR\"] --> ING\n  ING --> API\n"
             "  API --> SC[\"Scoring Engine\"]\n  API --> QS[\"Question Service\"]\n  API --> NS[\"Nudge Service\"]\n"
             "  SC --> RS[\"Reservoir Service\"]\n  SC --> REG[\"Model Registry\"]\n  SC --> DS[(\"Datastore\")]\n"

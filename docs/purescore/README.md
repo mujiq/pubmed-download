@@ -75,7 +75,7 @@ Read 00 → 04 first; they define everything the later documents depend on.
 
 > **Browsable wiki.** A navigable, interlinked HTML rendering of all these documents — with
 > per-document diagrams, exhaustive reference appendices (biomarkers, wearables, questionnaires,
-> personas), the Doctor's-board configuration screens, and a live continuous-scoring feedback-loop
+> personas), the Admin (clinician) configuration screens, and a live continuous-scoring feedback-loop
 > demo — is generated under [`../tech/`](../tech/index.html) (`python3 ../tech/build_wiki.py`).
 
 ---

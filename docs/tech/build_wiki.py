@@ -343,7 +343,7 @@ def render_index():
   D1 --> D18["18 Data streams"] --> D7
   D7 --> D16["16 Actions"]
   D3 --> D11["11 Safety"]
-  D18 --> ADMIN["Doctor's board (admin)"]
+  D18 --> ADMIN["Admin (clinician config)"]
   D7 --> FB["Feedback-loop demo"]"""
     b = ['<div class="hero"><h1>Hikma<span style="color:#2ecc71">Engine</span> — Technical Wiki</h1>',
          '<p class="lead">The HikmaEngine health-intelligence platform: data &amp; intake, the '
@@ -358,7 +358,7 @@ def render_index():
           '<div class="role-links"><a href="purescore-overview.html">Overview</a>'
           '<a href="purescore-uber-map.html">How it all connects</a><a href="03-scoring-formula.html">Scoring formula</a></div></a>'
           '<a class="card role" href="admin-index.html"><div class="role-i">🩺</div>'
-          '<h3>Clinician</h3><p>How the score is kept safe, contextual and reviewable. Jump to the Doctor\'s board.</p>'
+          '<h3>Clinician</h3><p>How the score is kept safe, contextual and reviewable. Jump to the Admin area.</p>'
           '<div class="role-links"><a href="16-safety-governance-and-regulatory.html">Safety &amp; governance</a>'
           '<a href="10-clinical-scores-integration.html">Clinical scores</a><a href="appendix-coverage-audit.html">Coverage audit</a></div></a>'
           '<a class="card role" href="class-model.html"><div class="role-i">🛠️</div>'
@@ -393,7 +393,7 @@ def render_index():
                        ("appendix-goals.html","Goals (J)","Catalogue keyed by applicability"),
                        ("eligibility-gating.html","Eligibility & gating","Rules connecting onboarding → questions")]:
         b.append('<a class="card" href="%s"><h3>%s</h3><p>%s</p></a>' % (href, t, d))
-    b.append('</div><div class="section-h">Doctor\'s board — quarterly configuration review</div><div class="grid c3">')
+    b.append('</div><div class="section-h">Admin (clinician config) — quarterly configuration review</div><div class="grid c3">')
     for href, t, d in [("admin-index.html","Dashboard","All config domains &amp; review status"),
                        ("admin-lab-ranges.html","Lab ranges","Band review + guideline-match"),
                        ("admin-weights.html","Weights &amp; constants","Pillar weights, κ, imputation"),
