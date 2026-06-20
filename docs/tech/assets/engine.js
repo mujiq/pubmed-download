@@ -88,6 +88,7 @@
   // Full trace. opts = {adh, preg, sex, age, lifestage, st:{marker:'present'|'stale'|'missing'}}
   function score(mk, opts) {
     var d = D(), C = d.const, V = vector(mk), o = opts || {}, st = o.st || {};
+    var managed = o.managed || {}, confound = o.confound || {};   // from medications (D3)
     var RV = {}; for (var mm in V) RV[mm] = (st[mm] === "missing") ? d.markers[mm].default : V[mm];
     var RES = reservoirs(RV), L = RES.coupled;
     var rk = {}, crit = [], detail = {}, covW = 0, confW = 0;
@@ -95,6 +96,8 @@
       var P = d.pillars[pid], wsum = 0, rsum = 0, cr = false, mdet = {}, pconf = 0, pcov = 0, n = P.markers.length;
       P.markers.forEach(function (m) {
         var ev = markerEval(m, V, st, d), isCrit = P.critical.indexOf(m) >= 0;
+        if (managed[m]) { ev.conf *= 0.9; ev.managed = true; }       // controlled: shown but tagged (D3)
+        if (confound[m]) { ev.conf *= 0.7; ev.confounded = true; }   // drug confounds the reading (D3)
         var critRed = isCrit && ev.state === "present" && ev.rclin >= 0.66;   // only fresh data hard-fires
         if (ev.included) { rsum += ev.w * ev.r; wsum += ev.w; }
         if (critRed) cr = true;
@@ -102,6 +105,7 @@
         mdet[m] = { v: ev.usedVal, raw: V[m], r: (ev.r != null ? ev.r : null),
           zone: (ev.r != null ? markerZone(ev.r) : "na"), critical: isCrit, state: ev.state,
           conf: ev.conf, w: ev.w, included: ev.included, imputed: ev.imputed, rcohort: ev.rcohort,
+          managed: !!ev.managed, confounded: !!ev.confounded,
           branch: { conf: ev.confBranch, blend: ev.blendBranch, pers: (isCrit ? "off" : "on"), crit: (critRed ? "fire" : "pass") } };
       });
       var Rm = wsum > 0 ? rsum / wsum : 0;

@@ -1,0 +1,2008 @@
+{
+ "_meta": {
+  "source": "data/calc-graph.json",
+  "note": "CANONICAL calculation graph. Thin: owns topology, formulas, gates and the engine-numeric scoring params (good/bad anchors, defaults) that exist nowhere else as machine-readable numbers. REFERENCES pillar-weights.json (wRef) and constants.json (cRef) for shared values — never copy them here. Read at build time by build_wiki.py, resolved into assets/calc-data.js, consumed by assets/engine.js. Illustrative, re-verify (README §5.6).",
+  "refs": {
+   "weights": "pillar-weights.json",
+   "constants": "constants.json"
+  },
+  "uses_constants": {
+   "delta": "δ",
+   "rho": "ρ_k",
+   "r_crit": "R_crit",
+   "pure_crit_cap": "PURE_CRIT_CAP",
+   "phi": "φ",
+   "q_impute": "q_impute",
+   "rp_impute": "Rp_impute",
+   "cov_green_floor": "cov_green_floor"
+  }
+ },
+ "markers": {
+  "sbp": {
+   "label": "Systolic BP",
+   "unit": "mmHg",
+   "default": 110,
+   "th": [
+    120,
+    140,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "clinical"
+  },
+  "apob": {
+   "label": "ApoB",
+   "unit": "mg/dL",
+   "default": 70,
+   "th": [
+    80,
+    100,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "ldl": {
+   "label": "LDL-C",
+   "unit": "mg/dL",
+   "default": 90,
+   "th": [
+    100,
+    160,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "rhr": {
+   "label": "Resting HR",
+   "unit": "bpm",
+   "default": 60,
+   "th": [
+    70,
+    85,
+    "hi"
+   ],
+   "doc": "18",
+   "source": "wearable"
+  },
+  "hdl": {
+   "label": "HDL-C",
+   "unit": "mg/dL",
+   "default": 55,
+   "th": [
+    50,
+    40,
+    "lo"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "hrv": {
+   "label": "HRV (rMSSD)",
+   "unit": "ms",
+   "default": 55,
+   "th": [
+    40,
+    25,
+    "lo"
+   ],
+   "doc": "18",
+   "source": "wearable"
+  },
+  "hba1c": {
+   "label": "HbA1c",
+   "unit": "%",
+   "default": 5.2,
+   "th": [
+    5.7,
+    6.5,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "glu": {
+   "label": "Fasting glucose",
+   "unit": "mg/dL",
+   "default": 88,
+   "th": [
+    100,
+    126,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "tg": {
+   "label": "Triglycerides",
+   "unit": "mg/dL",
+   "default": 100,
+   "th": [
+    150,
+    500,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "waist": {
+   "label": "Waist circumference",
+   "unit": "cm",
+   "default": 85,
+   "th": [
+    94,
+    102,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "clinical"
+  },
+  "egfr": {
+   "label": "eGFR",
+   "unit": "mL/min",
+   "default": 100,
+   "th": [
+    60,
+    45,
+    "lo"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "uacr": {
+   "label": "UACR",
+   "unit": "mg/g",
+   "default": 5,
+   "th": [
+    30,
+    300,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "k": {
+   "label": "Potassium (K+)",
+   "unit": "mmol/L",
+   "default": 4.2,
+   "th": [
+    5.0,
+    6.0,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "alt": {
+   "label": "ALT",
+   "unit": "U/L",
+   "default": 22,
+   "th": [
+    40,
+    200,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "fib4": {
+   "label": "FIB-4",
+   "unit": "index",
+   "default": 0.9,
+   "th": [
+    1.3,
+    2.67,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "crp": {
+   "label": "hsCRP",
+   "unit": "mg/L",
+   "default": 0.6,
+   "th": [
+    1,
+    10,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "wbc": {
+   "label": "WBC",
+   "unit": "10⁹/L",
+   "default": 6,
+   "th": [
+    11,
+    20,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "hb": {
+   "label": "Hemoglobin",
+   "unit": "g/dL",
+   "default": 14.5,
+   "th": [
+    13,
+    10,
+    "lo"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "plt": {
+   "label": "Platelets",
+   "unit": "10⁹/L",
+   "default": 250,
+   "th": [
+    150,
+    50,
+    "lo"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "spo2": {
+   "label": "SpO₂",
+   "unit": "%",
+   "default": 98,
+   "th": [
+    95,
+    90,
+    "lo"
+   ],
+   "doc": "18",
+   "source": "wearable"
+  },
+  "ferr": {
+   "label": "Ferritin",
+   "unit": "ng/mL",
+   "default": 80,
+   "th": [
+    30,
+    15,
+    "lo"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "tsh": {
+   "label": "TSH",
+   "unit": "mIU/L",
+   "default": 2.0,
+   "th": [
+    4.5,
+    10,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "vitd": {
+   "label": "Vitamin D (25-OH)",
+   "unit": "ng/mL",
+   "default": 40,
+   "th": [
+    30,
+    20,
+    "lo"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "bodyfat": {
+   "label": "Body fat",
+   "unit": "%",
+   "default": 18,
+   "th": [
+    25,
+    32,
+    "hi"
+   ],
+   "doc": "01",
+   "source": "clinical"
+  },
+  "almi": {
+   "label": "ALMI",
+   "unit": "kg/m²",
+   "default": 8.5,
+   "th": [
+    7,
+    5.5,
+    "lo"
+   ],
+   "doc": "01",
+   "source": "clinical"
+  },
+  "tscore": {
+   "label": "BMD T-score",
+   "unit": "SD",
+   "default": 0,
+   "th": [
+    -1,
+    -2.5,
+    "lo"
+   ],
+   "doc": "01",
+   "source": "clinical"
+  },
+  "b12": {
+   "label": "Vitamin B12",
+   "unit": "pg/mL",
+   "default": 450,
+   "th": [
+    300,
+    200,
+    "lo"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "omega3": {
+   "label": "Omega-3 index",
+   "unit": "%",
+   "default": 9,
+   "th": [
+    8,
+    4,
+    "lo"
+   ],
+   "doc": "01",
+   "source": "lab",
+   "imputable": true
+  },
+  "sleepdur": {
+   "label": "Sleep duration",
+   "unit": "h",
+   "default": 7.5,
+   "th": [
+    7,
+    6,
+    "lo"
+   ],
+   "doc": "18",
+   "source": "wearable"
+  },
+  "sleepeff": {
+   "label": "Sleep efficiency",
+   "unit": "%",
+   "default": 90,
+   "th": [
+    85,
+    75,
+    "lo"
+   ],
+   "doc": "18",
+   "source": "wearable"
+  },
+  "osa": {
+   "label": "OSA (AHI)",
+   "unit": "events/h",
+   "default": 0,
+   "th": [
+    0.5,
+    1,
+    "hi"
+   ],
+   "doc": "08",
+   "source": "clinical"
+  },
+  "vo2": {
+   "label": "VO₂max",
+   "unit": "mL/kg/min",
+   "default": 45,
+   "th": [
+    40,
+    30,
+    "lo"
+   ],
+   "doc": "18",
+   "source": "wearable"
+  },
+  "steps": {
+   "label": "Daily steps",
+   "unit": "/day",
+   "default": 10000,
+   "th": [
+    8000,
+    5000,
+    "lo"
+   ],
+   "doc": "18",
+   "source": "wearable"
+  },
+  "mvpa": {
+   "label": "MVPA",
+   "unit": "min/wk",
+   "default": 200,
+   "th": [
+    150,
+    75,
+    "lo"
+   ],
+   "doc": "18",
+   "source": "wearable"
+  },
+  "phq": {
+   "label": "PHQ-9",
+   "unit": "score",
+   "default": 2,
+   "th": [
+    5,
+    20,
+    "hi"
+   ],
+   "doc": "08",
+   "source": "pro"
+  },
+  "gad": {
+   "label": "GAD-7",
+   "unit": "score",
+   "default": 1,
+   "th": [
+    5,
+    15,
+    "hi"
+   ],
+   "doc": "08",
+   "source": "pro"
+  },
+  "isi": {
+   "label": "ISI",
+   "unit": "score",
+   "default": 3,
+   "th": [
+    8,
+    15,
+    "hi"
+   ],
+   "doc": "08",
+   "source": "pro"
+  }
+ },
+ "reservoirs": {
+  "ath": {
+   "label": "ATH · atherogenic",
+   "polarity": "burden",
+   "feeds": "cv",
+   "inputs": [
+    [
+     "apob",
+     70,
+     140
+    ],
+    [
+     "ldl",
+     90,
+     170
+    ],
+    [
+     "sbp",
+     115,
+     160
+    ]
+   ]
+  },
+  "vbp": {
+   "label": "VBP · vascular/BP",
+   "polarity": "burden",
+   "feeds": "cv",
+   "inputs": [
+    [
+     "sbp",
+     115,
+     160
+    ]
+   ]
+  },
+  "gly": {
+   "label": "GLY · glycemic",
+   "polarity": "burden",
+   "feeds": "met",
+   "inputs": [
+    [
+     "hba1c",
+     5.4,
+     7
+    ],
+    [
+     "glu",
+     90,
+     140
+    ],
+    [
+     "waist",
+     85,
+     105
+    ]
+   ]
+  },
+  "adi": {
+   "label": "ADI · adiposity",
+   "polarity": "burden",
+   "feeds": "met",
+   "inputs": [
+    [
+     "waist",
+     85,
+     110
+    ],
+    [
+     "bodyfat",
+     18,
+     34
+    ]
+   ]
+  },
+  "hepf": {
+   "label": "HEPF · hepatic fat",
+   "polarity": "burden",
+   "feeds": "hep",
+   "inputs": [
+    [
+     "alt",
+     25,
+     120
+    ],
+    [
+     "fib4",
+     0.9,
+     3
+    ]
+   ]
+  },
+  "infl": {
+   "label": "INFL · inflammatory",
+   "polarity": "burden",
+   "feeds": "inf",
+   "inputs": [
+    [
+     "crp",
+     0.5,
+     8
+    ],
+    [
+     "bodyfat",
+     18,
+     34
+    ]
+   ]
+  },
+  "allo": {
+   "label": "ALLO · allostatic",
+   "polarity": "burden",
+   "feeds": "mcs",
+   "inputs": [
+    [
+     "phq",
+     3,
+     20
+    ],
+    [
+     "gad",
+     3,
+     15
+    ],
+    [
+     "isi",
+     4,
+     18
+    ]
+   ]
+  },
+  "sld": {
+   "label": "SLD · sleep debt",
+   "polarity": "burden",
+   "feeds": "slp",
+   "inputs": [
+    [
+     "sleepdur",
+     8,
+     5
+    ],
+    [
+     "sleepeff",
+     92,
+     72
+    ]
+   ]
+  },
+  "crf": {
+   "label": "CRF · cardioresp",
+   "polarity": "asset",
+   "feeds": "fit",
+   "inputs": [
+    [
+     "vo2",
+     45,
+     28
+    ],
+    [
+     "steps",
+     9000,
+     4000
+    ]
+   ]
+  },
+  "mus": {
+   "label": "MUS · muscle",
+   "polarity": "asset",
+   "feeds": "bcm",
+   "inputs": [
+    [
+     "almi",
+     8,
+     5.5
+    ]
+   ]
+  },
+  "bon": {
+   "label": "BON · bone",
+   "polarity": "asset",
+   "feeds": "bcm",
+   "inputs": [
+    [
+     "tscore",
+     0,
+     -2.5
+    ]
+   ]
+  },
+  "renr": {
+   "label": "RENR · renal",
+   "polarity": "asset",
+   "feeds": "ren",
+   "inputs": [
+    [
+     "egfr",
+     90,
+     40
+    ],
+    [
+     "uacr",
+     10,
+     300
+    ]
+   ]
+  },
+  "micr": {
+   "label": "MICR · micronutrient",
+   "polarity": "asset",
+   "feeds": "nut",
+   "inputs": [
+    [
+     "vitd",
+     40,
+     18
+    ],
+    [
+     "b12",
+     400,
+     200
+    ]
+   ]
+  },
+  "oxd": {
+   "label": "OXD · oxygen",
+   "polarity": "asset",
+   "feeds": "hem",
+   "inputs": [
+    [
+     "hb",
+     14.5,
+     10
+    ],
+    [
+     "spo2",
+     98,
+     90
+    ]
+   ]
+  },
+  "iron": {
+   "label": "IRON · iron",
+   "polarity": "asset",
+   "feeds": "hem",
+   "inputs": [
+    [
+     "ferr",
+     80,
+     15
+    ]
+   ]
+  }
+ },
+ "reservoir_coupling": [
+  {
+   "t": "ath",
+   "add": [
+    [
+     "gly",
+     0.15
+    ],
+    [
+     "infl",
+     0.15
+    ]
+   ]
+  },
+  {
+   "t": "infl",
+   "add": [
+    [
+     "sld",
+     0.15
+    ],
+    [
+     "adi",
+     0.1
+    ]
+   ]
+  },
+  {
+   "t": "gly",
+   "add": [
+    [
+     "sld",
+     0.1
+    ]
+   ],
+   "subDeficit": [
+    [
+     "crf",
+     0.08
+    ]
+   ]
+  },
+  {
+   "t": "allo",
+   "add": [
+    [
+     "sld",
+     0.12
+    ]
+   ]
+  },
+  {
+   "t": "sld",
+   "add": [
+    [
+     "allo",
+     0.12
+    ]
+   ]
+  }
+ ],
+ "pillars": {
+  "cv": {
+   "label": "CV · cardiovascular",
+   "wRef": "CV",
+   "markers": [
+    "sbp",
+    "apob",
+    "ldl",
+    "rhr",
+    "hdl",
+    "hrv"
+   ],
+   "critical": [
+    "sbp",
+    "apob",
+    "ldl"
+   ],
+   "reservoirs": [
+    "ath",
+    "vbp",
+    "crf"
+   ],
+   "doc": "02"
+  },
+  "met": {
+   "label": "MET · metabolic",
+   "wRef": "MET",
+   "markers": [
+    "hba1c",
+    "glu",
+    "tg",
+    "waist"
+   ],
+   "critical": [
+    "hba1c",
+    "glu",
+    "tg"
+   ],
+   "reservoirs": [
+    "gly",
+    "adi"
+   ],
+   "doc": "02"
+  },
+  "ren": {
+   "label": "REN · renal",
+   "wRef": "REN",
+   "markers": [
+    "egfr",
+    "uacr",
+    "k"
+   ],
+   "critical": [
+    "egfr",
+    "uacr",
+    "k"
+   ],
+   "reservoirs": [
+    "renr",
+    "vbp"
+   ],
+   "doc": "02"
+  },
+  "hep": {
+   "label": "HEP · hepatic",
+   "wRef": "HEP",
+   "markers": [
+    "alt",
+    "fib4"
+   ],
+   "critical": [
+    "alt",
+    "fib4"
+   ],
+   "reservoirs": [
+    "hepf"
+   ],
+   "doc": "02"
+  },
+  "inf": {
+   "label": "INF · inflammation",
+   "wRef": "INF",
+   "markers": [
+    "crp",
+    "wbc"
+   ],
+   "critical": [
+    "crp"
+   ],
+   "reservoirs": [
+    "infl"
+   ],
+   "doc": "02"
+  },
+  "hem": {
+   "label": "HEM · hematologic",
+   "wRef": "HEM",
+   "markers": [
+    "hb",
+    "plt",
+    "spo2",
+    "ferr"
+   ],
+   "critical": [
+    "hb",
+    "plt",
+    "spo2"
+   ],
+   "reservoirs": [
+    "oxd",
+    "iron"
+   ],
+   "doc": "02"
+  },
+  "endo": {
+   "label": "ENDO · endocrine",
+   "wRef": "ENDO",
+   "markers": [
+    "tsh",
+    "vitd"
+   ],
+   "critical": [],
+   "reservoirs": [
+    "allo",
+    "micr"
+   ],
+   "doc": "02"
+  },
+  "bcm": {
+   "label": "BCM · body-comp/MSK",
+   "wRef": "BCM",
+   "markers": [
+    "bodyfat",
+    "almi",
+    "tscore"
+   ],
+   "critical": [
+    "almi",
+    "tscore"
+   ],
+   "reservoirs": [
+    "mus",
+    "bon",
+    "adi"
+   ],
+   "doc": "02"
+  },
+  "nut": {
+   "label": "NUT · nutrition",
+   "wRef": "NUT",
+   "markers": [
+    "vitd",
+    "b12",
+    "omega3"
+   ],
+   "critical": [],
+   "reservoirs": [
+    "micr"
+   ],
+   "doc": "02"
+  },
+  "slp": {
+   "label": "SLP · sleep",
+   "wRef": "SLP",
+   "markers": [
+    "sleepdur",
+    "sleepeff",
+    "osa"
+   ],
+   "critical": [
+    "osa"
+   ],
+   "reservoirs": [
+    "sld",
+    "allo"
+   ],
+   "doc": "02"
+  },
+  "fit": {
+   "label": "FIT · fitness",
+   "wRef": "FIT",
+   "markers": [
+    "vo2",
+    "steps",
+    "mvpa"
+   ],
+   "critical": [],
+   "reservoirs": [
+    "crf",
+    "mus"
+   ],
+   "doc": "02"
+  },
+  "mcs": {
+   "label": "MCS · mental/cognitive",
+   "wRef": "MCS",
+   "markers": [
+    "phq",
+    "gad",
+    "isi"
+   ],
+   "critical": [
+    "phq"
+   ],
+   "reservoirs": [
+    "allo"
+   ],
+   "doc": "02"
+  }
+ },
+ "engine_params": {
+  "conf_floor": 0.5,
+  "tau_days": 120,
+  "stale_dt_days": 60,
+  "q_source": {
+   "clinical": 1.0,
+   "lab": 0.95,
+   "wearable": 0.8,
+   "pro": 0.7
+  },
+  "_note": "Illustrative confidence/missing-data model (Doc 01 §2 · D22 trust tiers · D33 cold-start). confidence = q_source[channel] · exp(−Δt/τ); present → Δt 0, stale → Δt = stale_dt_days, missing → 0. Missing & imputable markers impute to the age×sex×life-stage cohort median (D33) — here the marker default stands in as the illustrative cohort median; missing & non-imputable markers drop from the pillar mean and lower Confidence."
+ },
+ "gates": [
+  {
+   "id": "sex",
+   "label": "Sex model",
+   "area": "gate",
+   "question": "sex?",
+   "attr": "sex",
+   "doc": "05",
+   "formula": "sex ∈ {male, female} selects reference cut-points, pillar emphases and the sex-gated question set (D27).",
+   "branches": [
+    {
+     "id": "male",
+     "label": "Male — male cut-points, ENDO/HEM emphasis",
+     "when": "male"
+    },
+    {
+     "id": "female",
+     "label": "Female — female cut-points, ENDO/BCM/HEM emphasis",
+     "when": "female"
+    }
+   ]
+  },
+  {
+   "id": "preg",
+   "label": "Pregnancy frame",
+   "area": "gate",
+   "question": "pregnant?",
+   "attr": "preg",
+   "doc": "06",
+   "formula": "Pregnancy applies physiologic-shift ranges and pre-eclampsia / GDM anchors; gates female-only items.",
+   "branches": [
+    {
+     "id": "no",
+     "label": "not pregnant → standard ranges",
+     "when": "not_preg"
+    },
+    {
+     "id": "yes",
+     "label": "pregnant → pregnancy frame (physiologic shifts, PE/GDM anchors)",
+     "when": "preg"
+    }
+   ]
+  },
+  {
+   "id": "age",
+   "label": "Age band",
+   "area": "gate",
+   "question": "age band?",
+   "attr": "age",
+   "doc": "04",
+   "formula": "Guideline age-banding where it exists (BP J-curve, age-normed fitness) + frailty frames at 65+ (D4).",
+   "branches": [
+    {
+     "id": "young",
+     "label": "< 40",
+     "when": "age_lt_40"
+    },
+    {
+     "id": "mid",
+     "label": "40–64",
+     "when": "age_40_64"
+    },
+    {
+     "id": "older",
+     "label": "65+ — J-curve & frailty frames",
+     "when": "age_65p"
+    }
+   ]
+  },
+  {
+   "id": "lifestage",
+   "label": "Life-stage frame",
+   "area": "gate",
+   "question": "life-stage?",
+   "attr": "lifestage",
+   "doc": "06",
+   "formula": "Life-stage selects the special frame (reproductive · pregnancy · perimenopause · andropause · older-adult).",
+   "branches": [
+    {
+     "id": "adult",
+     "label": "general adult (no special frame)",
+     "when": "ls_adult"
+    },
+    {
+     "id": "reproductive",
+     "label": "reproductive",
+     "when": "ls_reproductive"
+    },
+    {
+     "id": "pregnancy",
+     "label": "pregnancy",
+     "when": "ls_pregnancy"
+    },
+    {
+     "id": "perimenopause",
+     "label": "perimenopause / menopause",
+     "when": "ls_peri"
+    },
+    {
+     "id": "andropause",
+     "label": "andropause",
+     "when": "ls_andropause"
+    },
+    {
+     "id": "older",
+     "label": "older-adult",
+     "when": "ls_older"
+    }
+   ]
+  }
+ ],
+ "roots": {
+  "purescore": {
+   "label": "PureScore",
+   "formula": "PureScore = round(100 · (1 − R_total));  capped at PURE_CRIT_CAP when any pillar critical",
+   "output": "0–100",
+   "doc": "03",
+   "nodes": {
+    "r_total": {
+     "label": "R_total",
+     "formula": "R_total = (Σ_k Wk · R_k^δ)^(1/δ)  ·  δ-power-mean, δ from constants",
+     "cRef": [
+      "δ"
+     ],
+     "doc": "03"
+    },
+    "pillar": {
+     "label": "Pillar R_k",
+     "formula": "R_k = clamp01( mean(r_marker) + ρ · mean(reservoir load) ); critical red → R_k = max(R_k, R_crit)",
+     "cRef": [
+      "ρ_k",
+      "R_crit"
+     ],
+     "doc": "02"
+    },
+    "marker": {
+     "label": "Marker pipeline",
+     "stages": [
+      {
+       "id": "conf",
+       "label": "Confidence + decay",
+       "formula": "confidence = q_source · exp(−Δt/τ); below floor → stale/missing → fallback (D33)",
+       "doc": "01",
+       "branches": [
+        {
+         "id": "ok",
+         "label": "present → use measured value",
+         "when": "present"
+        },
+        {
+         "id": "stale",
+         "label": "stale → decay confidence, blend r toward neutral",
+         "when": "stale"
+        },
+        {
+         "id": "impute",
+         "label": "missing & imputable → cohort median, low confidence (D33)",
+         "when": "missing_imputable"
+        },
+        {
+         "id": "drop",
+         "label": "missing & non-imputable → drop from pillar mean, Confidence↓",
+         "when": "missing_nonimputable"
+        }
+       ]
+      },
+      {
+       "id": "band",
+       "label": "Clinical band r_clin",
+       "formula": "r off the continuous curve via th = [yellow, red, dir] → green .10 / yellow .40 / red .66",
+       "doc": "03"
+      },
+      {
+       "id": "cohort",
+       "label": "Cohort percentile r_cohort",
+       "formula": "r_cohort = F_ic(x) percentile (NHANES / UK-Biobank)",
+       "doc": "01"
+      },
+      {
+       "id": "blend",
+       "label": "max(r_clin, φ·r_cohort)",
+       "formula": "φ from constants — cohort can only RAISE, clinical anchor never diluted",
+       "cRef": [
+        "φ"
+       ],
+       "doc": "03",
+       "branches": [
+        {
+         "id": "raise",
+         "label": "φ·r_cohort > r_clin → cohort raises r",
+         "when": "cohort_raises"
+        },
+        {
+         "id": "anchor",
+         "label": "else → clinical anchor holds",
+         "when": "clinical_anchor"
+        }
+       ]
+      },
+      {
+       "id": "pers",
+       "label": "Personalization + clamp",
+       "formula": "band_clamp(r + r_pers · 𝟙[non-critical]); r_pers = κ_resp · tanh(z/2)",
+       "cRef": [
+        "κ_resp"
+       ],
+       "doc": "03",
+       "branches": [
+        {
+         "id": "on",
+         "label": "non-critical → apply r_pers = κ_resp · tanh(z/2)",
+         "when": "noncritical"
+        },
+        {
+         "id": "off",
+         "label": "critical marker → personalization DISABLED",
+         "when": "critical"
+        }
+       ]
+      },
+      {
+       "id": "crit",
+       "label": "Critical cascade",
+       "formula": "critical-marker red → pillar R_k ← max(R_k, R_crit); never averaged away",
+       "cRef": [
+        "R_crit"
+       ],
+       "doc": "03",
+       "branches": [
+        {
+         "id": "fire",
+         "label": "critical & red → floor pillar R_k to R_crit ⚑",
+         "when": "crit_red"
+        },
+        {
+         "id": "pass",
+         "label": "else → pass through",
+         "when": "not_crit_red"
+        }
+       ]
+      }
+     ]
+    },
+    "reservoir": {
+     "label": "Reservoir load L_j",
+     "formula": "L_j ∈ [0,1]; base from nrm(value, good, bad) then coupling (leak/interference, Doc 04); contributes ρ·L to its pillar",
+     "cRef": [
+      "ρ_k"
+     ],
+     "doc": "04"
+    }
+   }
+  },
+  "companion": {
+   "label": "Companion vector",
+   "formula": "(Confidence · Trajectory · early-warning) — carried alongside the scalar score",
+   "doc": "12",
+   "nodes": {
+    "confidence": {
+     "label": "Confidence",
+     "formula": "weighted data freshness × source quality across pillars",
+     "doc": "12"
+    },
+    "trajectory": {
+     "label": "Trajectory",
+     "formula": "Δ PureScore vs prior period (↑ improving / ↓ worsening)",
+     "doc": "12"
+    },
+    "ew": {
+     "label": "Early-warning",
+     "formula": "ON when any pillar critical or a syndromic detector fires",
+     "doc": "12"
+    }
+   }
+  },
+  "nudge": {
+   "label": "Nudge utility U_a",
+   "formula": "U_a = impact_a · p̂_a · ease_a — every recommended action has positive Δ PureScore; top-5 surfaced",
+   "doc": "07",
+   "nodes": {
+    "impact": {
+     "label": "impact_a",
+     "formula": "expected Δ PureScore if action a fully adopted (worst-pillar leaning)",
+     "doc": "07"
+    },
+    "phat": {
+     "label": "p̂_a",
+     "formula": "predicted adoption probability (recalibrated from realized adherence)",
+     "doc": "07"
+    },
+    "ease": {
+     "label": "ease_a",
+     "formula": "modifiability / effort gate (D16) — low-effort, high-yield first",
+     "doc": "07"
+    }
+   }
+  },
+  "adherence": {
+   "label": "Adherence → reservoir inflow",
+   "formula": "adherence ∈ [0,1] (7-day EWMA of EHR-triggered check-ins) → inflow to the relevant reservoir",
+   "doc": "appendix-adherence.html",
+   "nodes": {
+    "ewma": {
+     "label": "7-day EWMA",
+     "formula": "adherence_t = α·obs_t + (1−α)·adherence_{t−1}",
+     "doc": "appendix-adherence.html"
+    },
+    "inflow": {
+     "label": "Reservoir inflow",
+     "formula": "inflow_j = adherence · k_j → drains a burden / fills a reserve over time (Doc 04)",
+     "doc": "04"
+    }
+   }
+  },
+  "actuarial": {
+   "label": "Actuarial premium",
+   "formula": "relative risk from PureScore → premium multiplier (firewalled, off by default)",
+   "doc": "10",
+   "nodes": {
+    "rr": {
+     "label": "Relative risk",
+     "formula": "RR = g(PureScore, age, sex) calibrated to cohort hazard",
+     "doc": "10"
+    },
+    "premium": {
+     "label": "Premium multiplier",
+     "formula": "premium = base · (1 + β · (RR − 1)); regulatory caps applied",
+     "doc": "10"
+    }
+   }
+  }
+ },
+ "areas": [
+  {
+   "k": "onboard",
+   "l": "Onboarding",
+   "c": "#8f9bff"
+  },
+  {
+   "k": "capture",
+   "l": "Data capture",
+   "c": "#49c6d8"
+  },
+  {
+   "k": "gate",
+   "l": "Eligibility & gating",
+   "c": "#2ee6c9"
+  },
+  {
+   "k": "marker",
+   "l": "Marker scoring",
+   "c": "#5ad1b0"
+  },
+  {
+   "k": "reservoir",
+   "l": "MONIAC reservoirs (15)",
+   "c": "#7c83e8"
+  },
+  {
+   "k": "pillar",
+   "l": "Pillars (12)",
+   "c": "#3ad6a0"
+  },
+  {
+   "k": "score",
+   "l": "Score & cascade",
+   "c": "#edb14a"
+  },
+  {
+   "k": "safety",
+   "l": "Safety",
+   "c": "#f0606e"
+  },
+  {
+   "k": "companion",
+   "l": "Companion",
+   "c": "#9aa7bd"
+  },
+  {
+   "k": "nudge",
+   "l": "Nudges",
+   "c": "#f59e4b"
+  },
+  {
+   "k": "adherence",
+   "l": "Adherence",
+   "c": "#e6c84a"
+  },
+  {
+   "k": "recal",
+   "l": "Recalibration",
+   "c": "#b08bff"
+  }
+ ],
+ "profiles": [
+  {
+   "id": "healthy",
+   "name": "1 · Healthy young (28F) · DTC cold-start",
+   "sex": "female",
+   "age": 28,
+   "lifestage": "reproductive",
+   "mk": {},
+   "have": [
+    "sbp",
+    "waist",
+    "bodyfat",
+    "ldl",
+    "hdl",
+    "tg",
+    "hba1c",
+    "glu",
+    "rhr",
+    "hrv",
+    "spo2",
+    "sleepdur",
+    "sleepeff",
+    "vo2",
+    "steps",
+    "mvpa"
+   ],
+   "stale": [],
+   "dx": [],
+   "meds": []
+  },
+  {
+   "id": "prediab",
+   "name": "2 · Prediabetic (45M)",
+   "sex": "male",
+   "age": 45,
+   "lifestage": "adult",
+   "mk": {
+    "sbp": 124,
+    "apob": 95,
+    "ldl": 120,
+    "rhr": 72,
+    "hba1c": 6.0,
+    "glu": 110,
+    "waist": 97,
+    "bodyfat": 26,
+    "vo2": 38,
+    "steps": 7000
+   },
+   "have": [
+    "sbp",
+    "apob",
+    "ldl",
+    "hdl",
+    "tg",
+    "hba1c",
+    "glu",
+    "waist",
+    "bodyfat",
+    "egfr",
+    "uacr",
+    "k",
+    "alt",
+    "crp",
+    "rhr",
+    "hrv",
+    "spo2",
+    "sleepdur",
+    "sleepeff",
+    "vo2",
+    "steps",
+    "mvpa"
+   ],
+   "stale": [
+    "rhr",
+    "hrv",
+    "spo2",
+    "sleepdur",
+    "sleepeff",
+    "vo2",
+    "steps",
+    "mvpa"
+   ],
+   "dx": [
+    "R73.03",
+    "E66.9"
+   ],
+   "meds": []
+  },
+  {
+   "id": "metsyn",
+   "name": "3 · Metabolic syndrome (52M)",
+   "sex": "male",
+   "age": 52,
+   "lifestage": "adult",
+   "mk": {
+    "sbp": 138,
+    "apob": 130,
+    "ldl": 150,
+    "rhr": 78,
+    "hba1c": 6.4,
+    "glu": 118,
+    "tg": 260,
+    "waist": 106,
+    "bodyfat": 31,
+    "crp": 3.5,
+    "vo2": 32,
+    "steps": 5500,
+    "sleepdur": 6
+   },
+   "have": [
+    "sbp",
+    "apob",
+    "ldl",
+    "hdl",
+    "tg",
+    "hba1c",
+    "glu",
+    "waist",
+    "bodyfat",
+    "egfr",
+    "uacr",
+    "k",
+    "alt",
+    "fib4",
+    "crp",
+    "wbc",
+    "hb",
+    "plt",
+    "ferr",
+    "tsh",
+    "vitd",
+    "rhr",
+    "hrv",
+    "spo2",
+    "sleepdur",
+    "sleepeff",
+    "vo2",
+    "steps",
+    "mvpa"
+   ],
+   "stale": [],
+   "dx": [
+    "E88.81",
+    "I10",
+    "E78.5",
+    "K76.0"
+   ],
+   "meds": [
+    "C10AA"
+   ]
+  },
+  {
+   "id": "ckd3",
+   "name": "4 · CKD stage 3 (60M)",
+   "sex": "male",
+   "age": 60,
+   "lifestage": "andropause",
+   "mk": {
+    "sbp": 146,
+    "apob": 110,
+    "ldl": 140,
+    "hba1c": 6.2,
+    "glu": 115,
+    "egfr": 45,
+    "uacr": 60,
+    "k": 5.1,
+    "waist": 101,
+    "crp": 2.2
+   },
+   "have": [
+    "sbp",
+    "apob",
+    "ldl",
+    "hdl",
+    "tg",
+    "hba1c",
+    "glu",
+    "waist",
+    "bodyfat",
+    "egfr",
+    "uacr",
+    "k",
+    "alt",
+    "fib4",
+    "crp",
+    "wbc",
+    "hb",
+    "plt",
+    "ferr",
+    "tsh",
+    "vitd",
+    "b12"
+   ],
+   "stale": [],
+   "dx": [
+    "N18.3",
+    "I10",
+    "E11"
+   ],
+   "meds": [
+    "C09AA",
+    "A10BA02",
+    "C10AA"
+   ]
+  },
+  {
+   "id": "postmi",
+   "name": "5 · Post-MI on meds (58M) · cardiac rehab",
+   "sex": "male",
+   "age": 58,
+   "lifestage": "andropause",
+   "adh": 0.6,
+   "mk": {
+    "sbp": 124,
+    "apob": 70,
+    "ldl": 65,
+    "rhr": 60,
+    "hba1c": 5.6,
+    "bodyfat": 24,
+    "vo2": 34,
+    "steps": 7000,
+    "phq": 8,
+    "gad": 7
+   },
+   "have": [
+    "sbp",
+    "apob",
+    "ldl",
+    "hdl",
+    "tg",
+    "hba1c",
+    "glu",
+    "waist",
+    "bodyfat",
+    "egfr",
+    "k",
+    "crp",
+    "phq",
+    "gad",
+    "rhr",
+    "hrv",
+    "spo2",
+    "sleepdur",
+    "sleepeff",
+    "vo2",
+    "steps",
+    "mvpa"
+   ],
+   "stale": [],
+   "dx": [
+    "I25.2",
+    "I25.10",
+    "E78.5"
+   ],
+   "meds": [
+    "C10AA",
+    "C07AB",
+    "B01AC06",
+    "C09AA"
+   ]
+  },
+  {
+   "id": "hypothy",
+   "name": "6 · Hypothyroid (40F)",
+   "sex": "female",
+   "age": 40,
+   "lifestage": "reproductive",
+   "mk": {
+    "tsh": 8.5,
+    "vitd": 18,
+    "ldl": 125,
+    "apob": 95,
+    "bodyfat": 28,
+    "sleepdur": 6.5,
+    "phq": 9,
+    "gad": 8,
+    "b12": 260
+   },
+   "have": [
+    "sbp",
+    "apob",
+    "ldl",
+    "hdl",
+    "tg",
+    "hba1c",
+    "glu",
+    "waist",
+    "bodyfat",
+    "tsh",
+    "vitd",
+    "b12",
+    "hb",
+    "ferr",
+    "crp",
+    "phq",
+    "gad",
+    "isi",
+    "sleepdur"
+   ],
+   "stale": [],
+   "dx": [
+    "E03.9"
+   ],
+   "meds": [
+    "H03AA01"
+   ]
+  },
+  {
+   "id": "preg",
+   "name": "7 · Pregnant (31F) · prenatal panel",
+   "sex": "female",
+   "age": 31,
+   "lifestage": "pregnancy",
+   "preg": 1,
+   "mk": {
+    "sbp": 112,
+    "apob": 90,
+    "ldl": 120,
+    "rhr": 84,
+    "glu": 96,
+    "hb": 11.5,
+    "ferr": 22,
+    "waist": 90
+   },
+   "have": [
+    "sbp",
+    "glu",
+    "hba1c",
+    "hb",
+    "ferr",
+    "waist",
+    "apob",
+    "ldl",
+    "hdl",
+    "tsh",
+    "uacr",
+    "rhr",
+    "hrv",
+    "steps",
+    "sleepdur",
+    "sleepeff"
+   ],
+   "stale": [],
+   "dx": [
+    "Z33.1"
+   ],
+   "meds": [
+    "A11CC"
+   ]
+  },
+  {
+   "id": "frail",
+   "name": "8 · Elderly frail (78M) · labs 8mo, DEXA done, no wearable",
+   "sex": "male",
+   "age": 78,
+   "lifestage": "older",
+   "mk": {
+    "sbp": 142,
+    "apob": 100,
+    "ldl": 135,
+    "egfr": 55,
+    "uacr": 40,
+    "almi": 5.8,
+    "tscore": -2.6,
+    "vitd": 22,
+    "hb": 12,
+    "bodyfat": 20
+   },
+   "have": [
+    "sbp",
+    "apob",
+    "ldl",
+    "hdl",
+    "hba1c",
+    "glu",
+    "waist",
+    "bodyfat",
+    "egfr",
+    "uacr",
+    "k",
+    "crp",
+    "wbc",
+    "hb",
+    "plt",
+    "ferr",
+    "tsh",
+    "vitd",
+    "b12",
+    "almi",
+    "tscore"
+   ],
+   "stale": [
+    "apob",
+    "ldl",
+    "hdl",
+    "hba1c",
+    "glu"
+   ],
+   "dx": [
+    "M81.0",
+    "N18.3"
+   ],
+   "meds": [
+    "M05BA",
+    "A11CC"
+   ]
+  },
+  {
+   "id": "deprx",
+   "name": "9 · Depression / anxiety (35F)",
+   "sex": "female",
+   "age": 35,
+   "lifestage": "reproductive",
+   "mk": {
+    "phq": 22,
+    "gad": 14,
+    "isi": 17,
+    "sleepdur": 5.5,
+    "sleepeff": 70,
+    "crp": 1.8
+   },
+   "have": [
+    "phq",
+    "gad",
+    "isi",
+    "tsh",
+    "crp",
+    "hb",
+    "sbp",
+    "glu",
+    "hba1c",
+    "ldl",
+    "rhr",
+    "hrv",
+    "sleepdur",
+    "sleepeff"
+   ],
+   "stale": [],
+   "dx": [
+    "F33",
+    "F41.1",
+    "G47.00"
+   ],
+   "meds": [
+    "N06AB"
+   ]
+  },
+  {
+   "id": "athlete",
+   "name": "10 · Athlete optimizer (33M) · full panel",
+   "sex": "male",
+   "age": 33,
+   "lifestage": "adult",
+   "mk": {
+    "sbp": 108,
+    "apob": 62,
+    "ldl": 80,
+    "rhr": 44,
+    "hdl": 68,
+    "hrv": 90,
+    "hba1c": 4.9,
+    "glu": 82,
+    "waist": 80,
+    "bodyfat": 11,
+    "almi": 9.4,
+    "vo2": 58,
+    "steps": 14000,
+    "mvpa": 420,
+    "sleepdur": 8.2,
+    "sleepeff": 94
+   },
+   "have": "all",
+   "stale": [],
+   "dx": [],
+   "meds": []
+  },
+  {
+   "id": "wearonly",
+   "name": "11 · DTC wearable-only (29M) · no labs",
+   "sex": "male",
+   "age": 29,
+   "lifestage": "adult",
+   "mk": {
+    "rhr": 58,
+    "hrv": 62,
+    "steps": 8500,
+    "sleepdur": 7.0,
+    "sleepeff": 86,
+    "vo2": 42
+   },
+   "have": [
+    "rhr",
+    "hrv",
+    "spo2",
+    "sleepdur",
+    "sleepeff",
+    "vo2",
+    "steps",
+    "mvpa"
+   ],
+   "stale": [],
+   "dx": [],
+   "meds": []
+  },
+  {
+   "id": "returner",
+   "name": "12 · Returning patient (50F) · labs 11 mo stale",
+   "sex": "female",
+   "age": 50,
+   "lifestage": "perimenopause",
+   "mk": {
+    "sbp": 134,
+    "apob": 108,
+    "ldl": 138,
+    "hba1c": 5.9,
+    "glu": 104,
+    "tg": 170,
+    "waist": 92,
+    "bodyfat": 30,
+    "tsh": 3.8,
+    "vitd": 24
+   },
+   "have": [
+    "sbp",
+    "apob",
+    "ldl",
+    "hdl",
+    "tg",
+    "hba1c",
+    "glu",
+    "waist",
+    "bodyfat",
+    "egfr",
+    "uacr",
+    "k",
+    "alt",
+    "crp",
+    "hb",
+    "tsh",
+    "vitd",
+    "ferr"
+   ],
+   "stale": [
+    "sbp",
+    "apob",
+    "ldl",
+    "hdl",
+    "tg",
+    "hba1c",
+    "glu",
+    "waist",
+    "bodyfat",
+    "egfr",
+    "uacr",
+    "k",
+    "alt",
+    "crp",
+    "hb",
+    "tsh",
+    "vitd",
+    "ferr"
+   ],
+   "dx": [
+    "E78.5",
+    "R73.03"
+   ],
+   "meds": []
+  },
+  {
+   "id": "onboard",
+   "name": "13 · Onboarding (38M) · questionnaire only",
+   "sex": "male",
+   "age": 38,
+   "lifestage": "adult",
+   "mk": {
+    "phq": 6,
+    "gad": 5,
+    "isi": 9,
+    "sbp": 128,
+    "waist": 96
+   },
+   "have": [
+    "phq",
+    "gad",
+    "isi",
+    "sbp",
+    "waist"
+   ],
+   "stale": [],
+   "dx": [],
+   "meds": []
+  }
+ ]
+}

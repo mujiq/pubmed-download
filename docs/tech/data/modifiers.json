@@ -1,0 +1,28 @@
+{
+ "_meta": {
+  "source": "wiki_content.py:MODIFIERS",
+  "note": "Canonical metadata. Edit here, not in Python."
+ },
+ "modifiers": [
+  [
+   "Smoking / nicotine",
+   "PRO + cotinine",
+   "multiplies CV, HEM/respiratory, INF risk"
+  ],
+  [
+   "Alcohol",
+   "PRO",
+   "modifies HEP, MET, MCS, CV"
+  ],
+  [
+   "Respiratory (SpO₂, FEV1, smoking)",
+   "mixed",
+   "folds into HEM oxygen-transport + CV; severe values escalate independently"
+  ],
+  [
+   "Adherence / engagement",
+   "behavioural",
+   "not scored as health; feeds the nudge feasibility model (Doc 07) and reservoir inflows (Doc 04)"
+  ]
+ ]
+}

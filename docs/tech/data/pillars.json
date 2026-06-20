@@ -1,0 +1,1064 @@
+{
+ "_meta": {
+  "source": "wiki_content.py:PILLARS",
+  "note": "Canonical metadata. Edit here, not in Python."
+ },
+ "pillars": [
+  [
+   "CV",
+   "Cardiovascular & Vascular",
+   "atherogenic burden · vascular/BP load · cardiorespiratory reserve",
+   [
+    [
+     "Systolic BP",
+     "mmHg",
+     "C",
+     1,
+     "90–119",
+     "120–139 (or <90)",
+     "≥140 or <85",
+     ".15",
+     "ACC/AHA 2017",
+     1
+    ],
+    [
+     "Diastolic BP",
+     "mmHg",
+     "C",
+     1,
+     "60–79",
+     "80–89",
+     "≥90 or <55",
+     ".10",
+     "ACC/AHA",
+     0
+    ],
+    [
+     "ApoB",
+     "mg/dL",
+     "P",
+     0,
+     "<80 (<65 high-risk)",
+     "80–99",
+     "≥100",
+     ".18",
+     "ESC/EAS",
+     1
+    ],
+    [
+     "LDL-C",
+     "mg/dL",
+     "C",
+     0,
+     "<100 (<70 high-risk)",
+     "100–159",
+     "≥160",
+     ".12",
+     "ACC/AHA",
+     1
+    ],
+    [
+     "HDL-C",
+     "mg/dL",
+     "C",
+     1,
+     "≥50 F / ≥40 M",
+     "40–49",
+     "<40 (very low)",
+     ".06",
+     "ACC/AHA",
+     0
+    ],
+    [
+     "Lp(a)",
+     "nmol/L",
+     "P",
+     0,
+     "<75",
+     "75–125",
+     "≥125",
+     ".10",
+     "ESC (lifetime, once)",
+     0
+    ],
+    [
+     "Resting HR",
+     "bpm",
+     "C",
+     1,
+     "50–69",
+     "70–84 (or <45)",
+     "≥85 or <40",
+     ".07",
+     "wearable/literature",
+     0
+    ],
+    [
+     "HRV (RMSSD, age-adj)",
+     "ms",
+     "C",
+     0,
+     "cohort p50+",
+     "p20–p50",
+     "<p10",
+     ".07",
+     "wearable norms",
+     0
+    ],
+    [
+     "CAC",
+     "Agatston",
+     "X",
+     0,
+     "0",
+     "1–99",
+     "≥100 (≥300 high)",
+     ".15",
+     "MESA",
+     1
+    ]
+   ]
+  ],
+  [
+   "MET",
+   "Metabolic & Glycemic",
+   "glycemic burden · adiposity · hepatic fat",
+   [
+    [
+     "HbA1c",
+     "%",
+     "C",
+     0,
+     "<5.4",
+     "5.4–6.4",
+     "≥6.5",
+     ".22",
+     "ADA",
+     1
+    ],
+    [
+     "Fasting glucose",
+     "mg/dL",
+     "C",
+     1,
+     "70–99",
+     "100–125 (or <65)",
+     "≥126 or <55",
+     ".15",
+     "ADA",
+     1
+    ],
+    [
+     "Fasting insulin",
+     "µIU/mL",
+     "P",
+     0,
+     "<8",
+     "8–14",
+     ">14",
+     ".10",
+     "literature",
+     0
+    ],
+    [
+     "HOMA-IR",
+     "index",
+     "P",
+     0,
+     "<1.5",
+     "1.5–2.9",
+     "≥3.0",
+     ".12",
+     "literature",
+     0
+    ],
+    [
+     "Triglycerides",
+     "mg/dL",
+     "C",
+     0,
+     "<90",
+     "90–149",
+     "≥150 (≥500 acute)",
+     ".10",
+     "ADA/AHA",
+     1
+    ],
+    [
+     "Waist circumference",
+     "cm",
+     "C",
+     0,
+     "<94 M / <80 F",
+     "up to 102 M / 88 F",
+     "≥102 M / ≥88 F",
+     ".12",
+     "IDF",
+     0
+    ],
+    [
+     "CGM time-in-range",
+     "%",
+     "X",
+     0,
+     "≥90",
+     "70–89",
+     "<70",
+     ".10",
+     "consensus TIR",
+     0
+    ],
+    [
+     "CGM glycemic variability",
+     "CV%",
+     "X",
+     0,
+     "<25",
+     "25–36",
+     ">36",
+     ".09",
+     "consensus",
+     0
+    ]
+   ]
+  ],
+  [
+   "REN",
+   "Renal",
+   "renal reserve · KDIGO eGFR×UACR heatmap (Doc 08)",
+   [
+    [
+     "eGFR (cystatin-C)",
+     "mL/min/1.73m²",
+     "P",
+     0,
+     "≥90",
+     "60–89",
+     "<60 (<30 severe)",
+     ".35",
+     "KDIGO 2024",
+     1
+    ],
+    [
+     "eGFR (creatinine)",
+     "mL/min/1.73m²",
+     "C",
+     0,
+     "≥90",
+     "60–89",
+     "<60",
+     ".15",
+     "KDIGO",
+     1
+    ],
+    [
+     "UACR",
+     "mg/g",
+     "P",
+     0,
+     "<30",
+     "30–299",
+     "≥300",
+     ".25",
+     "KDIGO",
+     1
+    ],
+    [
+     "Potassium",
+     "mmol/L",
+     "C",
+     1,
+     "3.6–5.0",
+     "5.1–5.5 / 3.3–3.5",
+     "≥5.6 or ≤3.2",
+     ".15",
+     "lab",
+     1
+    ],
+    [
+     "Sodium",
+     "mmol/L",
+     "C",
+     1,
+     "136–144",
+     "130–135 / 145–148",
+     "<130 or >148",
+     ".10",
+     "lab",
+     0
+    ]
+   ]
+  ],
+  [
+   "HEP",
+   "Hepatic",
+   "hepatic fat · inflammatory load",
+   [
+    [
+     "ALT",
+     "U/L",
+     "C",
+     0,
+     "<30 M / <20 F",
+     "up to 50",
+     ">50 (3× ULN acute)",
+     ".22",
+     "AASLD",
+     1
+    ],
+    [
+     "AST",
+     "U/L",
+     "C",
+     0,
+     "<30",
+     "30–45",
+     ">45",
+     ".15",
+     "AASLD",
+     1
+    ],
+    [
+     "GGT",
+     "U/L",
+     "P",
+     0,
+     "<30",
+     "30–60",
+     ">60",
+     ".12",
+     "literature",
+     0
+    ],
+    [
+     "FIB-4 index",
+     "index",
+     "P",
+     0,
+     "<1.3",
+     "1.3–2.67",
+     ">2.67",
+     ".25",
+     "AASLD fibrosis",
+     1
+    ],
+    [
+     "Liver fat (CAP / MRI-PDFF)",
+     "—",
+     "X",
+     0,
+     "normal",
+     "mild steatosis",
+     "mod–severe",
+     ".16",
+     "AASLD",
+     0
+    ],
+    [
+     "Bilirubin",
+     "mg/dL",
+     "C",
+     0,
+     "<1.2",
+     "1.2–2.0",
+     ">2.0",
+     ".10",
+     "lab",
+     0
+    ]
+   ]
+  ],
+  [
+   "INF",
+   "Inflammation & Immune",
+   "inflammatory load (central hub, Doc 04)",
+   [
+    [
+     "hsCRP",
+     "mg/L",
+     "C",
+     0,
+     "<1.0",
+     "1.0–3.0",
+     ">3.0 (>10 acute)",
+     ".30",
+     "AHA/CDC",
+     1
+    ],
+    [
+     "WBC",
+     "×10⁹/L",
+     "C",
+     1,
+     "4.0–9.0",
+     "9.1–11 / 3.5–3.9",
+     ">11 or <3.5",
+     ".18",
+     "lab",
+     1
+    ],
+    [
+     "Ferritin (as inflammation)",
+     "ng/mL",
+     "P",
+     1,
+     "sex-specific opt",
+     "high-normal",
+     "very high/low",
+     ".14",
+     "see NUT/HEM",
+     0
+    ],
+    [
+     "Neutrophil:Lymphocyte ratio",
+     "ratio",
+     "P",
+     0,
+     "<2",
+     "2–3",
+     ">3",
+     ".12",
+     "literature",
+     0
+    ],
+    [
+     "IL-6",
+     "pg/mL",
+     "X",
+     0,
+     "<1.5",
+     "1.5–3",
+     ">3",
+     ".14",
+     "research",
+     0
+    ],
+    [
+     "Albumin (inverse APR)",
+     "g/dL",
+     "C",
+     1,
+     "4.0–5.0",
+     "3.5–3.9",
+     "<3.5",
+     ".12",
+     "lab",
+     0
+    ],
+    [
+     "Skin temp deviation",
+     "°C dev",
+     "C",
+     1,
+     "±0.3",
+     "0.3–0.7 sustained",
+     ">0.7 / febrile",
+     ".06",
+     "wearable (Oura/Whoop); also ENDO cycle — Doc 18",
+     0
+    ]
+   ]
+  ],
+  [
+   "HEM",
+   "Hematologic & Oxygen Transport",
+   "oxygen-delivery reserve · iron reserve",
+   [
+    [
+     "Hemoglobin",
+     "g/dL",
+     "C",
+     1,
+     "13.5–17 M / 12–15.5 F",
+     "mild low/high",
+     "<11 or >18",
+     ".25",
+     "WHO",
+     1
+    ],
+    [
+     "Hematocrit",
+     "%",
+     "C",
+     1,
+     "40–50 M / 36–46 F",
+     "borderline",
+     "extremes",
+     ".12",
+     "lab",
+     0
+    ],
+    [
+     "RDW",
+     "%",
+     "C",
+     0,
+     "<13.5",
+     "13.5–15",
+     ">15",
+     ".10",
+     "lab/prognostic",
+     0
+    ],
+    [
+     "Platelets",
+     "×10⁹/L",
+     "C",
+     1,
+     "150–400",
+     "100–149 / 401–500",
+     "<100 or >500",
+     ".13",
+     "lab",
+     1
+    ],
+    [
+     "Iron saturation",
+     "%",
+     "P",
+     1,
+     "25–45",
+     "15–24 / 46–55",
+     "<15 or >55",
+     ".12",
+     "lab",
+     0
+    ],
+    [
+     "SpO₂",
+     "%",
+     "C",
+     0,
+     "≥96",
+     "92–95",
+     "<92",
+     ".18",
+     "clinical",
+     1
+    ],
+    [
+     "Ferritin (iron stores)",
+     "ng/mL",
+     "P",
+     1,
+     "50–150",
+     "30–49 / 151–300",
+     "<30 or >300",
+     ".10",
+     "lab",
+     0
+    ]
+   ]
+  ],
+  [
+   "ENDO",
+   "Endocrine & Hormonal (sex-specific, Doc 05)",
+   "allostatic/stress load · metabolic · bone reserve",
+   [
+    [
+     "TSH",
+     "mIU/L",
+     "P",
+     1,
+     "0.5–2.5",
+     "2.5–4.5 / 0.3–0.5",
+     ">4.5 or <0.3",
+     ".22",
+     "ATA",
+     0
+    ],
+    [
+     "Free T4",
+     "ng/dL",
+     "P",
+     1,
+     "0.9–1.6",
+     "borderline",
+     "out of range",
+     ".10",
+     "ATA",
+     0
+    ],
+    [
+     "Cortisol rhythm (diurnal slope)",
+     "AUC",
+     "X",
+     0,
+     "healthy slope",
+     "flattening",
+     "flat/inverted",
+     ".14",
+     "research",
+     0
+    ],
+    [
+     "Sex hormones (E2/Prog/FSH/LH/T/SHBG/AMH)",
+     "—",
+     "P/X",
+     1,
+     "see Doc 05 by phase/stage",
+     "—",
+     "—",
+     ".34",
+     "Doc 05",
+     0
+    ],
+    [
+     "Fasting cortisol",
+     "µg/dL",
+     "P",
+     1,
+     "5–15",
+     "15–20",
+     ">20 or <3",
+     ".10",
+     "lab",
+     0
+    ],
+    [
+     "Prolactin",
+     "ng/mL",
+     "P",
+     0,
+     "sex-specific",
+     "borderline",
+     "high",
+     ".10",
+     "lab",
+     0
+    ]
+   ]
+  ],
+  [
+   "BCM",
+   "Body Composition & Musculoskeletal",
+   "adiposity (burden) · muscle/strength · bone reserve",
+   [
+    [
+     "BMI",
+     "kg/m²",
+     "C",
+     1,
+     "18.5–24.9",
+     "25–29.9 / 17–18.4",
+     "≥30 or <17",
+     ".12",
+     "WHO (ethnicity-adj)",
+     0
+    ],
+    [
+     "Body fat % (DEXA)",
+     "%",
+     "X",
+     1,
+     "sex/age optimal",
+     "borderline",
+     "high/very low",
+     ".14",
+     "ISCD",
+     0
+    ],
+    [
+     "ALMI / lean mass index",
+     "kg/m²",
+     "X",
+     0,
+     "≥ sex cut-off",
+     "low-normal",
+     "sarcopenic",
+     ".16",
+     "EWGSOP2",
+     1
+    ],
+    [
+     "Grip strength",
+     "kg",
+     "P",
+     0,
+     "≥ sex/age norm",
+     "low-normal",
+     "weak (frailty)",
+     ".14",
+     "EWGSOP2",
+     0
+    ],
+    [
+     "Gait speed",
+     "m/s",
+     "P",
+     0,
+     ">1.0",
+     "0.8–1.0",
+     "<0.8",
+     ".08",
+     "EWGSOP2",
+     0
+    ],
+    [
+     "BMD T-score (DEXA)",
+     "SD",
+     "X",
+     0,
+     "≥ −1.0",
+     "−1.0 to −2.5",
+     "≤ −2.5",
+     ".20",
+     "ISCD/WHO",
+     1
+    ],
+    [
+     "Visceral adipose",
+     "—",
+     "X",
+     0,
+     "low",
+     "moderate",
+     "high",
+     ".16",
+     "literature",
+     0
+    ]
+   ]
+  ],
+  [
+   "NUT",
+   "Nutrition & Micronutrients",
+   "micronutrient reserve · inflammatory load",
+   [
+    [
+     "25-OH Vitamin D",
+     "ng/mL",
+     "C",
+     1,
+     "30–60",
+     "20–29 / 60–80",
+     "<20 or >100",
+     ".18",
+     "Endocrine Soc.",
+     1
+    ],
+    [
+     "Vitamin B12",
+     "pg/mL",
+     "P",
+     1,
+     "400–900",
+     "200–399",
+     "<200 or >1100",
+     ".12",
+     "lab",
+     0
+    ],
+    [
+     "Folate",
+     "ng/mL",
+     "P",
+     0,
+     ">5",
+     "3–5",
+     "<3",
+     ".08",
+     "lab",
+     0
+    ],
+    [
+     "Ferritin (stores)",
+     "ng/mL",
+     "P",
+     1,
+     "50–150",
+     "see HEM",
+     "extremes",
+     ".10",
+     "lab",
+     0
+    ],
+    [
+     "Omega-3 index",
+     "%",
+     "P",
+     0,
+     "≥8",
+     "4–8",
+     "<4",
+     ".14",
+     "literature",
+     0
+    ],
+    [
+     "Magnesium",
+     "mg/dL",
+     "P",
+     1,
+     "1.8–2.4",
+     "borderline",
+     "<1.5 or >2.6",
+     ".10",
+     "lab",
+     1
+    ],
+    [
+     "Diet-quality (HEI/Mediterranean)",
+     "score",
+     "C",
+     0,
+     "high",
+     "moderate",
+     "poor",
+     ".16",
+     "survey",
+     0
+    ],
+    [
+     "Fiber intake",
+     "g/day",
+     "C",
+     0,
+     "≥25 F / ≥30 M",
+     "15–24",
+     "<15",
+     ".12",
+     "survey",
+     0
+    ]
+   ]
+  ],
+  [
+   "SLP",
+   "Sleep & Circadian Recovery",
+   "sleep debt (central burden) · allostatic load · inflammation",
+   [
+    [
+     "Sleep duration (14-day mean)",
+     "h",
+     "C",
+     1,
+     "7–9",
+     "6–7 / 9–10",
+     "<6 or >10 chronic",
+     ".24",
+     "NSF/AASM",
+     1
+    ],
+    [
+     "Sleep regularity index",
+     "SRI",
+     "C",
+     0,
+     "high",
+     "moderate",
+     "low (shift-like)",
+     ".16",
+     "literature",
+     0
+    ],
+    [
+     "Sleep efficiency",
+     "%",
+     "C",
+     0,
+     "≥90",
+     "85–89",
+     "<85",
+     ".12",
+     "wearable",
+     0
+    ],
+    [
+     "Deep + REM proportion",
+     "%",
+     "C",
+     0,
+     "age-normal",
+     "low-normal",
+     "low",
+     ".12",
+     "wearable",
+     0
+    ],
+    [
+     "Overnight SpO₂ / ODI (apnea)",
+     "ODI",
+     "X",
+     1,
+     "normal",
+     "mild",
+     "mod–severe OSA",
+     ".20",
+     "HSAT",
+     1
+    ],
+    [
+     "Nighttime HR/HRV recovery",
+     "—",
+     "C",
+     0,
+     "good recovery",
+     "borderline",
+     "poor",
+     ".16",
+     "wearable",
+     0
+    ]
+   ]
+  ],
+  [
+   "FIT",
+   "Physical Activity & Cardiorespiratory Fitness",
+   "cardiorespiratory reserve · muscle reserve · glycemic burden (−)",
+   [
+    [
+     "VO₂max (est.)",
+     "mL/kg/min",
+     "P",
+     0,
+     "≥ sex/age p60",
+     "p20–p60",
+     "< p10",
+     ".30",
+     "Cooper/ACSM",
+     1
+    ],
+    [
+     "MVPA",
+     "min/week",
+     "C",
+     0,
+     "≥150 (≥300 ideal)",
+     "75–149",
+     "<75",
+     ".20",
+     "WHO",
+     0
+    ],
+    [
+     "Steps/day (14-day mean)",
+     "steps",
+     "C",
+     0,
+     "≥8000",
+     "5000–7999",
+     "<5000",
+     ".14",
+     "literature",
+     0
+    ],
+    [
+     "Sedentary time",
+     "h/day",
+     "C",
+     0,
+     "<6",
+     "6–9",
+     ">9",
+     ".10",
+     "literature",
+     0
+    ],
+    [
+     "Grip strength (shared w/ BCM)",
+     "kg",
+     "P",
+     0,
+     "≥ norm",
+     "low-normal",
+     "weak",
+     ".12",
+     "EWGSOP2",
+     0
+    ],
+    [
+     "HR recovery (wearable)",
+     "bpm",
+     "C",
+     0,
+     "fast",
+     "moderate",
+     "slow",
+     ".14",
+     "literature",
+     0
+    ]
+   ]
+  ],
+  [
+   "MCS",
+   "Mental, Cognitive & Social Health",
+   "allostatic/stress load (central) · sleep debt (bidirectional)",
+   [
+    [
+     "PHQ-9 (depression)",
+     "score",
+     "C",
+     0,
+     "0–4",
+     "5–14",
+     "≥15 (item-9>0 ⇒ red)",
+     ".24",
+     "validated",
+     1
+    ],
+    [
+     "GAD-7 (anxiety)",
+     "score",
+     "C",
+     0,
+     "0–4",
+     "5–14",
+     "≥15",
+     ".18",
+     "validated",
+     0
+    ],
+    [
+     "Perceived stress (PSS)",
+     "score",
+     "C",
+     0,
+     "low",
+     "moderate",
+     "high",
+     ".14",
+     "validated",
+     0
+    ],
+    [
+     "Loneliness (UCLA-3)",
+     "score",
+     "C",
+     0,
+     "connected",
+     "some isolation",
+     "isolated",
+     ".14",
+     "validated",
+     0
+    ],
+    [
+     "Cognitive screen (age-adj)",
+     "score",
+     "X",
+     1,
+     "normal",
+     "borderline",
+     "impaired",
+     ".16",
+     "validated",
+     0
+    ],
+    [
+     "Subjective wellbeing (WHO-5)",
+     "score",
+     "C",
+     0,
+     "high",
+     "moderate",
+     "low",
+     ".14",
+     "validated",
+     0
+    ]
+   ]
+  ]
+ ]
+}

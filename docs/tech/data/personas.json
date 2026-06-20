@@ -1,0 +1,125 @@
+{
+ "_meta": {
+  "source": "wiki_content.py:PERSONAS",
+  "note": "Canonical metadata. Edit here, not in Python."
+ },
+ "personas": [
+  [
+   "healthy",
+   "Healthy adult",
+   40,
+   "—",
+   "0.90",
+   "—",
+   "Well-represented reference cohort."
+  ],
+  [
+   "prediabetic",
+   "Pre-diabetes",
+   52,
+   "—",
+   "0.85",
+   "MET 1.6 · CV 1.3 · REN 1.1",
+   "Glycemic burden accumulating; metabolic markers trending up."
+  ],
+  [
+   "ckd",
+   "CKD-3 on ACE-i",
+   60,
+   "ACE-i",
+   "0.80",
+   "REN 2.0 · CV 1.4 · MET 1.2",
+   "BP/UACR managed; mild K⁺ rise drug-expected (Watch, not Alert); eGFR declining."
+  ],
+  [
+   "athlete",
+   "Endurance athlete",
+   30,
+   "—",
+   "0.40",
+   "—",
+   "RHR 42 & low glucose are adaptive; out-of-cohort → cohort stats suppressed, confidence lowered."
+  ],
+  [
+   "betablocker",
+   "On β-blocker",
+   58,
+   "β-blocker",
+   "0.70",
+   "CV 1.3",
+   "RHR & VO₂max confounded (down-weighted, not scored as fitness); BP managed."
+  ],
+  [
+   "elderly",
+   "Older adult (84)",
+   84,
+   "ACE-i",
+   "0.60",
+   "REN 1.2 · BCM 1.3 · FIT 1.1",
+   "Age-adjusted BMI/BP(J-curve)/eGFR/VO₂max frames; low-yield flags de-prioritized; sarcopenic drift; NUT competing-risk-muted."
+  ],
+  [
+   "dialysis",
+   "ESRD on dialysis",
+   64,
+   "—",
+   "0.50",
+   "REN 1.5 · CV 1.4",
+   "eGFR excluded (adequacy frame); structural damage fixed; renal anemia expected; NUT/SLP competing-risk-muted."
+  ],
+  [
+   "pregnancy",
+   "Pregnancy (T2)",
+   31,
+   "—",
+   "0.50",
+   "ENDO 1.3 · HEM 1.2 · CV 1.2",
+   "Physiologic anemia & eGFR-rise expected (bands shifted); pre-eclampsia/GDM absolute anchors retained."
+  ],
+  [
+   "menopause",
+   "Postmenopausal",
+   56,
+   "—",
+   "0.82",
+   "CV 1.2 · BCM 1.3",
+   "Estrogen-loss CV & bone-loss risk (BMD red sooner); ApoB drift; vasomotor sleep impact."
+  ],
+  [
+   "southasian",
+   "South-Asian male",
+   45,
+   "—",
+   "1.0",
+   "MET 1.4 · CV 1.3",
+   "WHO Asian BMI/waist cut-points; ASCVD under-predicts → ethnicity-aware equation; G6PD/FH/vit-D screening raised (D18)."
+  ],
+  [
+   "ramadan_dm",
+   "Gulf-Arab T2D, Ramadan",
+   52,
+   "metformin · SGLT2i",
+   "1.0",
+   "MET 1.5",
+   "Med-timing & hypo/dehydration safety (IDF-DAR); SGLT2i held on dehydration risk; clinician-set fast-break rule."
+  ],
+  [
+   "fh",
+   "Familial hypercholesterolemia",
+   38,
+   "—",
+   "0.75",
+   "CV 1.5",
+   "ApoB genetic, NOT lifestyle-modifiable (needs medication); modifiability low."
+  ],
+  [
+   "labartifact",
+   "Lab artifact (hemolysis)",
+   55,
+   "—",
+   "0.85",
+   "—",
+   "Isolated implausible K⁺ 6.6 → reconfirm, not emergency (Doc 12 §3.4); corroboration would escalate."
+  ]
+ ]
+}

@@ -27,7 +27,8 @@
   var CFG0=null;
   function snapConfig(){ CFG0={const:Object.assign({},D.const), weights:{}, coupling:deepClone(D.reservoir_coupling), softmaxT:state.softmaxT}; for(var pid in D.pillars) CFG0.weights[pid]=D.pillars[pid].weight; }
   function curProfile(){ return D.profiles[state.prof]; }
-  function eopts(){ var p=curProfile(); return {adh:p.adh, preg:p.preg, sex:p.sex, age:p.age, lifestage:p.lifestage, st:state.st}; }
+  function medSets(){ var managed={}, confound={}; (state.meds||[]).forEach(function(atc){ var m=D.conditions&&D.conditions.meds&&D.conditions.meds[atc]; if(!m) return; (m.manages||[]).forEach(function(x){managed[x]=1;}); (m.confounds||[]).forEach(function(x){confound[x]=1;}); }); return {managed:managed, confound:confound}; }
+  function eopts(){ var p=curProfile(), ms=medSets(), adh=(p.adh!=null?p.adh:0.8)+(state.adhBoost||0); return {adh:Math.min(1,Math.max(0,adh)), preg:p.preg, sex:p.sex, age:p.age, lifestage:p.lifestage, st:state.st, managed:ms.managed, confound:ms.confound}; }
   function recompute(){ state.R=PS.score(state.mk, eopts()); }
   function markerVal(m){ return state.mk[m]!=null?state.mk[m]:D.markers[m].default; }
 
@@ -89,7 +90,9 @@
     var ci=Math.round((1-R.confidence)*16 + (1-R.coverage)*9);
     var anyImp=false; for(var p in R.detail){ var ms=R.detail[p].markers; for(var m in ms){ if(ms[m].imputed){ anyImp=true; break; } } }
     var prov=R.lowCoverage||anyImp||R.confidence<0.6;
-    el.innerHTML="± "+ci+" · "+(prov?'<span class="prov">PROVISIONAL</span>':"measured"); }
+    el.innerHTML="± "+ci+" · "+(prov?'<span class="prov">PROVISIONAL</span>':"measured");
+    var band=document.getElementById("fdScoreBand"); if(band){ var lo=Math.max(0,R.score-ci), hi=Math.min(100,R.score+ci), w=84;
+      band.innerHTML='<i style="left:'+(lo/100*w).toFixed(1)+'px;width:'+((hi-lo)/100*w).toFixed(1)+'px"></i><b style="left:'+(R.score/100*w).toFixed(1)+'px"></b>'; band.title=lo+"–"+hi+" (widens with missing data)"; } }
   function gauge(l,v){ return '<div class="fd-gauge">'+l+' <b>'+esc(String(v))+'</b></div>'; }
 
   /* ================= BOTTOM STRIP ================= */
@@ -133,6 +136,7 @@
     // adherence history
     document.getElementById("fdAdhHist").innerHTML=adhHistoryHtml();
     renderWaterfall(); renderSystems(); renderWhatif(); renderCrit(); renderTrend(); renderWearBaselines();
+    renderDxMeds(); renderQuestions(); renderAdhActions();
   }
   /* ---- wearable baselines (robust stats + drill-down, after wearable-baselines.html) ---- */
   function meanOf(a){ var s=0; a.forEach(function(v){s+=v;}); return a.length?s/a.length:0; }
@@ -210,6 +214,55 @@
     var warn=document.getElementById("fdCfgWarn"); if(warn) warn.textContent="session what-if — diverges from JSON canonical";
     recompute(); computeBaseline(); refreshAll(); var ch=document.getElementById("fdCfgChips"); if(ch) ch.innerHTML=headChips(); }
   function resetConfig(){ for(var k in CFG0.const) D.const[k]=CFG0.const[k]; for(var pid in CFG0.weights) D.pillars[pid].weight=CFG0.weights[pid]; D.reservoir_coupling=deepClone(CFG0.coupling); state.softmaxT=CFG0.softmaxT; recompute(); computeBaseline(); refreshAll(); renderConfig(); }
+
+  /* ---- diagnoses & meds (Patient360) + simulate EHR ---- */
+  function renderDxMeds(){ var host=document.getElementById("fdDxMeds"); if(!host||!D.conditions) return; var dis=D.conditions.diseases||{}, meds=D.conditions.meds||{};
+    var dxh=(state.dx||[]).map(function(c){ var d=dis[c]; return '<span class="fd-dx" data-dx="'+c+'">'+esc(d?d.name:c)+'<span class="c">'+c+'</span></span>'; }).join("")||'<span class="small muted">none recorded</span>';
+    var mdh=(state.meds||[]).map(function(c){ var m=meds[c]; return '<span class="fd-dx med" data-med="'+c+'">'+esc(m?m.name:c)+'<span class="c">'+c+'</span></span>'; }).join("")||'<span class="small muted">none</span>';
+    host.innerHTML='<div class="fd-qsub">diagnoses (ICD-10)</div>'+dxh+'<div class="fd-qsub">medications (ATC)</div>'+mdh;
+    [].forEach.call(host.querySelectorAll("[data-dx]"),function(el){ el.onclick=function(){ traceDisease(el.getAttribute("data-dx")); }; });
+    [].forEach.call(host.querySelectorAll("[data-med]"),function(el){ el.onclick=function(){ traceMed(el.getAttribute("data-med")); }; }); }
+  function traceDisease(icd){ var d=D.conditions.diseases[icd]; if(!d) return; selectRow(null); var b=document.getElementById("ceTraceBody"), p=[];
+    p.push('<b>'+esc(d.name)+'</b> <span class="ce-chip">'+icd+'</span>');
+    p.push('<div class="fd-k">associated conditions / comorbidities</div><div class="ce-chips">'+(d.comorbid||[]).map(function(x){return '<span class="ce-chip">'+esc(x)+'</span>';}).join(" ")+'</div>');
+    p.push('<div class="fd-k">affected pillars (click to trace)</div><div class="ce-chips">'+(d.pillars||[]).map(function(pid){return '<a class="ce-chip" data-gp="'+pid+'">'+pid.toUpperCase()+' R='+(state.R.detail[pid]?state.R.detail[pid].R.toFixed(2):"?")+'</a>';}).join(" ")+'</div>');
+    p.push('<div class="fd-k">affected markers</div><div class="ce-chips">'+(d.markers||[]).map(function(m){return '<span class="ce-chip">'+esc(D.markers[m]?D.markers[m].label:m)+'</span>';}).join(" ")+'</div>');
+    if(d.meds&&d.meds.length) p.push('<div class="fd-k">typical medications</div><div class="ce-chips">'+d.meds.map(function(a){return '<span class="ce-chip">'+esc(D.conditions.meds[a]?D.conditions.meds[a].name:a)+'</span>';}).join(" ")+'</div>');
+    b.innerHTML=p.join(""); [].forEach.call(b.querySelectorAll("[data-gp]"),function(el){ el.onclick=function(){ var pid=el.getAttribute("data-gp"); traceCtx({pid:pid}, D.pillars[pid].label); }; }); }
+  function traceMed(atc){ var m=D.conditions.meds[atc]; if(!m) return; selectRow(null); var b=document.getElementById("ceTraceBody"), p=[];
+    p.push('<b>'+esc(m.name)+'</b> <span class="ce-chip">'+atc+'</span> <span class="ce-chip">'+esc(m.class||"")+'</span>');
+    p.push('<div class="fd-k">manages — controlled shows green but tagged (D3)</div><div class="ce-chips">'+((m.manages||[]).map(function(x){return '<span class="ce-chip">'+esc(D.markers[x]?D.markers[x].label:x)+'</span>';}).join(" ")||'<span class="small muted">—</span>')+'</div>');
+    p.push('<div class="fd-k">confounds — confidence down-weighted (D3)</div><div class="ce-chips">'+((m.confounds&&m.confounds.length)?m.confounds.map(function(x){return '<span class="ce-chip">'+esc(D.markers[x]?D.markers[x].label:x)+'</span>';}).join(" "):'<span class="small muted">none</span>')+'</div>');
+    b.innerHTML=p.join(""); }
+  function populateSim(){ var ty=document.getElementById("fdSimType"), sel=document.getElementById("fdSimItem"); if(!ty||!sel) return; var t=ty.value, o="";
+    if(t==="lab"){ for(var m in D.markers){ if(D.markers[m].source==="lab" && (state.st[m]==="missing")) o+='<option value="'+m+'">'+esc(D.markers[m].label)+'</option>'; } if(!o) o='<option value="">(no missing labs)</option>'; }
+    else if(t==="dx"){ for(var c in D.conditions.diseases){ if((state.dx||[]).indexOf(c)<0) o+='<option value="'+c+'">'+c+" · "+esc(D.conditions.diseases[c].name)+'</option>'; } }
+    else { for(var a in D.conditions.meds){ if((state.meds||[]).indexOf(a)<0) o+='<option value="'+a+'">'+a+" · "+esc(D.conditions.meds[a].name)+'</option>'; } }
+    sel.innerHTML=o; }
+  function simAdd(){ var t=document.getElementById("fdSimType").value, v=document.getElementById("fdSimItem").value; if(!v) return;
+    if(t==="lab"){ delete state.st[v]; if(state.mk[v]==null) state.mk[v]=D.markers[v].default; }
+    else if(t==="dx"){ if(state.dx.indexOf(v)<0) state.dx.push(v); (D.conditions.diseases[v].markers||[]).forEach(function(m){ if(state.st[m]==="missing") delete state.st[m]; }); }
+    else { if(state.meds.indexOf(v)<0) state.meds.push(v); }
+    recompute(); refreshAll(); renderDxMeds(); populateSim(); }
+  /* ---- onboarding & periodic questions answered ---- */
+  function renderQuestions(){ var host=document.getElementById("fdQuestions"); if(!host||!D.questions) return; var p=curProfile();
+    function applies(q){ var sx=q.sex||["all"]; return (sx.indexOf("all")>=0||sx.indexOf(p.sex)>=0) && p.age>=q.amin && p.age<=q.amax; }
+    function pick(q){ if(!q.responses.length) return null; var risky=(q.pillars||[]).some(function(pk){ return state.R.rk[pk]>0.4; }); var idx=risky?(q.responses.length-1):(hashStr(q.id+state.prof)%q.responses.length); return q.responses[Math.min(idx,q.responses.length-1)]; }
+    function row(q){ var r=pick(q); if(!r) return ""; return '<div class="fd-q2" data-pills="'+(r.p||[]).join(",")+'"><span class="qt">'+esc(q.text)+'</span><span class="qa">'+esc(r.l||"")+'</span><span class="qp">'+(r.p||[]).map(function(x){return x.toUpperCase();}).join(",")+'</span></div>'; }
+    var elig=D.questions.filter(applies);
+    var onb=elig.filter(function(q){return q.cadence==="Core"||q.cadence==="once";}).slice(0,8);
+    var per=elig.filter(function(q){return q.cadence==="quarterly"||q.cadence==="annual";}).slice(0,8);
+    host.innerHTML='<div class="fd-qsub">onboarding intake ('+onb.length+')</div>'+onb.map(row).join("")+'<div class="fd-qsub">periodic ('+per.length+')</div>'+per.map(row).join("");
+    [].forEach.call(host.querySelectorAll(".fd-q2"),function(el){ el.onclick=function(){ var pi=(el.getAttribute("data-pills")||"").split(",").filter(Boolean)[0]; if(pi&&D.pillars[pi]) traceCtx({pid:pi}, D.pillars[pi].label); }; }); }
+  /* ---- improve adherence (barrier-matched + generic) ---- */
+  function profileBarriers(){ var all=Object.keys((D.adherence_actions&&D.adherence_actions.barriers)||{}); if(!all.length) return []; var seed=hashStr("bar"+state.prof), n=2+seed%2, out=[]; for(var i=0;i<n;i++){ var b=all[(seed+i*3)%all.length]; if(out.indexOf(b)<0) out.push(b); } return out; }
+  function renderAdhActions(){ var host=document.getElementById("fdAdhActions"); if(!host||!D.adherence_actions) return; var aa=D.adherence_actions, rows=[];
+    profileBarriers().forEach(function(b){ (aa.barriers[b]||[]).slice(0,2).forEach(function(act){ rows.push({b:b,act:act}); }); });
+    (aa.generic||[]).slice(0,2).forEach(function(act){ rows.push({b:"generic",act:act}); });
+    host.innerHTML='<div class="small muted" style="margin-bottom:3px">adherence EWMA '+state.R.adherence.adherence.toFixed(2)+(state.adhBoost?(' (+'+Math.round(state.adhBoost*100)+'% applied)'):"")+'</div>'
+      +rows.slice(0,7).map(function(x){ var key=x.b+"|"+x.act.label, done=state.appliedAdh[key];
+        return '<div class="fd-aa"><span class="bar'+(x.b==="generic"?" gen":"")+'">'+esc(x.b)+'</span><span class="t">'+esc(x.act.label)+'</span><span class="lift">+'+Math.round(x.act.lift*100)+'%</span><button data-k="'+esc(key)+'" data-l="'+x.act.lift+'" class="'+(done?"done":"")+'">'+(done?"applied":"apply")+'</button></div>'; }).join("");
+    [].forEach.call(host.querySelectorAll(".fd-aa button"),function(btn){ btn.onclick=function(){ var k=btn.getAttribute("data-k"); if(state.appliedAdh[k]) return; state.appliedAdh[k]=1; state.adhBoost=(state.adhBoost||0)+parseFloat(btn.getAttribute("data-l")); recompute(); refreshAll(); }; }); }
   function renderWaterfall(){ var R=state.R, host=document.getElementById("fdWaterfall"); if(!host) return;
     var arr=Object.keys(D.pillars).map(function(pid){ return {pid:pid, c:D.pillars[pid].weight*Math.pow(R.detail[pid].R,D.const.delta)}; });
     var tot=arr.reduce(function(s,x){return s+x.c;},0)||1, lost=Math.max(0,100-R.score);
@@ -259,6 +312,11 @@
     var pills=Object.keys(D.pillars).sort(function(a,b){return state.R.rk[b]-state.R.rk[a];}).slice(0,4);
     var lines=[{id:"score",col:"#fff",w:2.5}]; pills.forEach(function(pid,i){ lines.push({id:pid,col:cols[i],w:1.4}); });
     var svg='<svg width="100%" height="'+H+'" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">';
+    // confidence ribbon around PureScore: wide in the sparse past, converging toward today
+    var sser=trendSeries("score",n), ci0=((1-state.R.confidence)*0.15+0.04), rib="";
+    for(var i=0;i<n;i++){ var cf=ci0*(1-0.7*i/(n-1)); rib+=(i?"L":"M")+sx(i).toFixed(1)+" "+sy(Math.min(1,sser[i]+cf)).toFixed(1)+" "; }
+    for(var j=n-1;j>=0;j--){ var cf2=ci0*(1-0.7*j/(n-1)); rib+="L"+sx(j).toFixed(1)+" "+sy(Math.max(0,sser[j]-cf2)).toFixed(1)+" "; }
+    svg+='<path d="'+rib+'Z" fill="rgba(73,198,216,.16)" stroke="none"/>';
     lines.forEach(function(ln){ var s=trendSeries(ln.id,n), d=""; for(var i=0;i<n;i++){ d+=(i?"L":"M")+sx(i).toFixed(1)+" "+sy(s[i]).toFixed(1)+" "; } svg+='<path d="'+d+'" fill="none" stroke="'+ln.col+'" stroke-width="'+ln.w+'"/>'; });
     svg+='</svg>';
     var legend='<div class="fd-legend"><span><i style="background:#fff"></i>PureScore</span>'+pills.map(function(pid,i){return '<span><i style="background:'+cols[i]+'"></i>'+pid.toUpperCase()+'</span>';}).join("")+'</div>';
@@ -286,7 +344,7 @@
   }
   function forecastSvg(){
     var R=state.R, cur=R.score;
-    var lift=R.nudge.slice(0,3).reduce(function(s,x){return s+x.impact*8;},0);
+    var lift=R.nudge.slice(0,3).reduce(function(s,x){return s+x.impact*8;},0)*(0.4+0.6*R.adherence.adherence);  // adherence gates realized lift
     var pts=[cur, Math.min(100,cur+lift*0.4), Math.min(100,cur+lift*0.75), Math.min(100,cur+lift)];
     var w=210,h=46,mn=Math.min.apply(null,pts)-2,mx=Math.max.apply(null,pts)+2;
     var sx=function(i){return i/(pts.length-1)*w;}, sy=function(v){return h-((v-mn)/(mx-mn||1))*(h-8)-4;};
@@ -477,6 +535,11 @@
     b.innerHTML=p.join("");
   }
   function markerTrace(mid,pid){ var md=state.R.detail[pid].markers[mid], mm=D.markers[mid], p=[];
+    p.push('<div class="fd-k">values & weights</div><ul class="fd-path"><li>value <b>'+esc(String(md.v))+(mm.unit?(" "+mm.unit):"")+'</b></li>'
+      +'<li>risk r <b>'+(md.r!=null?md.r.toFixed(2):"—")+'</b> ('+md.zone+')</li>'
+      +'<li>state <b>'+md.state+(md.imputed?" · imputed":"")+'</b> · confidence <b>'+md.conf.toFixed(2)+'</b> · weight <b>'+md.w+'</b></li>'
+      +'<li>contribution to pillar <b>'+(md.w*(md.r||0)).toFixed(3)+'</b></li></ul>');
+    if(md.managed||md.confounded) p.push('<div class="fd-k">medication effect (D3)</div><div class="ce-chips">'+(md.managed?'<span class="ce-chip">MANAGED · shown but tagged</span>':"")+(md.confounded?'<span class="ce-chip">confounded · confidence↓</span>':"")+'</div>');
     p.push('<div class="fd-k">branches taken</div><ul class="fd-path">'
       +"<li>confidence/fallback: <b>"+md.branch.conf+"</b></li><li>cohort blend: <b>"+md.branch.blend+"</b></li>"
       +"<li>personalization: <b>"+md.branch.pers+"</b></li><li>critical cascade: <b>"+md.branch.crit+"</b></li></ul>");
@@ -553,7 +616,7 @@
       for(var m in D.markers){ if(!hs[m]) st[m]="missing"; } }
     (p.stale||[]).forEach(function(m){ st[m]="stale"; });
     return {mk:mk, st:st}; }
-  function seedState(){ var s=seedStateFor(curProfile()); state.mk=s.mk; state.st=s.st; state.qresp={}; }
+  function seedState(){ var p=curProfile(), s=seedStateFor(p); state.mk=s.mk; state.st=s.st; state.qresp={}; state.dx=(p.dx||[]).slice(); state.meds=(p.meds||[]).slice(); state.adhBoost=0; state.appliedAdh={}; }
   function computeBaseline(){ var p=curProfile(), b=seedStateFor(p); state.baseMk=b.mk; state.baseSt=b.st;
     state.baseR=PS.score(b.mk,{adh:p.adh,preg:p.preg,sex:p.sex,age:p.age,lifestage:p.lifestage,st:b.st}); }
   function loadProfile(i){ state.prof=i; seedState(); computeBaseline(); state.sel=null; recompute(); buildTree(); renderBand(); renderStrip(); syncStreamBtns();
@@ -574,7 +637,9 @@
     [].forEach.call(document.querySelectorAll(".ce-tab"),function(t){ t.onclick=function(){ setView(t.getAttribute("data-view")); }; });
     var fb=document.getElementById("ceFocus"); if(fb) fb.onclick=function(){ document.body.classList.toggle("cefocus"); var on=document.body.classList.contains("cefocus"); fb.innerHTML=on?"⤡ exit focus":"⤢ focus"; setTimeout(onScroll,60); };
     window.addEventListener("scroll",onScroll,{passive:true});
-    renderBandShell(); snapConfig(); renderConfig(); loadProfile(0); setView("tree");
+    var simT=document.getElementById("fdSimType"); if(simT) simT.onchange=populateSim;
+    var simA=document.getElementById("fdSimAdd"); if(simA) simA.onclick=simAdd;
+    renderBandShell(); snapConfig(); renderConfig(); loadProfile(0); populateSim(); setView("tree");
   }
   function onScroll(){ var band=document.querySelector(".fd-band"); if(!band) return; var y=(typeof window.scrollY==="number")?window.scrollY:0; band.classList.toggle("cond", y>200 && state.view==="tree"); }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init); else init();

@@ -1,0 +1,56 @@
+{
+ "_meta": {
+  "source": "wiki_content.py:PILLAR_W",
+  "note": "Canonical metadata. Edit here, not in Python."
+ },
+ "weights": [
+  [
+   "CV",
+   0.13
+  ],
+  [
+   "MET",
+   0.12
+  ],
+  [
+   "REN",
+   0.07
+  ],
+  [
+   "HEP",
+   0.06
+  ],
+  [
+   "INF",
+   0.07
+  ],
+  [
+   "HEM",
+   0.06
+  ],
+  [
+   "ENDO",
+   0.06
+  ],
+  [
+   "BCM",
+   0.07
+  ],
+  [
+   "NUT",
+   0.06
+  ],
+  [
+   "SLP",
+   0.1
+  ],
+  [
+   "FIT",
+   0.1
+  ],
+  [
+   "MCS",
+   0.1
+  ]
+ ]
+}

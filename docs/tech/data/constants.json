@@ -1,0 +1,74 @@
+{
+ "_meta": {
+  "source": "wiki_content.py:CONSTANTS",
+  "note": "Canonical metadata. Edit here, not in Python."
+ },
+ "constants": [
+  [
+   "φ",
+   "cohort-blend weight (Stage 2)",
+   "0.60",
+   "Doc 03 §2"
+  ],
+  [
+   "κ_resp",
+   "personal-baseline responsiveness cap (Stage 2b)",
+   "0.10",
+   "Doc 03 §2b"
+  ],
+  [
+   "γ",
+   "pillar power-mean exponent",
+   "3",
+   "Doc 03 §3"
+  ],
+  [
+   "δ",
+   "PureScore power-mean exponent",
+   "2",
+   "Doc 03 §5"
+  ],
+  [
+   "ρ_k",
+   "reservoir contribution cap to a pillar",
+   "0.20",
+   "Doc 03 §3"
+  ],
+  [
+   "R_crit",
+   "critical-pillar risk floor",
+   "0.60",
+   "Doc 03 §4"
+  ],
+  [
+   "PURE_CRIT_CAP",
+   "PureScore cap when any pillar critical",
+   "40",
+   "Doc 03 §5"
+  ],
+  [
+   "zone cuts",
+   "green / yellow / red on r",
+   "0.15 / 0.50",
+   "README §3.5"
+  ],
+  [
+   "q_impute",
+   "cohort-imputed lab confidence weight (no measured value)",
+   "0.30",
+   "Doc 01 §4.3"
+  ],
+  [
+   "Rp_impute",
+   "representativeness of an age×sex×life-stage cohort match",
+   "0.70",
+   "Doc 12 §7"
+  ],
+  [
+   "cov_green_floor",
+   "pillar coverage below which it cannot display clean-green",
+   "0.60",
+   "Doc 03 §3"
+  ]
+ ]
+}

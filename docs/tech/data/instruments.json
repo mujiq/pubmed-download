@@ -1,0 +1,520 @@
+{
+ "_meta": {
+  "source": "wiki_content.py:INSTRUMENTS",
+  "note": "Canonical metadata. Edit here, not in Python."
+ },
+ "instruments": [
+  {
+   "id": "PHQ-9",
+   "name": "PHQ-9 — Patient Health Questionnaire (depression)",
+   "pillar": "MCS",
+   "cadence": "quarterly / on-trigger",
+   "stem": "Over the last 2 weeks, how often have you been bothered by any of the following problems?",
+   "scale": "0 = not at all · 1 = several days · 2 = more than half the days · 3 = nearly every day",
+   "items": [
+    "Little interest or pleasure in doing things",
+    "Feeling down, depressed, or hopeless",
+    "Trouble falling or staying asleep, or sleeping too much",
+    "Feeling tired or having little energy",
+    "Poor appetite or overeating",
+    "Feeling bad about yourself — or that you are a failure",
+    "Trouble concentrating on things",
+    "Moving or speaking slowly, or being fidgety/restless",
+    "Thoughts that you would be better off dead, or of hurting yourself"
+   ],
+   "scoring": "Sum 0–27. 0–4 none/minimal · 5–9 mild · 10–14 moderate · 15–19 mod-severe · 20–27 severe.",
+   "bands": "green 0–4 · yellow 5–14 · red ≥15",
+   "safety": "Item 9 > 0 forces MCS red/critical irrespective of total and fires the crisis pathway (Doc 11). Never averaged away.",
+   "src": "Kroenke 2001 (public domain)"
+  },
+  {
+   "id": "PHQ-2",
+   "name": "PHQ-2 — ultra-brief depression screen",
+   "pillar": "MCS",
+   "cadence": "Core (every visit)",
+   "stem": "Over the last 2 weeks, how often bothered by…",
+   "scale": "0 = not at all · 1 = several days · 2 = more than half the days · 3 = nearly every day",
+   "items": [
+    "Little interest or pleasure in doing things",
+    "Feeling down, depressed, or hopeless"
+   ],
+   "scoring": "Sum 0–6; ≥3 → administer full PHQ-9.",
+   "bands": "≥3 triggers PHQ-9",
+   "safety": "Positive screen escalates to PHQ-9.",
+   "src": "Kroenke 2003"
+  },
+  {
+   "id": "GAD-7",
+   "name": "GAD-7 — Generalized Anxiety Disorder",
+   "pillar": "MCS",
+   "cadence": "quarterly / on-trigger",
+   "stem": "Over the last 2 weeks, how often have you been bothered by the following problems?",
+   "scale": "0 = not at all · 1 = several days · 2 = more than half the days · 3 = nearly every day",
+   "items": [
+    "Feeling nervous, anxious, or on edge",
+    "Not being able to stop or control worrying",
+    "Worrying too much about different things",
+    "Trouble relaxing",
+    "Being so restless that it is hard to sit still",
+    "Becoming easily annoyed or irritable",
+    "Feeling afraid as if something awful might happen"
+   ],
+   "scoring": "Sum 0–21. 0–4 minimal · 5–9 mild · 10–14 moderate · 15–21 severe.",
+   "bands": "green 0–4 · yellow 5–14 · red ≥15",
+   "safety": "—",
+   "src": "Spitzer 2006 (public domain)"
+  },
+  {
+   "id": "GAD-2",
+   "name": "GAD-2 — ultra-brief anxiety screen",
+   "pillar": "MCS",
+   "cadence": "Core (every visit)",
+   "scale": "0 = not at all · 1 = several days · 2 = more than half the days · 3 = nearly every day",
+   "stem": "Over the last 2 weeks, how often bothered by…",
+   "items": [
+    "Feeling nervous, anxious, or on edge",
+    "Not being able to stop or control worrying"
+   ],
+   "scoring": "Sum 0–6; ≥3 → administer full GAD-7.",
+   "bands": "≥3 triggers GAD-7",
+   "safety": "—",
+   "src": "Kroenke 2007"
+  },
+  {
+   "id": "AUDIT-C",
+   "name": "AUDIT-C — alcohol use",
+   "pillar": "HEP / MET / MCS",
+   "cadence": "Core",
+   "scale": "item-specific 0–4",
+   "stem": "Alcohol consumption screen (WHO).",
+   "items": [
+    "How often do you have a drink containing alcohol? (0 never … 4 ≥4×/week)",
+    "How many standard drinks on a typical drinking day? (0:1–2 … 4:≥10)",
+    "How often do you have ≥6 drinks on one occasion? (0 never … 4 daily/almost)"
+   ],
+   "scoring": "Sum 0–12.",
+   "bands": "at-risk ≥4 M / ≥3 F",
+   "safety": "High scores route to brief intervention + LFTs.",
+   "src": "Bush 1998 (WHO)"
+  },
+  {
+   "id": "PSS-4",
+   "name": "PSS-4 — Perceived Stress Scale (short)",
+   "pillar": "MCS / ENDO",
+   "cadence": "quarterly",
+   "scale": "0 never … 4 very often",
+   "stem": "In the last month, how often have you felt…",
+   "items": [
+    "…unable to control the important things in your life?",
+    "…confident about your ability to handle personal problems? (reverse)",
+    "…that things were going your way? (reverse)",
+    "…difficulties piling up so high you could not overcome them?"
+   ],
+   "scoring": "Reverse items 2–3, sum 0–16; higher = more stress.",
+   "bands": "green low · yellow moderate · red high",
+   "safety": "—",
+   "src": "Cohen 1983"
+  },
+  {
+   "id": "UCLA-3",
+   "name": "UCLA-3 — loneliness / social connection",
+   "pillar": "MCS",
+   "cadence": "quarterly",
+   "scale": "1 hardly ever · 2 some of the time · 3 often",
+   "stem": "How often do you feel…",
+   "items": [
+    "…that you lack companionship?",
+    "…left out?",
+    "…isolated from others?"
+   ],
+   "scoring": "Sum 3–9; ≥6 ≈ lonely.",
+   "bands": "green ≤4 · yellow 5 · red ≥6",
+   "safety": "—",
+   "src": "Hughes 2004"
+  },
+  {
+   "id": "WHO-5",
+   "name": "WHO-5 — Well-Being Index",
+   "pillar": "MCS",
+   "cadence": "quarterly",
+   "scale": "0 at no time … 5 all of the time",
+   "stem": "Over the last 2 weeks…",
+   "items": [
+    "I have felt cheerful and in good spirits",
+    "I have felt calm and relaxed",
+    "I have felt active and vigorous",
+    "I woke up feeling fresh and rested",
+    "My daily life has been filled with things that interest me"
+   ],
+   "scoring": "Sum ×4 → 0–100; <50 low well-being, <28 screen for depression.",
+   "bands": "green ≥50 · yellow 28–49 · red <28",
+   "safety": "<28 → PHQ-9.",
+   "src": "WHO 1998"
+  },
+  {
+   "id": "ISI",
+   "name": "ISI — Insomnia Severity Index",
+   "pillar": "SLP",
+   "cadence": "on-trigger",
+   "scale": "0–4 per item",
+   "stem": "Rate the severity of your insomnia problems in the last 2 weeks.",
+   "items": [
+    "Difficulty falling asleep",
+    "Difficulty staying asleep",
+    "Problem waking too early",
+    "Satisfaction with current sleep pattern",
+    "Interference with daily functioning",
+    "Noticeability to others of impairment",
+    "Worry/distress about sleep"
+   ],
+   "scoring": "Sum 0–28.",
+   "bands": "0–7 none · 8–14 sub-threshold · 15–21 moderate · 22–28 severe",
+   "safety": "Pairs with overnight SpO₂/ODI → OSA referral.",
+   "src": "Morin 2011"
+  },
+  {
+   "id": "IPAQ-SF",
+   "name": "IPAQ-SF — activity (self-report, cross-checks wearable)",
+   "pillar": "FIT",
+   "cadence": "Core",
+   "scale": "days/week × min/day",
+   "stem": "In the last 7 days, time spent in vigorous, moderate, and walking activity (+ sitting).",
+   "items": [
+    "Vigorous-intensity days & minutes",
+    "Moderate-intensity days & minutes",
+    "Walking days & minutes",
+    "Sitting time on a weekday"
+   ],
+   "scoring": "Convert to MET-min/week; map to MVPA band.",
+   "bands": "≥150 min MVPA green",
+   "safety": "Self-report cross-checked vs wearable steps/MVPA for plausibility (Doc 01).",
+   "src": "IPAQ 2002"
+  },
+  {
+   "id": "DIET",
+   "name": "Diet-quality screener (Mediterranean / HEI-style)",
+   "pillar": "NUT / MET",
+   "cadence": "Core",
+   "scale": "frequency per item",
+   "stem": "Usual weekly intake across food groups.",
+   "items": [
+    "Vegetables & fruit servings/day",
+    "Whole grains vs refined",
+    "Legumes/nuts per week",
+    "Fish per week",
+    "Olive oil as main fat",
+    "Red/processed meat per week",
+    "Sugary drinks/day",
+    "Ultra-processed food frequency"
+   ],
+   "scoring": "Composite 0–14 (Mediterranean) → diet-quality band.",
+   "bands": "high / moderate / poor",
+   "safety": "—",
+   "src": "PREDIMED-style"
+  },
+  {
+   "id": "SUBSTANCE",
+   "name": "Smoking / nicotine / shisha (cross-cutting modifier)",
+   "pillar": "CV · HEM · INF",
+   "cadence": "Core",
+   "scale": "status + pack-years",
+   "stem": "Tobacco / nicotine / waterpipe use.",
+   "items": [
+    "Current status (never / former / current)",
+    "Cigarettes/day & pack-years",
+    "Waterpipe (shisha) sessions/week",
+    "Vaping/nicotine pouches",
+    "Cotinine (if available, objective)"
+   ],
+   "scoring": "Risk multiplier on CV, HEM/respiratory, INF (Doc 02 modifiers).",
+   "bands": "never / former / current",
+   "safety": "Current use raises CV/respiratory weighting and screening.",
+   "src": "Doc 02"
+  },
+  {
+   "id": "TNSS",
+   "name": "TNSS — Total Nasal Symptom Score (allergic rhinitis)",
+   "pillar": "INF",
+   "cadence": "on-trigger",
+   "scale": "0 none … 3 severe per symptom",
+   "stem": "Rate each nasal symptom over the past 24 h / typical day.",
+   "items": [
+    "Nasal congestion",
+    "Rhinorrhoea (runny nose)",
+    "Sneezing",
+    "Nasal itching"
+   ],
+   "scoring": "Sum 0–12.",
+   "bands": "0–3 mild · 4–7 moderate · 8–12 severe",
+   "safety": "—",
+   "src": "Downie 2004 (illustrative)"
+  },
+  {
+   "id": "ACQ",
+   "name": "ACQ — Asthma Control Questionnaire",
+   "pillar": "INF",
+   "cadence": "on-trigger",
+   "scale": "0 (none) … 6 (severe) per item; reliever item banded",
+   "stem": "Over the past week…",
+   "items": [
+    "Night waking from asthma",
+    "Symptoms on waking",
+    "Activity limitation",
+    "Shortness of breath",
+    "Wheeze",
+    "Reliever puffs/day"
+   ],
+   "scoring": "Mean of items 0–6.",
+   "bands": "<0.75 well-controlled · 0.75–1.5 grey · ≥1.5 uncontrolled",
+   "safety": "Uncontrolled → clinician review; pairs with peak-flow.",
+   "src": "Juniper 1999"
+  },
+  {
+   "id": "POEM",
+   "name": "POEM — Patient-Oriented Eczema Measure",
+   "pillar": "INF",
+   "cadence": "on-trigger",
+   "scale": "0 no days … 4 every day per item",
+   "stem": "Over the last week, how many days did your skin…",
+   "items": [
+    "Itch",
+    "Disturb sleep",
+    "Bleed",
+    "Weep/ooze",
+    "Crack",
+    "Flake",
+    "Feel dry/rough"
+   ],
+   "scoring": "Sum 0–28.",
+   "bands": "0–2 clear · 3–7 mild · 8–16 moderate · 17–24 severe · 25–28 very severe",
+   "safety": "—",
+   "src": "Charman 2004"
+  },
+  {
+   "id": "MRC_DYSPNOEA",
+   "name": "MRC Dyspnoea Scale (breathlessness)",
+   "pillar": "CV · HEM",
+   "cadence": "on-trigger",
+   "scale": "grade 1–5",
+   "stem": "Which best describes your breathlessness?",
+   "items": [
+    "1 — only on strenuous exertion",
+    "2 — hurrying / slight hill",
+    "3 — walks slower / stops on the level",
+    "4 — stops after ~100 m",
+    "5 — too breathless to leave the house / on dressing"
+   ],
+   "scoring": "Single grade 1–5.",
+   "bands": "3–5 significant functional limitation",
+   "safety": "Grade ≥4 with desaturation → expedited review (pairs with SpO₂).",
+   "src": "Fletcher 1959 (mMRC)"
+  },
+  {
+   "id": "EPDS",
+   "name": "EPDS — Edinburgh Postnatal Depression Scale",
+   "pillar": "MCS",
+   "cadence": "pregnancy / postpartum",
+   "scale": "0–3 per item (10 items)",
+   "stem": "In the past 7 days (perinatal mood)…",
+   "items": [
+    "Able to laugh / see the funny side",
+    "Looked forward with enjoyment",
+    "Blamed myself unnecessarily",
+    "Anxious or worried",
+    "Scared / panicky",
+    "Things getting on top of me",
+    "Unhappy → difficulty sleeping",
+    "Sad or miserable",
+    "So unhappy I have been crying",
+    "Thoughts of harming myself"
+   ],
+   "scoring": "Sum 0–30.",
+   "bands": "green <10 · yellow 10–12 · red ≥13 (likely depression)",
+   "safety": "Item 10 > 0 (self-harm) forces MCS red/critical and fires the crisis pathway (Doc 11), like PHQ-9 item 9.",
+   "src": "Cox 1987"
+  },
+  {
+   "id": "MINI-COG",
+   "name": "Mini-Cog / cognitive screen (age-adjusted)",
+   "pillar": "MCS",
+   "cadence": "annual ≥65 / on-trigger",
+   "scale": "recall 0–3 + clock 0 or 2",
+   "stem": "Three-word recall + clock-drawing test.",
+   "items": [
+    "Register & recall 3 words",
+    "Draw a clock to a set time (normal = 2)",
+    "Total = recall + clock"
+   ],
+   "scoring": "0–5.",
+   "bands": "≥3 likely normal · <3 screen-positive → MoCA/MMSE + clinician",
+   "safety": "Screen-positive routes to formal cognitive assessment, never an autonomous diagnosis.",
+   "src": "Borson 2000"
+  },
+  {
+   "id": "PHQ-15",
+   "name": "PHQ-15 — somatic symptom burden",
+   "pillar": "MCS",
+   "cadence": "quarterly / on-trigger",
+   "scale": "0 not bothered … 2 bothered a lot",
+   "stem": "Over the last 4 weeks, bothered by… (15 somatic symptoms)",
+   "items": [
+    "Stomach pain",
+    "Back pain",
+    "Pain in arms/legs/joints",
+    "Headaches",
+    "Chest pain",
+    "Dizziness",
+    "Palpitations",
+    "Shortness of breath",
+    "Bowel symptoms",
+    "Fatigue / low energy",
+    "Trouble sleeping"
+   ],
+   "scoring": "Sum 0–30.",
+   "bands": "0–4 minimal · 5–9 low · 10–14 medium · 15–30 high",
+   "safety": "High somatic burden cross-checks MCS and the relevant organ pillars.",
+   "src": "Kroenke 2002"
+  },
+  {
+   "id": "DAST-10",
+   "name": "DAST-10 — Drug Abuse Screening Test",
+   "pillar": "MCS",
+   "cadence": "on-trigger",
+   "scale": "yes / no (10 items)",
+   "stem": "In the past 12 months, regarding non-medical drug use…",
+   "items": [
+    "Used more than intended",
+    "Unable to stop",
+    "Neglected obligations",
+    "Guilt about use",
+    "Withdrawal symptoms",
+    "Medical / social / legal problems from use"
+   ],
+   "scoring": "Sum 0–10.",
+   "bands": "0 none · 1–2 low · 3–5 moderate · 6–8 substantial · 9–10 severe",
+   "safety": "Moderate+ routes to brief intervention / referral.",
+   "src": "Skinner 1982"
+  },
+  {
+   "id": "AUDIT",
+   "name": "AUDIT — Alcohol Use Disorders Identification Test (full)",
+   "pillar": "HEP · MCS",
+   "cadence": "on-trigger (AUDIT-C positive)",
+   "scale": "0–4 per item (10 items)",
+   "stem": "Full alcohol screen when AUDIT-C is positive.",
+   "items": [
+    "AUDIT-C consumption items 1–3",
+    "Impaired control over drinking",
+    "Failed normal expectations",
+    "Morning drinking",
+    "Guilt after drinking",
+    "Blackouts",
+    "Injury from drinking",
+    "Others concerned"
+   ],
+   "scoring": "Sum 0–40.",
+   "bands": "0–7 low · 8–15 hazardous · 16–19 harmful · ≥20 likely dependence",
+   "safety": "≥20 → assess dependence/withdrawal; LFTs; brief intervention.",
+   "src": "Saunders 1993 (WHO)"
+  },
+  {
+   "id": "SARC-F",
+   "name": "SARC-F — sarcopenia / frailty screen",
+   "pillar": "BCM",
+   "cadence": "annual (≥65)",
+   "scale": "0–2 per item",
+   "stem": "Difficulty with strength, ambulation, rising, stairs, falls.",
+   "items": [
+    "Lifting / carrying ~4.5 kg",
+    "Walking across a room",
+    "Rising from a chair / bed",
+    "Climbing 10 stairs",
+    "Falls in the past year"
+   ],
+   "scoring": "Sum 0–10.",
+   "bands": "≥4 suggests sarcopenia → grip / gait + ALMI (Doc 02 BCM)",
+   "safety": "Positive routes to functional assessment + resistance-training plan.",
+   "src": "Malmstrom 2013"
+  },
+  {
+   "id": "PSQI",
+   "name": "PSQI — Pittsburgh Sleep Quality Index",
+   "pillar": "SLP",
+   "cadence": "on-trigger",
+   "scale": "7 components, 0–3 each",
+   "stem": "Sleep quality over the last month (7 components).",
+   "items": [
+    "Subjective sleep quality",
+    "Sleep latency",
+    "Sleep duration",
+    "Habitual efficiency",
+    "Disturbances",
+    "Sleep-medication use",
+    "Daytime dysfunction"
+   ],
+   "scoring": "Global 0–21.",
+   "bands": ">5 = poor sleep quality",
+   "safety": "Pairs with ISI + wearable sleep; high score + snoring → STOP-BANG / OSA.",
+   "src": "Buysse 1989"
+  },
+  {
+   "id": "STOP-BANG",
+   "name": "STOP-BANG — OSA risk screen",
+   "pillar": "SLP",
+   "cadence": "on-trigger",
+   "scale": "yes / no (8 items)",
+   "stem": "Snoring, Tiredness, Observed apnoea, Pressure (BP), BMI, Age, Neck, Gender.",
+   "items": [
+    "Loud Snoring",
+    "Daytime Tiredness",
+    "Observed apnoea",
+    "high blood Pressure",
+    "BMI > 35",
+    "Age > 50",
+    "Neck > 40 cm",
+    "male sex"
+   ],
+   "scoring": "Sum 0–8.",
+   "bands": "0–2 low · 3–4 intermediate · 5–8 high OSA risk",
+   "safety": "High risk → overnight SpO₂/ODI or HSAT (Doc 02 SLP); cross-checks ISI.",
+   "src": "Chung 2008"
+  },
+  {
+   "id": "IIEF-5",
+   "name": "IIEF-5 — erectile function (male)",
+   "pillar": "ENDO",
+   "cadence": "on-trigger",
+   "scale": "1–5 per item (5 items)",
+   "stem": "Over the past 6 months (male sexual function)…",
+   "items": [
+    "Confidence in getting an erection",
+    "Erections firm enough for penetration",
+    "Maintaining after penetration",
+    "Maintaining to completion",
+    "Satisfaction with intercourse"
+   ],
+   "scoring": "Sum 5–25.",
+   "bands": "22–25 none · 17–21 mild · 12–16 mild-mod · 8–11 moderate · 5–7 severe ED",
+   "safety": "ED can be an early CV/endothelial and low-testosterone marker — cross-check CV/ENDO.",
+   "src": "Rosen 1999 (male)"
+  },
+  {
+   "id": "MENQOL",
+   "name": "MENQOL — Menopause-specific Quality of Life (female)",
+   "pillar": "ENDO",
+   "cadence": "on-trigger",
+   "scale": "Likert; higher = more bothersome",
+   "stem": "Bother from menopausal symptoms across four domains.",
+   "items": [
+    "Vasomotor (hot flushes, sweats)",
+    "Psychosocial",
+    "Physical",
+    "Sexual"
+   ],
+   "scoring": "Domain mean scores (higher = worse QoL).",
+   "bands": "descriptor by domain",
+   "safety": "Severe vasomotor/sleep impact → ENDO/SLP attention; HRT decision is clinician-led.",
+   "src": "Hilditch 1996 (female)"
+  }
+ ]
+}

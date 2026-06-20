@@ -1,0 +1,128 @@
+{
+ "_meta": {
+  "source": "wiki_content.py:WEARABLES",
+  "note": "Canonical metadata. Edit here, not in Python."
+ },
+ "wearables": [
+  [
+   "Resting HR",
+   "aggregated",
+   "consumer-validated",
+   "0.6–0.8",
+   "CV · FIT · MCS",
+   "Apple Watch · Oura · Whoop · Fitbit"
+  ],
+  [
+   "HRV (RMSSD)",
+   "aggregated",
+   "consumer-validated",
+   "0.6–0.8",
+   "CV · MCS · SLP · ENDO",
+   "Oura · Whoop · Apple Watch"
+  ],
+  [
+   "Steps / MVPA",
+   "aggregated",
+   "consumer-validated",
+   "0.6–0.8",
+   "FIT · MET · CV",
+   "all wrist/phone"
+  ],
+  [
+   "Sleep duration / efficiency / regularity",
+   "aggregated",
+   "consumer-validated",
+   "0.6–0.8",
+   "SLP · MCS",
+   "Oura · Whoop · Apple Watch"
+  ],
+  [
+   "SpO₂ (spot/overnight)",
+   "aggregated",
+   "consumer-validated",
+   "0.6–0.8",
+   "HEM · SLP",
+   "Apple Watch · Oura"
+  ],
+  [
+   "Skin / body temperature",
+   "aggregated",
+   "consumer-validated",
+   "0.6–0.8",
+   "ENDO (cycle) · INF (illness)",
+   "Oura · Whoop"
+  ],
+  [
+   "CGM glucose / time-in-range",
+   "aggregated",
+   "clinical-grade",
+   "0.85–1.0",
+   "MET",
+   "Freestyle Libre · Dexcom"
+  ],
+  [
+   "Blood pressure (cuff)",
+   "aggregated",
+   "clinical-grade",
+   "0.85–1.0",
+   "CV · REN",
+   "Omron · Withings BPM"
+  ],
+  [
+   "Single-lead ECG / rhythm",
+   "derived→confirmed",
+   "clinical-grade",
+   "0.85–1.0",
+   "CV",
+   "Apple Watch · KardiaMobile"
+  ],
+  [
+   "Weight / body composition",
+   "aggregated",
+   "consumer-validated",
+   "0.6–0.8",
+   "BCM · MET",
+   "smart scales (Withings/Garmin)"
+  ],
+  [
+   "VO₂max (estimate)",
+   "derived",
+   "inferential",
+   "informational only",
+   "FIT · CV",
+   "Apple Watch · Garmin"
+  ],
+  [
+   "Readiness / recovery",
+   "derived",
+   "inferential",
+   "informational only",
+   "SLP · MCS · FIT",
+   "Oura · Whoop · Garmin"
+  ],
+  [
+   "Stress score",
+   "derived",
+   "inferential",
+   "informational only",
+   "MCS",
+   "Garmin · Fitbit · Whoop"
+  ],
+  [
+   "Sleep stages (REM/deep/light)",
+   "derived",
+   "inferential",
+   "informational only",
+   "SLP",
+   "all wearables"
+  ],
+  [
+   "Respiratory rate",
+   "derived",
+   "inferential",
+   "informational only",
+   "HEM · SLP",
+   "Oura · Whoop · Apple Watch"
+  ]
+ ]
+}

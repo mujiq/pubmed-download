@@ -1,0 +1,24 @@
+{
+ "_meta": {
+  "source": "data/adherence-actions.json",
+  "note": "Illustrative interventions to improve adherence, keyed to the adherence.json barrier reason_taxonomy. Each: label, expected adherence lift (illustrative 0-1), effort, delivery channel. 'generic' = barrier-independent best-practice boosters. Applying an action raises adherence (EWMA) → reservoir inflow → projected PureScore. Re-verify before production (README §5.6)."
+ },
+ "barriers": {
+  "salience":           [{"label": "Reframe 'why this matters' + link to a goal", "lift": 0.12, "effort": "low", "channel": "app"}, {"label": "2-min clinician motivational nudge", "lift": 0.15, "effort": "med", "channel": "clinician"}, {"label": "Show personal trend & relative risk", "lift": 0.08, "effort": "low", "channel": "app"}],
+  "time":               [{"label": "Shrink to a 5-min micro-habit", "lift": 0.09, "effort": "low", "channel": "app"}, {"label": "Habit-stack onto an existing routine", "lift": 0.10, "effort": "low", "channel": "app"}, {"label": "Batch into one weekly block", "lift": 0.06, "effort": "low", "channel": "app"}],
+  "side_effect":        [{"label": "Clinician dose-timing / dose review", "lift": 0.20, "effort": "med", "channel": "clinician"}, {"label": "Switch to a better-tolerated agent", "lift": 0.18, "effort": "high", "channel": "clinician"}],
+  "access":             [{"label": "Switch to generic / mail-order", "lift": 0.14, "effort": "low", "channel": "pharmacy"}, {"label": "Pharmacy auto-refill sync", "lift": 0.12, "effort": "low", "channel": "pharmacy"}],
+  "cost":               [{"label": "Generic substitution / assistance program", "lift": 0.16, "effort": "med", "channel": "pharmacy"}],
+  "asymptomatic":       [{"label": "Silent-risk explainer (BP, ApoB, eGFR)", "lift": 0.10, "effort": "low", "channel": "app"}, {"label": "Set a measurable mini-goal", "lift": 0.08, "effort": "low", "channel": "app"}],
+  "dont_believe":       [{"label": "Share the evidence + expected benefit", "lift": 0.09, "effort": "low", "channel": "app"}, {"label": "Shared decision-making visit", "lift": 0.13, "effort": "med", "channel": "clinician"}],
+  "regimen_complexity": [{"label": "Consolidate to once-daily", "lift": 0.17, "effort": "med", "channel": "clinician"}, {"label": "Blister / dose pack", "lift": 0.14, "effort": "low", "channel": "pharmacy"}],
+  "fear":               [{"label": "Counsel & address the specific fear", "lift": 0.15, "effort": "med", "channel": "clinician"}],
+  "other":              [{"label": "Open-ended check-in to surface the barrier", "lift": 0.07, "effort": "low", "channel": "app"}]
+ },
+ "generic": [
+  {"label": "Daily reminders / smart alarms", "lift": 0.10, "effort": "low", "channel": "app"},
+  {"label": "Streaks & gamification", "lift": 0.08, "effort": "low", "channel": "app"},
+  {"label": "Accountability partner / weekly check-in", "lift": 0.09, "effort": "low", "channel": "app"},
+  {"label": "Simplify to the top-3 actions", "lift": 0.07, "effort": "low", "channel": "app"}
+ ]
+}

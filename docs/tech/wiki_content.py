@@ -103,6 +103,25 @@ def _attach_panels(g):
                            "age_range": x.get("applicability", {}).get("age_range", [0, 120]),
                            "life_stage": x.get("applicability", {}).get("life_stage", "any")}}
                   for x in gl]
+    try: g["conditions"] = _load("conditions.json")
+    except Exception: g["conditions"] = {"diseases": {}, "meds": {}}
+    try: g["adherence_actions"] = _load("adherence-actions.json")
+    except Exception: g["adherence_actions"] = {"barriers": {}, "generic": []}
+    try: qb = _load("question-bank.json")["questions"]
+    except Exception: qb = []
+    def _qtrim(q):
+        dim = q.get("dimensions", {}) or {}; age = dim.get("age", "all"); amin, amax = 0, 120
+        if isinstance(age, dict): amin, amax = age.get("min", 0), age.get("max", 120)
+        pset = set()
+        for r in q.get("responses", []):
+            for pk in (r.get("pillars") or {}): pset.add(pk)
+        resp = [{"l": r.get("label"), "p": sorted((r.get("pillars") or {}).keys())} for r in q.get("responses", [])][:6]
+        return {"id": q.get("id"), "text": q.get("text"), "cat": q.get("category"), "cadence": q.get("cadence"),
+                "sex": dim.get("sex", ["all"]), "amin": amin, "amax": amax, "pillars": sorted(pset),
+                "conditions": (q.get("conditions") or [])[:4], "responses": resp}
+    onb = [q for q in qb if q.get("cadence") in ("Core", "once")]
+    per = sorted([q for q in qb if q.get("cadence") in ("quarterly", "annual")], key=lambda q: q.get("priority", 5))[:60]
+    g["questions"] = [_qtrim(q) for q in (onb + per)][:130]
     return g
 
 def write_calc_data():
@@ -1023,7 +1042,7 @@ def build_purescore_uber():
 
 <div id="ceCockpit">
   <div class="fd-band">
-    <div class="fd-scorebox"><div class="n" id="fdScoreN">&mdash;</div><div class="ci" id="fdScoreCI"></div><div class="b" id="fdScoreB">PURESCORE</div></div>
+    <div class="fd-scorebox"><div class="n" id="fdScoreN">&mdash;</div><div class="ci" id="fdScoreCI"></div><div class="fd-scoreband" id="fdScoreBand"></div><div class="b" id="fdScoreB">PURESCORE</div></div>
     <div class="fd-companion" id="fdComp"></div>
     <div class="fd-pillwrap"><div class="fd-seclabel">12 pillars &middot; R_k (click to trace)</div><div class="fd-pillgrid" id="fdPillars"></div></div>
     <div class="fd-reswrap"><div class="fd-seclabel">15 reservoirs &middot; load</div><div class="fd-restanks" id="fdRes"></div></div>
@@ -1056,6 +1075,10 @@ def build_purescore_uber():
     <div class="fd-card"><div class="fd-card-h">Adherence check-ins to ask</div><div id="fdCheckins"></div></div>
     <div class="fd-card"><div class="fd-card-h">Adherence history &middot; 12 wk</div><div id="fdAdhHist"></div></div>
     <div class="fd-card"><div class="fd-card-h">Wearable baselines &middot; tap to drill <a href="wearable-baselines.html" style="float:right;color:#9cc7f0;text-decoration:none">full app &rsaquo;</a></div><div id="fdWearBase"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Diagnoses &amp; meds (Patient360) &middot; click for conditions</div><div id="fdDxMeds"></div>
+      <div class="fd-sim"><select id="fdSimType" class="um-sel"><option value="lab">+ lab</option><option value="dx">+ diagnosis</option><option value="med">+ med</option></select><select id="fdSimItem" class="um-sel"></select><button class="um-btn" id="fdSimAdd">simulate EHR</button></div></div>
+    <div class="fd-card"><div class="fd-card-h">Onboarding &amp; periodic questions answered</div><div id="fdQuestions"></div></div>
+    <div class="fd-card"><div class="fd-card-h">Improve adherence &middot; barrier-matched + generic</div><div id="fdAdhActions"></div></div>
     <div class="fd-card"><div class="fd-card-h">Top nudges &middot; &Delta;PureScore</div><div id="fdNudge"></div></div>
     <div class="fd-card"><div class="fd-card-h">Forecast trajectory</div><div id="fdForecast"></div></div>
     <div class="fd-card"><div class="fd-card-h">Critical annunciator</div><div id="fdCrit"></div></div>
@@ -1253,6 +1276,32 @@ body.cefocus .fd-band{top:0}
 .fd-band-viz{position:relative;height:14px;background:#1c2636;border-radius:7px;margin:6px 0}
 .fd-band-viz .b1{position:absolute;top:0;bottom:0;left:25%;right:25%;background:rgba(58,214,160,.22);border-left:1px solid rgba(58,214,160,.6);border-right:1px solid rgba(58,214,160,.6)}
 .fd-band-viz .mk{position:absolute;top:-3px;width:3px;height:20px;background:#fff;border-radius:2px}
+/* score variance band */
+.fd-scoreband{position:relative;height:6px;width:84px;background:#1c2636;border-radius:4px;margin:4px auto 0}
+.fd-scoreband i{position:absolute;top:0;bottom:0;background:rgba(73,198,216,.45);border-radius:4px}
+.fd-scoreband b{position:absolute;top:-2px;width:2px;height:10px;background:#fff}
+/* diagnoses & meds */
+.fd-dx{display:inline-block;font-size:11px;padding:2px 8px;margin:2px 4px 2px 0;border-radius:7px;border:1px solid #2b5a86;background:#0c1726;color:#cfe0f5;cursor:pointer}
+.fd-dx:hover{border-color:#2ee6c9}
+.fd-dx.med{border-color:#7a5f24;color:#edc7a0}
+.fd-dx .c{color:#6b7d92;font-size:9px;margin-left:4px}
+.fd-sim{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+.fd-sim .um-sel{font-size:11px;padding:3px 6px}
+/* questions answered */
+.fd-qsub{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#6b7d92;margin:6px 0 2px}
+.fd-q2{display:flex;align-items:baseline;gap:6px;font-size:11.5px;padding:2px 4px;border-radius:5px;cursor:pointer}
+.fd-q2:hover{background:#101a28}
+.fd-q2 .qt{flex:1;color:#cdd9e8}
+.fd-q2 .qa{color:#3ad6a0;font-weight:700;white-space:nowrap}
+.fd-q2 .qp{color:#6b7d92;font-size:9px;white-space:nowrap}
+/* adherence actions */
+.fd-aa{display:flex;align-items:center;gap:7px;font-size:11.5px;padding:3px 4px;border-radius:6px;margin:2px 0}
+.fd-aa .bar{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;border:1px solid #7a3344;color:#ffb9c6;flex:none}
+.fd-aa .bar.gen{border-color:#2a3a4d;color:#9bb0c5}
+.fd-aa .t{flex:1;color:#dbe6f3}
+.fd-aa .lift{color:#3ad6a0;font-weight:700;font-variant-numeric:tabular-nums}
+.fd-aa button{font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid #2b5a86;background:#16335e;color:#fff;cursor:pointer}
+.fd-aa button.done{background:#10301f;border-color:#2f6b48;color:#bff0d0}
 /* ---- tree rows ---- */
 .ce-row{display:flex;align-items:center;gap:7px;padding:2px 8px;margin:1px 0;border-left:3px solid #2a3340;border-radius:0 7px 7px 0;cursor:pointer;font-size:13px}
 .ce-row:hover{background:#101a28}

@@ -132,6 +132,9 @@ dmypy.json
 # Downloaded data (too large for git)
 data/
 !data/.gitkeep
+# ...but the PureScore wiki's canonical metadata under docs/tech/data IS source — keep it versioned
+!docs/tech/data/
+!docs/tech/data/**
 
 # Log files
 logs/

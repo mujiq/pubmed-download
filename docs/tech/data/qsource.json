@@ -1,0 +1,38 @@
+{
+ "_meta": {
+  "source": "wiki_content.py:QSOURCE",
+  "note": "Canonical metadata. Edit here, not in Python."
+ },
+ "qsource": [
+  [
+   "Lab (venous)",
+   "1.0",
+   "clinical-grade reference"
+  ],
+  [
+   "Wearable — clinical-grade (CGM, validated cuff, single-lead ECG)",
+   "0.85–1.0",
+   "near-lab; can corroborate a critical"
+  ],
+  [
+   "Wearable — consumer-validated (resting HR, steps, sleep duration)",
+   "0.6–0.8",
+   "feeds score, discounted; Watch/Advisory only"
+  ],
+  [
+   "Wearable — inferential/derived (readiness, stress, sleep stages)",
+   "informational only",
+   "never sets a band"
+  ],
+  [
+   "Consumer survey / PRO",
+   "0.5–0.7",
+   "self-report, plausibility-checked"
+  ],
+  [
+   "Literature fallback",
+   "0.2–0.4",
+   "cohort median when no own data; lowers coverage"
+  ]
+ ]
+}
