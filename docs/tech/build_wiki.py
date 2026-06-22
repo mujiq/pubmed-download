@@ -169,22 +169,25 @@ NAV = [
  ("4 · Acting on it", [(DOCMAP["11"], SHORT["11"], "11"), (DOCMAP["12"], SHORT["12"], "12"),
                  ("appendix-adherence.html", "Adherence"), ("appendix-goals.html", "Goals"),
                  ("feedback-loop.html", "Feedback-loop demo")]),
- ("5 · Trust & govern", [(DOCMAP["13"], SHORT["13"], "13"), (DOCMAP["14"], SHORT["14"], "14"),
+ ("5 · Care pathways & delivery", [("care-pathways.html", "Condition pathways"),
+                 ("care-roles.html", "Care team & roles"),
+                 ("prevention-engagement.html", "Prevention & engagement")]),
+ ("6 · Trust & govern", [(DOCMAP["13"], SHORT["13"], "13"), (DOCMAP["14"], SHORT["14"], "14"),
                  (DOCMAP["15"], SHORT["15"], "15"), (DOCMAP["16"], SHORT["16"], "16"),
                  ("consent-onboarding.html", "Consent & onboarding"),
                  (DOCMAP["18"], SHORT["18"], "18"),
                  (DOCMAP["19"], SHORT["19"], "19")]),
- ("6 · Gaps, blind-spots & roadmap", [("production-gaps.html", "Production readiness — gaps"),
+ ("7 · Gaps, blind-spots & roadmap", [("production-gaps.html", "Production readiness — gaps"),
                  ("spec-audit.html", "Spec build-readiness"),
                  (DOCMAP["17"], SHORT["17"], "17"), ("appendix-coverage-audit.html", "Coverage audit")]),
- ("7 · System & build", [("purescore-system.html", "System at a glance"),
+ ("8 · System & build", [("purescore-system.html", "System at a glance"),
                  ("states.html", "Patient life-state machine"),
                  ("engagement-state-machines.html", "Engagement state machines"),
                  ("class-model.html", "Class model"),
                  ("dossier-erd.html", "Data model (ERD)"), ("dossier-c4.html", "C4 architecture"),
                  ("dossier-api.html", "API contracts"), ("dossier-sequences.html", "Sequences"),
                  ("dossier-stories.html", "User stories")]),
- ("8 · Admin (clinician config)", [("admin-index.html", "Dashboard"), ("admin-lab-ranges.html", "Lab ranges"),
+ ("9 · Admin (clinician config)", [("admin-index.html", "Dashboard"), ("admin-lab-ranges.html", "Lab ranges"),
                  ("admin-weights.html", "Weights & constants"), ("admin-lifestyle.html", "Lifestyle / PRO"),
                  ("admin-personas.html", "Personas & frames"), ("admin-governance.html", "Governance & sign-off")]),
 ]
@@ -205,6 +208,8 @@ ORDER = [it[0] for grp, items in NAV for it in items]
 PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
           "production-gaps.html":"Production readiness — gaps",
           "spec-audit.html":"Spec build-readiness audit",
+          "care-pathways.html":"Care pathways — condition pathways","care-roles.html":"Care team & roles",
+          "prevention-engagement.html":"Prevention & engagement",
           "appendix-biomarkers.html":"Appendix A · Markers (all channels)","reference-range-resolver.html":"Reference-range resolver",
           "appendix-wearables.html":"Appendix B · Wearables",
           "appendix-questions.html":"Appendix C · Screeners & PROs","appendix-personas.html":"Appendix D · Personas",
@@ -585,6 +590,8 @@ def main():
                       ("class-model.html", "build_class_model"),
                       ("production-gaps.html", "build_production_gaps"),
                       ("spec-audit.html", "build_spec_audit"),
+                      ("care-pathways.html", "build_care_pathways"), ("care-roles.html", "build_care_roles"),
+                      ("prevention-engagement.html", "build_prevention"),
                       ("purescore-uber-map.html", "build_purescore_uber"),
                       ("purescore-overview.html", "build_purescore_overview"),
                       ("purescore-wearable-baselines.html", "build_wearable_baselines"),
@@ -621,6 +628,7 @@ def main():
     _consistency_check()
     _engine_guard()
     _flag_guard()
+    _care_guard()
 
 def _engine_guard():
     """HARD guard (per D32): data/*.json is canonical for the scoring engine. Fail the build if
@@ -810,6 +818,35 @@ def _build_search_index():
     nsec = sum(len(r["secs"]) for r in recs)
     print("  [search] indexed %d pages · %d sections → assets/search-index.js (%d KB)"
           % (len(recs), nsec, len(js.encode("utf-8")) // 1024))
+
+def _care_guard():
+    """Care-pathways integrity (Care pathways & delivery): HARD-fail if a pathway references a role
+    not in care-roles.json, a priority owner is unknown, or a threshold-reconciliation status is not
+    one of aligned/partial/divergent (so the reconciliation can't silently drift)."""
+    cp = C._load("care-pathways.json")["pathways"]
+    roles = set(C._load("care-roles.json")["roles"])
+    VALID = {"aligned", "partial", "divergent"}
+    bad = []
+    for k, p in cp.items():
+        for rk in p.get("roles", []):
+            if rk not in roles:
+                bad.append("%s: role %r not in care-roles.json" % (k, rk))
+        for t in p.get("priority", []):
+            ow = t.get("owner", "")
+            if ow.lower() not in roles and ow not in ("FM", "GP"):
+                bad.append("%s: priority owner %r unknown" % (k, ow))
+        for r in p.get("reconcile", []):
+            if r.get("status") not in VALID:
+                bad.append("%s: reconcile status %r invalid" % (k, r.get("status")))
+    ndiv = sum(1 for p in cp.values() for r in p.get("reconcile", []) if r.get("status") == "divergent")
+    print("[care-guard] %d pathways · %d roles · %d threshold divergences flagged" % (len(cp), len(roles), ndiv))
+    if bad:
+        print("  ! FAIL:")
+        for b in bad:
+            print("     -", b)
+        raise SystemExit("! build failed: care-pathways guard")
+    print("  [care-guard] OK — roles resolve, priority owners & reconciliation statuses valid")
+
 
 def _flag_guard():
     """Audit-rerun regression (per Package F): HARD-fail the build if any clinical-audit flag is

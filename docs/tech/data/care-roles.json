@@ -1,0 +1,50 @@
+{
+ "_meta": {
+  "note": "Care-team operating model for the AD pathways, modelled HYBRID human-in-the-loop: each human role keeps its clinical responsibilities; 'app_assist' is where the PureScore app/agent prepares, automates or signposts; 'escalates_to' is the handoff. The app never replaces clinical decisions — it surfaces, prioritises, nudges and escalates. Illustrative — NOT a clinical sign-off.",
+  "stages": ["identify", "engage", "assess", "transform"]
+ },
+ "roles": {
+  "reception": {
+   "title": "Reception / front desk", "scope": "First contact & visual triage (esp. mental health).",
+   "responsibilities": ["Register patient", "Visual triage per clinic protocol", "Book to GP (P3) or FM (P1/2)"],
+   "app_assist": ["Pre-fill registration from PURA profile", "Surface a pre-computed priority tier so booking is one tap"],
+   "escalates_to": ["care_coordinator", "fm"]
+  },
+  "care_coordinator": {
+   "title": "Care Coordinator", "scope": "Population search, invitation, engagement & behaviour change across ALL priorities.",
+   "responsibilities": ["Search & stratify the cohort (H/M/L)", "Invite via SMS/telephone; explain the review", "Lifestyle brief (diet/exercise/smoking/weight/alcohol)", "Behaviour-change techniques (motivational interviewing)", "Signpost tools/resources; book appointments"],
+   "app_assist": ["Automated cohort search & risk stratification from the PureScore engine", "Templated invitations + nudge scheduling (Doc 11)", "Personalised risk illustration & decision-support content", "Tracks engagement/adherence; flags non-responders"],
+   "escalates_to": ["nurse", "gp", "fm"]
+  },
+  "nurse": {
+   "title": "Nurse", "scope": "Measurement, care-plan setup, self-management education.",
+   "responsibilities": ["Record BP, weight, BMI, foot checks; arrange bloods if overdue", "Teach home monitoring (BP, BM/CGM) & sick-day rules", "Develop & maintain the care plan", "Reinforce diet/activity goals; signpost resources"],
+   "app_assist": ["Auto-ingest home-BP / wearable / self-report into the record", "Pre-populate the care plan from pathway templates", "Reminder cadence for bloods/screening (monitoring schedule)"],
+   "escalates_to": ["gp", "fm"]
+  },
+  "gp": {
+   "title": "General Practitioner (GP)", "scope": "Priority 3 — stable patients; review & medication.",
+   "responsibilities": ["Review results & screening; medication review", "Assess CVD risk (QRisk / UAE calculator)", "Diagnose & manage mild/stable disease", "Reinforce adherence & sick-day rules"],
+   "app_assist": ["Pre-computed score, trend, binding-constraint & provenance at point of care (Doc 03/05)", "Flags out-of-date screening; surfaces canonical reference ranges", "Drafts the medication-review checklist"],
+   "escalates_to": ["fm", "specialist"]
+  },
+  "fm": {
+   "title": "Family Physician (FM)", "scope": "Priority 1-2 — complex/high-risk; optimise & refer.",
+   "responsibilities": ["Optimise & titrate medications", "Manage co-morbidities & complications", "Refer to specialist when indicated; complete post-referral actions", "Allocate next review by control & risk"],
+   "app_assist": ["Prioritised worklist (P1/P2 first) with the critical-marker cascade highlighted", "Referral-criteria checks against pathway thresholds", "Post-referral action tracking & recall scheduling"],
+   "escalates_to": ["specialist"]
+  },
+  "dietitian": {
+   "title": "Dietitian", "scope": "Structured nutrition & weight-management support (MDT).",
+   "responsibilities": ["Individualised dietary plan (culturally tailored)", "Weight-management & relapse-prevention support"],
+   "app_assist": ["Receives referral with diet history, activity & weight trend pre-attached", "Digital check-ins & nudge follow-through"],
+   "escalates_to": ["fm"]
+  },
+  "specialist": {
+   "title": "Specialist (nephrology / endocrinology / cardiology / lipid / weight / mental-health)", "scope": "Secondary care; assess then repatriate to primary care.",
+   "responsibilities": ["Specialist assessment & management plan", "Repatriate to primary care with actions"],
+   "app_assist": ["Structured referral packet (relevant markers, trends, meds, reconciliation status)", "Repatriation actions flow back into the FM/GP worklist"],
+   "escalates_to": []
+  }
+ }
+}

@@ -1,0 +1,201 @@
+{
+ "_meta": {
+  "note": "Condition care-pathways (Care pathways & delivery chapter). Source: Abu Dhabi primary-care 'AD Pathway' decks + PURA app workflows (DRAFT 22-12-25). Each pathway carries a persona, IEAT lifecycle (Identify/Engage/Assess/Transform), 3-tier priority stratification → care-team role owner, referral/escalation, monitoring cadence, UAE specifics, and a reconciliation of its thresholds against PureScore's canonical ranges (status: aligned | partial | divergent). Hybrid human-in-the-loop: roles are people the app/agent assists & escalates to. Illustrative — NOT a clinical sign-off.",
+  "ieat": {"identify": "search/stratify the population & invite", "engage": "book, prepare, lifestyle brief", "assess": "clinician review & optimise", "transform": "sustain change, monitor, escalate"},
+  "priority_owner": {"FM": "Family Physician (priority 1-2, complex)", "GP": "General Practitioner (priority 3, stable)"},
+  "canonical_refs": "calc-graph.json markers[].th · pillars.json bands · range-variations.json · units.json"
+ },
+ "pathways": {
+  "hypertension": {
+   "title": "Hypertension", "source": "AD Pathway — Hypertension (DRAFT 22-12-25)",
+   "persona": {"name": "Meera", "age": 49, "vignette": "Perimenopausal, newly-found high BP, low activity; recent benign breast-lump scare."},
+   "stratifier": "BP reading · end-organ damage (renal, LVH) · co-morbidities",
+   "ieat": {
+    "identify": ["Nurse identifies per criteria; prioritise H/M/L", "Invite via SMS/telephone, explain review"],
+    "engage": ["Care Coordinator: lifestyle brief (diet/exercise/smoking/weight/alcohol)", "Nurse: care plan, phlebotomy if bloods due, record BP & BMI"],
+    "assess": ["GP (P3): review side-effects, contra-indications, CVD risk, lipid + antihypertensive meds", "FM (P1/2): specialist review as needed, adjust meds, review CVD risk"],
+    "transform": ["Behaviour change (motivational interviewing)", "Ongoing BP education; adjust care plan; allocate next review by control & risk"]
+   },
+   "priority": [
+    {"tier": "P1", "owner": "FM", "criteria": ["Clinic BP ≥180/120", "ABPM/HBPM ≥175/115"]},
+    {"tier": "P2", "owner": "FM", "criteria": ["Clinic BP ≥150/95 (ABPM/HBPM ≥145/90)", "BAME + co-morbidity & clinic ≥140/90 (ABPM/HBPM ≥135/85)", "No BP reading in 18 months"]},
+    {"tier": "P3", "owner": "GP", "criteria": ["<80y: clinic <140/90 (ABPM/HBPM <135/85)", "≥80y: clinic <150/90 (ABPM/HBPM <145/85)"]}
+   ],
+   "roles": ["care_coordinator", "nurse", "gp", "fm"],
+   "referral": ["Retinal haemorrhage/papilloedema", "BP uncontrolled on 4 antihypertensives with confirmed adherence"],
+   "monitoring": ["Home BP diary", "Renal, lipids, ACR, ECG as needed", "QRisk → lipid-lowering if >10% and not on statin"],
+   "uae": ["BAME-adjusted ≥140/90 priority cut", "Cites NICE NG136"],
+   "reconcile": [
+    {"threshold": "clinic ≥140/90 (action)", "canonical": "sbp th [120,140] hi + NICE NG136", "status": "aligned", "note": "Matches the corrected BP citation/value (Package C)."},
+    {"threshold": "P1 ≥180/120", "canonical": "above sbp red 140 (acute Doc 09)", "status": "aligned", "note": "Hypertensive urgency → acute-events escalation."}
+   ]
+  },
+  "t2-diabetes": {
+   "title": "Type 2 Diabetes", "source": "AD Pathway — T2 Diabetes (DRAFT 22-12-25)",
+   "persona": {"name": "Hala", "age": 54, "vignette": "T2DM 5y on metformin, HbA1c 8.2%, BP 138/86, BMI 31; non-adherent (family-first); motivated after father's fatal stroke."},
+   "stratifier": "HbA1c · frailty · BP · neuropathy/nephropathy/retinopathy · co-morbidities",
+   "ieat": {
+    "identify": ["Nurse identifies per criteria; prioritise H/M/L", "Invite + book bloods/foot check"],
+    "engage": ["Nurse: vitals, BMI, waist:hip, foot pulses, monofilament, ACR; adherence & self-monitoring; care plan", "Care Coordinator: culturally-appropriate lifestyle, Ramadan medication education, family meal involvement"],
+    "assess": ["GP (P3): congratulate stable control, screening + medication review", "FM (P1/2): up-titrate, repeat HbA1c 3/12, optimise BP & lipids, specialist referral"],
+    "transform": ["Behaviour change; ongoing diabetic education; allocate next review by HbA1c control & risk"]
+   },
+   "priority": [
+    {"tier": "P1", "owner": "FM", "criteria": ["Non-frail or frail with HbA1c >9%"]},
+    {"tier": "P2", "owner": "FM", "criteria": ["Non-frail HbA1c 7-9%", "Frail HbA1c <7.5%", "Frail HbA1c 7.5-9%"]},
+    {"tier": "P3", "owner": "GP", "criteria": ["Non-frail HbA1c <7%"]}
+   ],
+   "roles": ["care_coordinator", "nurse", "gp", "fm"],
+   "referral": ["Specialist diabetic review (uncontrolled/complications)", "Retinal screening referral if indicated"],
+   "monitoring": ["HbA1c, eGFR, lipids, LFTs (if statin), urinary ACR", "Retinal screening", "QRisk → statin if >10%", "SGLT2i safety: DKA / Fournier's / UTI; sick-day rules"],
+   "uae": ["Ramadan medication & hypoglycaemia education", "Culturally-tailored lower-carb diet; shaded-area walking"],
+   "reconcile": [
+    {"threshold": "HbA1c control bands >9 / 7-9 / <7%", "canonical": "hba1c th [5.7,6.5] (diagnostic)", "status": "partial", "note": "Pathway uses treatment-target bands (control), canonical uses diagnostic cuts — different axis; both correct in their frame. Surface both."},
+    {"threshold": "frailty-adjusted relaxed target <7.5%", "canonical": "no frailty gate", "status": "divergent", "note": "PureScore lacks a frailty gate (deferred flag); pathway provides one — candidate to adopt."}
+   ]
+  },
+  "ckd": {
+   "title": "Chronic Kidney Disease", "source": "AD Pathway — CKD (DRAFT 22-12-25)",
+   "persona": {"name": "Mariam", "age": 63, "vignette": "Poorly-controlled T2DM (HbA1c 9.7%), long-standing HTN, OA knee pain; eGFR fell 72→59, ACR 3.6; anxious after a friend mentioned dialysis."},
+   "stratifier": "eGFR + ACR (KDIGO G/A staging) · co-morbidities",
+   "ieat": {
+    "identify": ["Identify CKD 3-5 coded + search uncoded by parameters", "Classify by eGFR + CKD risk stratification (H/M/L)", "Invite to 'kidney health review'"],
+    "engage": ["Nurse: BP, weight, BMI, bloods if >12m; teach home BP & sick-day rules; lifestyle for metabolic health", "Care Coordinator: schedule follow-up by CKD class"],
+    "assess": ["GP (P3): review results, medication review", "FM (P1/2): optimise meds, review anaemia/bone-mineral, nephrology referral; check nephrotoxics; statin (LFT-safe)"],
+    "transform": ["Stable CKD via metabolic optimisation; fewer AKI admissions via sick-day rules", "Complete specialist-review actions"]
+   },
+   "priority": [
+    {"tier": "P1", "owner": "FM", "criteria": ["eGFR <30 or rapid decline ≥25% / ≥15 mL/min in 12m", "ACR >70 mg/mmol not on treatment", "Resistant hypertension or anaemia"]},
+    {"tier": "P2", "owner": "FM", "criteria": ["eGFR 30-59 with ACR >30 or T2DM", "eGFR 60-89 with ACR ≥3 or other risk factors"]},
+    {"tier": "P3", "owner": "GP", "criteria": ["eGFR >90, ACR <3", "Other signs of kidney damage (e.g. polycystic kidneys)"]}
+   ],
+   "roles": ["care_coordinator", "nurse", "gp", "fm"],
+   "referral": ["eGFR <30 or rapidly declining", "ACR ≥70 (unless T2DM already treated)", "ACR ≥30 + haematuria", "CKD + HTN resistant to 4 agents", "structural/genetic CKD"],
+   "monitoring": ["eGFR <15 → 3m; 15-29 + ACR>30 → 4m; 30-59 + ACR>30 → 6m", "FBC, HbA1c, lipids, LFTs, bone profile, urine dip", "Renal ultrasound if eGFR <30"],
+   "uae": ["Malaffi EMR diagnosis coding", "Sick-day rules to cut AKI admissions"],
+   "reconcile": [
+    {"threshold": "eGFR <30 / 30-59 / 60-89 / >90 + ACR", "canonical": "egfr th [60,45] + KDIGO 2024, unit mL/min/1.73m²", "status": "aligned", "note": "KDIGO G/A staging consistent with the corrected eGFR ranges (Package C); pathway adds ACR axis."},
+    {"threshold": "ACR thresholds (3/30/70 mg/mmol)", "canonical": "uacr th [30,300] mg/g — unit mismatch", "status": "divergent", "note": "Pathway uses SI mg/mmol; canonical uacr is mg/g (×~0.113). Reconcile via units.json (uacr SI path)."}
+   ]
+  },
+  "dyslipidaemia": {
+   "title": "Dyslipidaemia", "source": "AD Pathway — Dyslipidaemia (DRAFT 22-12-25)",
+   "persona": {"name": "Abdullah", "age": 51, "vignette": "Strong FHx premature CVD (father MI 60, brother 58), BMI 32, treated HTN, ex-smoker; TC 6.2, LDL 3.8, HDL 1.5, TG 2.0; non-diabetic."},
+   "stratifier": "10-year/lifetime CV risk · inherited dyslipidaemia · secondary-prevention eligibility",
+   "ieat": {
+    "identify": ["Search eligible for CV-risk assessment (age/co-morbidities) + severe/inherited dyslipidaemia + secondary-prevention candidates"],
+    "engage": ["Care Coordinator: invite for CV-risk assessment; send lipid-lowering info (diet, lifestyle, risks/benefits)", "Book high-CV no-comorbidity → GP; secondary-prevention optimisation → FM"],
+    "assess": ["GP: 10-yr/lifetime CV risk (UAE-validated), screen inherited dyslipidaemia, confirm secondary-prevention eligibility", "FM: optimise treatment plans for co-morbid/secondary-prevention"],
+    "transform": ["Offer lipid-lowering for primary & secondary prevention", "Genetic testing + cascade screening for inherited dyslipidaemia", "Reduce primary & secondary CV events"]
+   },
+   "priority": [
+    {"tier": "P1", "owner": "FM", "criteria": ["Severe hyperlipidaemia", "Suboptimal response / statin-intolerant"]},
+    {"tier": "P2", "owner": "FM", "criteria": ["10-year CV risk >10%", "Secondary-prevention eligible, or CKD / DMT1"]},
+    {"tier": "P3", "owner": "GP", "criteria": ["No CV-risk assessment completed", "Not meeting lipid target", "Stable on medication"]}
+   ],
+   "roles": ["care_coordinator", "nurse", "gp", "fm"],
+   "referral": ["Lipid clinic if TC >7.5, LDL >4.9, non-HDL >7.5, TG >10 (mmol/L)"],
+   "monitoring": ["Lipid profile + FHx (inherited?)", "Re-check factors that under-estimate risk", "Shared decision-making tool with individualised risk illustration"],
+   "uae": ["UAE-validated CV risk calculator (not Framingham/QRisk directly)"],
+   "reconcile": [
+    {"threshold": "severe LDL >4.9 mmol/L → lipid clinic", "canonical": "ldl th [100,160] mg/dL + ESC/EAS 2019; very-high <55", "status": "partial", "note": "Pathway is mmol/L, canonical mg/dL (units.json ×0.02586: 4.9 mmol/L ≈ 190 mg/dL = FH range). Reconcile units; very-high goal already added (Package C)."},
+    {"threshold": "10-yr CV risk >10% → statin", "canonical": "no CV-risk engine", "status": "divergent", "note": "PureScore scores markers, not a 10-yr ASCVD risk — candidate engine addition; pathway supplies the rule."}
+   ]
+  },
+  "obesity": {
+   "title": "Obesity", "source": "AD Pathway — Obesity (DRAFT 22-12-25)",
+   "persona": {"name": "Omar", "vignette": "Living with obesity; informed of metabolic risk; seeking weight-management support."},
+   "stratifier": "BMI · co-morbidities · mobility",
+   "ieat": {
+    "identify": ["Clinical search for weight-reduction-review candidates; prioritise H/M/L"],
+    "engage": ["Care Coordinator: assess lifestyle; record weight/height/BMI/waist/BP; bloods (HbA1c, lipids, LFTs, TFTs); 24h dietary recall, activity, smoking, sleep; smoking-cessation & alcohol advice", "Nurse: care plan, phlebotomy if due"],
+    "assess": ["GP (BMI ≥25, no major comorbidity): CVD risk, lifestyle, consider pharmacotherapy referral", "FM (BMI >30+comorbidity or >40): exclude organic (hypothyroid), OSA, obesogenic-drug review, specialist/bariatric referral"],
+    "transform": ["MDT plan incl. dietitian; review 4-6 weekly until stable then 3-6 monthly", "Track BMI trajectory, waist, metabolic params; relapse-prevention + digital check-ins"]
+   },
+   "priority": [
+    {"tier": "P1", "owner": "FM", "criteria": ["BMI ≥40, or ≥35 with any comorbidity (uncontrolled T2DM, HTN, OSA, NAFLD, mobility limitation)"]},
+    {"tier": "P2", "owner": "FM", "criteria": ["BMI ≥35 with ≥1 comorbidity, or ≥30 with early metabolic risk (prediabetes, HTN)"]},
+    {"tier": "P3", "owner": "GP", "criteria": ["BMI ≥25 with no major comorbidities"]}
+   ],
+   "roles": ["care_coordinator", "nurse", "gp", "fm"],
+   "referral": ["Specialist weight-management (pharmacotherapy / bariatric surgery)", "OSA assessment", "Psychological therapies"],
+   "monitoring": ["Weight, BMI, waist circumference, metabolic parameters", "Adjust obesogenic & dose-sensitive meds as weight falls (avoid hypotension/hypoglycaemia)"],
+   "uae": ["High regional obesity & T2DM prevalence framing"],
+   "reconcile": [
+    {"threshold": "BMI ≥25/30/35/40 (WHO)", "canonical": "waist th [90,100] (IDF South-Asian) + bodyfat; BMI not scored", "status": "divergent", "note": "Pathway routes on BMI (WHO); PureScore scores waist (IDF South-Asian/Gulf) + body-fat. For a Gulf cohort BMI under-detects — surface both; consider Asian BMI cut ≥27.5 (flagged in clinical-flags)."}
+   ]
+  },
+  "mental-health": {
+   "title": "Mental Health (Adult)", "source": "AD Pathway — Mental Health [Adult] (DRAFT 22-12-25)",
+   "persona": {"name": "Fatima", "age": 23, "vignette": "Months of poor sleep, anhedonia, weight worry; eldest of 4, heavy caregiving load, limited socialising."},
+   "stratifier": "Symptom severity · length of illness · co-morbidity · past MH history",
+   "ieat": {
+    "identify": ["Reception: register + visual triage per clinic protocol"],
+    "engage": ["Care Coordinator: lifestyle advice (timing per clinical condition); behaviour-change techniques"],
+    "assess": ["FM: clinical assessment, exclude organic (e.g. hypothyroid), PHQ-9 score; assess OCD/psychosis, drug/alcohol", "GP: diagnose mild depression for psychological management", "FM: refer severe for specialist + talking therapies (CBT)"],
+    "transform": ["Treat mild/moderate; repeat meds, monitor compliance & side-effects; complete specialist-review actions"]
+   },
+   "priority": [
+    {"tier": "P1", "owner": "FM", "criteria": ["Severe acute symptoms", "Past history of mental-health issues"]},
+    {"tier": "P2", "owner": "FM", "criteria": ["Moderate symptoms", "Re-presentation same/worsening", "Existing co-morbidities"]},
+    {"tier": "P3", "owner": "GP", "criteria": ["Mild symptoms, no co-morbidities, short-term illness"]}
+   ],
+   "roles": ["reception", "care_coordinator", "gp", "fm"],
+   "referral": ["Specialist management + psychological therapies", "Admission if severely unwell/psychotic"],
+   "monitoring": ["PHQ-9 (0-9 mild, 10-19 moderately severe, 20-27 severe)", "Visual monitoring — alert FM if distressed/behaviour changes", "Biochemical screen / brain scan to exclude organic disorder"],
+   "uae": ["Cultural framing of distress & help-seeking; family-context load"],
+   "reconcile": [
+    {"threshold": "PHQ-9 0-9 / 10-19 / 20-27", "canonical": "phq th [5,20] hi", "status": "partial", "note": "Canonical yellow at 5 (standard PHQ-9 mild ≥5); pathway labels 0-9 'mild'. Align banding to 5/10/15/20 (PHQ-9 Kroenke 2001, now cited)."},
+    {"threshold": "no suicidality escalation", "canonical": "gap:no-suicide-risk-instrument (deferred)", "status": "divergent", "note": "BOTH lack PHQ-9 item-9 → C-SSRS escalation. Shared SAFETY gap — fix once in the safety layer (Doc 16)."}
+   ]
+  },
+  "diabetes-journey": {
+   "title": "Diabetes — PURA patient journey", "source": "Diabetes workflow.docx (PURA)",
+   "persona": {"name": "—", "vignette": "Any PURA app user or physician referral entering the diabetes screening journey."},
+   "stratifier": "DOH risk assessment (age, gender, risk factors) → IFHAS screening result",
+   "ieat": {
+    "identify": ["Entry via PURA app or physician referral; DOH-standard risk assessment", "Book IFHAS screening; reminders"],
+    "engage": ["IFHAS-major: vitals (BMI, BP), labs (HbA1c, random glucose, lipids, CBC, creatinine), PHQ-9, GAD-7, consult + exam"],
+    "assess": ["Triage: Normal / Prediabetes / Diabetes; abnormal → follow-up in 7-10 days", "Activate pathway: routine follow-up / lifestyle program / physician management"],
+    "transform": ["Personalised care plan (meds, lifestyle, follow-up)", "Continuous monitoring + reminders in PURA dashboard", "Referral/escalation: GP, FM, internal medicine, endocrinology, cardiology, nephrology, dietitian", "Integrated diet/exercise/self-management education"]
+   },
+   "priority": [
+    {"tier": "Diabetes", "owner": "FM", "criteria": ["HbA1c ≥6.5% or FPG ≥126 mg/dL → T2 Diabetes pathway"]},
+    {"tier": "Prediabetes", "owner": "GP", "criteria": ["HbA1c 5.7-6.4% → Prediabetes pathway"]},
+    {"tier": "Normal", "owner": "GP", "criteria": ["Routine follow-up"]}
+   ],
+   "roles": ["care_coordinator", "gp", "fm", "specialist"],
+   "referral": ["GP, family medicine, internal medicine, endocrinology, cardiology, nephrology, dietitian — condition-based"],
+   "monitoring": ["Lab/appointment/medication-adherence reminders", "PURA dashboard tracking"],
+   "uae": ["IFHAS screening pathway", "DOH-standard risk assessment table"],
+   "reconcile": [
+    {"threshold": "HbA1c ≥6.5% / 5.7-6.4% triage", "canonical": "hba1c th [5.7,6.5] + ADA/WHO", "status": "aligned", "note": "Directly matches the corrected HbA1c diagnostic cuts (Package C) incl. IFCC mmol/mol path."},
+    {"threshold": "PHQ-9 + GAD-7 at screening", "canonical": "phq/gad scored markers", "status": "aligned", "note": "Both PureScore markers; instruments now cited (Kroenke/Spitzer)."}
+   ]
+  },
+  "prediabetes": {
+   "title": "Prediabetes — PURA prevention pathway", "source": "Pre Diabetes – PURA preliminary workflow.docx",
+   "persona": {"name": "—", "vignette": "Auto-enrolled PURA user with HbA1c 5.7-6.4% on prevention track."},
+   "stratifier": "HbA1c band + BMI + HTN + FHx + GDM/PCOS/MetS",
+   "ieat": {
+    "identify": ["Auto-enroll on abnormal HbA1c 5.7-6.4%", "Risk stratify Low/Moderate/High"],
+    "engage": ["Lifestyle education; digital nudges (weight, activity, nutrition, high-risk coaching)"],
+    "assess": ["Monitoring schedule: HbA1c q3m, weight/BMI q2-4wk (self-report), BP q3m, lifestyle adherence monthly", "Repeat HbA1c → risk reassessment"],
+    "transform": ["Improved → continue; worsened → intensify coaching + dietitian referral + care-team flag", "HbA1c ≥6.5% → CDS-PRE-03 → Diabetes pathway + physician alert + complication screening"]
+   },
+   "priority": [
+    {"tier": "High", "owner": "FM", "criteria": ["HbA1c 6.3-6.4%", "Previous GDM", "Obesity BMI ≥35", "Metabolic syndrome", "PCOS"]},
+    {"tier": "Moderate", "owner": "GP", "criteria": ["HbA1c 6.0-6.2%", "BMI ≥30", "Hypertension", "Family history of diabetes"]},
+    {"tier": "Low", "owner": "GP", "criteria": ["HbA1c 5.7-5.9%", "BMI <30", "No hypertension", "No GDM history"]}
+   ],
+   "roles": ["care_coordinator", "gp", "fm", "dietitian"],
+   "referral": ["Dietitian (high-risk / worsening)", "Physician alert + T2 Diabetes pathway on progression"],
+   "monitoring": ["HbA1c q3m", "Weight/BMI q2-4wk (self-report)", "BP q3m", "Lifestyle adherence monthly"],
+   "uae": ["PURA app auto-enrollment + dashboard", "Prevention Score composite (see prevention-nudges.json)"],
+   "reconcile": [
+    {"threshold": "auto-enroll HbA1c 5.7-6.4%", "canonical": "hba1c green<5.7 / yellow 5.7-6.4", "status": "aligned", "note": "Enrollment band = canonical yellow zone exactly (Package C)."},
+    {"threshold": "weight q2-4wk self-report", "canonical": "self-report confidence down-weight (Doc 05)", "status": "aligned", "note": "Self-reported cadence → apply q_source PRO confidence weighting."}
+   ]
+  }
+ }
+}

@@ -599,6 +599,11 @@ def build_personas():
          'representativeness <code>rep</code> (drives Confidence), pillar weight multipliers, and the interpretation '
          'frame they test. Used by <a class="xref" href="08-sex-specific-models.html">Doc 08</a>, '
          '<a class="xref" href="18-uae-localization.html">Doc 18</a> and the live calculator.</p>', ILLUS,
+         '<div class="callout note"><div class="ct">Clinical pathway personas</div>'
+         'The condition-anchored personas (Mariam · CKD, Abdullah · dyslipidaemia, Meera · hypertension, '
+         'Fatima · mental health, Hala · T2 diabetes, Omar · obesity) live with their care pathway on '
+         '<a class="xref" href="care-pathways.html">Condition care pathways</a> (canonical in '
+         '<code>data/care-pathways.json</code>) — they drive the Identify→Engage→Assess→Transform delivery model.</div>',
          '<div class="tablewrap"><table><thead><tr><th>Persona</th><th>Age</th><th>Meds</th>'
          '<th>rep</th><th>Weight multipliers</th><th>Frame it tests</th></tr></thead><tbody>']
     for (k, label, age, meds, rep, wm, note) in PERSONAS:
@@ -3661,6 +3666,158 @@ def build_spec_audit():
     h.append('<p class="small muted">Method: %s</p>' % _esc(data.get("method", "")))
     return "Spec build-readiness audit", "".join(h)
 
+
+# =================================================================== CARE PATHWAYS & DELIVERY
+_RC = {"aligned": '<span class="chip b-green">aligned</span>', "partial": '<span class="chip b-yellow">partial</span>',
+       "divergent": '<span class="chip b-red">divergent</span>'}
+
+def build_care_pathways():
+    """Condition care-pathways (Care pathways & delivery). Server-rendered from data/care-pathways.json:
+    per-condition IEAT lifecycle, 3-tier priority → role owner, referral, monitoring, UAE specifics, and
+    the reconciliation of each threshold against PureScore's canonical ranges."""
+    try:
+        cp = _load("care-pathways.json")
+    except Exception:
+        cp = {"pathways": {}}
+    P = cp["pathways"]
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Care pathways &amp; delivery &rsaquo; Condition pathways</div>',
+         '<h1>Condition Care Pathways <span class="small muted">&middot; from score to managed care</span></h1>',
+         '<p class="lead">Where the PureScore engine meets the clinic. Each condition runs an '
+         '<b>Identify &rarr; Engage &rarr; Assess &rarr; Transform</b> lifecycle, stratifies patients into a '
+         '<b>3-tier priority</b> routed to a <a class="xref" href="care-roles.html">care-team role</a> '
+         '(Priority 1-2 &rarr; Family Physician, Priority 3 &rarr; GP), and escalates to specialists. '
+         'Source: Abu Dhabi primary-care pathways + PURA app workflows (DRAFT). Single source: '
+         '<code>data/care-pathways.json</code>. Each threshold is <b>reconciled to the canonical ranges</b> '
+         '(<a class="xref" href="reference-range-resolver.html">resolver</a>); divergences are flagged.</p>', ILLUS,
+         '<div class="callout note"><div class="ct">IEAT lifecycle</div>'
+         '<b>Identify</b> search &amp; stratify the cohort &middot; <b>Engage</b> invite, prepare, lifestyle brief &middot; '
+         '<b>Assess</b> clinician review &amp; optimise &middot; <b>Transform</b> sustain, monitor &amp; escalate. '
+         'The app/agent assists each stage (<a class="xref" href="prevention-engagement.html">prevention &amp; engagement</a>); '
+         'clinicians make the decisions (<a class="xref" href="care-roles.html">hybrid human-in-the-loop</a>).</div>']
+    h.append('<div class="tablewrap"><table><thead><tr><th>Pathway</th><th>Persona</th><th>Stratifier</th>'
+             '<th>Priority owners</th><th>Source</th></tr></thead><tbody>')
+    for key, p in P.items():
+        owners = " / ".join(sorted({t.get("owner", "") for t in p.get("priority", [])}))
+        per = p.get("persona", {})
+        pname = per.get("name") or "&mdash;"
+        h.append('<tr><td><b><a href="#%s">%s</a></b></td><td>%s%s</td><td class="small">%s</td>'
+                 '<td class="small muted">%s</td><td class="small muted">%s</td></tr>'
+                 % (_esc(key), _esc(p.get("title", key)), _esc(pname),
+                    (" (" + str(per.get("age")) + ")") if per.get("age") else "",
+                    _esc(p.get("stratifier", "")), _esc(owners), _esc(p.get("source", ""))))
+    h.append('</tbody></table></div>')
+    for key, p in P.items():
+        per = p.get("persona", {})
+        h.append('<h2 id="%s">%s</h2>' % (_esc(key), _esc(p.get("title", key))))
+        if per.get("vignette"):
+            h.append('<p class="small"><b>Persona &mdash; %s%s:</b> %s</p>'
+                     % (_esc(per.get("name", "")), (", " + str(per.get("age"))) if per.get("age") else "",
+                        _esc(per.get("vignette", ""))))
+        h.append('<p class="small muted"><b>Stratifier:</b> %s</p>' % _esc(p.get("stratifier", "")))
+        h.append('<div class="tablewrap"><table><thead><tr><th>Priority</th><th>Owner</th><th>Criteria</th></tr></thead><tbody>')
+        for t in p.get("priority", []):
+            h.append('<tr><td><b>%s</b></td><td>%s</td><td class="small">%s</td></tr>'
+                     % (_esc(t.get("tier", "")), _esc(t.get("owner", "")), _esc("; ".join(t.get("criteria", [])))))
+        h.append('</tbody></table></div>')
+        ie = p.get("ieat", {})
+        h.append('<div class="tablewrap"><table><thead><tr><th>Identify</th><th>Engage</th><th>Assess</th><th>Transform</th></tr></thead><tbody><tr>')
+        for st in ("identify", "engage", "assess", "transform"):
+            items = ie.get(st, [])
+            h.append('<td class="small"><ul style="margin:0;padding-left:16px">%s</ul></td>'
+                     % "".join("<li>%s</li>" % _esc(x) for x in items))
+        h.append('</tr></tbody></table></div>')
+        for label, field in (("Referral / escalation", "referral"), ("Monitoring", "monitoring"), ("UAE specifics", "uae")):
+            vals = p.get(field, [])
+            if vals:
+                h.append('<p class="small"><b>%s:</b> %s</p>' % (label, " &middot; ".join(_esc(v) for v in vals)))
+        rec = p.get("reconcile", [])
+        if rec:
+            h.append('<p class="small muted" style="margin-bottom:3px"><b>Threshold reconciliation vs canonical:</b></p>')
+            h.append('<div class="tablewrap"><table><thead><tr><th>Pathway threshold</th><th>Canonical</th><th>Status</th><th>Note</th></tr></thead><tbody>')
+            for r in rec:
+                h.append('<tr><td class="small">%s</td><td class="small muted">%s</td><td>%s</td><td class="small">%s</td></tr>'
+                         % (_esc(r.get("threshold", "")), _esc(r.get("canonical", "")),
+                            _RC.get(r.get("status"), _esc(r.get("status", ""))), _esc(r.get("note", ""))))
+            h.append('</tbody></table></div>')
+    return "Care pathways", "".join(h)
+
+def build_care_roles():
+    """Care-team operating model (hybrid human-in-the-loop) from data/care-roles.json."""
+    try:
+        cr = _load("care-roles.json")
+    except Exception:
+        cr = {"roles": {}}
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Care pathways &amp; delivery &rsaquo; Care team &amp; roles</div>',
+         '<h1>Care Team &amp; Roles <span class="small muted">&middot; hybrid human-in-the-loop</span></h1>',
+         '<p class="lead">The <a class="xref" href="care-pathways.html">condition pathways</a> are delivered by a '
+         'primary-care team. PureScore is <b>digital-first but human-in-the-loop</b>: each role keeps its clinical '
+         'responsibilities; the app/agent <b>prepares, automates, prioritises and escalates</b> &mdash; it never makes '
+         'the clinical decision. Single source: <code>data/care-roles.json</code>.</p>', ILLUS]
+    for key, r in cr.get("roles", {}).items():
+        h.append('<h2 id="%s">%s</h2>' % (_esc(key), _esc(r.get("title", key))))
+        h.append('<p class="small muted">%s</p>' % _esc(r.get("scope", "")))
+        h.append('<div class="tablewrap"><table><thead><tr><th>Clinical responsibilities</th>'
+                 '<th>App / agent assist</th></tr></thead><tbody><tr>')
+        h.append('<td class="small"><ul style="margin:0;padding-left:16px">%s</ul></td>'
+                 % "".join("<li>%s</li>" % _esc(x) for x in r.get("responsibilities", [])))
+        h.append('<td class="small"><ul style="margin:0;padding-left:16px">%s</ul></td>'
+                 % "".join("<li>%s</li>" % _esc(x) for x in r.get("app_assist", [])))
+        h.append('</tr></tbody></table></div>')
+        esc_to = r.get("escalates_to", [])
+        if esc_to:
+            h.append('<p class="small muted">Escalates to: %s</p>' % _esc(", ".join(esc_to)))
+    return "Care team & roles", "".join(h)
+
+def build_prevention():
+    """Prevention engagement layer (PURA): reminders, interventions, alerts, CDS, Prevention Score, KPIs."""
+    try:
+        pn = _load("prevention-nudges.json")
+    except Exception:
+        pn = {}
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Care pathways &amp; delivery &rsaquo; Prevention &amp; engagement</div>',
+         '<h1>Prevention &amp; Engagement <span class="small muted">&middot; PURA nudges, alerts &amp; outcomes</span></h1>',
+         '<p class="lead">The preventive layer that keeps patients on a <a class="xref" href="care-pathways.html">pathway</a> '
+         'between clinic touch-points: reminders, a behavioural-intervention catalogue, the alert framework, the condition-level '
+         '<b>Prevention Score</b>, and the KPI/outcome measures. Reminders should route through the '
+         '<a class="xref" href="11-daily-nudge-engine.html">Doc 11 §9 delivery engine</a>, not a parallel sender. '
+         'Single source: <code>data/prevention-nudges.json</code>.</p>', ILLUS]
+    h.append('<h2 id="reminders">Preventive reminders</h2><div class="tablewrap"><table><thead><tr>'
+             '<th>Reminder</th><th>Trigger</th><th>Timing / escalation</th><th>Message</th></tr></thead><tbody>')
+    for r in pn.get("reminders", []):
+        te = " &middot; ".join([x for x in [r.get("timing", ""), r.get("escalation", "")] if x])
+        h.append('<tr><td><b>%s</b></td><td class="small">%s</td><td class="small muted">%s</td><td class="small">%s</td></tr>'
+                 % (_esc(r.get("id", "")), _esc(r.get("trigger", "")), _esc(te).replace("&amp;middot;", "&middot;"), _esc(r.get("message", ""))))
+    h.append('</tbody></table></div>')
+    h.append('<h2 id="interventions">Behavioural &amp; lifestyle interventions</h2><div class="tablewrap"><table><thead><tr>'
+             '<th>Intervention</th><th>Trigger</th><th>Frequency / goal</th><th>Example messages</th></tr></thead><tbody>')
+    for i in pn.get("interventions", []):
+        fg = " / ".join([x for x in [i.get("frequency", ""), i.get("goal", "")] if x])
+        h.append('<tr><td><b>%s</b></td><td class="small">%s</td><td class="small muted">%s</td><td class="small">%s</td></tr>'
+                 % (_esc(i.get("id", "")), _esc(i.get("trigger", "")), _esc(fg), _esc(" / ".join(i.get("messages", [])))))
+    h.append('</tbody></table></div>')
+    al = pn.get("alerts", {})
+    h.append('<h2 id="alerts">Alert framework</h2><div class="tablewrap"><table><thead><tr><th>Audience</th><th>Alerts</th></tr></thead><tbody>')
+    for aud in ("patient", "care_team", "physician"):
+        h.append('<tr><td><b>%s</b></td><td class="small">%s</td></tr>' % (_esc(aud), " &middot; ".join(_esc(x) for x in al.get(aud, []))))
+    h.append('</tbody></table></div>')
+    for c in pn.get("cds_rules", []):
+        h.append('<div class="callout note"><div class="ct">CDS rule &middot; %s &mdash; %s</div>'
+                 '<b>IF</b> %s <b>THEN</b> %s</div>'
+                 % (_esc(c.get("id", "")), _esc(c.get("name", "")), _esc(" / ".join(c.get("if", []))), " &middot; ".join(_esc(x) for x in c.get("then", []))))
+    ps = pn.get("prevention_score", {})
+    if ps:
+        h.append('<h2 id="prevention-score">%s</h2>' % _esc(ps.get("name", "Prevention Score")))
+        h.append('<p class="small">%s</p>' % _esc(ps.get("note", "")))
+        h.append('<p class="small"><b>Components:</b> %s</p>' % " &middot; ".join(_esc(x) for x in ps.get("components", [])))
+    k = pn.get("kpis", {})
+    if k:
+        h.append('<h2 id="kpis">KPI &amp; outcome measures</h2><div class="tablewrap"><table><thead><tr>'
+                 '<th>Clinical</th><th>Engagement</th><th>Preventive</th><th>Executive</th></tr></thead><tbody><tr>')
+        for col in ("clinical", "engagement", "preventive", "executive"):
+            h.append('<td class="small"><ul style="margin:0;padding-left:16px">%s</ul></td>'
+                     % "".join("<li>%s</li>" % _esc(x) for x in k.get(col, [])))
+        h.append('</tr></tbody></table></div>')
+    return "Prevention & engagement", "".join(h)
 
 # =================================================================== WEARABLE CORROBORATION (closes F4)
 def _wear_corr_counts():
