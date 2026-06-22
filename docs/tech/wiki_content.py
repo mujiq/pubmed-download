@@ -215,20 +215,43 @@ def write_unit_data():
     return u
 _UNIT_ASSETS = '<script src="assets/units-data.js"></script><script src="assets/units.js"></script>'
 
+# pillar → intake-question domain (split domains attribute to both pillars)
+_PILLAR_DOMAIN = {"CV": "CARDIOMETABOLIC", "MET": "CARDIOMETABOLIC", "REN": "RENAL_HEPATIC", "HEP": "RENAL_HEPATIC",
+    "INF": "INFLAMM_IMMUNE_ALLERGY", "HEM": "HEMATOLOGIC", "ENDO": "ENDOCRINE_HORMONAL", "BCM": "BODYCOMP_MSK",
+    "NUT": "NUTRITION_GI", "SLP": "SLEEP_FATIGUE", "FIT": "FITNESS_ACTIVITY", "MCS": "MENTAL_COGNITIVE_SOCIAL"}
+# precise sub-channel → bucket + short chip label
+_CHAN_BUCKET = {"biomarker-lab": ("bio", "lab"), "derived": ("bio", "derived"),
+    "wearable-clinical": ("wear", "clinical"), "wearable-consumer": ("wear", "wearable"),
+    "wearable-inferential": ("wear", "inferred"), "self-report": ("pro", "PRO")}
+
 def write_pillar_data():
-    """Emit assets/pillars-data.js (window.PURESCORE_PILLARS) — per-pillar name, weight W_k, marker
-    coverage (count + core markers) and description, for the pillar-fan hover cards + click-to-section."""
+    """Emit assets/pillars-data.js (window.PURESCORE_PILLARS) — per-pillar weight W_k, description, and
+    the FULL input coverage grouped by channel (biomarkers · wearables · self-report/PROs) with each item
+    deep-linked to its Appendix A row, plus the intake-question count for the pillar's domain. Drives the
+    interactive pillar-fan hover popover."""
     try:
         W = dict(_load("pillar-weights.json")["weights"])
     except Exception:
         W = {}
+    try:
+        qdom = {d["domain"]: d["count"] for d in _load("question-bank.json")["meta"]["domain_codes"]}
+    except Exception:
+        qdom = {}
     out = {}
     for pid, name, desc, rows in PILLARS:
-        markers = [{"n": r[0], "w": (r[7] if len(r) > 7 else ""), "t": (r[2] if len(r) > 2 else "")} for r in rows]
-        core = [m["n"] for m in markers if m["t"] == "C"][:6]
-        out[pid] = {"name": name, "desc": desc, "weight": W.get(pid),
-                    "n": len(markers), "core": core, "markers": markers}
-    js = ("/* GENERATED from pillars.json + pillar-weights.json — pillar-fan hover/click. Edit the JSON. */\n"
+        groups = {"bio": [], "wear": [], "pro": []}
+        for r in rows:
+            mk = r[0]; src = r[8] if len(r) > 8 else ""
+            bucket, chip = _CHAN_BUCKET.get(marker_channel(mk, src), ("bio", "lab"))
+            groups[bucket].append({"n": mk, "ch": chip,
+                                   "crit": bool(r[9]) if len(r) > 9 else False,
+                                   "a": "mk-%s-%s" % (pid.lower(), _slug_metric(mk))})
+        dom = _PILLAR_DOMAIN.get(pid)
+        out[pid] = {"name": name, "desc": desc, "weight": W.get(pid), "n": len(rows),
+                    "bio": groups["bio"], "wear": groups["wear"], "pro": groups["pro"],
+                    "q": {"n": qdom.get(dom, 0), "domain": dom,
+                          "label": (dom or "").lower().replace("_", " ")}}
+    js = ("/* GENERATED from pillars.json + pillar-weights.json + question-bank.json — pillar-fan hover popover. Edit the JSON. */\n"
           "window.PURESCORE_PILLARS=" + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n")
     with open(os.path.join(_HERE, "assets", "pillars-data.js"), "w", encoding="utf-8") as f:
         f.write(js)
@@ -463,13 +486,13 @@ def build_biomarkers():
         for (mk, unit, t, ts, g, y, r, w, src, crit) in rows:
             star = ' <span title="critical marker — can make its pillar critical" style="color:var(--red)">★</span>' if crit else ''
             nm = ('<b class="rv-name" data-rv="%s" tabindex="0">%s <span class="rv-badge">&#9651;</span></b>' % (_esc(mk), _esc(mk))) if mk in _RV_NAMES else ('<b>%s</b>' % _esc(mk))
-            h.append('<tr data-mk="%s"><td>%s%s</td><td class="small muted">%s</td>'
+            h.append('<tr id="mk-%s-%s" data-mk="%s"><td>%s%s</td><td class="small muted">%s</td>'
                      '<td><span class="tier %s">%s</span></td><td>%s</td><td>%s</td>'
                      '<td><span class="chip b-green">%s</span></td>'
                      '<td><span class="chip b-yellow">%s</span></td>'
                      '<td><span class="chip b-red">%s</span></td>'
                      '<td class="mono">%s</td><td class="small muted">%s</td></tr>'
-                     % (_esc(mk), nm, star, _esc(unit), t, t.replace("/","/"), _chan_chip(marker_channel(mk, src)),
+                     % (pid.lower(), _slug_metric(mk), _esc(mk), nm, star, _esc(unit), t, t.replace("/","/"), _chan_chip(marker_channel(mk, src)),
                         _rngbar(ts), _esc(g), _esc(y), _esc(r), _esc(w), _cite_chip(src, mk)))
         h.append('</tbody></table></div>')
     h.append('<h2 id="units">Units &amp; SI conversion</h2>')
@@ -2296,7 +2319,8 @@ def build_adherence():
                      % (_esc(it["ref"]), _esc(it["nudge_family"]), uae))
             chips = ['<span class="chip b-acc mono">%s</span>' % _esc(p) for p in it.get("pillars", [])]
             chips.append('<span class="chip b-mut">reservoir: %s</span>' % _esc(it.get("reservoir") or "—"))
-            chips.append('<span class="chip b-mut">cadence: %s</span>' % _esc(it.get("cadence", "")))
+            if it.get("cadence"):
+                chips.append('<span class="chip b-mut">cadence: %s</span>' % _esc(it["cadence"]))
             h.append('<div class="tagrow" style="margin:6px 0">%s</div>' % "".join(chips))
             act = it.get("activation")
             if act:
@@ -2829,7 +2853,7 @@ def build_class_explorer():
     blob = json.dumps(d, ensure_ascii=False).replace("</", "<\\/")
     h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Engineering &rsaquo; Class explorer</div>',
          '<h1>Class Explorer</h1>',
-         '<p class="lead">The per-class engineering dossier for all <b>%d classes</b> (<b>%d</b> fully curated): '
+         '<p class="lead">The per-class engineering dossier for <b>%d</b> of the model\'s classes (<b>%d</b> fully curated; the class diagram above shows the full set): '
          'purpose, fields &amp; relations, data-model table, API, sequences, user stories, invariants and decisions. '
          '<b>Double-click any node in the <a class="xref" href="class-model.html#diagram">class diagram</a></b> '
          'to land on that class here. %d user stories &middot; %d endpoints &middot; %d sequences.</p>'
@@ -3337,7 +3361,8 @@ def _tier_counts(rows):
 
 def _sexsplit(g):
     if "/" not in g: return None
-    parts = [p.strip() for p in g.split("/")]
+    parts = [p.strip() for p in re.split(r"\s+/\s+", g)]   # split on " / " only — keep "(S-Asian/Gulf)" intact
+    if len(parts) < 2: return None
     male = next((p for p in parts if "M" in p), None)
     fem = next((p for p in parts if "F" in p), None)
     return (male, fem) if (male and fem and male != fem) else None
