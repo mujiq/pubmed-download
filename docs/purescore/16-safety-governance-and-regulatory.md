@@ -1,5 +1,7 @@
 # 16 — Safety, Governance, and Regulatory
 
+**Care delivery:** care-pathway escalation authority, physician alerts and the PHQ-9 item-9 → C-SSRS suicide-risk gate are governed here; see [Care team & roles](care-roles.html) and the [condition care pathways](care-pathways.html).
+
 > Binding conventions: `README.md §3`, and especially the **hard safety non-negotiables**
 > (`README.md §5`). This document is the **control document** for everything that keeps PureScore
 > safe, legal, fair, and honest. It does not introduce new scoring mathematics; it governs the

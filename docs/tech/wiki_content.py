@@ -2430,11 +2430,12 @@ _BM_AREAS = [
  ("governance", "Governance & Validation",  "#b91c1c", "#fca5a5"),
  ("questions",  "Question Bank",            "#0891b2", "#22d3ee"),
  ("persona",    "Personas & Lifestyles",    "#be185d", "#f9a8d4"),
+ ("care",       "Care Pathways & Delivery", "#0f766e", "#5eead4"),
  ("infra",      "Tooling / Calc / UI",      "#475569", "#cbd5e1"),
 ]
 _BM_AREA_NODE = {"core":"Core","intake":"DataStreams","markers":"Markers","scoring":"ScoringEngine",
  "context":"Context","reservoir":"Reservoirs","sexacute":"SexAcute","nudge":"Nudges",
- "governance":"Governance","questions":"Questions","persona":"Personas","infra":"Tooling"}
+ "governance":"Governance","questions":"Questions","persona":"Personas","care":"CarePathways","infra":"Tooling"}
 
 # (name, area, stereotype, [bare members])
 _BM_CLASSES = [
@@ -2505,6 +2506,12 @@ _BM_CLASSES = [
  ("DataArtifact","infra","«data»",["questionBank","personaAxes","evidence"]),
  ("AdminBoard","infra","«ui»",["labRanges","weights","lifestyle","personas"]),
  ("InteractiveDemo","infra","«ui»",["feedbackLoop","stateMachine"]),
+ ("Pathway","care","«Care09»",["condition","stratifier","persona","ieat","reconcile"]),
+ ("PriorityTier","care","«Care»",["tier","criteria","owner"]),
+ ("CareRole","care","«Care»",["title","scope","responsibilities","appAssist","escalatesTo"]),
+ ("IEATStage","care","«Care»",["identify","engage","assess","transform"]),
+ ("PreventionScore","care","«Care»",["components","riskStatus"]),
+ ("CareKPI","care","«Care»",["clinical","engagement","preventive","executive"]),
 ]
 _BM_RELATIONS = [
  ("Patient","*--","InputStream",""),("Patient","*--","PureScore",""),("Patient","*--","ReservoirSystem",""),
@@ -2557,6 +2564,12 @@ _BM_RELATIONS = [
  ("DataArtifact","..>","QuestionBank",""),("DataArtifact","..>","PerceivedVsActual",""),
  ("InteractiveDemo","..>","PureScore","demoLoop"),("AdminBoard","..>","ScoringConstants","configures"),
  ("AdminBoard","..>","Band","labRanges"),("AdminBoard","..>","ClinicalPersona",""),
+ ("ClinicalPersona","-->","Pathway","anchors"),("Pathway","o--","PriorityTier","stratifies"),
+ ("Pathway","-->","CareRole","routed to"),("Pathway","o--","IEATStage","lifecycle"),
+ ("Pathway","-->","CarePlan","produces"),("Pathway","..>","Band","reconciles thresholds"),
+ ("Pathway","..>","NudgeEngine","engage / transform"),("Pathway","-->","PreventionScore",""),
+ ("PreventionScore","-->","CareKPI",""),("CareRole","..>","Action","delivers"),
+ ("CareRole","..>","Governance","escalation authority"),("PriorityTier","..>","AcuteEvent","P1 escalation"),
 ]
 _BM_EXPECT = {"reservoirs":15,"pillars":12,"domains":12,"axes":12,"clin":13,"arch":24}
 

@@ -1,5 +1,7 @@
 # 11 — The Daily Nudge Engine & Delivery (Top-5 Easiest Actions, Impact-Attributed)
 
+**Care delivery:** the preventive reminders, intervention catalogue and alerts of the care pathways ([Prevention & engagement](prevention-engagement.html)) route through this delivery engine (§9) — one sender, not a parallel one.
+
 > Binding conventions: `README.md §3`. This document defines how PureScore converts the
 > explainability object (Doc 03 §7) and the reservoir dynamics (Doc 04) into a **daily action
 > plan**: the **top-5 easiest** actions for this patient today, each carrying an honest,

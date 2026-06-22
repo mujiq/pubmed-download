@@ -153,7 +153,8 @@ NAV = [
                  ("decisions.html", "Decision log")]),
  ("1 · How scoring works", [("purescore-overview.html", "Overview"),
                  (DOCMAP["02"], SHORT["02"], "02"), (DOCMAP["03"], SHORT["03"], "03"),
-                 (DOCMAP["04"], SHORT["04"], "04"), (DOCMAP["05"], SHORT["05"], "05")]),
+                 (DOCMAP["04"], SHORT["04"], "04"), ("reservoir-sim.html", "Reservoir simulator"),
+                 (DOCMAP["05"], SHORT["05"], "05")]),
  ("2 · Inputs & intake", [(DOCMAP["06"], SHORT["06"], "06"), (DOCMAP["07"], SHORT["07"], "07"),
                  ("appendix-biomarkers.html", "Markers (all channels)"), ("reference-range-resolver.html", "Reference-range resolver"),
                  ("appendix-wearables.html", "Wearables"),
@@ -228,6 +229,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "engagement-state-machines.html":"Engagement state machines",
           "purescore-uber-map.html":"Calculation Explorer",
           "wearable-baselines.html":"Wearable Baselines",
+          "reservoir-sim.html":"Reservoir simulator",
           "consent-onboarding.html":"Consent & onboarding",
           "purescore-overview.html":"PureScore · Overview","purescore-wearable-baselines.html":"Baselines (Wearables)",
           "purescore-sex.html":"PureScore by sex",
@@ -463,6 +465,11 @@ def render_index():
   D7 --> DLV["Notify · firewall<br/>channels · quiet hours · escalate"]
   DLV --> D11["16 Safety"]
   D3 --> D11
+  D3 --> CARE["Care pathways &amp; delivery<br/>(IEAT · priority · roles)"]
+  D18 --> CARE
+  CARE --> D7
+  CARE --> D16
+  CARE --> D13
   D18 --> ADMIN["Admin (clinician config)"]
   D7 --> FB["Feedback-loop demo"]
   SYS["System at a glance<br/>(board overview · 3 lenses)"] -.-> D0
@@ -696,7 +703,7 @@ def _consistency_check():
 _DIAGRAMS = {"purescore-uber-map.html", "purescore-uber-map.html", "states.html", "engagement-state-machines.html",
              "class-model.html", "dossier-erd.html", "dossier-c4.html", "dossier-sequences.html",
              "class-model.html", "wearable-baselines.html", "purescore-wearable-baselines.html",
-             "consent-onboarding.html", "purescore-system.html"}
+             "consent-onboarding.html", "purescore-system.html", "reservoir-sim.html"}
 _GRID_OF = {"appendix-biomarkers.html": "appendix-biomarkers.html#spreadsheet", "appendix-wearables.html": "appendix-wearables.html#spreadsheet",
             "appendix-personas.html": "appendix-personas.html#spreadsheet", "appendix-lifestyles.html": "appendix-lifestyles.html#spreadsheet",
             "appendix-adherence.html": "appendix-adherence.html#spreadsheet", "appendix-goals.html": "appendix-goals.html#spreadsheet",
@@ -712,15 +719,23 @@ _CONNECTS_EXTRA = {
  DOCMAP["05"]: ["states.html", "purescore-uber-map.html", DOCMAP["03"]],
  DOCMAP["06"]: ["dossier-erd.html", DOCMAP["07"]],
  DOCMAP["07"]: ["appendix-wearables.html", "appendix-biomarkers.html", "questions-hub.html"],
- DOCMAP["11"]: ["engagement-state-machines.html", "appendix-adherence.html", "appendix-goals.html", DOCMAP["12"]],
- DOCMAP["12"]: [DOCMAP["11"], "appendix-adherence.html"],
- DOCMAP["09"]: ["states.html", DOCMAP["08"]],
+ DOCMAP["11"]: ["engagement-state-machines.html", "prevention-engagement.html", "appendix-adherence.html", "appendix-goals.html", DOCMAP["12"]],
+ DOCMAP["12"]: [DOCMAP["11"], "care-pathways.html", "appendix-adherence.html"],
+ DOCMAP["09"]: ["states.html", "care-pathways.html", DOCMAP["08"]],
  DOCMAP["08"]: ["appendix-personas.html", "purescore-sex.html"],
- DOCMAP["16"]: ["states.html", DOCMAP["17"]],
+ DOCMAP["16"]: ["states.html", "care-roles.html", DOCMAP["17"]],
+ DOCMAP["18"]: ["care-pathways.html", DOCMAP["08"]],
+ DOCMAP["19"]: ["prevention-engagement.html", DOCMAP["16"]],
  "appendix-coverage-audit.html": ["questions-hub.html", "appendix-question-bank.html", "states.html"],
  "questions-hub.html": ["appendix-onboarding.html", "appendix-question-bank.html", "eligibility-gating.html"],
- "states.html": [DOCMAP["09"], "appendix-goals.html", DOCMAP["05"]],
+ "states.html": [DOCMAP["09"], "care-pathways.html", "appendix-goals.html", DOCMAP["05"]],
  "class-model.html": ["dossier-erd.html", DOCMAP["03"]],
+ "care-pathways.html": ["care-roles.html", "prevention-engagement.html", "reference-range-resolver.html", "eligibility-gating.html", DOCMAP["11"], DOCMAP["09"]],
+ "care-roles.html": ["care-pathways.html", "prevention-engagement.html", DOCMAP["16"], "admin-index.html"],
+ "prevention-engagement.html": ["care-pathways.html", DOCMAP["11"], DOCMAP["12"], DOCMAP["19"]],
+ "eligibility-gating.html": ["care-pathways.html", "questions-hub.html", "appendix-question-bank.html"],
+ "reference-range-resolver.html": ["care-pathways.html", "appendix-biomarkers.html"],
+ "engagement-state-machines.html": ["care-pathways.html", DOCMAP["11"]],
 }
 def _navlabel(fn):
     for g, items in NAV:

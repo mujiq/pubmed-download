@@ -1,5 +1,7 @@
 # 09 — Acute-Event Override & Life-Stage Care / Nutrition / Exercise Plans
 
+**Care delivery:** acute events and life-stage plans drive the [condition care pathways](care-pathways.html) — the acute-triage tier and Priority-1 escalation routed to the Family Physician ([Care team & roles](care-roles.html)).
+
 > Binding conventions: `README.md §3`. This document defines two coupled mechanisms:
 > **(A)** the *acute-event override* — how PureScore detects an acute event, spikes `m_k^acute`
 > (Doc 03 §5.1), injects a transient high-`λ` acute reservoir (Doc 04 §7), re-prioritizes toward

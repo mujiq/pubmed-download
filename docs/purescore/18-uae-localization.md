@@ -1,5 +1,7 @@
 # 18 — UAE Localization (Ethnicity-Aware Frames, Regional Epidemiology, Ramadan)
 
+**Care delivery:** the UAE operational specifics — IFHAS screening, Malaffi EMR coding, Ramadan dosing, BAME/South-Asian cuts — localise the [condition care pathways](care-pathways.html).
+
 > Binding conventions: `README.md §3`. This document localizes PureScore for the **United Arab
 > Emirates** population: ethnicity-aware reference frames and screening (decision **D18** — *context
 > & screening, never penalty*), regionally prevalent disease/medication priorities, heritable-condition

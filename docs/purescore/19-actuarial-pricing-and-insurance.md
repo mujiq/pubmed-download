@@ -1,5 +1,7 @@
 # 19 — Actuarial Pricing and Insurance (with heavy regulatory & fairness flags)
 
+**Care delivery:** the prevention economics — conversion rate, diabetes cases prevented, cost avoidance — come from the pathway KPIs ([Prevention & engagement](prevention-engagement.html)).
+
 > Read `README.md` first for binding conventions (symbols `R_k`, `PureScore`, cohort `c(p)`,
 > non-negotiables esp. §5.5 *no protected-class proxy may worsen price/access/care*). This
 > document depends on Doc 01 §4 (the rejection of *"impossible to lose money"*), Doc 03 (pillar
