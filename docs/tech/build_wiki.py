@@ -445,6 +445,7 @@ def main():
     C.write_calc_data()   # generate assets/calc-data.js from canonical JSON (engine source)
     C.write_cite_data()   # generate assets/cite-data.js from data/citations.json (citation popovers)
     C.write_range_data()  # generate assets/range-data.js from data/range-variations.json (range-variation views)
+    C.write_flag_data()   # generate assets/flags-data.js from data/clinical-flags.json (inline audit ⚠ badges)
     render_index()
     for n in sorted(DOCMAP): render_doc(n)
     render_simple("README.md", "conventions.html", "Conventions & glossary", "Conventions & glossary")

@@ -1,0 +1,780 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Consent &amp; Onboarding — HikmaEngine</title>
+<style>
+:root{
+  --bg:#0e1116; --panel:#151a21; --panel2:#1a2129; --line:#26303b; --line2:#33414f;
+  --ink:#e7edf3; --mut:#9fb0c0; --mut2:#7d8fa0; --grn:#2ecc71; --grnd:#1f9d57;
+  --amber:#f0a020; --red:#e3554f; --blue:#4aa3df; --vio:#9a7bd6;
+  --chip:#1d2630; --ok:#173a28;
+  --rad:12px; --sh:0 2px 14px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+code{font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#11161d;border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:#cfe6d6}
+.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;padding:10px 18px;background:#0b0e13;border-bottom:1px solid var(--line)}
+.brand{font-weight:700;font-size:15px;color:var(--ink)}
+.brand b{color:var(--grn)}
+.tag{font-size:11px;color:var(--mut);border:1px solid var(--line2);border-radius:999px;padding:2px 9px}
+.grow{flex:1}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 18px 80px}
+.hero h1{font-size:26px;margin:6px 0 6px;letter-spacing:-.2px}
+.hero h1 span{color:var(--grn)}
+.lead{color:var(--mut);max-width:880px;margin:0 0 6px}
+.banner{display:flex;gap:12px;align-items:flex-start;background:#241a10;border:1px solid #5a4318;border-left:4px solid var(--amber);border-radius:10px;padding:12px 14px;margin:16px 0 8px;font-size:13.5px;color:#f4e6cf}
+.banner b{color:#ffd98a}
+.banner .ic{font-size:18px;line-height:1}
+.controls{position:sticky;top:51px;z-index:30;background:rgba(14,17,22,.92);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:var(--rad);padding:12px 14px;margin:14px 0 18px;box-shadow:var(--sh)}
+.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ctl-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut2);margin-right:4px;min-width:78px}
+.chip{cursor:pointer;border:1px solid var(--line2);background:var(--chip);color:var(--mut);border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600;transition:.12s}
+.chip:hover{border-color:var(--grn);color:var(--ink)}
+.chip.on{background:var(--grnd);border-color:var(--grn);color:#fff}
+.country-grid{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px}
+.cbtn{cursor:pointer;display:flex;align-items:center;gap:7px;border:1px solid var(--line2);background:var(--panel);border-radius:9px;padding:6px 11px;font-size:13px;color:var(--mut);transition:.12s}
+.cbtn:hover{border-color:var(--blue);color:var(--ink)}
+.cbtn.on{border-color:var(--grn);background:#13251b;color:#fff;box-shadow:inset 0 0 0 1px var(--grn)}
+.cbtn .fl{font-size:16px}
+.stage{margin-top:6px}
+.ch-head{display:flex;flex-wrap:wrap;align-items:center;gap:14px;background:linear-gradient(180deg,#18222b,#141a21);border:1px solid var(--line);border-radius:var(--rad);padding:16px 18px;margin-bottom:14px}
+.ch-flag{font-size:38px;line-height:1}
+.ch-title h2{margin:0;font-size:22px}
+.ch-title .sub{color:var(--mut);font-size:13px;margin-top:2px}
+.ch-spacer{flex:1}
+.pdfbtn{cursor:pointer;border:1px solid var(--grn);background:var(--grnd);color:#fff;border-radius:9px;padding:9px 15px;font-size:13.5px;font-weight:700;display:inline-flex;gap:7px;align-items:center}
+.pdfbtn:hover{background:#27b765}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 10px;border:1px solid}
+.b-lang{background:#1a2738;border-color:#2d4a6b;color:#bcd9f5}
+.b-lang.req{background:#3a2410;border-color:#6b4a1a;color:#ffd9a0}
+.snap{border:1px solid var(--line);border-radius:var(--rad);background:var(--panel);margin-bottom:18px;overflow:hidden}
+.snap-h{padding:11px 16px;background:var(--panel2);border-bottom:1px solid var(--line);font-weight:700;font-size:13px;letter-spacing:.03em;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:8px}
+.snap-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.snap-cell{padding:12px 16px;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+.snap-cell:nth-child(2n){border-right:none}
+.snap-cell .k{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut2);margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.snap-cell .v{font-size:13.5px;color:var(--ink)}
+.snap-cell .v small{color:var(--mut);display:block;margin-top:2px;font-size:12px}
+.cite{font-size:11.5px;color:var(--mut)}
+.cite a{color:var(--blue)}
+.vdate{color:var(--grn);font-weight:600;white-space:nowrap}
+.flag-unv{color:var(--amber);font-weight:700}
+.pill{display:inline-block;font-size:10.5px;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+.p-yes{background:#3a1d1d;color:#ffb3ae;border:1px solid #6b2f2f}
+.p-no{background:#16301f;color:#9fe6bd;border:1px solid #2d6b45}
+.p-cond{background:#33270f;color:#ffd9a0;border:1px solid #6b4a1a}
+.preamble{border:1px solid var(--line);border-left:4px solid var(--grn);border-radius:10px;background:#10171f;padding:14px 16px;margin-bottom:16px;font-size:13.5px;color:#d3e0ec}
+.preamble h3{margin:0 0 6px;font-size:14px;color:var(--grn)}
+.sec{border:1px solid var(--line);border-radius:var(--rad);background:var(--panel);margin-bottom:13px;overflow:hidden}
+.sec-h{display:flex;align-items:flex-start;gap:13px;padding:14px 16px}
+.sec-ic{font-size:22px;line-height:1.2;width:30px;text-align:center;flex:none}
+.sec-tt{flex:1;min-width:0}
+.sec-tt h3{margin:0;font-size:16px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.sec-tt .purpose{color:var(--mut);font-size:13px;margin-top:3px}
+.sbadge{font-size:10px;font-weight:800;letter-spacing:.04em;border-radius:5px;padding:2px 7px;text-transform:uppercase}
+.s-req{background:#3a2c10;color:#ffd98a;border:1px solid #6b521a}
+.s-high{background:#3a1320;color:#ff9ec0;border:1px solid #6b2342}
+.s-elev{background:#241a3a;color:#c9b3ff;border:1px solid #45356b}
+.s-off{background:#2a2f36;color:#aebccb;border:1px solid #45525f}
+/* toggle */
+.tg{flex:none;margin-top:2px}
+.switch{position:relative;display:inline-block;width:46px;height:26px}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;inset:0;background:#39434f;border-radius:26px;transition:.18s;border:1px solid var(--line2)}
+.slider:before{content:"";position:absolute;height:18px;width:18px;left:3px;top:3px;background:#cdd6df;border-radius:50%;transition:.18s}
+.switch input:checked+.slider{background:var(--grnd);border-color:var(--grn)}
+.switch input:checked+.slider:before{transform:translateX(20px);background:#fff}
+.switch input:disabled+.slider{opacity:.7;cursor:not-allowed}
+.sec-body{padding:0 16px 14px 59px}
+.fld{margin-top:10px}
+.fld .flh{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut2);margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.fld .flv{font-size:13.5px;color:#dde7f0}
+.fld ul{margin:4px 0 0;padding-left:18px;color:#cdd9e4;font-size:13px}
+.fld li{margin:2px 0}
+.note{margin-top:10px;border-radius:9px;border:1px solid #2d4a6b;background:#10202f;padding:9px 12px;font-size:12.8px;color:#cfe2f5}
+.note.warn{border-color:#6b4a1a;background:#201708;color:#f4e0bf}
+.note .nh{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7fb6e6;margin-bottom:2px}
+.note.warn .nh{color:#ffcf8a}
+.tok{font:12px ui-monospace,Menlo,monospace;background:#0c1f16;border:1px solid #2d6b45;border-radius:5px;padding:1px 6px;color:#8ce6b1}
+.retflag{font-size:11px;font-weight:700;color:var(--amber)}
+.legend{border:1px solid var(--line);border-radius:var(--rad);background:var(--panel);padding:14px 16px;margin-top:20px;font-size:12.5px;color:var(--mut)}
+.legend h4{margin:0 0 8px;font-size:13px;color:var(--ink)}
+.legend .lg{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 18px}
+.foot{margin-top:26px;border-top:1px solid var(--line);padding-top:14px;color:var(--mut2);font-size:12px}
+.summary-bar{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 16px;padding:11px 14px;background:#10171f;border:1px solid var(--line);border-radius:10px;font-size:12.5px;color:var(--mut)}
+.summary-bar b{color:var(--ink)}
+.miniact{cursor:pointer;border:1px solid var(--line2);background:var(--chip);color:var(--mut);border-radius:7px;padding:4px 10px;font-size:12px}
+.miniact:hover{border-color:var(--grn);color:var(--ink)}
+.print-only{display:none}
+@media (max-width:760px){.snap-grid{grid-template-columns:1fr}.snap-cell{border-right:none}.sec-body{padding-left:16px}}
+@media print{
+  .topbar,.controls,.banner,.legend,.summary-bar,.pdfbtn,.tg{display:none!important}
+  body{background:#fff;color:#111}
+  .wrap{max-width:none;padding:0}
+  .hero{display:none}
+  .print-only{display:block;margin-bottom:10px}
+  .sec,.snap,.ch-head,.preamble{break-inside:avoid;border-color:#bbb;background:#fff;color:#111}
+  .sec-tt h3,.snap-cell .v,.fld .flv,.fld ul,.preamble{color:#111}
+  .snap-h,.sec-h{background:#f2f2f2}
+  .note{background:#f6f9ff;color:#1a2a3a}.note.warn{background:#fff7ea;color:#5a3d10}
+  a{color:#0b57b3}
+  .sec-body{padding-left:16px}
+}
+</style></head>
+<body>
+<div class="topbar">
+  <span class="brand">Hikma<b>Engine</b> · PureScore</span>
+  <span class="tag">Consent &amp; Onboarding</span>
+  <span class="grow"></span>
+  <span class="tag">draft — pending legal sign-off</span>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Patient <span>Consent</span> &amp; Data-Protection Onboarding</h1>
+    <p class="lead">The granular, revocable consent a patient grants when they sign up or whenever new data is collected — tailored to each jurisdiction's regulator and law. Pick a region and country; every section is a separately-toggleable consent with its purpose, legal basis, retention, and your right to withdraw, erase or anonymize. Export any country as a PDF for legal review.</p>
+  </div>
+
+  <div class="banner">
+    <span class="ic">⚠️</span>
+    <div><b>Draft for legal review — not legal advice.</b> This screen is engineered to align with the regimes below and with HikmaEngine's governance spec (Doc 16 §4). Every regulatory citation was verified on the date shown, but law numbers, article references, in-force status, retention minimums and language mandates <b>must be confirmed by qualified local counsel for each jurisdiction and product configuration before production use</b> (README §5.6). Items we could not confirm against an official source are marked <span class="flag-unv">⚑ verify with counsel</span>. Tokens like <span class="tok">{{CONTROLLER_LEGAL_NAME}}</span> are for legal/ops to fill in.</div>
+  </div>
+
+  <div class="controls">
+    <div class="ctl-row" style="margin-bottom:8px">
+      <span class="ctl-lbl">Region</span>
+      <div id="regionChips"></div>
+    </div>
+    <div class="ctl-row">
+      <span class="ctl-lbl">Country</span>
+      <div class="country-grid" id="countryGrid"></div>
+    </div>
+  </div>
+
+  <div class="summary-bar">
+    <span>Granular consents: <b id="cntTotal">11</b></span>
+    <span>· On by default: <b id="cntOn">—</b></span>
+    <span>· Required to use the service: <b>1</b> (account &amp; identity)</span>
+    <span class="grow"></span>
+    <button class="miniact" id="acceptAll">Accept recommended</button>
+    <button class="miniact" id="rejectOpt">Reject all optional</button>
+  </div>
+
+  <div class="stage" id="stage"></div>
+
+  <div class="legend">
+    <h4>How to read this screen</h4>
+    <div class="lg">
+      <div><span class="vdate">verified 2026-06-20</span> — URL opened &amp; confirmed on that date.</div>
+      <div><span class="flag-unv">⚑ verify with counsel</span> — not confirmable from an official source.</div>
+      <div><span class="sbadge s-high">SENSITIVE</span> — special-category data; strictest controls &amp; explicit consent.</div>
+      <div><span class="sbadge s-off">OFF BY DEFAULT</span> — never enabled unless you opt in.</div>
+      <div><span class="tok">{{TOKEN}}</span> — placeholder for legal/ops to set.</div>
+      <div><span class="retflag">▲ mandatory minimum</span> — local medical-records law forces this retention.</div>
+    </div>
+  </div>
+
+  <div class="foot">
+    HikmaEngine · PureScore — wellness-grade, clinician-in-the-loop. This consent surface is governed by <code>docs/purescore/16-safety-governance-and-regulatory.md §4</code> (data minimization, purpose limitation, granular consent, special-category handling, erasure). Generated content for design review — re-verify before production (README §5.6).
+  </div>
+</div>
+
+<script>
+/* ============================ DATA ============================ */
+/* Verification date applied to all "verified" citations */
+const VDATE = "2026-06-20";
+const v = '<span class="vdate">verified '+VDATE+'</span>';
+const UNV = '<span class="flag-unv">⚑ verify with counsel</span>';
+
+/* ---- Regions ---- */
+const REGIONS = [
+  {id:"GCC", label:"GCC / Gulf"},
+  {id:"NAF", label:"North Africa"},
+  {id:"SAS", label:"South Asia"},
+  {id:"EUR", label:"Europe"},
+  {id:"NAM", label:"North America"},
+];
+
+/* ---- The 11 granular consent classes (master English copy) ---- */
+const SECTIONS = [
+  {id:"account", ic:"🪪", title:"Account &amp; identity", sens:"req", required:true, defaultOn:true,
+   purpose:"Create and secure your account, verify who you are, and let you sign in.",
+   collect:["Name, email/phone, date of birth, sex/gender","Login credentials, device &amp; security logs","Country/region for the correct legal regime"],
+   basis:"Necessary to provide the service you request (contract performance) — this consent is required to hold an account.",
+   retToken:"{{RETENTION_ACCOUNT}}", retDefault:"active account + 24 months after closure",
+   retNote:"Closed-account identity data is deleted or anonymized after the period above unless a law requires longer.",
+   withdrawal:"You can close your account at any time; closing it removes service access and triggers deletion/anonymization per the schedule above."},
+
+  {id:"wearable", ic:"⌚", title:"Wearable &amp; device signals", sens:"none", required:false, defaultOn:true,
+   purpose:"Read activity, sleep, heart-rate and other signals from wearables/phones to power your PureScore.",
+   collect:["Steps, activity, energy, workouts","Sleep stages &amp; duration","Heart rate, HRV, SpO₂, respiratory rate","Device/app source &amp; timestamps"],
+   basis:"Your explicit consent to process health-related wearable data for wellness scoring. Optional — PureScore still runs on cohort baselines without it.",
+   retToken:"{{RETENTION_WEARABLE}}", retDefault:"active account + 36 months (raw); aggregates longer",
+   retNote:"Raw high-frequency streams are down-sampled/aggregated over time to minimize what we hold.",
+   withdrawal:"Disconnect any device or revoke this consent anytime; new ingestion stops immediately and stored streams are deleted on request."},
+
+  {id:"labs", ic:"🧪", title:"Lab &amp; biomarker data (clinical)", sens:"high", required:false, defaultOn:false,
+   purpose:"Use blood/urine and other lab results to score clinical pillars and flag values worth discussing with a clinician.",
+   collect:["Lab panels (lipids, metabolic, renal, hepatic, hormonal, etc.)","Vital signs &amp; anthropometrics","Diagnoses/conditions &amp; medications you share"],
+   basis:"Your explicit consent to process health data (special-category) for wellness interpretation. PureScore never returns a diagnosis; critical values escalate to a human.",
+   retToken:"{{RETENTION_CLINICAL}}", retDefault:"active account + 10 years (or the local medical-records minimum, whichever is longer)",
+   retNote:"Where local law sets a mandatory medical-record retention period, that minimum overrides the default and is shown in the country snapshot.",
+   withdrawal:"Withdraw anytime; we stop using lab data for scoring and delete it on request, subject to any mandatory retention minimum (then it is locked/anonymized, not used)."},
+
+  {id:"genetic", ic:"🧬", title:"Genetic &amp; genomic data", sens:"high", required:false, defaultOn:false,
+   purpose:"Use genetic/epigenetic inputs (e.g. DNAm age clocks, germline markers) to inform aging and clinical interpretation — with consent only.",
+   collect:["Genotype / sequencing results you upload","Epigenetic / methylation-clock outputs","Derived genetic risk annotations"],
+   basis:"Separate explicit consent for genetic data, stored separately with field-level encryption. Structurally walled off from any pricing/underwriting use (GINA-style firewall, Doc 16 §4.4).",
+   retToken:"{{RETENTION_GENETIC}}", retDefault:"until you withdraw — minimized, never beyond purpose",
+   retNote:"Genetic data is never used for insurance underwriting, pricing or employment decisions, and can be deleted without losing other features.",
+   withdrawal:"Delete your genetic data at any time with no effect on the rest of PureScore. Clinically actionable findings route through a clinician, never an automated diagnosis."},
+
+  {id:"reproductive", ic:"🌸", title:"Reproductive &amp; sexual-health data", sens:"high", required:false, defaultOn:false,
+   purpose:"Power cycle, fertility, pregnancy, post-partum and menopause models — the most sensitive data class, handled with heightened protection.",
+   collect:["Menstrual cycle &amp; fertility signals","Pregnancy / post-partum status","Menopause &amp; hormone-therapy context"],
+   basis:"Heightened explicit consent. Default no third-party sharing; preference for on-device/ephemeral handling of the most sensitive signals (Doc 16 §4.5).",
+   retToken:"{{RETENTION_REPRO}}", retDefault:"until you withdraw — minimized; ephemeral where feasible",
+   retNote:"We minimize retention, resist over-broad legal demands where lawful, and do not retain or share beyond the stated purpose.",
+   withdrawal:"Easy, complete deletion and export at any time. Red-flags still escalate to a human for safety, but the data is not retained or shared beyond that."},
+
+  {id:"mental", ic:"🧠", title:"Mental-health data", sens:"high", required:false, defaultOn:false,
+   purpose:"Use mood, stress and validated screeners (e.g. PHQ-9, GAD-7) to support the mental/cognitive pillar.",
+   collect:["Screener responses &amp; scores","Self-reported mood, stress, sleep-related distress"],
+   basis:"Explicit consent for mental-health data (special-category). A hard crisis rule applies: indications of self-harm escalate immediately to a human crisis pathway (Doc 16 §2.2).",
+   retToken:"{{RETENTION_MH}}", retDefault:"active account + 12 months",
+   retNote:"Held only as long as needed for trend interpretation and your safety; deletable on request.",
+   withdrawal:"Withdraw anytime; we stop using mental-health inputs for scoring and delete them on request. Safety escalations are logged for accountability."},
+
+  {id:"ai", ic:"🤖", title:"AI &amp; decision-support model improvement", sens:"elev", required:false, defaultOn:false,
+   purpose:"Use your data to improve PureScore's models, decision-support and AI systems — a distinct purpose with its own opt-in.",
+   collect:["De-identified features derived from your data","Outcomes/feedback used to calibrate models"],
+   basis:"Separate, specific, revocable consent — your scoring data is never repurposed for model training without this (purpose limitation, Doc 16 §4.2). You can use PureScore fully without enabling it.",
+   retToken:"{{RETENTION_AI_ANON}}", retDefault:"identifiable training copies anonymized within 30 days of withdrawal",
+   retNote:"On withdrawal, identifiable copies are removed from training pipelines within the window above. Already-anonymized/aggregated derivatives that cannot be linked back to you may be retained.",
+   withdrawal:"Withdraw at any time; we stop using your data for model improvement and anonymize identifiable training copies within the stated window."},
+
+  {id:"clinician", ic:"🩺", title:"Clinician-layer sharing", sens:"elev", required:false, defaultOn:false,
+   purpose:"Share your data and gated clinical risk estimates with a clinician you choose, so a human can review and act.",
+   collect:["Your PureScore &amp; pillar detail","Gated clinical scores (clinician-only)","Inputs needed for clinician review"],
+   basis:"Your consent to disclose health data to a named clinician/care team under role-based access. Clinician-only risk estimates are never shown to you as a diagnosis (Doc 16 §1.5).",
+   retToken:"{{RETENTION_CLINICIAN}}", retDefault:"per your clinician's record-keeping obligations",
+   retNote:"Once shared, your clinician's copy is governed by their professional record-retention duties in their jurisdiction.",
+   withdrawal:"Revoke a clinician's access anytime; future sharing stops. Records already in their care remain under their legal obligations."},
+
+  {id:"payer", ic:"🏦", title:"Payer / actuarial use", sens:"off", required:false, defaultOn:false,
+   purpose:"Allow use of your data for insurance/actuarial purposes — strictly separate, off unless you explicitly opt in.",
+   collect:["De-identified/aggregated data where possible","Only data classes you specifically authorize"],
+   basis:"Separate explicit consent, separately gated and firewalled from scoring (Doc 16 §1.5, Doc 19). Genetic data is structurally barred from this layer (GINA-style firewall).",
+   retToken:"{{RETENTION_PAYER}}", retDefault:"only while a payer relationship you authorized is active",
+   retNote:"No payer/actuarial use occurs without this explicit, revocable consent.",
+   withdrawal:"Withdraw anytime; payer/actuarial processing stops. This consent is never bundled with core wellness features."},
+
+  {id:"transfer", ic:"🌍", title:"Cross-border data transfer", sens:"elev", required:false, defaultOn:false,
+   purpose:"Permit transfer/processing of your data outside your country where needed to run the service and AI infrastructure.",
+   collect:["The data classes you have enabled, transferred under safeguards"],
+   basis:"Where the law requires it, your explicit consent to international transfer — used together with adequacy decisions and contractual safeguards (e.g. SCCs / IDTA). The applicable mechanism is shown in the country snapshot.",
+   retToken:"{{TRANSFER_MECHANISM}}", retDefault:"adequacy + standard contractual clauses, else explicit consent",
+   retNote:"Some jurisdictions also require in-country storage or a regulator approval — see the country snapshot's localization row.",
+   withdrawal:"Where transfer relies on your consent, you can withdraw it; we then keep processing within permitted boundaries or restrict the affected features."},
+
+  {id:"marketing", ic:"📣", title:"Marketing &amp; product communications", sens:"off", required:false, defaultOn:false,
+   purpose:"Send you product news, tips and offers. Entirely optional and off unless you opt in.",
+   collect:["Contact preferences","Engagement with messages"],
+   basis:"Separate opt-in consent. Sensitive/health data is never used for marketing. You can unsubscribe at any time.",
+   retToken:"{{RETENTION_MARKETING}}", retDefault:"until you unsubscribe",
+   retNote:"We never use special-category (health, genetic, reproductive, mental-health) data for marketing.",
+   withdrawal:"Unsubscribe from any message or toggle this off anytime; marketing stops immediately."},
+];
+
+/* ---- Jurisdictions (15 countries + DIFC/ADGM/QFC sub-regimes) ---- */
+function cite(name,url){ return url ? '<a href="'+url+'" target="_blank" rel="noopener">'+name+'</a>' : name; }
+
+const J = [
+/* ========================= GCC ========================= */
+{
+ id:"ae", region:"GCC", flag:"🇦🇪", name:"United Arab Emirates", sub:"Mainland (federal regime) · DHA / DoH / MOHAP",
+ lang:'<span class="badge b-lang req">Arabic legally required</span>',
+ langNote:"Arabic is required for consumer-facing documents under the UAE consumer-protection regime (Federal Law 15/2020, amended by Decree-Law 5/2023). Provide consent in Arabic (with English alongside).",
+ law:{name:"Federal Decree-Law No. 45 of 2021 (PDPL)", eff:"effective 2 Jan 2022",
+      cite:cite("u.ae — Data protection laws","https://u.ae/en/about-the-uae/digital-uae/data/data-protection-laws"), verified:true,
+      note:"Official gazette text exists at uaelegislation.gov.ae but returned HTTP 403 — confirm article numbers against the Arabic gazette."},
+ authority:{name:"UAE Data Office", cite:cite("u.ae","https://u.ae/en/about-the-uae/digital-uae/data/data-protection-laws"), verified:true, note:"A reported reorganization into a Federal Authority for AI &amp; Data — confirm the current regulator. "+UNV},
+ health:{name:"Federal Law No. 2 of 2019 on the Use of ICT in Health Fields", cite:cite("MOHAP — health legislations","https://uaephl.mohap.gov.ae/en/health-policies-and-legislations-advocacy/health-legislations"), verified:true},
+ regulators:"MOHAP (federal); DHA (Dubai); DoH (Abu Dhabi)",
+ consent:"Explicit, specific consent. Health, genetic &amp; biometric are sensitive data. "+UNV+" (article refs)",
+ cross:"Restricted — transfer to adequate jurisdictions or under safeguards/explicit consent.",
+ local:{txt:"Health data must be stored/processed in the UAE; a UAE-resident copy is mandatory even where offshore processing is approved (Law 2/2019).", flag:"yes"},
+ medret:{txt:"25 years from the last procedure", mandatory:true, note:"Strong secondary sourcing; confirm the exact provision. "+UNV},
+ rights:"Access, correction, erasure, portability, restriction, objection.",
+ transferMech:"Adequacy or safeguards/explicit consent — plus mandatory in-UAE storage of health data."
+},
+{
+ id:"ae-difc", region:"GCC", flag:"🇦🇪", name:"UAE — DIFC", sub:"Dubai International Financial Centre (free-zone regime)",
+ lang:'<span class="badge b-lang">English (common-law zone)</span>',
+ langNote:"DIFC is an English-language common-law jurisdiction; no Arabic mandate in the data-protection law.",
+ law:{name:"DIFC Data Protection Law, DIFC Law No. 5 of 2020", eff:"in force 1 Jul 2020",
+      cite:cite("DIFC — Data Protection Law (official PDF)","https://assets.difc.com/v1/media/edge/images/dubaiintern0078-difcexperie96c5-production-3253/media/project/difcexperiences/difc/difcwebsite/documents/laws--regulations/data-protection-law.pdf"), verified:true},
+ authority:{name:"Commissioner of Data Protection (DIFC ODPC)", cite:cite("Law Part 8 (official PDF)","https://assets.difc.com/v1/media/edge/images/dubaiintern0078-difcexperie96c5-production-3253/media/project/difcexperiences/difc/difcwebsite/documents/laws--regulations/data-protection-law.pdf"), verified:true},
+ health:{name:"No standalone health law — health is a Special Category (Arts. 11–12)", cite:"DIFC DP Law Arts. 11–12", verified:true},
+ regulators:"DFSA (financial); healthcare in Dubai falls to DHA",
+ consent:"Explicit consent for Special Categories (Art. 11(a), Art. 12), with alternative lawful bases.",
+ cross:"Permitted on adequacy (Art. 26), safeguards/SCCs (Art. 27(2)), or derogations incl. explicit consent (Art. 27(3)).",
+ local:{txt:"No localization — outbound transfers expressly contemplated (Arts. 6, 26, 27).", flag:"no"},
+ medret:{txt:"Not set by the data law (storage-limitation principle, Art. 9); DHA rules may apply.", mandatory:false, note:UNV},
+ rights:"Access, rectification, erasure (Art. 33); objection, restriction, portability (Arts. 34–37).",
+ transferMech:"Adequacy (Art. 26) / SCCs (Art. 27(2)) / explicit-consent derogation (Art. 27(3))."
+},
+{
+ id:"ae-adgm", region:"GCC", flag:"🇦🇪", name:"UAE — ADGM", sub:"Abu Dhabi Global Market (free-zone regime)",
+ lang:'<span class="badge b-lang">English (common-law zone)</span>',
+ langNote:"ADGM is an English-language common-law jurisdiction; no Arabic mandate found in the data law.",
+ law:{name:"ADGM Data Protection Regulations 2021", eff:"effective 14 Aug 2021 (new) / 14 Feb 2022 (existing)",
+      cite:cite("ADGM — Office of Data Protection","https://www.adgm.com/operating-in-adgm/office-of-data-protection"), verified:true,
+      note:"Effective dates secondary-sourced; full PDF had a cert error."},
+ authority:{name:"Office of Data Protection (Commissioner of Data Protection)", cite:cite("ADGM ODP","https://www.adgm.com/operating-in-adgm/office-of-data-protection"), verified:true},
+ health:{name:"Health = special category; ADGM Healthcare Regulations 2022 govern facilities", cite:cite("ADGM healthcare regulations","https://www.adgm.com/media/announcements/adgm-publishes-healthcare-regulations"), verified:true},
+ regulators:"Defers to Department of Health – Abu Dhabi (DoH) for health regulation",
+ consent:"Explicit consent for special categories incl. health/genetic/biometric (Sec. 7).",
+ cross:"Adequacy model; otherwise Article 42 safeguards or a derogation.",
+ local:{txt:"No localization — adequacy-based transfer framework.", flag:"no"},
+ medret:{txt:"Not set by the data law (would sit under DoH Abu Dhabi rules).", mandatory:false, note:UNV},
+ rights:"Access, erasure, rectification, objection, portability.",
+ transferMech:"Adequacy / Article 42 safeguards / derogation."
+},
+{
+ id:"sa", region:"GCC", flag:"🇸🇦", name:"Saudi Arabia", sub:"PDPL · SDAIA / NDMO · MOH · SCFHS / SFDA",
+ lang:'<span class="badge b-lang req">Arabic (official) — '+UNV+'</span>',
+ langNote:"Arabic is generally required for official/legal documents in KSA; a specific PDPL consent-language mandate was not confirmed.",
+ law:{name:"Personal Data Protection Law — Royal Decree M/19 (2021), amended M/148 (2023)", eff:"in force 14 Sep 2023; full compliance from 14 Sep 2024",
+      cite:cite("Morgan Lewis — KSA PDPL transition","https://www.morganlewis.com/pubs/2024/09/saudi-arabia-personal-data-protection-law-transition-period-ends-september-14"), verified:true,
+      note:"SDAIA portal blocked automated fetch — confirm gazette text. "+UNV},
+ authority:{name:"Saudi Data &amp; AI Authority (SDAIA), with NDMO", cite:cite("DLA Piper — KSA","https://www.dlapiperdataprotection.com/index.html?t=authority&c=SA"), verified:true},
+ health:{name:"No single statute — health = Sensitive Data under PDPL + MOH e-health standards", cite:cite("MOH — Privacy (PDPL-aligned)","https://www.moh.gov.sa/en/Portal/Pages/Privacy.aspx"), verified:true},
+ regulators:"SDAIA/NDMO (data); MOH; SCFHS; SFDA (devices)",
+ consent:"Sensitive data incl. health/genetic/biometric; explicit consent where consent is the basis; sensitive data not usable for marketing.",
+ cross:"Restricted — adequacy or SDAIA-approved safeguards; risk assessment for large-scale/sensitive transfers.",
+ local:{txt:"No general blanket mandate — restricts transfer rather than residency; health-data specifics conditional.", flag:"cond"},
+ medret:{txt:"Not verified — no official number located.", mandatory:false, note:UNV+" (ignore non-Saudi figures seen online)"},
+ rights:"Access, correction, erasure, withdraw consent.",
+ transferMech:"Adequacy / SDAIA-approved safeguards (SCCs/BCRs) + risk assessment for sensitive transfers."
+},
+{
+ id:"qa", region:"GCC", flag:"🇶🇦", name:"Qatar", sub:"PDPPL · NCSA · MOPH",
+ lang:'<span class="badge b-lang req">Arabic (official) — '+UNV+'</span>',
+ langNote:"Arabic is the official language; a PDPPL language provision was not confirmed.",
+ law:{name:"Law No. 13 of 2016 (PDPPL)", eff:"in force 2017",
+      cite:cite("NCSA — PDPPL (official PDF)","https://ncsa.gov.qa/shared/document_library/94787172324409/33000/8821/1.0~735ebb9c-e29e-4acb-a7ed-96449884a20b?mimetype=application/pdf"), verified:true},
+ authority:{name:"National Cyber Security Agency (NCSA) — Compliance &amp; Data Protection Dept", cite:cite("NCSA","https://ncsa.gov.qa/en"), verified:true},
+ health:{name:"No standalone law — health = 'data of special nature'; MOPH e-health strategy", cite:cite("CRA — Law 13/2016","https://www.cra.gov.qa/document/data-protection-law-no-13-of-2016"), verified:true},
+ regulators:"Ministry of Public Health (MOPH); NCSA",
+ consent:"'Data of special nature' (health/genetic) generally needs a regulator permit and/or explicit consent (Art. 16; consent Art. 4).",
+ cross:"Permitted; controller may not restrict flow unless it would breach the PDPPL or cause serious harm (Art. 15).",
+ local:{txt:"No general mandate; Cloud Policy Framework (2022) states residency not required.", flag:"no"},
+ medret:{txt:"Not verified.", mandatory:false, note:UNV},
+ rights:"Informed, access, rectify, erase, object, withdraw consent.",
+ transferMech:"Free flow unless harmful (Art. 15); explicit consent for special-nature data + possible NCSA permit."
+},
+{
+ id:"qa-qfc", region:"GCC", flag:"🇶🇦", name:"Qatar — QFC", sub:"Qatar Financial Centre (free-zone regime)",
+ lang:'<span class="badge b-lang">English (QFC zone)</span>',
+ langNote:"QFC is an English-language jurisdiction; applies only to QFC-registered entities.",
+ law:{name:"QFC Data Protection Regulations &amp; Rules 2021", eff:"effective 19 Jun 2022 (GDPR-aligned)",
+      cite:cite("QFC — Data Protection","https://www.qfc.qa/en/operating-with-qfc/data-protection"), verified:true},
+ authority:{name:"QFC Data Protection Office", cite:cite("QFC DPO","https://www.qfc.qa/en/operating-with-qfc/data-protection"), verified:true},
+ health:{name:"Health = special category under GDPR-aligned rules", cite:"QFC DP Regulations 2021", verified:true},
+ regulators:"QFC Authority; healthcare under MOPH",
+ consent:"Explicit consent for special categories (GDPR-aligned).",
+ cross:"Adequacy / appropriate safeguards / derogations (GDPR-aligned).",
+ local:{txt:"No localization (GDPR-aligned transfer model).", flag:"no"},
+ medret:{txt:"Not set by the data regulations.", mandatory:false, note:UNV},
+ rights:"Access, rectification, erasure, objection, portability.",
+ transferMech:"Adequacy / safeguards / explicit-consent derogation (GDPR-aligned)."
+},
+{
+ id:"kw", region:"GCC", flag:"🇰🇼", name:"Kuwait", sub:"CITRA Data Privacy Protection Regulation · MOH",
+ lang:'<span class="badge b-lang req">Arabic + English required</span>',
+ langNote:"The DPPR requires information/conditions/processes to be provided in both Arabic and English before service provision.",
+ law:{name:"Resolution No. 42 of 2021 — Data Privacy Protection Regulation (a CITRA regulation, not a parliamentary law)", eff:"board-approved 28 Mar 2021; effective on publication",
+      cite:cite("CITRA — DPPR (official PDF)","https://www.citra.gov.kw/sites/en/LegalReferences/Resolution-No-42-On-Data-Privacy-Protection-Regulation.pdf"), verified:true},
+ authority:{name:"Communication &amp; Information Technology Regulatory Authority (CITRA)", cite:cite("CITRA","https://www.citra.gov.kw"), verified:true},
+ health:{name:"No verified standalone health-data law", cite:"—", verified:false, note:UNV},
+ regulators:"CITRA (data); Ministry of Health",
+ consent:"Explicit, withdrawable consent; separate consent for third-party marketing; guardian consent for minors.",
+ cross:"Conditional — notify the data owner and follow CITRA-recommended measures; not an outright ban.",
+ local:{txt:"No strict mandate — processing inside or outside Kuwait allowed with notification/safeguards.", flag:"no"},
+ medret:{txt:"Not verified.", mandatory:false, note:UNV},
+ rights:"Access, rectification, erasure.",
+ transferMech:"Notify data owner + CITRA-recommended safeguards."
+},
+{
+ id:"bh", region:"GCC", flag:"🇧🇭", name:"Bahrain", sub:"PDPL · PDPA / Ministry of Justice · NHRA",
+ lang:'<span class="badge b-lang req">Arabic (controlling) — '+UNV+'</span>',
+ langNote:"Arabic is the controlling language in practice; a specific PDPL consent-language provision was not found.",
+ law:{name:"Law No. 30 of 2018 (PDPL)", eff:"effective 1 Aug 2019",
+      cite:cite("DLA Piper — Bahrain","https://www.dlapiperdataprotection.com/?t=law&c=BH"), verified:true,
+      note:"Official text at pdp.gov.bh / mola.gov.bh returned 403."},
+ authority:{name:"Personal Data Protection Authority (PDPA); administered by the Ministry of Justice (Royal Decree 78/2019)", cite:cite("DLA Piper — Bahrain","https://www.dlapiperdataprotection.com/?t=law&c=BH"), verified:true},
+ health:{name:"NHRA 'Retention &amp; Destruction of Medical Records Policy' (Mar 2021)", cite:cite("NHRA — medical records policy (official PDF)","https://www.nhra.bh/Departments/HCP/Policies/MediaHandler/GenericHandler/documents/departments/HCP/Policies/Retention%20and%20Disposal%20of%20Medical%20Records.pdf"), verified:true},
+ regulators:"NHRA (health regulator); Ministry of Health (I-SEHA EHR)",
+ consent:"Written explicit consent required for sensitive personal data incl. health (Art. 5) — stricter than GDPR.",
+ cross:"Restricted — only to 'white-listed' adequate countries or with prior PDPA authorization/safeguards (or consent/contract basis).",
+ local:{txt:"No general mandate — restricts transfer, not storage location.", flag:"no"},
+ medret:{txt:"Adults 10 years (3 active + 7 archive) from last visit; minors until age 21 + 3 years", mandatory:true, note:"First-hand verified from the official NHRA policy PDF."},
+ rights:"Access, rectification, erasure/blocking, objection; ~10 working-day response (Art. 14).",
+ transferMech:"Adequacy white-list or prior PDPA authorization / safeguards / consent."
+},
+{
+ id:"om", region:"GCC", flag:"🇴🇲", name:"Oman", sub:"PDPL · MTCIT · MOH",
+ lang:'<span class="badge b-lang req">Arabic (governing) — '+UNV+'</span>',
+ langNote:"Arabic is the official/governing language; an explicit statutory consent-language clause was not confirmed.",
+ law:{name:"Personal Data Protection Law — Royal Decree No. 6/2022; Executive Regs MD 34/2024", eff:"effective 9 Feb 2023",
+      cite:cite("MTCIT — PDPL","https://mtcit.gov.om/library-3/legislations-policies-8/laws-75/personal-data-protection-law-1034"), verified:true},
+ authority:{name:"Ministry of Transport, Communications &amp; IT (MTCIT) — Personal Data Protection Dept", cite:cite("MTCIT — Personal data","https://mtcit.gov.om/sectors/governance/personal"), verified:true},
+ health:{name:"Health = special category; National Policy for Health Information Governance (MOH, May 2024)", cite:cite("MOH — Digital Health directorate","https://moh.gov.om/en/hospitals-directorates/directorates-and-centers-at-hq/directorate-general-of-information-technology-and-digital-health/"), verified:true},
+ regulators:"MTCIT (data); Ministry of Health — DG IT &amp; Digital Health (Al-Shifa HIS)",
+ consent:"Explicit consent (Art. 10); special categories (health, genetic, biometric) prohibited except with an MTCIT permit (Art. 5).",
+ cross:"Permitted subject to Executive-Regulations controls + consent; barred if it prejudices national security/interest (Art. 23).",
+ local:{txt:"No general mandate; transfers allowed under Art. 23 controls.", flag:"no"},
+ medret:{txt:"No single numeric minimum in the MOH guideline (defers schedule to the May 2024 National Policy).", mandatory:false, note:UNV},
+ rights:"Amend/update, obtain copy, portability, erasure, withdraw consent (Arts. 10–11).",
+ transferMech:"Art. 23 controls + explicit consent; special-category data also needs an MTCIT permit."
+},
+/* ===================== North Africa ===================== */
+{
+ id:"eg", region:"NAF", flag:"🇪🇬", name:"Egypt", sub:"PDPL · PDPC (under MCIT) · EHA / EDA",
+ lang:'<span class="badge b-lang req">Arabic strongly advised — '+UNV+'</span>',
+ langNote:"Executive Regulations indicate notices/consent in clear Arabic; the verbatim mandate was not confirmable. Draft in Arabic (optionally + English).",
+ law:{name:"Law No. 151 of 2020 (PDPL); Executive Regulations via Decree No. 816 of 2025", eff:"enforcement maturing late 2026",
+      cite:cite("MCIT — press (official)","https://mcit.gov.eg/en/Media_Center/Press_Room/Press_Releases/63220"), verified:true,
+      note:"Exact 2025 decree issuance day conflicts across sources."},
+ authority:{name:"Personal Data Protection Center (PDPC), under MCIT", cite:cite("MCIT","https://mcit.gov.eg"), verified:true, note:"No standalone PDPC site located. "+UNV},
+ health:{name:"No standalone health-data statute — health = sensitive data; National Digital Health Strategy", cite:cite("Egypt Healthcare Authority","https://eha.gov.eg/en"), verified:true},
+ regulators:"Egypt Healthcare Authority (EHA); Egyptian Drug Authority (EDA — devices/SaMD)",
+ consent:"Explicit consent; health, genetic &amp; biometric are sensitive data (Arts. 1–2), heightened standard.",
+ cross:"Restricted — prohibited unless equivalent protection (Art. 14); a PDPC license/permit is required to transfer abroad.",
+ local:{txt:"Conditional — no blanket mandate, but outbound transfer gated by PDPC licensing (soft localization).", flag:"cond"},
+ medret:{txt:"Not verified.", mandatory:false, note:UNV},
+ rights:"Access, correction, erasure, withdraw, restrict, object (Art. 2).",
+ transferMech:"PDPC license/permit + equivalent-protection or consent basis."
+},
+{
+ id:"ma", region:"NAF", flag:"🇲🇦", name:"Morocco", sub:"Loi 09-08 · CNDP · Ministry of Health / ANAM",
+ lang:'<span class="badge b-lang req">Arabic + French advisable — '+UNV+'</span>',
+ langNote:"No explicit statutory Arabic/French mandate confirmed; Arabic (official) + French (administrative/legal) is advisable.",
+ law:{name:"Loi n° 09-08 (2009) + Décret n° 2-09-165", eff:"in force (promulgated 18 Feb 2009)",
+      cite:cite("CNDP","https://www.cndp.ma/fr/"), verified:true},
+ authority:{name:"CNDP — Commission Nationale de contrôle de la protection des Données à caractère Personnel", cite:cite("CNDP","https://www.cndp.ma"), verified:true},
+ health:{name:"Telemedicine under Loi n° 131-13 (2015) + Décret n° 2-18-378", cite:cite("Loi 131-13 (official SGG PDF)","https://www.sgg.gov.ma/Portals/0/profession_reglementee/Loi_131.13_Fr.pdf"), verified:true, note:"Article numbers "+UNV},
+ regulators:"Ministère de la Santé et de la Protection Sociale; ANAM ("+UNV+" — sites TLS-failed); CNDP is the operative data regulator",
+ consent:"Health/genetic = données sensibles (Art. 1.3); processing requires explicit consent AND prior CNDP authorization.",
+ cross:"Requires prior CNDP authorization; permitted to whitelisted adequate countries, else authorization + SCCs.",
+ local:{txt:"Conditional — no general mandate; localization applies to public/critical-infrastructure systems only.", flag:"cond"},
+ medret:{txt:"Not verified (only a 6-month max for post-discharge healthcare video noted).", mandatory:false, note:UNV},
+ rights:"Information, access, rectification, erasure, opposition.",
+ transferMech:"Prior CNDP authorization + whitelist/SCCs."
+},
+/* ====================== South Asia ====================== */
+{
+ id:"in", region:"SAS", flag:"🇮🇳", name:"India", sub:"DPDP Act 2023 · Data Protection Board · MoHFW / ABDM",
+ lang:'<span class="badge b-lang">English or any of 22 Eighth-Schedule languages</span>',
+ langNote:"DPDP s.5 requires the notice to be available in English or any Eighth-Schedule language; offer the patient's chosen language.",
+ law:{name:"Digital Personal Data Protection Act, 2023 (Act 22 of 2023); Rules notified 13–14 Nov 2025", eff:"phased — full substantive compliance &amp; enforcement on 13 May 2027; legacy IT Act 2000 + SPDI Rules 2011 bridge the gap",
+      cite:cite("PIB — DPDP Rules (official PDF)","https://static.pib.gov.in/WriteReadData/specificdocs/documents/2025/nov/doc20251117695301.pdf"), verified:true},
+ authority:{name:"Data Protection Board of India (DPBI)", cite:cite("PRS — DPDP tracker","https://prsindia.org/billtrack/digital-personal-data-protection-bill-2023"), verified:true, note:"Full operational enforcement from the 13 May 2027 phase. "+UNV},
+ health:{name:"Telemedicine Practice Guidelines 2020; EHR Standards 2016; ABDM Health Data Management Policy (DISHA never enacted)", cite:cite("MoHFW — Telemedicine Guidelines (official PDF)","https://www.mohfw.gov.in/pdf/Telemedicine.pdf"), verified:true},
+ regulators:"MoHFW; NMC; NHA/ABDM; CDSCO (SaMD)",
+ consent:"DPDP is consent-based with no separate sensitive-data category; legacy SPDI requires written consent for health data; a Consent Manager mechanism applies.",
+ cross:"Negative-list model (s.16) — transfer allowed except to government-blacklisted countries; stricter sectoral laws preserved.",
+ local:{txt:"Conditional/sector-specific — no blanket DPDP localization, but RBI payment-data &amp; ABDM health rules can apply.", flag:"cond"},
+ medret:{txt:"Minimum 3 years (indoor-patient records) — IMC Regulations 2002 / NMC; NABH facilities often 5 years", mandatory:true, note:"Well-corroborated; NMC page TLS-failed on direct fetch."},
+ rights:"Access (s.11), correction/erasure (s.12), grievance (s.13).",
+ transferMech:"Negative-list (s.16); separate consent for model-improvement remains required."
+},
+{
+ id:"pk", region:"SAS", flag:"🇵🇰", name:"Pakistan", sub:"No enacted general law (PDPB 2023 draft) · PECA 2016 · PMDC",
+ lang:'<span class="badge b-lang">English + Urdu strongly advised</span>',
+ langNote:"No statutory language mandate (no enacted law); bilingual English + Urdu is strongly advised for genuine informed consent.",
+ law:{name:"NO enacted general data-protection law. Personal Data Protection Bill 2023 = DRAFT. Protection via Constitution Art. 14 + PECA 2016 (amended 2025)", eff:"PDPB not enacted — pending Parliament &amp; assent",
+      cite:cite("DLA Piper — Pakistan","https://www.dlapiperdataprotection.com/index.html?t=law&c=PK"), verified:true},
+ authority:{name:"National Commission for Personal Data Protection (NCPDP) — PROPOSED, does not yet exist", cite:cite("Legal500 — Pakistan","https://www.legal500.com/guides/chapter/pakistan-data-protection-cybersecurity/"), verified:true},
+ health:{name:"No enacted national EHR/health-data statute; PMDC telemedicine ethics; Sindh Telemedicine Act 2021", cite:cite("PMDC — standards","https://pmdc.pk/Publication/Standards"), verified:true},
+ regulators:"PMDC; DRAP (devices); NHSRC ("+UNV+" — sites timed out)",
+ consent:"Draft PDPB defines sensitive data (health, biometric, genetic) and requires consent — not yet binding. Apply best-practice explicit consent now.",
+ cross:"Draft would allow transfer only to equivalent-protection jurisdictions, or via consent/contracts — not yet binding.",
+ local:{txt:"Draft: conditional — 'critical personal data' to be processed in Pakistan. Not yet binding.", flag:"cond"},
+ medret:{txt:"Not verified.", mandatory:false, note:UNV},
+ rights:"Draft: access, rectification, erasure, objection, restriction, portability, withdraw.",
+ transferMech:"No binding rule yet; obtain explicit consent + contractual safeguards as best practice."
+},
+{
+ id:"bd", region:"SAS", flag:"🇧🇩", name:"Bangladesh", sub:"PDP Ordinance 2025 · regulator under ICT Division · DGHS / BMDC",
+ lang:'<span class="badge b-lang">Bangla + English expected</span>',
+ langNote:"No formal bilingual mandate confirmed; expect Bangla + English in practice.",
+ law:{name:"Personal Data Protection Ordinance, 2025 (Ordinance No. 61 of 2025); amended by Ordinance No. 23 of 2026", eff:"gazetted 6 Nov 2025; some sections phase in ~18 months (into 2027)",
+      cite:cite("Prothom Alo — gazette reporting","https://en.prothomalo.com/bangladesh/government/teeopu4dfv"), verified:true,
+      note:"Enacted by ordinance under an interim government; a future Parliament may revisit. DLA Piper's BD page is stale."},
+ authority:{name:"Regulator established under the ICT Division — exact statutory name UNVERIFIED (reported NDGA)", cite:cite("ICT Division","https://ictd.gov.bd/"), verified:true, note:UNV},
+ health:{name:"BMDC Telemedicine Guidelines (Jul 2020); National Telehealth Guideline (DGHS); BHISA eHealth standards", cite:cite("BMDC","https://www.bmdc.org.bd/"), verified:true},
+ regulators:"DGHS; BMDC; DGDA; MoHFW",
+ consent:"Sensitive data incl. health/genetic/biometric (s.2); explicit/specific consent with enhanced protection (transition period applies).",
+ cross:"Only to 'adequate' jurisdictions or via safeguards/contract/consent; large sensitive datasets may need prior Authority permission.",
+ local:{txt:"Conditional — restricted/critical data in-country (the 2026 amendment narrowed this for general personal data stored abroad).", flag:"cond"},
+ medret:{txt:"Not verified.", mandatory:false, note:UNV},
+ rights:"Access (portable copy), correction/rectification, erasure (under conditions).",
+ transferMech:"Adequacy / safeguards / consent; possible prior Authority permission for large sensitive transfers."
+},
+/* ======================== Europe ======================== */
+{
+ id:"gb", region:"EUR", flag:"🇬🇧", name:"United Kingdom", sub:"UK GDPR + DPA 2018 + DUAA 2025 · ICO · MHRA / CQC",
+ lang:'<span class="badge b-lang">English (clear, plain language)</span>',
+ langNote:"English; consent must be freely given, specific, informed, unambiguous opt-in — explicit for health data.",
+ law:{name:"UK GDPR + Data Protection Act 2018; Data (Use and Access) Act 2025 (Royal Assent 19 Jun 2025)", eff:"DUAA staged commencement",
+      cite:cite("DUAA 2025 (legislation.gov.uk)","https://www.legislation.gov.uk/ukpga/2025/18"), verified:true},
+ authority:{name:"Information Commissioner's Office (ICO) — becoming the Information Commission under DUAA", cite:cite("DPA 2018 (legislation.gov.uk)","https://www.legislation.gov.uk/ukpga/2018/12/contents"), verified:true, note:"ico.org.uk bot-blocked (403); identity search-confirmed."},
+ health:{name:"Common-law duty of confidentiality + Caldicott Principles (rev. Dec 2020)", cite:cite("Caldicott Principles (gov.uk)","https://www.gov.uk/government/publications/the-caldicott-principles"), verified:true},
+ regulators:"MHRA (devices/SaMD); CQC; GMC",
+ consent:"Health/genetic/biometric = special category (Art. 9); explicit consent Art. 9(2)(a) + a DPA 2018 Sch. 1 condition.",
+ cross:"UK adequacy (s.17A); EU↔UK adequacy (28 Jun 2021); UK IDTA / Addendum to EU SCCs.",
+ local:{txt:"Not required — no UK data-residency mandate; a valid transfer mechanism suffices.", flag:"no"},
+ medret:{txt:"NHS Records Management Code (2021): adult records ~8–10y, GP records 10y after death, children to age 25/26", mandatory:false, note:"Governs NHS bodies; a private wellness app is governed by GDPR storage-limitation. 8-vs-10y discrepancy — confirm Appendix II. "+UNV},
+ rights:"Access (Art. 15), rectification (Art. 16), erasure (Art. 17 — not absolute).",
+ transferMech:"UK adequacy / IDTA / Addendum to EU SCCs."
+},
+{
+ id:"gr", region:"EUR", flag:"🇬🇷", name:"Greece", sub:"EU GDPR + Law 4624/2019 · HDPA · IDIKA / EHDS",
+ lang:'<span class="badge b-lang req">Greek (best practice) — '+UNV+'</span>',
+ langNote:"Provide the screen in Greek as best practice (GDPR Arts. 12–13 transparency + consumer-protection norms); a black-letter Greek-language mandate was not confirmed.",
+ law:{name:"EU GDPR — Regulation (EU) 2016/679 (applies 25 May 2018); Greek Law 4624/2019", eff:"in force",
+      cite:cite("EU GDPR (EUR-Lex)","https://eur-lex.europa.eu/eli/reg/2016/679/oj"), verified:true, note:"Specific articles within Law 4624/2019 "+UNV},
+ authority:{name:"Hellenic Data Protection Authority (HDPA)", cite:cite("HDPA","https://www.dpa.gr/en"), verified:true},
+ health:{name:"GDPR Art. 9 + European Health Data Space — Regulation (EU) 2025/327 (in OJ 5 Mar 2025, phased)", cite:cite("EHDS Regulation (EUR-Lex)","https://eur-lex.europa.eu/eli/reg/2025/327/oj"), verified:true},
+ regulators:"IDIKA S.A. (national e-health); Ministry of Health",
+ consent:"Explicit consent, GDPR Art. 9(2)(a), cumulative with an Art. 6 lawful basis.",
+ cross:"EU adequacy decisions; modernised SCCs (4 Jun 2021).",
+ local:{txt:"Not required — EU free movement of data (GDPR Art. 1).", flag:"no"},
+ medret:{txt:"Not verified — no Greek mandated minimum confirmed.", mandatory:false, note:UNV+" (check Ministry of Health decrees)"},
+ rights:"Access (Art. 15), rectification (Art. 16), erasure (Art. 17).",
+ transferMech:"EU adequacy / SCCs."
+},
+{
+ id:"tr", region:"EUR", flag:"🇹🇷", name:"Türkiye (Turkey)", sub:"KVKK Law 6698 · KVKK Authority · MoH (e-Nabız) / TİTCK",
+ lang:'<span class="badge b-lang req">Turkish (best practice) — '+UNV+'</span>',
+ langNote:"Provide the aydınlatma (disclosure) + açık rıza (explicit-consent) texts in Turkish, clear and kept separate; a black-letter Turkish-language clause was not found.",
+ law:{name:"Law No. 6698 — KVKK (OG 7 Apr 2016 No. 29677); amended by Law No. 7499 (transfer/special-category provisions effective 1 Jun 2024)", eff:"in force",
+      cite:cite("KVKK Authority — Law 6698","https://www.kvkk.gov.tr/Icerik/6649/Personal-Data-Protection-Law"), verified:true},
+ authority:{name:"Kişisel Verileri Koruma Kurumu (KVKK) + its Board (Kurul)", cite:cite("KVKK","https://www.kvkk.gov.tr/Icerik/6649/Personal-Data-Protection-Law"), verified:true},
+ health:{name:"Regulation on Personal Health Data (OG 21 Jun 2019 No. 30808, amended 3 Dec 2025)", cite:cite("MoH — Personal Health Data Regulation","https://www.saglik.gov.tr/TR-28791/kisisel-saglik-verileri-hakkinda-yonetmelik.html"), verified:true},
+ regulators:"Ministry of Health (e-Nabız national health record); TİTCK (devices/SaMD)",
+ consent:"Health/genetic/biometric = özel nitelikli veri (Art. 6); explicit consent (açık rıza, Art. 3); 2024 amendment added further lawful bases.",
+ cross:"Three-tier Art. 9 regime: adequacy / safeguards (KVKK standard contracts, BCRs) / narrow exceptions incl. explicit consent. No country currently holds an adequacy decision.",
+ local:{txt:"No general statutory localization; health-sector caveat — e-Nabız is operated domestically (verbatim 'store in Turkey' rule unconfirmed).", flag:"cond"},
+ medret:{txt:"~20 years for patient files (other record types 2–30y)", mandatory:true, note:"Secondary source (primary page TLS-failed); confirm with counsel. "+UNV},
+ rights:"Art. 11 — access, info on purpose/recipients, rectification, erasure/destruction, object to automated decisions, damages.",
+ transferMech:"Adequacy (none yet) → KVKK standard contracts / BCRs → explicit-consent exception (Art. 9)."
+},
+/* ===================== North America ===================== */
+{
+ id:"us", region:"NAM", flag:"🇺🇸", name:"United States", sub:"HIPAA / FTC / state laws · HHS OCR · FDA",
+ lang:'<span class="badge b-lang">English (clear, accessible)</span>',
+ langNote:"English; clear, accessible plain-language notices (e.g. CCPA) + ADA accessibility. No single federal language mandate.",
+ law:{name:"No single federal law — HIPAA (45 CFR 160/164); FTC Health Breach Notification Rule (16 CFR 318); California CMIA &amp; CCPA/CPRA; Washington My Health My Data Act 2023", eff:"varies",
+      cite:cite("HIPAA — 45 CFR 164 (eCFR)","https://www.ecfr.gov/api/versioner/v1/full/2026-06-01/title-45.xml?part=164"), verified:true,
+      note:"A consumer wellness app is often OUTSIDE HIPAA → governed by the FTC Act + WA MHMDA. This scope call is the single most important determination. "+UNV},
+ authority:{name:"HHS Office for Civil Rights (HIPAA); FTC; state AGs / California CPPA", cite:cite("HHS OCR portal","https://ocrportal.hhs.gov/"), verified:true},
+ health:{name:"HIPAA Privacy (Subpart E) / Security (Subpart C) / Breach (Subpart D, §§164.400–414)", cite:cite("FTC Health Breach Rule — 16 CFR 318 (eCFR)","https://www.ecfr.gov/api/versioner/v1/full/2026-06-01/title-16.xml?part=318"), verified:true},
+ regulators:"FDA (SaMD / general-wellness enforcement discretion); FTC",
+ consent:"HIPAA: written authorization beyond treatment/payment/operations. WA MHMDA: opt-in to collect + a separate distinct consent to share consumer health data. CA CMIA: authorization before disclosure.",
+ cross:"No general US restriction on outbound transfers; to receive EU/UK data, self-certify to the EU-U.S. Data Privacy Framework.",
+ local:{txt:"Not required — no general US localization mandate.", flag:"no"},
+ medret:{txt:"HIPAA documentation: 6 years (45 CFR 164.530(j)(2)). Actual medical-record retention is set by STATE law and varies", mandatory:false, note:"State-by-state — "+UNV},
+ rights:"HIPAA access &amp; amendment; CCPA/CPRA know/delete/correct; WA MHMDA delete (incl. backups).",
+ transferMech:"No restriction outbound; EU-U.S. DPF to receive EU/EEA data."
+},
+];
+
+/* ============================ RENDER ============================ */
+const state = { region:"GCC", country:"ae", consent:{} };
+function defaults(){ const o={}; SECTIONS.forEach(s=>o[s.id]=!!s.defaultOn); return o; }
+state.consent = defaults();
+
+const $ = s=>document.querySelector(s);
+const sbClass = {req:"s-req",high:"s-high",elev:"s-elev",off:"s-off",none:""};
+const sbLabel = {req:"Required",high:"Sensitive",elev:"Extra-sensitive",off:"Off by default",none:""};
+const flagPill = f => f==="yes" ? '<span class="pill p-yes">Localized — yes</span>' : f==="no" ? '<span class="pill p-no">No</span>' : '<span class="pill p-cond">Conditional</span>';
+
+/* country-specific legal callouts injected into specific sections */
+function countryNote(jid, secId){
+  const N = {
+    ae:{
+      labs:"Health data must be stored in the UAE; a UAE-resident copy is mandatory even where offshore processing is approved (Federal Law No. 2 of 2019).",
+      genetic:"Health/genetic data must remain stored in-country (Law 2/2019), in addition to the GINA-style firewall against any pricing/underwriting use.",
+      reproductive:"Reproductive health data is also subject to the in-UAE storage rule (Law 2/2019).",
+      mental:"Mental-health data falls under the in-UAE health-data storage rule (Law 2/2019).",
+      transfer:"Even with your consent, health data must keep a copy inside the UAE — cross-border processing does not remove the localization duty."
+    },
+    om:{
+      genetic:"Oman: special-category data may not be processed without a permit from MTCIT (PDPL Art. 5), in addition to your explicit consent.",
+      reproductive:"Oman: requires an MTCIT permit for special-category processing (PDPL Art. 5) on top of consent.",
+      mental:"Oman: MTCIT permit required for special-category (mental-health) processing (PDPL Art. 5).",
+      labs:"Oman: health data is special-category — an MTCIT permit may be required in addition to consent (PDPL Art. 5)."
+    },
+    qa:{
+      genetic:"Qatar: health/genetic data is 'data of special nature' — processing may require an NCSA permit in addition to explicit consent (PDPPL Art. 16).",
+      reproductive:"Qatar: 'data of special nature' — a possible NCSA permit applies on top of consent (PDPPL Art. 16).",
+      labs:"Qatar: clinical health data is 'data of special nature' — possible NCSA permit + explicit consent (PDPPL Art. 16)."
+    },
+    ma:{
+      genetic:"Morocco: processing genetic/health 'données sensibles' requires prior authorization from the CNDP, in addition to explicit consent.",
+      labs:"Morocco: health data is sensitive — prior CNDP authorization is required alongside consent.",
+      transfer:"Morocco: cross-border transfer requires prior CNDP authorization (whitelist or SCCs)."
+    },
+    eg:{
+      transfer:"Egypt: transferring personal/health data abroad requires a PDPC license/permit and an equivalent-protection or consent basis (PDPL Arts. 14–15)."
+    },
+    sa:{
+      payer:"Saudi Arabia: sensitive data may not be used for marketing; any actuarial/payer use is separately gated.",
+      marketing:"Saudi Arabia: sensitive (incl. health) data may not be used for marketing.",
+      transfer:"Saudi Arabia: large-scale or sensitive cross-border transfers require a risk assessment under PDPL."
+    },
+    kw:{
+      marketing:"Kuwait: a separate, distinct consent is required for third-party marketing (CITRA DPPR)."
+    },
+    bh:{
+      labs:"Bahrain: written explicit consent is required for sensitive (health) data (PDPL Art. 5) — stricter than GDPR.",
+      genetic:"Bahrain: written explicit consent required for sensitive data (PDPL Art. 5).",
+      reproductive:"Bahrain: written explicit consent required for sensitive data (PDPL Art. 5).",
+      mental:"Bahrain: written explicit consent required for sensitive data (PDPL Art. 5)."
+    },
+    in:{
+      ai:"India: DPDP has no separate sensitive-data category, but model-improvement is a distinct purpose that still needs its own specific consent and a registered Consent Manager.",
+      transfer:"India: transfer is allowed except to government-blacklisted countries (DPDP s.16); sectoral localization (RBI/ABDM) may still apply."
+    },
+    us:{
+      ai:"United States: if PureScore is outside HIPAA, training use of your health data is governed by the FTC Act and (in WA) the My Health My Data Act — we will not sell it, and sharing needs a separate consent.",
+      clinician:"United States: if HIPAA applies, sharing requires a compliant authorization; WA MHMDA requires a separate consent to share consumer health data.",
+      payer:"United States: HIPAA authorization (or, outside HIPAA, MHMDA's separate share-consent) is required before any payer disclosure."
+    },
+    tr:{
+      transfer:"Türkiye: no country holds an adequacy decision — transfers rely on KVKK standard contracts/BCRs or your explicit-consent exception (Art. 9)."
+    },
+    pk:{
+      labs:"Pakistan: no general data-protection law is yet in force — we apply best-practice explicit consent for health data pending the PDPB."
+    },
+    bd:{
+      transfer:"Bangladesh: large sensitive-data transfers may require prior approval from the data-protection authority (PDPO 2025)."
+    }
+  };
+  return (N[jid] && N[jid][secId]) || null;
+}
+
+function renderControls(){
+  $("#regionChips").innerHTML = '<span class="chip'+(state.region==="ALL"?" on":"")+'" data-r="ALL">All</span>' +
+    REGIONS.map(r=>'<span class="chip'+(state.region===r.id?" on":"")+'" data-r="'+r.id+'">'+r.label+'</span>').join("");
+  const list = J.filter(j=> state.region==="ALL" || j.region===state.region);
+  $("#countryGrid").innerHTML = list.map(j=>'<button class="cbtn'+(state.country===j.id?" on":"")+'" data-c="'+j.id+'"><span class="fl">'+j.flag+'</span>'+j.name+'</button>').join("");
+  document.querySelectorAll('#regionChips .chip').forEach(c=>c.onclick=()=>{
+    state.region=c.dataset.r;
+    const inRegion = J.filter(j=> state.region==="ALL"||j.region===state.region);
+    if(!inRegion.find(j=>j.id===state.country)) state.country = inRegion[0].id;
+    renderControls(); renderStage();
+  });
+  document.querySelectorAll('#countryGrid .cbtn').forEach(b=>b.onclick=()=>{ state.country=b.dataset.c; renderControls(); renderStage(); });
+}
+
+function snapCell(k,vv,citeHtml,verified,note){
+  let c = citeHtml ? '<div class="cite">'+citeHtml+(verified?' · '+v:'')+'</div>' : '';
+  let n = note ? '<small>'+note+'</small>' : '';
+  return '<div class="snap-cell"><div class="k">'+k+'</div><div class="v">'+vv+n+c+'</div></div>';
+}
+
+function renderStage(){
+  const j = J.find(x=>x.id===state.country);
+  let onCount = SECTIONS.filter(s=>state.consent[s.id]).length;
+  $("#cntOn").textContent = onCount;
+
+  let html = '';
+  html += '<div class="print-only"><b>PureScore — Patient Consent &amp; Data-Protection Notice</b> · '+j.name+' · prepared '+VDATE+' · DRAFT pending legal sign-off</div>';
+
+  /* header */
+  html += '<div class="ch-head"><div class="ch-flag">'+j.flag+'</div>'+
+    '<div class="ch-title"><h2>'+j.name+'</h2><div class="sub">'+j.sub+'</div></div>'+
+    '<div class="ch-spacer"></div>'+ j.lang +
+    '<button class="pdfbtn" onclick="printCountry()">⬇︎ Download this country (PDF)</button></div>';
+
+  /* jurisdiction snapshot */
+  html += '<div class="snap"><div class="snap-h">⚖️ Regulatory snapshot — '+j.name+'</div><div class="snap-grid">';
+  html += snapCell("Governing law", j.law.name+' <small>'+j.law.eff+'</small>', j.law.cite, j.law.verified, j.law.note);
+  html += snapCell("Data-protection authority", j.authority.name, j.authority.cite, j.authority.verified, j.authority.note);
+  html += snapCell("Health-data rules", j.health.name, j.health.cite, j.health.verified, j.health.note);
+  html += snapCell("Health-sector regulator(s)", j.regulators, null, false, null);
+  html += snapCell("Consent for health/genetic data", j.consent, null, false, null);
+  html += snapCell("Data-subject rights", j.rights, null, false, null);
+  html += snapCell("Cross-border transfer", j.cross, null, false, null);
+  html += snapCell("Data localization", j.local.txt+' '+flagPill(j.local.flag), null, false, null);
+  html += snapCell("Medical-records retention", (j.medret.mandatory?'<span class="retflag">▲ mandatory minimum</span> ':'')+j.medret.txt, null, false, j.medret.note);
+  html += snapCell("Consent language", j.langNote, null, false, null);
+  html += '</div></div>';
+
+  /* preamble */
+  html += '<div class="preamble"><h3>Before you decide</h3>'+
+    '<b>'+'{{CONTROLLER_LEGAL_NAME}}'.replace(/{{|}}/g,'')+'</b> — placeholder: <span class="tok">{{CONTROLLER_LEGAL_NAME}}</span> ('+
+    '“we”) is the data controller for your information. '+
+    'Contact our Data Protection Officer at <span class="tok">{{DPO_EMAIL}}</span>'+
+    (["ae","sa","qa","kw","bh","om","eg","ma"].includes(j.id)?' and our local representative <span class="tok">{{'+j.id.toUpperCase().replace("-","_")+'_LOCAL_REP}}</span>':'')+
+    (["gb","gr"].includes(j.id)?' (and, where required, our Art. 27 representative <span class="tok">{{EU_UK_ART27_REP}}</span>)':'')+
+    (j.id==="in"?' and our India grievance officer <span class="tok">{{IN_GRIEVANCE_OFFICER}}</span>':'')+
+    '. PureScore is a <b>wellness-grade, clinician-in-the-loop</b> product — it is not a diagnostic medical device and never replaces a clinician; any critical value is escalated to a human. '+
+    'Each consent below is <b>separate, specific and revocable</b>. Turning any optional consent off never removes your core wellness features. '+
+    'You can access, correct, export, restrict, withdraw, and request <b>deletion or anonymization</b> of your data at any time via <span class="tok">{{PRIVACY_PORTAL_URL}}</span>.</div>';
+
+  /* sections */
+  SECTIONS.forEach(s=>{
+    const on = state.consent[s.id];
+    const sb = s.sens!=="none" ? '<span class="sbadge '+sbClass[s.sens]+'">'+sbLabel[s.sens]+'</span>' : '';
+    const cn = countryNote(j.id, s.id);
+    let retLine = '<span class="tok">'+s.retToken+'</span> default: <b>'+s.retDefault+'</b>';
+    if(s.id==="labs" && j.medret.mandatory){
+      retLine += ' <span class="retflag">▲ '+j.name+' mandatory minimum: '+j.medret.txt+'</span>';
+    }
+    html += '<div class="sec">'+
+      '<div class="sec-h">'+
+        '<div class="sec-ic">'+s.ic+'</div>'+
+        '<div class="sec-tt"><h3>'+s.title+' '+sb+'</h3><div class="purpose">'+s.purpose+'</div></div>'+
+        '<div class="tg"><label class="switch"><input type="checkbox" data-sec="'+s.id+'" '+(on?"checked":"")+(s.required?" disabled":"")+'><span class="slider"></span></label></div>'+
+      '</div>'+
+      '<div class="sec-body">'+
+        '<div class="fld"><div class="flh">What we collect</div><ul>'+s.collect.map(c=>'<li>'+c+'</li>').join("")+'</ul></div>'+
+        '<div class="fld"><div class="flh">Why &amp; legal basis</div><div class="flv">'+s.basis+'</div></div>'+
+        '<div class="fld"><div class="flh">Retention</div><div class="flv">'+retLine+'<br><small style="color:var(--mut)">'+s.retNote+'</small></div></div>'+
+        '<div class="fld"><div class="flh">Withdraw / erase / anonymize</div><div class="flv">'+s.withdrawal+'</div></div>'+
+        (cn?'<div class="note warn"><div class="nh">'+j.name+' — specific requirement</div>'+cn+'</div>':'')+
+      '</div>'+
+    '</div>';
+  });
+
+  /* attestation */
+  html += '<div class="preamble"><h3>Your confirmation</h3>'+
+    'By continuing, you confirm you are <span class="tok">{{MIN_AGE}}</span>+ (or a guardian consenting for a dependent), that you have read this notice in a language you understand, and that the consents you switched on above are given freely and explicitly. '+
+    'You can change any of these choices at any time. This record (your choices, the version <span class="tok">{{CONSENT_VERSION}}</span>, and timestamp) is logged immutably for your protection (Doc 16 §4.3).</div>';
+
+  $("#stage").innerHTML = html;
+  document.querySelectorAll('#stage input[type=checkbox]').forEach(cb=>cb.onchange=()=>{
+    state.consent[cb.dataset.sec]=cb.checked; renderStage();
+  });
+}
+
+function printCountry(){
+  const j = J.find(x=>x.id===state.country);
+  const old = document.title;
+  document.title = "PureScore-Consent-"+j.name.replace(/[^A-Za-z0-9]+/g,"-");
+  window.print();
+  setTimeout(()=>document.title=old, 500);
+}
+
+$("#acceptAll").onclick=()=>{ SECTIONS.forEach(s=> state.consent[s.id]= s.required?true:(s.sens==="off"?false:true)); renderStage(); };
+$("#rejectOpt").onclick=()=>{ SECTIONS.forEach(s=> state.consent[s.id]= !!s.required); renderStage(); };
+
+renderControls();
+renderStage();
+</script>
+</body></html>

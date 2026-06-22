@@ -178,6 +178,20 @@ except Exception:
     _RV_NAMES = set()
 _RANGE_ASSETS = '<script src="assets/range-data.js"></script><script src="assets/ranges.js"></script>'
 
+def write_flag_data():
+    """Emit assets/flags-data.js (window.PURESCORE_FLAGS) from data/clinical-flags.json — the
+    adversarial clinical-audit flags that drive inline ⚠ badges (read-only)."""
+    try:
+        f = _load("clinical-flags.json")
+    except Exception:
+        f = {"flags": {}}
+    js = ("/* GENERATED from data/clinical-flags.json — adversarial clinical-validity audit flags (read-only). */\n"
+          "window.PURESCORE_FLAGS=" + json.dumps(f, ensure_ascii=False, separators=(",", ":")) + ";\n")
+    with open(os.path.join(_HERE, "assets", "flags-data.js"), "w", encoding="utf-8") as fh:
+        fh.write(js)
+    return f
+_FLAG_ASSETS = '<script src="assets/flags-data.js"></script><script src="assets/clinical-flags.js"></script>'
+
 # ----------------------------------------------------------------- per-doc summaries
 SUMMARY = {
  "01":"Vision, design principles, and the institutional lessons (Babylon / Kaiser / Mayo) PureScore is engineered around.",
@@ -378,6 +392,7 @@ def build_biomarkers():
          '<span class="tier X">X</span> Comprehensive &nbsp; · &nbsp; <span class="chip b-mut">2s</span> two-sided '
          '(low <i>and</i> high adverse)</div>',
          '<div class="callout note"><div class="ct">Marker pipeline</div><a class="xref" href="appendix-wearables.html">ingest &amp; trust-tier (Appendix B)</a> &rarr; <b>bands (you are here)</b> &rarr; <a class="xref" href="purescore-wearable-baselines.html">personal baseline (Baselines · Wearables)</a> &middot; scoring math <a class="xref" href="03-scoring-formula.html">Doc 03</a>.</div>']
+    h.append('<div id="cfFlags"></div>')
     h.append(
         '<div class="rv-switch"><span class="rv-lab">Range variations</span>'
         '<button class="rv-vb active" data-view="A">Hover card</button>'
@@ -427,7 +442,7 @@ def build_biomarkers():
              'the table/section where the range lives, DOI/PMID, and opens the document in a new tab. '
              '<span class="cite-key"><span class="cite-dot v"></span>verified link</span> '
              '<span class="cite-key"><span class="cite-dot d"></span>document-level</span></p>')
-    h.append(_CITE_ASSETS); h.append(_RANGE_ASSETS)
+    h.append(_CITE_ASSETS); h.append(_RANGE_ASSETS); h.append(_FLAG_ASSETS)
     return "Appendix A · Markers (all channels)", "".join(h)
 
 def build_range_resolver():
