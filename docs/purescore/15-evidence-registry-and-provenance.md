@@ -36,7 +36,7 @@ cranked with glow-plugs/starter and then runs on its own combustion.
 
 | Stage | "Engine" analogue | PureScore source | When it dominates |
 |---|---|---|---|
-| **Crank** | glow-plug + starter | **Clinical guideline anchor** (registry band) | cold start: no/О little patient data |
+| **Crank** | glow-plug + starter | **Clinical guideline anchor** (registry band) | cold start: no/little patient data |
 | **Warm-up** | idling on starter assist | **Real-world cohort range** (NHANES/UK-Biobank-class + local cohort percentile) | some cohort data; sparse personal data |
 | **Running** | self-sustaining combustion | **Personal baseline** (z-score vs the patient's own history) | personal series established (Doc 05 §5) |
 

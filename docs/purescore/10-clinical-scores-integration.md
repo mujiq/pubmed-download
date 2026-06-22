@@ -1,5 +1,7 @@
 # 10 — Clinical-Scores Integration (Clinician Decision-Support Layer)
 
+*Reading guide — clinicians and product can follow the prose and tables; the engineer/data-science notation (e.g. `r_i`, `W_k`, `m_k^cohort`) is implementation detail, not a prerequisite.*
+
 > Binding conventions: `README.md §3`. This document connects established, **validated clinical
 > risk scores** to the PureScore pillars and markers (Doc 02) and to the scoring formula (Doc 03).
 > These scores live in the **gated clinician layer**: they are decision-support, **not** patient-
@@ -52,7 +54,7 @@ Bands are the standard published bands and are subject to the re-verify caveat a
 | **CAC / MESA interpretation** | CAC Agatston score (+ MESA: age, sex, race, risk factors for percentile) | Agatston 0 / 1–99 / 100–299 / ≥300+; MESA percentile for age-sex; CAC=0 = strong de-risker, high CAC = up-classifier | MESA; ACC/AHA CAC as risk-decision aid | CV (CAC marker directly) |
 
 > CAC=0 is a recognised **negative risk marker** that can *de-escalate* a clinician's statin
-> decision — but per §1.2 it is surfaced to the clinician, and in the PureScore engine it can only
+> decision — but per §1 it is surfaced to the clinician, and in the PureScore engine it can only
 > reduce *cohort-percentile* pressure, never override an independent red marker.
 
 ### 2.2 Metabolic / Endocrine (Pillar MET, ENDO)

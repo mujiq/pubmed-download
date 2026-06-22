@@ -253,7 +253,7 @@ A health score can **worsen or mitigate** both. Naming the failure modes is the 
   deteriorates and the spiral begins; if the *insurer* uses the score to skim low-risk and shed
   high-risk, that is **prohibited cherry-picking / lemon-dropping** (§6, and unlawful under ACA).
 - **Mitigations:** guaranteed issue + community rating (removes the insurer's selection lever);
-  broad pooling and risk-adjustment (§1.1.2) that **transfers money to plans enrolling sicker
+  broad pooling and risk-adjustment (§1.1) that **transfers money to plans enrolling sicker
   members**, neutralizing the incentive to avoid them; single risk-pool rules; reinsurance for
   high-cost enrollees.
 
@@ -369,7 +369,7 @@ Doc 16 enforces **how** it ships.
 | R10 | **Unfiled / unjustified factors** | Pricing on un-filed relativities | Unfair-discrimination findings | §6.4 file-before-price; actuarial justification required |
 | R11 | **Privacy / consent breach** | Health data used beyond consent | GDPR Art. 9 / HIPAA breaches | Doc 16 privacy governance; gated access; consented data only |
 | R12 | **Opaque automated adverse decision** | No explanation/appeal | GDPR Art. 22 violations | §6.4 transparency + appeal; Doc 03 §7 explainability |
-| R13 | **Up-coding risk-adjustment** | Gaming acuity to extract payment | RADV/HCC audit findings | §1.1.2 budget-neutral, audited; coding-integrity controls |
+| R13 | **Up-coding risk-adjustment** | Gaming acuity to extract payment | RADV/HCC audit findings | §1.1 budget-neutral, audited; coding-integrity controls |
 
 > The single most important line in this document: **profit comes from improving PureScore, never
 > from denying care or pricing out the sick.** Any mechanism that violates that is not a tuning

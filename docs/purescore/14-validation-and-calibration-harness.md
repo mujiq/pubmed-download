@@ -122,7 +122,7 @@ Calibration asks: do predicted risks match observed event rates? (Extends Doc 13
 | Instrument | Definition | Target (illustrative) |
 |---|---|---|
 | **Reliability diagram** | predicted-risk decile vs observed event rate | on diagonal within CI |
-| **ECE** | `Σ_b (n_b/N)·|acc_b − conf_b|` over bins | ≤ 0.05 overall **and per subgroup** |
+| **ECE** | `Σ_b (n_b/N)·abs(acc_b − conf_b)` over bins | ≤ 0.05 overall **and per subgroup** |
 | **Brier + decomposition** | `BS=(1/N)Σ(p̂−y)²` = **reliability − resolution + uncertainty** (Murphy) | reliability term ≈ 0; positive skill `1−BS/BS_ref` |
 | **Calibration slope** | slope of observed log-odds on predicted log-odds | ∈ [0.9, 1.1] |
 | **Calibration intercept** (calibration-in-the-large) | mean predicted = mean observed | |E/O − 1| ≤ tol; Spiegelhalter Z n.s. |
@@ -162,9 +162,7 @@ Per tier (Watch / Advisory / Alert), at the operating point:
 
 > **PPV collapses at low prevalence — this is the Babylon lesson made quantitative.** With
 > sensitivity `Se`, specificity `Sp`, prevalence `π`:
-> ```
->  PPV = (Se·π) / (Se·π + (1−Sp)·(1−π))
-> ```
+> `PPV = (Se·π) / (Se·π + (1−Sp)·(1−π))`
 > At `π = 0.5%`, even `Se = 0.95, Sp = 0.95` gives `PPV ≈ 8.7%` — **>91% of patient-facing alarms
 > are false**. PPV is therefore **reported at the deployment prevalence**, never at a convenient
 > balanced prevalence, and the Advisory→patient gate must clear a **minimum-PPV** bar. This is

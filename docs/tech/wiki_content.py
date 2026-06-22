@@ -377,7 +377,7 @@ SUMMARY = {
  "13":"Cohort construction, empirical-Bayes shrinkage, calibration, fairness slices and drift monitoring.",
  "19":"The actuarial/pricing layer — gated, firewalled, and heavily flagged for regulatory & fairness risk.",
  "16":"Clinician-in-the-loop safety, escalation tiers, the crisis pathway, FMEA, privacy/consent and model governance.",
- "05":"The critical review and PureScore 2.0: context-aware interpretation, the companion meta-vector, personal-baseline early-warning, dual framing.",
+ "05":"Beyond the number: context-aware interpretation, the companion meta-vector, personal-baseline early-warning and honest dual framing (the PureScore 2.0 layer).",
  "14":"Validation & calibration gates for 2.0 — discrimination, calibration, early-warning PPV/lead-time, fairness, drift, release gates.",
  "15":"Machine-readable evidence registry, per-band provenance and the cold-start ‘ignition’ model (guideline → cohort → personal).",
  "18":"UAE localization: ethnicity-aware cut-points & screening (context, never penalty), regional epidemiology and Ramadan (IDF-DAR) safety.",

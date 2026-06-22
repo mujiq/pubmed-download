@@ -25,7 +25,7 @@ SHORT = {
  "01":"Vision & principles","06":"Data model & ranges","02":"Pillars & markers","03":"Scoring formula",
  "04":"Reservoir dynamics","08":"Sex-specific models","09":"Acute events & life-stage","11":"Nudge engine & delivery",
  "10":"Clinical scores","13":"Cohorts & validation","19":"Actuarial & insurance","16":"Safety & governance",
- "05":"PureScore 2.0","14":"Validation harness","15":"Evidence registry","18":"UAE localization",
+ "05":"Beyond the number","14":"Validation harness","15":"Evidence registry","18":"UAE localization",
  "12":"Actions catalogue","17":"Clinician red-team","07":"Data streams & experience",
 }
 
@@ -282,7 +282,7 @@ PDESC = {
  "03-scoring-formula.html": "The marker-risk → pillar → PureScore math, stage by stage.",
  "04-moniac-reservoir-dynamics.html": "The reservoir/flow model that gives the score momentum and memory.",
  "reservoir-sim.html": "An interactive sandbox for the reservoir dynamics.",
- "05-critical-review-and-purescore-2.0.html": "A self-critique of v1 and the PureScore 2.0 redesign (companion vector, managed states).",
+ "05-critical-review-and-purescore-2.0.html": "How the raw number becomes context-aware, self-aware and honest — companion vector, managed states, early-warning (the PureScore 2.0 layer).",
  "06-data-model-and-reference-ranges.html": "Core entities, marker definitions, confidence and reference-range resolution.",
  "07-data-streams-and-experience.html": "The data streams (labs, wearables, intake) and how they reach the engine.",
  "appendix-biomarkers.html": "The full marker catalogue across every channel, sortable.",
@@ -643,7 +643,7 @@ def render_index():
     flow = """flowchart TD
   R["README · conventions"] --> D0["01 Vision"]
   D0 --> D1["06 Data model"] --> D2["02 Pillars & markers"] --> D3["03 Scoring"] --> D4["04 Reservoirs"]
-  D3 --> D12["05 PureScore 2.0"]
+  D3 --> D12["05 Beyond the number"]
   D2 --> D5["08 Sex-specific"]
   D3 --> D7["11 Nudge engine"]
   D12 --> D13["14 Validation"]

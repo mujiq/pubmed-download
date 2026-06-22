@@ -1,5 +1,7 @@
 # 11 — The Daily Nudge Engine & Delivery (Top-5 Easiest Actions, Impact-Attributed)
 
+*Reading guide — clinicians and product can skip to the action selection and delivery sections (§3.3 onward); §§2–3 derive the math (gradients, Jacobian, expected-utility) and are for engineers/data scientists.*
+
 **Care delivery:** the preventive reminders, intervention catalogue and alerts of the care pathways ([Prevention & engagement](prevention-engagement.html)) route through this delivery engine (§9) — one sender, not a parallel one.
 
 > Binding conventions: `README.md §3`. This document defines how PureScore converts the
@@ -38,7 +40,7 @@ and rank deterministically.
 
 | Field | Symbol | Meaning |
 |-------|--------|---------|
-| id, class | — | stable id; `class_a ∈ {SLEEP, NUTR, ACT, STRESS, ADHERE, MEASURE, CLINICAL}` |
+| id, class | — | stable id; `class_a ∈ {SLEEP, NUTR, ACT, STRESS, ADHERE, MEASURE, CLINICAL, VACCINE, SCREEN}` (canonical set, matches Doc 12 §0) |
 | valve target | `valve_a` | which Doc 04 valve(s) it turns: an inflow/decay term of reservoir `j`, or a direct marker `i` |
 | effect vector | `e_a` | nominal per-unit effect on inflows/markers (signed; see §2) |
 | effort | `E_a ∈ [0,1]` | normalized effort/burden (0 = trivial, 1 = very hard) |

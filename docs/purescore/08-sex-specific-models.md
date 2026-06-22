@@ -385,8 +385,8 @@ Doc 02 Pillar 7.
 
 ## 7. Implementation status (interactive calculator) — decision D15
 
-This document is the **authoritative production reference**; the calculator
-(`purescore-architecture.html`) implements the resolution *mechanism* live on a marker subset so the
+This document is the **authoritative production reference**; the Calculation Explorer
+(`purescore-uber-map.html`) implements the resolution *mechanism* live on a marker subset so the
 behaviour is inspectable. Mapping to the spec above:
 
 | Spec concept (this doc) | Calculator realization |

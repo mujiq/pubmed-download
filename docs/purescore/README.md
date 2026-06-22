@@ -140,6 +140,21 @@ These symbols and definitions are **binding** across all PureScore documents.
 - **Acute mode** — temporary re-prioritization toward an acute life event (Doc 09).
 - **Coverage/confidence** — fraction of a pillar's weighted markers backed by *the patient's own*
   recent data vs literature fallback.
+- **Valve / knob** — an intervention lever that changes a reservoir's inflow or outflow rate; what a
+  recommended action moves (Doc 04, Doc 12).
+- **Reservoirs (the canonical set)** — the latent stocks the engine tracks (e.g. allostatic load,
+  inflammatory load, bone, muscle…); see Doc 04 for the full binding ID list and dynamics.
+- **Companion (meta-)vector** — the per-pillar context shipped *alongside* the score: stability,
+  confidence, **trajectory**, volatility, **modifiability**, **representativeness** (Doc 05).
+- **Trajectory** — the direction/slope of a pillar or reservoir over time (companion vector; Doc 05).
+- **Modifiability** — the share of a pillar's risk that is actionable now (companion vector; Doc 05).
+- **Representativeness** — how well the patient matches the reference cohort; when low it suppresses
+  the cohort percentile term (Doc 05, Doc 15).
+- **Managed state** — a marker deliberately held in range by treatment, read in context rather than as
+  raw risk (Doc 05).
+- **MONIAC** — the hydraulic-economy analogy behind the reservoir model (valves, flows, gauges; Doc 04).
+- **INF vs INFL / NUT vs NUTR** — easily-confused codes: **INF** is the Inflammation *pillar* and **INFL** the
+  inflammatory-load *reservoir*; **NUT** is the Nutrition *pillar* and **NUTR** a nudge *action class* (Doc 12).
 
 ---
 

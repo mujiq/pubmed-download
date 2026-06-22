@@ -1,4 +1,4 @@
-# 05 — Critical Review & PureScore 2.0 (Edge Cases, Companion Vector, Early Detection)
+# 05 — Beyond the Number: Context, Companion Vector & Early Warning
 
 > Binding conventions: `README.md §3`. This document (a) critically reviews where the v0.1
 > formula (Docs 03–04) misbehaves across the age × sex × lifestyle × persona × disease ×
@@ -305,4 +305,4 @@ so the behaviour is inspectable against the edge-case personas:
 
 The synthetic-history items are **demonstrations of the method**, not evidence; production requires
 real longitudinal data and the validation gates of Doc 13. Every decision behind this design is
-recorded in [`decisions.md`](./decisions.md) (D1–D12).
+recorded in [`decisions.md`](./decisions.md) (see the Decision log).

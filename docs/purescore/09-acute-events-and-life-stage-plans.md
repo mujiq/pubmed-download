@@ -1,5 +1,7 @@
 # 09 — Acute-Event Override & Life-Stage Care / Nutrition / Exercise Plans
 
+*Reading guide — clinicians and product can follow the prose and tables for the full picture; the engineer/data-science notation (e.g. `m_k^acute`, `θ_enter`, `τ_dwell`) is implementation detail, not a prerequisite.*
+
 **Care delivery:** acute events and life-stage plans drive the [condition care pathways](care-pathways.html) — the acute-triage tier and Priority-1 escalation routed to the Family Physician ([Care team & roles](care-roles.html)).
 
 > Binding conventions: `README.md §3`. This document defines two coupled mechanisms:
