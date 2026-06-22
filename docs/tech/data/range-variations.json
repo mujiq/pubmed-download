@@ -17,7 +17,7 @@
     "g": "90–119",
     "y": "120–139",
     "r": "≥140 or <85",
-    "cite": "ACC/AHA 2017"
+    "cite": "NICE NG136"
    },
    "var": [
     {
@@ -47,16 +47,16 @@
      "g": "<140/90",
      "r": "≥160/110 severe (pre-eclampsia)",
      "delta": "PE thresholds",
-     "cite": "ATA pregnancy 2017"
+     "cite": "NICE NG133"
     }
    ]
   },
   "LDL-C": {
    "base": {
-    "g": "<100 (<70 high-risk)",
+    "g": "<100 (<70 high; <55 very-high)",
     "y": "100–159",
     "r": "≥160",
-    "cite": "ESC/EAS"
+    "cite": "ESC/EAS 2019"
    },
    "var": [
     {
@@ -91,10 +91,10 @@
   },
   "ApoB": {
    "base": {
-    "g": "<80 (<65 high-risk)",
+    "g": "<90 (<80 high; <65 very-high)",
     "y": "80–99",
     "r": "≥100",
-    "cite": "ESC/EAS"
+    "cite": "ESC/EAS 2019"
    },
    "var": [
     {
@@ -148,10 +148,10 @@
   },
   "HbA1c": {
    "base": {
-    "g": "<5.4",
-    "y": "5.4–6.4",
-    "r": "≥6.5",
-    "cite": "ADA"
+    "g": "<5.7% (39 mmol/mol)",
+    "y": "5.7–6.4% (39–47)",
+    "r": "≥6.5% (48)",
+    "cite": "ADA SoC 2024"
    },
    "var": [
     {
@@ -186,9 +186,9 @@
   },
   "eGFR (creatinine)": {
    "base": {
-    "g": "≥90",
-    "y": "60–89",
-    "r": "<60",
+    "g": "≥60 (G1–G2)",
+    "y": "45–59 (G3a)",
+    "r": "<45 (G3b–G5)",
     "cite": "KDIGO 2024"
    },
    "var": [
@@ -265,10 +265,10 @@
   },
   "TSH": {
    "base": {
-    "g": "0.5–2.5",
-    "y": "2.5–4.5 / 0.3–0.5",
+    "g": "0.4–4.0",
+    "y": "4.0–4.5 / 0.3–0.4",
     "r": ">4.5 or <0.3",
-    "cite": "ATA"
+    "cite": "ATA 2014"
    },
    "var": [
     {
@@ -486,10 +486,10 @@
   },
   "Waist circumference": {
    "base": {
-    "g": "<94 M / <80 F",
+    "g": "<90 M / <80 F (S-Asian/Gulf)",
     "y": "up to 102 M / 88 F",
     "r": "≥102 M / ≥88 F",
-    "cite": "IDF"
+    "cite": "IDF 2006"
    },
    "var": [
     {

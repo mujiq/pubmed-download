@@ -52,5 +52,21 @@
    "MCS",
    0.1
   ]
- ]
+ ],
+ "calibration_status": "expert-prior",
+ "provenance": "Expert-prior, NOT outcome-calibrated. No guideline assigns these. Calibration plan: fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity/region strata (Doc 13 cohort percentiles · Doc 14 validation harness) before production.",
+ "basis": {
+  "CV": "highest single-cause mortality burden (expert-prior)",
+  "MET": "diabetes/MetS centrality in a high-prevalence Gulf cohort (expert-prior)",
+  "REN": "silent CKD progression weight (expert-prior)",
+  "HEP": "MASLD prevalence (expert-prior)",
+  "INF": "hsCRP adjunctive — deliberately modest (expert-prior)",
+  "HEM": "anaemia/haemoglobinopathy relevance; under-weighted pending Gulf consanguinity review (expert-prior)",
+  "ENDO": "thyroid-centric, thin coverage (expert-prior)",
+  "BCM": "sarcopenia/osteoporosis & body-comp (expert-prior)",
+  "NUT": "micronutrient adjunctive (expert-prior)",
+  "SLP": "sleep as a modifiable lever — UX-weighted, NOT outcome-derived (expert-prior)",
+  "FIT": "CRF strong predictor but wearable-estimated — UX-weighted (expert-prior)",
+  "MCS": "mental-health centrality; 100% PRO (expert-prior)"
+ }
 }

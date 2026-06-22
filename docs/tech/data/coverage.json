@@ -1,0 +1,31 @@
+{
+ "_meta": {
+  "note": "Clinical coverage register (Package E) — what the engine scores, what's intentionally a gate, what's genuinely missing, and the self-report representation. Rendered on production-gaps.html. Drives the disposition of the audit's gap:/selfreport: flags. Illustrative — NOT a clinical sign-off.",
+  "legend": {"missing": "not in the engine; on the roadmap", "derive": "computed from existing markers", "gate": "non-scored modifier/gate", "present": "already in the engine (flag was stale)", "partial": "advertised but not fully delivered"}
+ },
+ "markers": [
+  {"name": "Diastolic BP", "status": "missing", "plan": "Add scored CV marker (th 80/90, hi), paired with SBP — required for correct hypertension staging; flagged repeatedly (no-dbp)."},
+  {"name": "Lp(a)", "status": "missing", "plan": "Add once-in-lifetime CV marker (nmol/L, very-high ≥430). Display row + citation exist; not yet a scored marker."},
+  {"name": "non-HDL-C", "status": "derive", "plan": "Derive = Total cholesterol − HDL-C; ESC secondary lipid target, robust to fasting/triglycerides."},
+  {"name": "Sodium", "status": "missing", "plan": "Add electrolyte (acute/critical) alongside potassium for a complete electrolyte panel."},
+  {"name": "Free T4", "status": "missing", "plan": "Add ENDO marker (pairs with TSH to separate overt vs subclinical thyroid disease)."},
+  {"name": "UACR / albuminuria", "status": "present", "plan": "Already scored (calc-graph.markers.uacr) — the 'missing' flag is stale; unit now SI-gated (mg/mmol path)."},
+  {"name": "25-OH Vitamin D", "status": "present", "plan": "Already scored (calc-graph.markers.vitd) — the 'missing' flag is stale; re-based to IOM with nmol/L path."}
+ ],
+ "gates": [
+  {"name": "G6PD-deficiency gate", "status": "missing", "plan": "Population-SAFETY gate (not scored): modifies HbA1c reliability and oxidative-stress/anaemia interpretation. High Gulf prevalence — first-order for this cohort."},
+  {"name": "Ethnicity / ancestry gate", "status": "missing", "plan": "Selects ethnicity-specific cut-points (waist, BMI, eGFR race-free, HOMA-IR). Multi-ethnic, high-consanguinity Gulf cohort."},
+  {"name": "Consanguinity / family-history item", "status": "missing", "plan": "Intake item → HEM/genetic-risk weighting; high Gulf consanguinity raises haemoglobinopathy/recessive-disease prior."},
+  {"name": "Hemoglobinopathy frame", "status": "missing", "plan": "Thalassaemia/trait gate across HEM, glycaemic (HbA1c validity) and iron reservoirs — the key Gulf adjustment."},
+  {"name": "Ramadan / fasting-state context", "status": "missing", "plan": "Context flag for fasting-dependent labs (glucose, lipids) and nudge timing during Ramadan."},
+  {"name": "Measurement-method field", "status": "missing", "plan": "Per-marker method tag (lab vs wearable vs PRO; DEXA vs BIA; standardised office vs ambulatory BP) — gates confidence and band choice."},
+  {"name": "Pregnancy / menopause life-stage gate", "status": "partial", "plan": "Gate advertised by the engine but trimester/menopause-specific ranges not yet delivered (orphan citations)."}
+ ],
+ "self_report": [
+  {"area": "Suicide-risk follow-up (C-SSRS)", "status": "missing", "plan": "SAFETY: PHQ-9 item-9 positive must escalate to C-SSRS via the safety layer (Doc 16) — not a silent score tweak."},
+  {"area": "Instrument ↔ question-bank linkage", "status": "partial", "plan": "Instruments catalogued (EPDS, DAST-10, PHQ-15, AUDIT-C…) but not all wired into the question-bank; reconcile item counts & cadence."},
+  {"area": "Cross-cultural / Arabic validation", "status": "partial", "plan": "Use UAE-validated Arabic PHQ-9/GAD-7/AUDIT-C; resolve standard-drink (US 14g vs UK 8g) and diet-screener scale conflation."},
+  {"area": "Wearable ↔ self-report reconciliation", "status": "partial", "plan": "IPAQ-SF vs wearable steps/MVPA cross-check (Appendix L corroboration); down-weight discordant PRO."},
+  {"area": "PRO/wearable weighting vs measured", "status": "partial", "plan": "FIT/MCS lean on wearable-estimated/PRO inputs at parity with measured — confidence down-weighting (Doc 05)."}
+ ]
+}

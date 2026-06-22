@@ -1,0 +1,939 @@
+{
+ "_meta": {
+  "note": "Remediation decisions applied to data/clinical-flags.json by apply_remediations.py. Each entry sets status/governing_standard/resolution/verdict on its flag key. status: open|proposed|fixed|accepted|deferred. 'fixed' = mechanical (unit/citation/coverage), 'proposed' = canonical value changed to recommendation pending clinician sign-off. Illustrative — NOT a clinical sign-off.",
+  "version": 1,
+  "verdict_default": null
+ },
+ "remediations": {
+  "rangevar:HbA1c:unit:mmol_per_mol": {
+   "status": "fixed",
+   "governing_standard": "IFCC mmol/mol (UK·ESC·Gulf) + NGSP %",
+   "resolution": "data/units.json: hba1c canonical SI = mmol/mol (IFCC), lin=(%−2.15)×10.929; bands 5.7/6.5 % → 39/48 mmol/mol; dual display + inbound conversion layer."
+  },
+  "rangevar:HbA1c:unit:mmol_mol": {
+   "status": "fixed",
+   "governing_standard": "IFCC mmol/mol (UK·ESC·Gulf)",
+   "resolution": "Duplicate of the IFCC unit gap — resolved by data/units.json hba1c SI path (haemoglobinopathy gate tracked separately under range:hba1c:base)."
+  },
+  "rangevar:HbA1c:locale:units": {
+   "status": "fixed",
+   "governing_standard": "SI (UK·ESC·Gulf) default; US locale",
+   "resolution": "MET HbA1c/glucose now carry SI canonical units (mmol/mol, mmol/L) via data/units.json with US conventional as a display locale."
+  },
+  "rangevar:LDL:locale:units": {
+   "status": "fixed",
+   "governing_standard": "SI mmol/L (UK·ESC·Gulf) default; US mg/dL locale",
+   "resolution": "CV lipids (ApoB g/L, LDL-C & HDL-C mmol/L) added to data/units.json with conversion + dual display."
+  },
+  "rangevar:ApoB:unit:g_per_L": {
+   "status": "fixed",
+   "governing_standard": "SI g/L",
+   "resolution": "data/units.json: apob SI = g/L = mg/dL×0.01; bands 80/100 mg/dL → 0.80/1.00 g/L; dual display."
+  },
+  "rangevar:Lp(a):unit:nmol_vs_mgdl": {
+   "status": "fixed",
+   "governing_standard": "nmol/L preferred (isoform-independent)",
+   "resolution": "data/units.json: lpa marked convertible=false (mass↔molar depends on apo(a) isoform); store native assay unit, prefer nmol/L. UI shows a 'store native' marker, never auto-converts."
+  },
+  "rangevar:Magnesium:unit:mmol_per_L": {
+   "status": "fixed",
+   "governing_standard": "SI mmol/L",
+   "resolution": "Unit-system trap resolved by the SI-canonical registry/conversion policy in data/units.json (per-marker conversion path)."
+  },
+  "rangevar:Fasting insulin:unit:pmol_per_L": {
+   "status": "proposed",
+   "governing_standard": "SI pmol/L",
+   "resolution": "Insulin SI = pmol/L = µIU/mL×6.945 documented in the conversion policy; HOMA-IR must be computed from a single declared unit basis — formula-dependency flagged for clinician sign-off."
+  },
+  "rangevar:WBC:unit:notation": {
+   "status": "fixed",
+   "governing_standard": "SI ×10⁹/L",
+   "resolution": "Notation ×10⁹/L is SI-canonical and unit-stable in data/units.json (wbc, plt); platelet critical threshold tracked under the constants/critical set."
+  },
+  "gap:lipid-glucose-no-SI-units": {
+   "status": "fixed",
+   "governing_standard": "SI mmol/L",
+   "resolution": "Lipids (LDL/HDL/TG mmol/L, ApoB g/L) and glucose (mmol/L) added to data/units.json with conversion + dual display."
+  },
+  "gap:lipid-glucose-unit-conversion": {
+   "status": "fixed",
+   "governing_standard": "SI mmol/L",
+   "resolution": "Per-analyte conversions (lin=[m,b]) defined in data/units.json; inbound conversion layer applies before scoring."
+  },
+  "gap:si-unit-canonicalization": {
+   "status": "fixed",
+   "governing_standard": "SI canonical",
+   "resolution": "data/units.json declares canonical=SI and converts all inbound feeds to SI before scoring; conventional shown alongside."
+  },
+  "gap:no-unit-locale-declaration": {
+   "status": "fixed",
+   "governing_standard": "SI (UK·ESC·Gulf) default",
+   "resolution": "Unit-locale policy declared in data/units.json _meta (default_display_locale = UAE/Gulf → SI, conventional in parentheses)."
+  },
+  "gap:no-unit-field": {
+   "status": "fixed",
+   "governing_standard": "SI canonical",
+   "resolution": "Every concentration marker now has a units entry (conv + SI + lin) in data/units.json, surfaced on Appendix A and the resolver."
+  },
+  "gap:reservoir-anchor-units": {
+   "status": "proposed",
+   "governing_standard": "SI canonical",
+   "resolution": "data/units.json supplies the canonical unit per assay that reservoir anchors reference; anchor values themselves are re-stated with units under Package D (reservoir provenance) — pending sign-off."
+  },
+  "gap:unit-method-gate": {
+   "status": "proposed",
+   "governing_standard": "SI canonical",
+   "resolution": "Unit-SYSTEM gate resolved (inbound conversion to SI). Measurement-METHOD gate (e.g. DEXA vs BIA, standardised office BP) is specified as a required ingest gate — pending clinician sign-off."
+  },
+  "range:HbA1c:base": {
+   "status": "proposed",
+   "governing_standard": "ADA SoC 2024 / WHO (IFCC mmol/mol)",
+   "resolution": "Green moved <5.4→<5.7% (39 mmol/mol) per ADA/WHO; bands carry NGSP% + IFCC mmol/mol; re-cited. Set in pillars/range-variations/calc-graph (th already 5.7,6.5) via apply_range_corrections.py."
+  },
+  "range:hba1c:base": {
+   "status": "proposed",
+   "governing_standard": "ADA SoC 2024 / WHO (IFCC mmol/mol)",
+   "resolution": "Green moved <5.4→<5.7% (39 mmol/mol) per ADA/WHO; bands carry NGSP% + IFCC mmol/mol; re-cited. Set in pillars/range-variations/calc-graph (th already 5.7,6.5) via apply_range_corrections.py."
+  },
+  "rangevar:HbA1c:condition:haemoglobinopathy": {
+   "status": "proposed",
+   "governing_standard": "ADA SoC 2024",
+   "resolution": "HbA1c reliability gate specified: in haemoglobinopathy/anaemia/CKD/pregnancy prefer fructosamine/fasting glucose before HbA1c floors MET (critical). Gulf G6PD/thalassaemia prevalence flagged — pending clinician sign-off."
+  },
+  "gap:hba1c-validity-gate": {
+   "status": "proposed",
+   "governing_standard": "ADA SoC 2024",
+   "resolution": "HbA1c reliability gate specified: in haemoglobinopathy/anaemia/CKD/pregnancy prefer fructosamine/fasting glucose before HbA1c floors MET (critical). Gulf G6PD/thalassaemia prevalence flagged — pending clinician sign-off."
+  },
+  "coupling:hba1c<-hb": {
+   "status": "proposed",
+   "governing_standard": "ADA SoC 2024",
+   "resolution": "HbA1c reliability gate specified: in haemoglobinopathy/anaemia/CKD/pregnancy prefer fructosamine/fasting glucose before HbA1c floors MET (critical). Gulf G6PD/thalassaemia prevalence flagged — pending clinician sign-off."
+  },
+  "range:Systolic BP:base": {
+   "status": "proposed",
+   "governing_standard": "NICE NG136 (ESC 2023)",
+   "resolution": "≥140/90 cut re-cited from ACC/AHA (which is ≥130/80) to NICE NG136 / ESC 2023 — the convention this value actually follows and which Gulf practice adopts. Values unchanged; citation corrected via apply_range_corrections.py."
+  },
+  "range:sbp:base": {
+   "status": "proposed",
+   "governing_standard": "NICE NG136 (ESC 2023)",
+   "resolution": "≥140/90 cut re-cited from ACC/AHA (which is ≥130/80) to NICE NG136 / ESC 2023 — the convention this value actually follows and which Gulf practice adopts. Values unchanged; citation corrected via apply_range_corrections.py."
+  },
+  "range:SBP:base": {
+   "status": "proposed",
+   "governing_standard": "NICE NG136 (ESC 2023)",
+   "resolution": "≥140/90 cut re-cited from ACC/AHA (which is ≥130/80) to NICE NG136 / ESC 2023 — the convention this value actually follows and which Gulf practice adopts. Values unchanged; citation corrected via apply_range_corrections.py."
+  },
+  "range:Diastolic BP:base": {
+   "status": "proposed",
+   "governing_standard": "NICE NG136 (ESC 2023)",
+   "resolution": "≥140/90 cut re-cited from ACC/AHA (which is ≥130/80) to NICE NG136 / ESC 2023 — the convention this value actually follows and which Gulf practice adopts. Values unchanged; citation corrected via apply_range_corrections.py."
+  },
+  "rangevar:Systolic BP:life_stage:Pregnancy": {
+   "status": "proposed",
+   "governing_standard": "NICE NG133",
+   "resolution": "Pregnancy/pre-eclampsia BP variation re-cited from the wrong 'ATA pregnancy 2017' (a thyroid guideline) to NICE NG133."
+  },
+  "range:LDL-C:base": {
+   "status": "proposed",
+   "governing_standard": "ESC/EAS 2019",
+   "resolution": "Mis-cited ACC/AHA (BP-guideline alias) corrected to ESC/EAS 2019; very-high-risk goal <55 (and <70 high-risk) added to green band; engine th [100,160] retained."
+  },
+  "range:ldl:base": {
+   "status": "proposed",
+   "governing_standard": "ESC/EAS 2019",
+   "resolution": "Mis-cited ACC/AHA (BP-guideline alias) corrected to ESC/EAS 2019; very-high-risk goal <55 (and <70 high-risk) added to green band; engine th [100,160] retained."
+  },
+  "range:LDL:base": {
+   "status": "proposed",
+   "governing_standard": "ESC/EAS 2019",
+   "resolution": "Mis-cited ACC/AHA (BP-guideline alias) corrected to ESC/EAS 2019; very-high-risk goal <55 (and <70 high-risk) added to green band; engine th [100,160] retained."
+  },
+  "range:ApoB:base": {
+   "status": "proposed",
+   "governing_standard": "ESC/EAS 2019",
+   "resolution": "ApoB risk-tiered to ESC/EAS 2019 goals (<65 very-high, <80 high, <100 moderate); green <90; engine th [80,100]→[100,120]; re-cited."
+  },
+  "range:apob:base": {
+   "status": "proposed",
+   "governing_standard": "ESC/EAS 2019",
+   "resolution": "ApoB risk-tiered to ESC/EAS 2019 goals (<65 very-high, <80 high, <100 moderate); green <90; engine th [80,100]→[100,120]; re-cited."
+  },
+  "range:Lp(a):base": {
+   "status": "proposed",
+   "governing_standard": "ESC/EAS 2022",
+   "resolution": "Very-high tier ≥430 nmol/L added; unit pinned to nmol/L (non-convertible); re-cited to the EAS 2022 Lp(a) consensus."
+  },
+  "range:Triglycerides:base": {
+   "status": "proposed",
+   "governing_standard": "NCEP ATP III / ESC 2019",
+   "resolution": "Invented green <90 removed → NCEP normal <150 (1.7 mmol/L); yellow 150–499 (atherogenic) separated from the ≥500 pancreatitis red; engine th [150,500] retained."
+  },
+  "range:tg:base": {
+   "status": "proposed",
+   "governing_standard": "NCEP ATP III / ESC 2019",
+   "resolution": "Invented green <90 removed → NCEP normal <150 (1.7 mmol/L); yellow 150–499 (atherogenic) separated from the ≥500 pancreatitis red; engine th [150,500] retained."
+  },
+  "range:TSH:base": {
+   "status": "proposed",
+   "governing_standard": "ATA 2014",
+   "resolution": "Abandoned narrow 0.5–2.5 green widened to ATA 0.4–4.0; suppressed <0.3 retained as red; re-cited. Age/pregnancy trimester ranges noted for a follow-up variation."
+  },
+  "range:tsh:base": {
+   "status": "proposed",
+   "governing_standard": "ATA 2014",
+   "resolution": "Abandoned narrow 0.5–2.5 green widened to ATA 0.4–4.0; suppressed <0.3 retained as red; re-cited. Age/pregnancy trimester ranges noted for a follow-up variation."
+  },
+  "range:eGFR (creatinine):base": {
+   "status": "proposed",
+   "governing_standard": "KDIGO 2024",
+   "resolution": "G2 (60–89) no longer yellow — green ≥60 (G1–G2), yellow 45–59 (G3a), red <45 (G3b–G5) per KDIGO; unit fixed mL/min→mL/min/1.73m²; engine th [60,45] retained."
+  },
+  "range:egfr:base": {
+   "status": "proposed",
+   "governing_standard": "KDIGO 2024",
+   "resolution": "G2 (60–89) no longer yellow — green ≥60 (G1–G2), yellow 45–59 (G3a), red <45 (G3b–G5) per KDIGO; unit fixed mL/min→mL/min/1.73m²; engine th [60,45] retained."
+  },
+  "range:eGFR:base": {
+   "status": "proposed",
+   "governing_standard": "KDIGO 2024",
+   "resolution": "G2 (60–89) no longer yellow — green ≥60 (G1–G2), yellow 45–59 (G3a), red <45 (G3b–G5) per KDIGO; unit fixed mL/min→mL/min/1.73m²; engine th [60,45] retained."
+  },
+  "range:Waist circumference:base": {
+   "status": "proposed",
+   "governing_standard": "IDF 2006 (South-Asian)",
+   "resolution": "European cuts (94/102) replaced with IDF South-Asian/Gulf cuts (male ≥90, female ≥80) as the cohort default; engine th [94,102]→[90,100]; re-cited IDF 2006."
+  },
+  "range:waist:base": {
+   "status": "proposed",
+   "governing_standard": "IDF 2006 (South-Asian)",
+   "resolution": "European cuts (94/102) replaced with IDF South-Asian/Gulf cuts (male ≥90, female ≥80) as the cohort default; engine th [94,102]→[90,100]; re-cited IDF 2006."
+  },
+  "range:Waist:base": {
+   "status": "proposed",
+   "governing_standard": "IDF 2006 (South-Asian)",
+   "resolution": "European cuts (94/102) replaced with IDF South-Asian/Gulf cuts (male ≥90, female ≥80) as the cohort default; engine th [94,102]→[90,100]; re-cited IDF 2006."
+  },
+  "rangevar:Waist circumference:ethnicity:southasian": {
+   "status": "proposed",
+   "governing_standard": "IDF 2006 (South-Asian)",
+   "resolution": "European cuts (94/102) replaced with IDF South-Asian/Gulf cuts (male ≥90, female ≥80) as the cohort default; engine th [94,102]→[90,100]; re-cited IDF 2006."
+  },
+  "range:25-OH Vitamin D:base": {
+   "status": "proposed",
+   "governing_standard": "IOM 2011 / UK SACN",
+   "resolution": "Aggressive US ≥30 floor replaced with IOM/SACN sufficiency ≥20 ng/mL (50 nmol/L); nmol/L path added; engine th [30,20]→[20,12], impute default 40→20 (Gulf-plausible); re-cited."
+  },
+  "range:VitaminD:base": {
+   "status": "proposed",
+   "governing_standard": "IOM 2011 / UK SACN",
+   "resolution": "Aggressive US ≥30 floor replaced with IOM/SACN sufficiency ≥20 ng/mL (50 nmol/L); nmol/L path added; engine th [30,20]→[20,12], impute default 40→20 (Gulf-plausible); re-cited."
+  },
+  "range:vitd:default": {
+   "status": "proposed",
+   "governing_standard": "IOM 2011 / UK SACN",
+   "resolution": "Aggressive US ≥30 floor replaced with IOM/SACN sufficiency ≥20 ng/mL (50 nmol/L); nmol/L path added; engine th [30,20]→[20,12], impute default 40→20 (Gulf-plausible); re-cited."
+  },
+  "rangevar:Systolic BP:condition:N18.3": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Valid variation-level refinement (DOI fix / US-UK split / risk-category gating / race-free CKD-EPI validation / pregnancy trimester ranges / age J-curve). Base range corrected; this dimension scoped for a follow-up variation pass."
+  },
+  "rangevar:Systolic BP:condition:E11": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Valid variation-level refinement (DOI fix / US-UK split / risk-category gating / race-free CKD-EPI validation / pregnancy trimester ranges / age J-curve). Base range corrected; this dimension scoped for a follow-up variation pass."
+  },
+  "rangevar:LDL-C:medication:C10AA": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Valid variation-level refinement (DOI fix / US-UK split / risk-category gating / race-free CKD-EPI validation / pregnancy trimester ranges / age J-curve). Base range corrected; this dimension scoped for a follow-up variation pass."
+  },
+  "rangevar:eGFR:ethnicity:race-free": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Valid variation-level refinement (DOI fix / US-UK split / risk-category gating / race-free CKD-EPI validation / pregnancy trimester ranges / age J-curve). Base range corrected; this dimension scoped for a follow-up variation pass."
+  },
+  "rangevar:TSH:age:pregnancy": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Valid variation-level refinement (DOI fix / US-UK split / risk-category gating / race-free CKD-EPI validation / pregnancy trimester ranges / age J-curve). Base range corrected; this dimension scoped for a follow-up variation pass."
+  },
+  "rangevar:SBP:age:65plus": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Valid variation-level refinement (DOI fix / US-UK split / risk-category gating / race-free CKD-EPI validation / pregnancy trimester ranges / age J-curve). Base range corrected; this dimension scoped for a follow-up variation pass."
+  },
+  "weight:PILLAR_W": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived."
+  },
+  "gap:weights-no-provenance": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived."
+  },
+  "gap:no-outcome-calibration": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived."
+  },
+  "weight:CV": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived."
+  },
+  "weight:SLP": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived."
+  },
+  "weight:NUT": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived."
+  },
+  "weight:ENDO": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived."
+  },
+  "weight:INF": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived."
+  },
+  "weight:HEM": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived."
+  },
+  "gap:equal-weight-clustering": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived."
+  },
+  "gap:weight-evidence-inversion": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived."
+  },
+  "weight:SLP-monotonic": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived."
+  },
+  "const:R_crit": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "constants.json now declares calibration_status=expert-prior + per-symbol basis; each flagged constant (R_crit confidence-scaling, flat PURE_CRIT_CAP, q_impute/Rp_impute on criticals, cov_green_floor, NHANES/UK-Biobank-only r_cohort) is tagged for cohort calibration with ethnicity/region strata. Values unchanged pending sign-off."
+  },
+  "const:PURE_CRIT_CAP": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "constants.json now declares calibration_status=expert-prior + per-symbol basis; each flagged constant (R_crit confidence-scaling, flat PURE_CRIT_CAP, q_impute/Rp_impute on criticals, cov_green_floor, NHANES/UK-Biobank-only r_cohort) is tagged for cohort calibration with ethnicity/region strata. Values unchanged pending sign-off."
+  },
+  "const:q_impute": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "constants.json now declares calibration_status=expert-prior + per-symbol basis; each flagged constant (R_crit confidence-scaling, flat PURE_CRIT_CAP, q_impute/Rp_impute on criticals, cov_green_floor, NHANES/UK-Biobank-only r_cohort) is tagged for cohort calibration with ethnicity/region strata. Values unchanged pending sign-off."
+  },
+  "const:Rp_impute": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "constants.json now declares calibration_status=expert-prior + per-symbol basis; each flagged constant (R_crit confidence-scaling, flat PURE_CRIT_CAP, q_impute/Rp_impute on criticals, cov_green_floor, NHANES/UK-Biobank-only r_cohort) is tagged for cohort calibration with ethnicity/region strata. Values unchanged pending sign-off."
+  },
+  "const:cov_green_floor": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "constants.json now declares calibration_status=expert-prior + per-symbol basis; each flagged constant (R_crit confidence-scaling, flat PURE_CRIT_CAP, q_impute/Rp_impute on criticals, cov_green_floor, NHANES/UK-Biobank-only r_cohort) is tagged for cohort calibration with ethnicity/region strata. Values unchanged pending sign-off."
+  },
+  "const:r_cohort": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "constants.json now declares calibration_status=expert-prior + per-symbol basis; each flagged constant (R_crit confidence-scaling, flat PURE_CRIT_CAP, q_impute/Rp_impute on criticals, cov_green_floor, NHANES/UK-Biobank-only r_cohort) is tagged for cohort calibration with ethnicity/region strata. Values unchanged pending sign-off."
+  },
+  "reservoir:ath": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off."
+  },
+  "reservoir:hepf": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off."
+  },
+  "range:CRP:base": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off."
+  },
+  "range:VO2:base": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off."
+  },
+  "range:Tscore:base": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off."
+  },
+  "range:Hb:base": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off."
+  },
+  "range:UACR:base": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off."
+  },
+  "range:BodyFat:base": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off."
+  },
+  "coupling:all": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off."
+  },
+  "coupling:ath<-renr": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off."
+  },
+  "coupling:nut<-endo:vitd": {
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off."
+  },
+  "reservoir:gly": {
+   "status": "proposed",
+   "governing_standard": "ADA SoC 2024 (expert-prior anchor)",
+   "resolution": "gly HbA1c 'bad' anchor 7%→9% so the burden axis no longer saturates at the treatment target; annotated expert-prior pending calibration."
+  },
+  "range:VitD:base": {
+   "status": "proposed",
+   "governing_standard": "IOM 2011 (expert-prior anchor)",
+   "resolution": "micr vitD anchors re-based to IOM (replete 30, deficient <12 ng/mL) with nmol/L path; B12 anchor unit-tagged (pmol/L) via units.json. Annotated expert-prior pending calibration."
+  },
+  "rangevar:B12:unit:pmol_L": {
+   "status": "proposed",
+   "governing_standard": "IOM 2011 (expert-prior anchor)",
+   "resolution": "micr vitD anchors re-based to IOM (replete 30, deficient <12 ng/mL) with nmol/L path; B12 anchor unit-tagged (pmol/L) via units.json. Annotated expert-prior pending calibration."
+  },
+  "range:osa:base": {
+   "status": "proposed",
+   "governing_standard": "AASM OSA 2017",
+   "resolution": "OSA AHI threshold corrected from th=[0.5,1] (off by ~an order of magnitude → spurious criticals) to [5,30] events/h (mild/severe per AASM). Proposed pending sign-off."
+  },
+  "range:k:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Potassium is clinically two-sided (hypo <3.5 / hyper >5.0) but the engine th is one-sided 'hi'. Two-sided support is an engine structural change — scoped, pending sign-off."
+  },
+  "critical:k": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Potassium is clinically two-sided (hypo <3.5 / hyper >5.0) but the engine th is one-sided 'hi'. Two-sided support is an engine structural change — scoped, pending sign-off."
+  },
+  "range:phq:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "PHQ-9 band collapse + item-9 (suicidality) hard override is a SAFETY gate — routed to the safety layer (Doc 16); pending clinician sign-off, not a silent threshold tweak."
+  },
+  "critical:phq": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "PHQ-9 band collapse + item-9 (suicidality) hard override is a SAFETY gate — routed to the safety layer (Doc 16); pending clinician sign-off, not a silent threshold tweak."
+  },
+  "range:almi:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "range:hb:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "range:bodyfat:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "range:hdl:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "range:vo2:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "range:tscore:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "range:fib4:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "critical:crp": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "critical:vo2": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "critical:spo2": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "critical:endo-coverage": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "critical:set": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "range:BodyComposition:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "gap:no-conditioned-weight-vectors": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off."
+  },
+  "gap:uacr-marker-missing": {
+   "status": "accepted",
+   "governing_standard": null,
+   "resolution": "Refuted — marker IS already scored in calc-graph (uacr / vitd). Flag is stale; recorded in data/coverage.json (status=present). No change needed."
+  },
+  "gap:vitamin-d-marker-missing": {
+   "status": "accepted",
+   "governing_standard": null,
+   "resolution": "Refuted — marker IS already scored in calc-graph (uacr / vitd). Flag is stale; recorded in data/coverage.json (status=present). No change needed."
+  },
+  "gap:no-dbp": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (markers): DBP, Lp(a), non-HDL-C, sodium, free T4 + fasting/method fields scoped with a concrete add/derive plan, rendered on production-gaps.html. Engine implementation pending sign-off."
+  },
+  "gap:dbp-marker": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (markers): DBP, Lp(a), non-HDL-C, sodium, free T4 + fasting/method fields scoped with a concrete add/derive plan, rendered on production-gaps.html. Engine implementation pending sign-off."
+  },
+  "gap:lp(a)-marker-missing": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (markers): DBP, Lp(a), non-HDL-C, sodium, free T4 + fasting/method fields scoped with a concrete add/derive plan, rendered on production-gaps.html. Engine implementation pending sign-off."
+  },
+  "gap:missing-cv-renal-markers": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (markers): DBP, Lp(a), non-HDL-C, sodium, free T4 + fasting/method fields scoped with a concrete add/derive plan, rendered on production-gaps.html. Engine implementation pending sign-off."
+  },
+  "gap:lipid-fasting-method-lpa": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (markers): DBP, Lp(a), non-HDL-C, sodium, free T4 + fasting/method fields scoped with a concrete add/derive plan, rendered on production-gaps.html. Engine implementation pending sign-off."
+  },
+  "gap:unmapped-markers": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (markers): DBP, Lp(a), non-HDL-C, sodium, free T4 + fasting/method fields scoped with a concrete add/derive plan, rendered on production-gaps.html. Engine implementation pending sign-off."
+  },
+  "gap:g6pd": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:g6pd-absent": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:g6pd-marker-missing": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:g6pd-gate": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:consanguinity-g6pd": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:no-consanguinity-item": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:hemoglobinopathy": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:no-ethnicity-gate": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:ethnicity-gate": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:lifestage-gate-orphan-citations": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:pregnancy-frame-undeliverable": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:ramadan-fasting-state": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:no-method-field": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off."
+  },
+  "gap:no-suicide-risk-instrument": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (self_report): C-SSRS suicide-risk escalation (SAFETY, Doc 16), instrument↔question-bank linkage, IPAQ↔wearable + cadence reconciliation. Scoped with plan; implementation pending sign-off."
+  },
+  "gap:instruments-not-in-question-bank": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (self_report): C-SSRS suicide-risk escalation (SAFETY, Doc 16), instrument↔question-bank linkage, IPAQ↔wearable + cadence reconciliation. Scoped with plan; implementation pending sign-off."
+  },
+  "gap:ipaq-wearable-reconciliation": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (self_report): C-SSRS suicide-risk escalation (SAFETY, Doc 16), instrument↔question-bank linkage, IPAQ↔wearable + cadence reconciliation. Scoped with plan; implementation pending sign-off."
+  },
+  "gap:cadence-reconciliation": {
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (self_report): C-SSRS suicide-risk escalation (SAFETY, Doc 16), instrument↔question-bank linkage, IPAQ↔wearable + cadence reconciliation. Scoped with plan; implementation pending sign-off."
+  },
+  "gap:placeholder-citations": {
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending."
+  },
+  "gap:registry-unverified-stale-sources": {
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending."
+  },
+  "gap:bare-tokens-back-critical-cuts": {
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending."
+  },
+  "const:critical-electrolyte-citations": {
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending."
+  },
+  "gap:sex-hormones-doc08-uncited": {
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending."
+  },
+  "gap:research-tag-sourced-scoring-inputs": {
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending."
+  },
+  "gap:western-derived-norms": {
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending."
+  },
+  "gap:wearable-norm-reproducibility": {
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending."
+  },
+  "const:ethnicity-risk-weights": {
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending."
+  },
+  "rangevar:Hemoglobin:condition:D56.9": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass."
+  },
+  "rangevar:HOMA-IR:population:south_asian": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "rangevar:BMI:ethnicity:asian": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "rangevar:STOP-BANG-BMI:ethnicity:asian": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "selfreport:mcs-cross-cultural": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:Hemoglobin:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:ALT:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:Vitamin B12:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:FIB-4 index:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:Ferritin:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:SpO2:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:BMI:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:CAC:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:PHQ-9:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:HDL-C:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:Bilirubin:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:Folate:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:Free T4:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:Fasting cortisol:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:Omega-3 index:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:Iron saturation:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:Skin temp deviation:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "critical:Magnesium": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:Sleep duration:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers."
+  },
+  "range:Potassium:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass."
+  },
+  "rangevar:Hemoglobin:condition:N18.3": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass."
+  },
+  "rangevar:Ferritin:condition:inflammation": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass."
+  },
+  "range:Resting HR:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass."
+  },
+  "range:VO2max:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass."
+  },
+  "rangevar:INR:medication:B01AA": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass."
+  },
+  "rangevar:DOAC:medication:B01AF": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass."
+  },
+  "rangevar:Serum urate:medication:M04AA": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass."
+  },
+  "range:BMD T-score:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass."
+  },
+  "range:ALMI:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass."
+  },
+  "selfreport:vo2-wearable": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report/wearable weighting nuance — tied to the confidence down-weighting model (Doc 05); scoped for the weighting-calibration pass."
+  },
+  "selfreport:mcs-pro": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report/wearable weighting nuance — tied to the confidence down-weighting model (Doc 05); scoped for the weighting-calibration pass."
+  },
+  "selfreport:allo": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report-sourced reservoir nuance; scoped with the reservoir calibration pass (Doc 14)."
+  },
+  "rangevar:FIB-4:age:over65": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "rangevar:BMD T-score:population:premenopausal": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "range:Omega-3 Index:base": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "selfreport:AUDIT-C": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "selfreport:mMRC-dyspnoea": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "selfreport:mcs-pillar-citations": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "weight:FIT": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "selfreport:DAST-10": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "selfreport:PHQ-15": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "selfreport:standard-drink-definition": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "selfreport:diet-quality": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass."
+  },
+  "selfreport:rhr-hrv": {
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Wearable/self-report variance nuance; scoped for the confidence-model pass."
+  }
+ }
+}

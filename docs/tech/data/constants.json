@@ -1,7 +1,9 @@
 {
  "_meta": {
   "source": "wiki_content.py:CONSTANTS",
-  "note": "Canonical metadata. Edit here, not in Python."
+  "note": "Canonical metadata. Edit here, not in Python.",
+  "calibration_status": "expert-prior",
+  "calibration": "Expert-prior, NOT outcome-calibrated. No guideline assigns these. Calibration plan: fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity/region strata (Doc 13 cohort percentiles · Doc 14 validation harness) before production."
  },
  "constants": [
   [
@@ -70,5 +72,18 @@
    "0.60",
    "Doc 03 §3"
   ]
- ]
+ ],
+ "basis": {
+  "φ": "cohort-blend weight — expert-prior (calibrate vs cohort variance)",
+  "κ_resp": "personal-baseline cap — expert-prior",
+  "γ": "pillar power-mean exponent — expert-prior (penalises weak pillars)",
+  "δ": "PureScore power-mean exponent — expert-prior",
+  "ρ_k": "reservoir contribution cap — expert-prior",
+  "R_crit": "critical risk floor — expert-prior; SHOULD scale with confidence (flagged)",
+  "PURE_CRIT_CAP": "flat critical cap — expert-prior; flat cap collapses severity (flagged, calibrate)",
+  "zone cuts": "green/yellow/red on r — expert-prior",
+  "q_impute": "imputed-lab confidence — expert-prior; too high for CRITICAL markers (flagged)",
+  "Rp_impute": "cohort representativeness — expert-prior; lacks ethnicity/region dimension (flagged)",
+  "cov_green_floor": "coverage floor for green — expert-prior; allows green w/o critical coverage (flagged)"
+ }
 }

@@ -1,9 +1,23 @@
 {
  "_meta": {
-  "note": "Adversarial multi-agent clinical-validity audit flags (read-only, illustrative). key types: range:/rangevar:/critical:/weight:/reservoir:/coupling:/const:/selfreport:/gap:. Drives inline ⚠ badges via assets/clinical-flags.js. NOT a clinical sign-off.",
+  "note": "Adversarial multi-agent clinical-validity audit flags (illustrative). Schema v2 adds remediation tracking: status/governing_standard/resolution + clinician verdict. key types: range:/rangevar:/critical:/weight:/reservoir:/coupling:/const:/selfreport:/gap:. Drives inline ⚠ badges + tracker via assets/clinical-flags.js. NOT a clinical sign-off.",
   "generated_agents": 30,
   "total_flags": 218,
-  "unique_keys": 186
+  "unique_keys": 186,
+  "schema_version": 2,
+  "status_legend": {
+   "open": "unresolved — recommendation not yet applied",
+   "proposed": "canonical value changed to the recommended value, pending clinician sign-off",
+   "fixed": "mechanical fix applied (unit/citation/coverage) — no clinical-judgement call",
+   "accepted": "reviewed and intentionally kept as-is, with rationale in resolution",
+   "deferred": "valid but out of current scope; tracked for later"
+  },
+  "verdict_legend": {
+   "null": "no clinician review yet",
+   "confirmed": "clinician agrees with the flag/resolution",
+   "rejected": "clinician disagrees — flag is not valid",
+   "needs-info": "clinician needs more data before ruling"
+  }
  },
  "flags": {
   "range:HbA1c:base": {
@@ -22,7 +36,11 @@
     "Move the green/yellow boundary to ADA 5.7% (or explicitly document <5.4 as an aspirational optimum distinct from the diagnostic cut) and expose the WHO/NICE 6.0-6.4% divergence; add IFCC mmol/mol alongside every NGSP % value.",
     "Reconcile ADA vs NICE prediabetes cut, add mmol/mol, and add a haemoglobinopathy guard (prefer fructosamine/fasting glucose) before HbA1c floors the pillar.",
     "Set green <5.7, yellow 5.7-6.4 per ADA; add mmol/mol alongside % and store canonical IFCC internally; flag HbA1c unreliability in haemoglobinopathy carriers."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ADA SoC 2024 / WHO (IFCC mmol/mol)",
+   "resolution": "Green moved <5.4→<5.7% (39 mmol/mol) per ADA/WHO; bands carry NGSP% + IFCC mmol/mol; re-cited. Set in pillars/range-variations/calc-graph (th already 5.7,6.5) via apply_range_corrections.py.",
+   "verdict": null
   },
   "rangevar:HbA1c:unit:mmol_per_mol": {
    "item": "HbA1c units (no IFCC mmol/mol)",
@@ -34,7 +52,11 @@
    ],
    "actions": [
     "Add mmol/mol equivalents and a unit-locale conversion path."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "IFCC mmol/mol (UK·ESC·Gulf) + NGSP %",
+   "resolution": "data/units.json: hba1c canonical SI = mmol/mol (IFCC), lin=(%−2.15)×10.929; bands 5.7/6.5 % → 39/48 mmol/mol; dual display + inbound conversion layer.",
+   "verdict": null
   },
   "range:Systolic BP:base": {
    "item": "Systolic/Diastolic BP base range vs ACC/AHA citation",
@@ -50,7 +72,11 @@
     "Reconcile: re-cite ESC/ESH 2023 or NICE NG136 for the 140/90 cut, OR keep ACC/AHA 2017 and reclassify 130-139/80-89 as Stage-1 HTN.",
     "Either re-cite to NICE NG136 / ESC 2023 for the >=140 threshold, or move yellow to 120-129 and red to >=130 to match ACC/AHA 2017 as cited. State which standard the product adopts and source the <85 floor.",
     "Reconcile citation with threshold: if ACC/AHA 2017, split yellow into 120-129 elevated vs 130-139 Stage 1; or change citation to ESC/ESH 2023 / NICE NG136 where >=140/90 is correct; add age-stratified targets."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "NICE NG136 (ESC 2023)",
+   "resolution": "≥140/90 cut re-cited from ACC/AHA (which is ≥130/80) to NICE NG136 / ESC 2023 — the convention this value actually follows and which Gulf practice adopts. Values unchanged; citation corrected via apply_range_corrections.py.",
+   "verdict": null
   },
   "range:Diastolic BP:base": {
    "item": "Diastolic BP base range vs ACC/AHA citation",
@@ -62,7 +88,11 @@
    ],
    "actions": [
     "Reconcile DBP cut with the cited guideline (ACC/AHA 80 vs ESC/NICE 90) and re-cite accordingly."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "NICE NG136 (ESC 2023)",
+   "resolution": "≥140/90 cut re-cited from ACC/AHA (which is ≥130/80) to NICE NG136 / ESC 2023 — the convention this value actually follows and which Gulf practice adopts. Values unchanged; citation corrected via apply_range_corrections.py.",
+   "verdict": null
   },
   "range:LDL-C:base": {
    "item": "LDL-C base range (no very-high-risk goal; mis-cite)",
@@ -78,7 +108,11 @@
     "Add very-high-risk goal <55 mg/dL and re-cite to 2018 ACC/AHA Cholesterol (Grundy et al.) / ESC/EAS 2019.",
     "Either restate bands in ESC/EAS mmol/L risk tiers, or re-cite to a US source (ACC/AHA/NLA 2018) matching the mg/dL thresholds; add explicit mg/dL units plus mmol/L conversions.",
     "Cite ACC/AHA 2018 + 2022 ECDP (risk-based >=70/<55 thresholds) with year, or relabel band source as legacy NCEP; add mmol/L SI unit."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ESC/EAS 2019",
+   "resolution": "Mis-cited ACC/AHA (BP-guideline alias) corrected to ESC/EAS 2019; very-high-risk goal <55 (and <70 high-risk) added to green band; engine th [100,160] retained.",
+   "verdict": null
   },
   "range:Lp(a):base": {
    "item": "Lp(a) base range (missing very-high tier)",
@@ -92,7 +126,11 @@
    "actions": [
     "Add a very-high tier (>=430 nmol/L); cite 2022 EAS Lp(a) consensus (Kronenberg et al.); state nmol/L assay.",
     "Cite EAS 2022 / ESC 2019 with year; state thresholds are risk-continuous not banded; require the reporting unit (nmol/L vs mg/dL) and assay, do not auto-convert."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ESC/EAS 2022",
+   "resolution": "Very-high tier ≥430 nmol/L added; unit pinned to nmol/L (non-convertible); re-cited to the EAS 2022 Lp(a) consensus.",
+   "verdict": null
   },
   "rangevar:Lp(a):unit:nmol_vs_mgdl": {
    "item": "Lp(a) unit trap (nmol/L vs mg/dL non-convertible)",
@@ -104,7 +142,11 @@
    ],
    "actions": [
     "Hard-reject mg/dL Lp(a) feeds or flag for isoform-aware handling; do not auto-convert."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "nmol/L preferred (isoform-independent)",
+   "resolution": "data/units.json: lpa marked convertible=false (mass↔molar depends on apo(a) isoform); store native assay unit, prefer nmol/L. UI shows a 'store native' marker, never auto-converts.",
+   "verdict": null
   },
   "range:Triglycerides:base": {
    "item": "Triglycerides base range (<90 green; conflated red)",
@@ -118,7 +160,11 @@
    "actions": [
     "Use NCEP/AHA bands (normal <150, borderline 150-199, high 200-499, very-high >=500); cite/justify or remove the <90 cut; add AHA TG source to registry.",
     "Set green normal <150 (optimal <100) per AHA or justify/relax the <90 ceiling; add mmol/L SI unit."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "NCEP ATP III / ESC 2019",
+   "resolution": "Invented green <90 removed → NCEP normal <150 (1.7 mmol/L); yellow 150–499 (atherogenic) separated from the ≥500 pancreatitis red; engine th [150,500] retained.",
+   "verdict": null
   },
   "range:Waist circumference:base": {
    "item": "Waist circumference base range (blended frameworks; no ethnicity cuts)",
@@ -132,7 +178,11 @@
    "actions": [
     "Apply ethnicity-specific waist cuts (South Asian/Asian >=90M/>=80F) or parameterise by population per IDF/AHA 2009; document the population.",
     "Default to the lower South-Asian/Arab cut (90 M / 80 F) for Gulf cohorts; present population-specific cuts per the cited harmonization rather than a single 94->102 ramp; unify the cite to IDF/AHA 2009 (relabel the 'WHO' token); state units (cm)."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "IDF 2006 (South-Asian)",
+   "resolution": "European cuts (94/102) replaced with IDF South-Asian/Gulf cuts (male ≥90, female ≥80) as the cohort default; engine th [94,102]→[90,100]; re-cited IDF 2006.",
+   "verdict": null
   },
   "range:eGFR (creatinine):base": {
    "item": "eGFR (cystatin-C / creatinine) base range + equation/double-weighting",
@@ -144,7 +194,11 @@
    ],
    "actions": [
     "Specify CKD-EPI 2021 race-free; require albuminuria/damage for G2 abnormality; avoid double-weighting the eGFR construct (consider eGFRxUACR heatmap)."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "KDIGO 2024",
+   "resolution": "G2 (60–89) no longer yellow — green ≥60 (G1–G2), yellow 45–59 (G3a), red <45 (G3b–G5) per KDIGO; unit fixed mL/min→mL/min/1.73m²; engine th [60,45] retained.",
+   "verdict": null
   },
   "range:ALT:base": {
    "item": "ALT base range (sex-split only on green; ULN undefined)",
@@ -160,7 +214,11 @@
     "Apply sex-specific thresholds throughout, define ULN explicitly, and treat ALT as screening (FIB-4 for risk).",
     "Cite ACG 2017 Evaluation of Abnormal Liver Chemistries (or Prati 2002) for the sex-specific ULN; reconcile <20 vs <19-25; state U/L and note assay-method dependence.",
     "Sex-stratify ALT 'good' (~30 M, ~19-25 W) per AASLD/ACG; reconcile reservoir good=25 with marker th=40; specify IFCC 37C assay; note ALT does not exclude MASH and consider FibroScan/CAP."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:TSH:base": {
    "item": "TSH base range (narrow 0.5-2.5 green)",
@@ -176,7 +234,11 @@
     "Widen green to ~0.4-4.0/4.5; add age-specific upper limit; wire ATA pregnancy 2017 trimester ranges to a pregnancy gate.",
     "Widen green to the ATA/lab reference (~0.4-4.0/4.5) with subclinical hypothyroid >4.5; do not flag 2.5-4.5 as caution; reconcile with the age-band upper-limit note and state mIU/L; note NICE divergence.",
     "Use assay reference range (~0.4-4.0/4.5) for green; reserve the 2.5 ceiling for pregnancy; cite ATA 2014 guideline year."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ATA 2014",
+   "resolution": "Abandoned narrow 0.5–2.5 green widened to ATA 0.4–4.0; suppressed <0.3 retained as red; re-cited. Age/pregnancy trimester ranges noted for a follow-up variation.",
+   "verdict": null
   },
   "range:25-OH Vitamin D:base": {
    "item": "25-OH Vitamin D base range (outdated >=30 floor)",
@@ -190,7 +252,11 @@
    "actions": [
     "Lower green floor to >=20 ng/mL (IOM/NICE) or population-calibrate for the Gulf; add nmol/L; re-cite Demay et al. 2024.",
     "Adopt >=20 ng/mL sufficiency (align IOM/NICE) or explicitly justify ES; canonicalise to nmol/L internally with explicit unit on ingest; consider down-weighting given near-universal regional deficiency."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "IOM 2011 / UK SACN",
+   "resolution": "Aggressive US ≥30 floor replaced with IOM/SACN sufficiency ≥20 ng/mL (50 nmol/L); nmol/L path added; engine th [30,20]→[20,12], impute default 40→20 (Gulf-plausible); re-cited.",
+   "verdict": null
   },
   "range:Vitamin B12:base": {
    "item": "Vitamin B12 base range (400 floor; uncited)",
@@ -204,7 +270,11 @@
    "actions": [
     "Cite BSH/BCSH cobalamin guidance; relabel 200-350 to trigger MMA/holoTC; remove the >1100 red; add pmol/L.",
     "Replace 'lab' with a real source (BSH/BCSH 2014 cobalamin/folate guideline); add pg/mL unit + pmol/L conversion; lower the deficient threshold to ~<200 with 200-300 borderline; justify or remove the >1100 red flag."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "const:critical-electrolyte-citations": {
    "item": "Critical electrolytes sourced to bare 'lab' token",
@@ -216,7 +286,11 @@
    ],
    "actions": [
     "Attach authoritative/lab-medicine citations for critical-flagged markers and require lab/assay-specific reference intervals."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending.",
+   "verdict": null
   },
   "rangevar:Magnesium:unit:mmol_per_L": {
    "item": "Magnesium unit inconsistency (mg/dL vs SI)",
@@ -228,7 +302,11 @@
    ],
    "actions": [
     "Express Mg in mmol/L (or dual); cite a reference; reconsider critical=1 given serum Mg's poor sensitivity."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "SI mmol/L",
+   "resolution": "Unit-system trap resolved by the SI-canonical registry/conversion policy in data/units.json (per-marker conversion path).",
+   "verdict": null
   },
   "range:Hemoglobin:base": {
    "item": "Hemoglobin base range vs WHO citation",
@@ -246,7 +324,11 @@
     "Use sex-specific anaemia cutoffs (<13 M / <12 F) for the red band; separate the lab CBC range from the WHO anaemia definition; update to WHO 2024 and verify the citation; reconcile 13.0 vs 13.5 male floor; add g/L.",
     "Provide sex-specific and pregnancy-specific Hb anchors as the sex/preg gates promise; add g/L (UK) conversion.",
     "Use sex-specific WHO anemia cut-offs (<13 M, <12 F non-preg, <11 pregnancy) for the abnormal band; add MCV/MCH markers and a Mentzer/electrophoresis routing rule; elevate G6PD to drive an oxidative-hazard safety flag."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:FIB-4 index:base": {
    "item": "FIB-4 base range (no age stratification)",
@@ -258,7 +340,11 @@
    ],
    "actions": [
     "Add age-stratified low cutoff (1.3 if <65, 2.0 if >=65) per AGA Clinical Care Pathway."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "gap:research-tag-sourced-scoring-inputs": {
    "item": "Fasting insulin / HOMA-IR / GGT / Omega-3 / NLR / IL-6 / Visceral adipose uncited",
@@ -270,7 +356,11 @@
    ],
    "actions": [
     "Attach specific primary references or label as exploratory with lower weight; pin insulin assay; note assays are unstandardized."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending.",
+   "verdict": null
   },
   "rangevar:Fasting insulin:unit:pmol_per_L": {
    "item": "Fasting insulin units / HOMA-IR formula dependency",
@@ -282,7 +372,11 @@
    ],
    "actions": [
     "Pin the HOMA-IR formula variant and required input units; cite Matthews 1985; use ethnicity-aware IR thresholds for South Asians."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "SI pmol/L",
+   "resolution": "Insulin SI = pmol/L = µIU/mL×6.945 documented in the conversion policy; HOMA-IR must be computed from a single declared unit basis — formula-dependency flagged for clinician sign-off.",
+   "verdict": null
   },
   "range:Ferritin:base": {
    "item": "Ferritin base range + tri-pillar duplication (uncited)",
@@ -300,7 +394,11 @@
     "Cite WHO ferritin 2020 (or a lab/'optimal' source) for the deficiency cutoffs; reconcile <30 (base/UK) vs <15 (WHO/female row); add ug/L unit.",
     "Couple ferritin interpretation to CRP and add sex/pregnancy frames; flag that high ferritin does not exclude functional iron deficiency or haemoglobinopathy.",
     "Sex-gate ferritin anchors; cap asset benefit at high ferritin (overload); add infl->iron coupling and TSAT to co-interpret with CRP; add hemoglobinopathy gate; cite WHO 2020."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:SpO2:base": {
    "item": "SpO2 base range (skin-tone bias; uncited)",
@@ -314,7 +412,11 @@
    "actions": [
     "Cite an SpO2 reference; add a skin-pigmentation bias caveat and device-class (medical vs consumer) note; distinguish ODI from AHI.",
     "Distinguish medical vs wearable SpO2 source; discount wearable SpO2; document and correct for known pulse-oximetry skin-tone bias before banding."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:BMI:base": {
    "item": "Body fat % / BMI ethnicity-adjustment label false",
@@ -326,7 +428,11 @@
    ],
    "actions": [
     "Apply WHO Asian BMI action points (>=23 overweight, >=27.5 obese) and re-cite to the WHO 2004 Asian BMI statement, or drop the ethnicity-adj label; re-source body-fat-% (ACE/Gallagher et al.)."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:CAC:base": {
    "item": "CAC base range (absolute strata vs percentile citation)",
@@ -338,7 +444,11 @@
    ],
    "actions": [
     "Use age/sex/race percentiles per the cited MESA tool, or re-cite the absolute cuts to ACC/AHA/Agatston classification."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:PHQ-9:base": {
    "item": "PHQ-9 / GAD-7 base range (coarsened yellow; uncited)",
@@ -350,7 +460,11 @@
    ],
    "actions": [
     "Split yellow into mild (5-9) and moderate (10-14); cite Kroenke 2001/Spitzer 2006; reference validated Arabic/expatriate-language versions."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "gap:registry-unverified-stale-sources": {
    "item": "Citation registry: unverified entries + stale sources",
@@ -362,7 +476,11 @@
    ],
    "actions": [
     "Verify the false-flagged citations live; update Vitamin D and WHO Hb to 2024; reconcile the TSH value with its cited ATA document before production."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending.",
+   "verdict": null
   },
   "rangevar:ApoB:unit:g_per_L": {
    "item": "ApoB units (mg/dL only, no g/L)",
@@ -374,7 +492,11 @@
    ],
    "actions": [
     "Add g/L convention and conversion (mg/dL = g/L x 100); confirm the lab/wearable feed unit."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "SI g/L",
+   "resolution": "data/units.json: apob SI = g/L = mg/dL×0.01; bands 80/100 mg/dL → 0.80/1.00 g/L; dual display.",
+   "verdict": null
   },
   "gap:lipid-glucose-no-SI-units": {
    "item": "Lipids/glucose units (mg/dL only, no mmol/L)",
@@ -386,7 +508,11 @@
    ],
    "actions": [
     "Add dual mg/dL + mmol/L thresholds or a unit-locale flag with per-analyte conversion factors."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "SI mmol/L",
+   "resolution": "Lipids (LDL/HDL/TG mmol/L, ApoB g/L) and glucose (mmol/L) added to data/units.json with conversion + dual display.",
+   "verdict": null
   },
   "gap:wearable-norm-reproducibility": {
    "item": "Resting HR / HRV (RMSSD) / HR recovery wearable-norm reproducibility",
@@ -398,7 +524,11 @@
    ],
    "actions": [
     "Specify device-normalized norms and the reference cohort; document that wearable RMSSD is not interchangeable with ECG."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending.",
+   "verdict": null
   },
   "range:HDL-C:base": {
    "item": "HDL-C two_sided flag vs missing high band",
@@ -412,7 +542,11 @@
    "actions": [
     "Either define a high-HDL red bound or set two_sided=0; add mmol/L.",
     "Re-cite HDL cut-points to NCEP ATP-III / IDF-AHA 2009 harmonization; add an upper caution band; reframe HDL as a risk-marker not a target; add units."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:Bilirubin:base": {
    "item": "Bilirubin base range (mg/dL only; uncited)",
@@ -424,7 +558,11 @@
    ],
    "actions": [
     "Add umol/L; split conjugated vs unconjugated; do not penalise isolated unconjugated hyperbilirubinaemia; cite a reference."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:Folate:base": {
    "item": "Folate base range (ng/mL only; uncited; serum vs RBC)",
@@ -436,7 +574,11 @@
    ],
    "actions": [
     "Prefer RBC folate for the 'reserve' marker; add nmol/L; cite a reference."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:Free T4:base": {
    "item": "Free T4 base range (ng/dL only; assay-dependent; mis-cite)",
@@ -448,7 +590,11 @@
    ],
    "actions": [
     "Use assay-specific reference intervals; add pmol/L; cite an fT4-specific source."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:Fasting cortisol:base": {
    "item": "Fasting cortisol base range (time-of-day; uncited; mg/dL units)",
@@ -460,7 +606,11 @@
    ],
    "actions": [
     "Specify an 8am draw; add nmol/L; align the AM reference upper limit; cite a reference."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:Omega-3 index:base": {
    "item": "Omega-3 index base range (method-specific; uncited)",
@@ -472,7 +622,11 @@
    ],
    "actions": [
     "Specify the HS-Omega-3 Index (RBC) method; cite Harris/von Schacky."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:Iron saturation:base": {
    "item": "Iron saturation base range (non-sex-specific; uncited)",
@@ -484,7 +638,11 @@
    ],
    "actions": [
     "Use sex-specific iron-overload screening cuts; cite BSH/AASLD haemochromatosis; link high TSAT to the iron-overload pathway."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:Skin temp deviation:base": {
    "item": "Skin temp deviation base range (device-proprietary; uncited)",
@@ -496,7 +654,11 @@
    ],
    "actions": [
     "Make bands device-specific or normalize per-device; do not treat Oura/Whoop deviations as equivalent."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "gap:sex-hormones-doc08-uncited": {
    "item": "Sex hormones row deferred to Doc 08 (uncited at spec level)",
@@ -508,7 +670,11 @@
    ],
    "actions": [
     "Surface per-hormone phase/stage ranges with real citations (STRAW+10 menopause staging, assay-specific AMH norms) rather than an internal pointer."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending.",
+   "verdict": null
   },
   "gap:hba1c-validity-gate": {
    "item": "HbA1c method-validity gate (anemia/hemoglobinopathy/CKD/pregnancy/CGM)",
@@ -520,7 +686,11 @@
    ],
    "actions": [
     "Add a reliability gate to suppress/flag HbA1c when anemia, hemoglobinopathy, CKD, or pregnancy present; reconcile with CGM GMI/fructosamine."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ADA SoC 2024",
+   "resolution": "HbA1c reliability gate specified: in haemoglobinopathy/anaemia/CKD/pregnancy prefer fructosamine/fasting glucose before HbA1c floors MET (critical). Gulf G6PD/thalassaemia prevalence flagged — pending clinician sign-off.",
+   "verdict": null
   },
   "gap:no-unit-locale-declaration": {
    "item": "No unit-locale / SI declaration in pillars.json schema",
@@ -532,7 +702,11 @@
    ],
    "actions": [
     "Add per-marker {canonical_unit, accepted_units, conversion} and an input-unit validation/normalization step before scoring."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "SI (UK·ESC·Gulf) default",
+   "resolution": "Unit-locale policy declared in data/units.json _meta (default_display_locale = UAE/Gulf → SI, conventional in parentheses).",
+   "verdict": null
   },
   "gap:bare-tokens-back-critical-cuts": {
    "item": "Bare method/pubmed tokens backing hard/critical cuts",
@@ -544,7 +718,11 @@
    ],
    "actions": [
     "Require a resolvable citation for any marker with critical=1 or a hard red trigger."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending.",
+   "verdict": null
   },
   "gap:g6pd-absent": {
    "item": "GAP: G6PD deficiency absent from HEM/NUT (UAE)",
@@ -556,7 +734,11 @@
    ],
    "actions": [
     "Add a qualitative G6PD status marker (normal/deficient) to HEM as a Gulf-cohort safety flag."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "critical:Magnesium": {
    "item": "Magnesium critical=1 on insensitive serum marker",
@@ -568,7 +750,11 @@
    ],
    "actions": [
     "Reconsider critical=1 for serum Mg given poor correlation with total-body status; add a citation."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "rangevar:HOMA-IR:population:south_asian": {
    "item": "HOMA-IR / Fasting insulin ethnicity-aware thresholds (UAE)",
@@ -580,7 +766,11 @@
    ],
    "actions": [
     "Use ethnicity-aware IR thresholds (lower for South Asian); cite a real source and specify the insulin assay."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "selfreport:mcs-cross-cultural": {
    "item": "MCS instruments cross-cultural validity (UAE)",
@@ -592,7 +782,11 @@
    ],
    "actions": [
     "Cite the validated Arabic and major expatriate-language versions and any locally adapted cut-points; flag language/culture dependence."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "range:Sleep duration:base": {
    "item": "Sleep duration source partial-cite + Ramadan/shift-work gate (UAE)",
@@ -604,7 +798,11 @@
    ],
    "actions": [
     "Cite NSF (Hirshkowitz 2015) for the 7-9h band; add a Ramadan/shift-work gate for the UAE cohort."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Individual marker base-range refinement (citation/sex/method/assay-dependence). Scoped for a dedicated marker-refinement pass; base governing-standard corrections already shipped for the high-severity markers.",
+   "verdict": null
   },
   "gap:western-derived-norms": {
    "item": "CAC / ALMI / VO2max norms are Western-derived (UAE)",
@@ -616,7 +814,11 @@
    ],
    "actions": [
     "Document that percentile norms are Western-derived; plan a Gulf/South-Asian reference recalibration; ensure 'cohort p50' refers to a defined population."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending.",
+   "verdict": null
   },
   "gap:lifestage-gate-orphan-citations": {
    "item": "GAP: no pregnancy/menopause life-stage gate + orphan citations",
@@ -628,7 +830,11 @@
    ],
    "actions": [
     "Add the corresponding markers (serum urate, INR) and a pregnancy TSH gate, or remove the orphan citations; reconcile registry with pillars."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "rangevar:WBC:unit:notation": {
    "item": "WBC '×10⁹/L' / Platelets notation + critical uncited",
@@ -640,7 +846,11 @@
    ],
    "actions": [
     "Document accepted input notations; cite a reference-interval source for the critical haematology markers."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "SI ×10⁹/L",
+   "resolution": "Notation ×10⁹/L is SI-canonical and unit-stable in data/units.json (wbc, plt); platelet critical threshold tracked under the constants/critical set.",
+   "verdict": null
   },
   "rangevar:Systolic BP:life_stage:Pregnancy": {
    "item": "Systolic BP — Pregnancy/pre-eclampsia variation mis-cited to 'ATA pregnancy 2017'",
@@ -652,7 +862,11 @@
    ],
    "actions": [
     "Re-cite to ACOG 2020 Gestational Hypertension/Preeclampsia or NICE NG133 and add the source to citations.json."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "NICE NG133",
+   "resolution": "Pregnancy/pre-eclampsia BP variation re-cited from the wrong 'ATA pregnancy 2017' (a thyroid guideline) to NICE NG133.",
+   "verdict": null
   },
   "rangevar:Systolic BP:condition:N18.3": {
    "item": "Systolic BP — N18.3 CKD target <120 cite KDIGO 2024 (wrong DOI + standardised-office only)",
@@ -664,7 +878,11 @@
    ],
    "actions": [
     "Add a distinct KDIGO BP 2021 citation (PMID 33637192) for the <120 target; flag that <120 applies only to standardised office BP and do not score wearable SBP against it; note NICE NG203 divergence."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Valid variation-level refinement (DOI fix / US-UK split / risk-category gating / race-free CKD-EPI validation / pregnancy trimester ranges / age J-curve). Base range corrected; this dimension scoped for a follow-up variation pass.",
+   "verdict": null
   },
   "rangevar:Systolic BP:condition:E11": {
    "item": "Systolic BP — E11 diabetes target <130/80 collapses US/UK divergence",
@@ -676,19 +894,27 @@
    ],
    "actions": [
     "Do not present a single hard <130/80 green; note ADA individualisation and NICE NG28 <140/90 for UK/Gulf deployment."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Valid variation-level refinement (DOI fix / US-UK split / risk-category gating / race-free CKD-EPI validation / pregnancy trimester ranges / age J-curve). Base range corrected; this dimension scoped for a follow-up variation pass.",
+   "verdict": null
   },
   "rangevar:LDL-C:medication:C10AA": {
    "item": "LDL-C — statin (C10AA) flat treated target <55 ignores risk category",
    "area": "ranges_var",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "EU",
    "reasons": [
     "A flat treated target of <55 for anyone on a statin is wrong: <55 is the ESC/EAS 2019 very-high-risk goal only. A primary-prevention / moderate- or high-risk patient on a statin has a target of <100 or <70, so over-strict scoring red-flags appropriately-treated patients. Provenance: ESC/EAS 2019 (EU). Confirmed by refuter. Medium severity but a genuine over-strict scoring-logic defect."
    ],
    "actions": [
     "Make the statin treated-target conditional on risk category rather than a flat <55."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Valid variation-level refinement (DOI fix / US-UK split / risk-category gating / race-free CKD-EPI validation / pregnancy trimester ranges / age J-curve). Base range corrected; this dimension scoped for a follow-up variation pass.",
+   "verdict": null
   },
   "rangevar:HbA1c:condition:haemoglobinopathy": {
    "item": "HbA1c — anaemia/haemoglobinopathy variant is first-order for Gulf cohorts",
@@ -700,12 +926,16 @@
    ],
    "actions": [
     "Elevate haemoglobinopathy handling to a default Gulf-cohort screening gate; auto-route to fructosamine/CGM/fasting glucose when MCV low or an Hb variant is flagged; cite an NGSP/IFCC interference source."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ADA SoC 2024",
+   "resolution": "HbA1c reliability gate specified: in haemoglobinopathy/anaemia/CKD/pregnancy prefer fructosamine/fasting glucose before HbA1c floors MET (critical). Gulf G6PD/thalassaemia prevalence flagged — pending clinician sign-off.",
+   "verdict": null
   },
   "range:eGFR:base": {
    "item": "eGFR — base yellow 60-89 (G2) flags healthy aging as caution",
    "area": "ranges_var",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Treating eGFR 60-89 (G2) as yellow/caution is clinically misleading: per KDIGO, isolated G2 without markers of kidney damage (albuminuria/structural) is NOT CKD (normal aging), so the traffic-light flags healthy older adults. CKD requires GFR<60 OR damage markers >=3 months; staging needs GFR x ACR. The spec's own age-band note acknowledges this but the base band contradicts it. Provenance: KDIGO (intl). US↔UK divergence: NICE NG203 also requires GFR+ACR and accounts for age; isolated G2 not classified as CKD. Medium severity but confirmed; pairs with the missing-UACR gap.",
@@ -718,31 +948,43 @@
     "Specify race-free CKD-EPI 2021, correct unit to mL/min/1.73m2, and confirm no race coefficient is applied for the expat cohort.",
     "Lower 'bad' to ~15-20 to span G4/G5; correct unit to mL/min/1.73m²; specify race-free CKD-EPI 2021; cite KDIGO 2024.",
     "Split G3a/G3b/G4/G5 at the 45/30 cut-points and combine with UACR per the KDIGO 2024 heatmap; require chronicity (>3 months)."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "KDIGO 2024",
+   "resolution": "G2 (60–89) no longer yellow — green ≥60 (G1–G2), yellow 45–59 (G3a), red <45 (G3b–G5) per KDIGO; unit fixed mL/min→mL/min/1.73m²; engine th [60,45] retained.",
+   "verdict": null
   },
   "rangevar:eGFR:ethnicity:race-free": {
    "item": "eGFR — race-free CKD-EPI 2021 not validated for Gulf/South-Asian cohorts",
    "area": "ranges_var",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "The race-free CKD-EPI 2021 equation was derived and validated in US Black/White populations; its applicability to Middle-Eastern/South-Asian/Gulf Arab body composition is unestablished and it can misestimate GFR. Presenting 'race coefficient removed' as universally correct ignores this. Provenance: KDIGO 2024 cite (US-derived equation). UAE: validation limits in the target Gulf cohort; KDIGO actually prefers cystatin-C-based eGFR for confirmation rather than merely dropping race. Confirmed; population-applicability flag."
    ],
    "actions": [
     "Note validation limits in non-US/Gulf populations and offer cystatin-C-based eGFR (the actual KDIGO-preferred confirmation) rather than only removing the race coefficient."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Valid variation-level refinement (DOI fix / US-UK split / risk-category gating / race-free CKD-EPI validation / pregnancy trimester ranges / age J-curve). Base range corrected; this dimension scoped for a follow-up variation pass.",
+   "verdict": null
   },
   "range:Potassium:base": {
    "item": "Potassium — base normal range 3.6-5.0 mis-cited to KDIGO 2024",
    "area": "ranges_var",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "KDIGO CKD 2024 does not define a general serum-potassium reference range (3.6-5.0); these are lab/assay-defined general-medicine values. KDIGO addresses hyperkalaemia management with RAASi but not a green 3.6-5.0 reference band, so only the ACEi/ARB monitoring note is genuinely KDIGO-adjacent. Provenance: intl (KDIGO). US↔UK: hyperkalaemia action thresholds vary by lab; UK Renal Association uses similar but distinct thresholds (e.g. >6.0 severe). UAE: no mention of pseudohyperkalaemia from haemolysis, relevant for at-home/delayed-transit logistics. Units (mmol/L) absent. Raised by multiple reviewers, medium severity."
    ],
    "actions": [
     "Cite a lab/assay source for the base normal K range; reserve KDIGO for CKD-specific tighter tolerance and RAASi monitoring; add mmol/L unit and a haemolysis/pseudohyperkalaemia caveat."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass.",
+   "verdict": null
   },
   "rangevar:Hemoglobin:condition:N18.3": {
    "item": "Hemoglobin — N18.3 CKD-on-ESA target '10-12' endorses Hb>11.5",
@@ -754,7 +996,11 @@
    ],
    "actions": [
     "Change the target ceiling to <=11.5 g/dL (do not exceed) per KDIGO Anemia and cite KDIGO Anemia 2012 (not the 2024 CKD-evaluation DOI); explicitly flag the KDIGO vs NICE NG8 divergence and state which standard the product adopts."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass.",
+   "verdict": null
   },
   "rangevar:Hemoglobin:condition:D56.9": {
    "item": "Hemoglobin — D56.9 thalassaemia/trait is the key Gulf adjustment but under-built",
@@ -766,19 +1012,27 @@
    ],
    "actions": [
     "Promote to a default Gulf-cohort screening gate; route low-MCV/low-MCH to Hb electrophoresis; cite a thalassaemia-specific guideline (TIF / BCSH)."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass.",
+   "verdict": null
   },
   "rangevar:Ferritin:condition:inflammation": {
    "item": "Ferritin — inflammation/acute-phase variant mis-cited to AHA/CDC hsCRP statement",
    "area": "ranges_var",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "The acute-phase caveat (ferritin rises as an APR and can mask iron deficiency; pair with CRP/TSAT) is correct in substance but cited to AHA/CDC 2003 — the hsCRP CARDIOVASCULAR risk-marker statement (registry section 'hsCRP risk'), which says nothing about ferritin as an acute-phase reactant. Topically wrong citation. Provenance: intl/US; correct source is WHO ferritin 2020 (which sets the <70-with-inflammation threshold) or BSH iron-deficiency guidance. Confirmed, medium severity."
    ],
    "actions": [
     "Re-cite the acute-phase caveat to WHO 2020 ferritin guidance (or BSH iron-deficiency) rather than the AHA/CDC hsCRP statement."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass.",
+   "verdict": null
   },
   "range:Resting HR:base": {
    "item": "Resting HR — base & Female variant uncited ('wearable/literature') + method validity",
@@ -790,43 +1044,59 @@
    ],
    "actions": [
     "Provide a real citation for RHR norms; drop the spurious ACC/AHA beta-blocker attribution; add age banding and an athlete/fitness gate for low RHR; add a PPG-vs-ECG measurement-method caveat."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass.",
+   "verdict": null
   },
   "range:VO2max:base": {
    "item": "VO2max (est.) — estimated values scored against measured (CPET) FRIEND norms + ambiguous token",
    "area": "ranges_var",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Two confirmed issues. (1) Method validity: the marker is labelled '(est.)' (wearable/submaximal estimate) but is scored against FRIEND/ACSM percentile norms built from MEASURED CPET VO2max; wrist-estimated VO2max has wide error (+-10-15%) and systematic bias, an undisclosed measurement mismatch. (2) Token ambiguity/provenance: the cite 'Cooper/ACSM' silently aliases to the FRIEND registry (Kaminsky 2015), but Cooper Institute and FRIEND are different normative datasets, so the displayed label does not match the resolved reference; FRIEND norms are also US/North-American-derived and not validated for Gulf/South-Asian cohorts. Provenance: US. UAE: percentile norms may misrank fitness in the target cohort. Raised by multiple reviewers, medium severity."
    ],
    "actions": [
     "Add a method caveat that estimated VO2max is not interchangeable with CPET-measured norms and widen the tolerance band; pick and label one normative source (FRIEND vs Cooper) consistently; note US-population derivation."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass.",
+   "verdict": null
   },
   "rangevar:INR:medication:B01AA": {
    "item": "INR (warfarin, B01AA) — cite CHEST AT9 2012 is superseded",
    "area": "ranges_var",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "CHEST AT9 (2012) is superseded by CHEST 2021 (Antithrombotic Therapy for VTE) and ACC/AHA Valvular Heart Disease 2020 / ESC-EACTS Valvular 2021 for indication- and valve-specific targets; the 2.0-3.0 (AF/VTE) and 2.5-3.5 (mechanical mitral) values remain correct but the source is ~14 years old and omits valve-position/thrombogenicity nuance. Provenance: US (CHEST). US↔UK/EU divergence: ESC/EACTS valve targets are thrombogenicity + patient-risk stratified (e.g. 2.5-4.0), differing from a flat 2.5-3.5. Medium severity (outdated provenance)."
    ],
    "actions": [
     "Update mechanical-valve INR provenance to ACC/AHA VHD 2020 or ESC/EACTS Valvular 2021; keep 2.0-3.0 for AF/VTE but cite a current source."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass.",
+   "verdict": null
   },
   "rangevar:DOAC:medication:B01AF": {
    "item": "DOAC (B01AF) med_introduces — empty citation string",
    "area": "ranges_var",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "none",
    "reasons": [
     "The cite field is an empty string (\"\"). The DOAC entry ('no INR monitoring (fixed dose); check renal function for dosing') is an introduced clinical claim with no source attached at all; CrCl-based dose-reduction thresholds are drug-specific and need a reference. Provenance: none. US↔UK divergence: renal cutoffs for DOAC dosing differ between FDA labels and EMA/NICE (e.g. dabigatran contraindicated CrCl<30 in EU vs dose-reduced in US). Raised by multiple reviewers, medium severity."
    ],
    "actions": [
     "Add a citation (ESC AF 2024 / ACC-AHA-ACCP-HRS AF 2023 or EHRA DOAC practical guide / product labels) and specify the CrCl-based renal-dosing thresholds rather than a generic note."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass.",
+   "verdict": null
   },
   "rangevar:Serum urate:medication:M04AA": {
    "item": "Serum urate (allopurinol, M04AA) — no units, US/UK SI divergence",
@@ -838,7 +1108,11 @@
    ],
    "actions": [
     "Add umol/L equivalents (<360 / <300) and detect unit from the lab feed; label the y/r bands as mg/dL."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass.",
+   "verdict": null
   },
   "range:BMD T-score:base": {
    "item": "BMD T-score — base cite ISCD/WHO is verified:false / stale",
@@ -850,7 +1124,11 @@
    ],
    "actions": [
     "Update to ISCD 2023 Official Positions and verify the link (values are fine); note FRAX lacks Gulf calibration and vitamin-D confounding for UK/Gulf use."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass.",
+   "verdict": null
   },
   "range:ALMI:base": {
    "item": "ALMI / lean mass — strength-first algorithm misrepresented + European-only cut-points",
@@ -866,7 +1144,11 @@
     "Add grip strength / chair-stand as the leading sarcopenia indicator with ALMI confirmatory; offer AWGS cut-points for South/East-Asian individuals and note the European derivation of the base cuts.",
     "Provide sex-specific body-fat cut-points, document the DEXA reference database, and flag Western ALMI/T-score references as unvalidated for Gulf ethnicities before they trigger critical floors.",
     "Sex-stratify ALMI per EWGSOP2/FNIH (men bad~7.0, women bad~5.5); set sex-appropriate 'good'; consider AWGS Asian cuts; reconcile reservoir vs marker 'good'; wire to sex gate; cite Cruz-Jentoft 2019."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Variation-level refinement (condition/medication/age citation + units). Scoped for a follow-up range-variation pass.",
+   "verdict": null
   },
   "gap:vitamin-d-marker-missing": {
    "item": "Vitamin D (25-OH-D) — MISSING marker despite an orphan citation + high Gulf prevalence",
@@ -878,7 +1160,11 @@
    ],
    "actions": [
     "Add a Vitamin D marker with explicit unit (ng/mL vs nmol/L), the IOM vs Endocrine Society vs NICE threshold divergence, and a Gulf high-prevalence note; update to the 2024 source."
-   ]
+   ],
+   "status": "accepted",
+   "governing_standard": null,
+   "resolution": "Refuted — marker IS already scored in calc-graph (uacr / vitd). Flag is stale; recorded in data/coverage.json (status=present). No change needed.",
+   "verdict": null
   },
   "gap:g6pd-marker-missing": {
    "item": "G6PD deficiency — MISSING entirely; population-safety gap for Gulf",
@@ -890,31 +1176,43 @@
    ],
    "actions": [
     "Add G6PD status as a gating dimension that suppresses/flags oxidant-drug recommendations and informs anaemia interpretation; cite a G6PD/WHO source."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "gap:lp(a)-marker-missing": {
    "item": "GAP — Lp(a) referenced in citations.json but absent from markers",
    "area": "ranges_var",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "EU",
    "reasons": [
     "The ESC/EAS 2019 section of citations.json explicitly mentions 'Lp(a) once-in-lifetime' and the canon emphasises CV risk, yet range-variations.json has no Lp(a) marker — a missing guideline-referenced, high-impact CV marker. ESC/EAS 2022 Lp(a) consensus (Kronenberg et al) sets >=50 mg/dL (>=125 nmol/L) as elevated. Provenance: EU (ESC/EAS). US↔UK divergence: NHLBI/US uses >=50 mg/dL similarly — broadly concordant. Medium severity, citation-referenced gap."
    ],
    "actions": [
     "Add an Lp(a) marker with the ESC/EAS 2022 consensus threshold (>=50 mg/dL / >=125 nmol/L elevated), once-in-lifetime measurement."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (markers): DBP, Lp(a), non-HDL-C, sodium, free T4 + fasting/method fields scoped with a concrete add/derive plan, rendered on production-gaps.html. Engine implementation pending sign-off.",
+   "verdict": null
   },
   "gap:uacr-marker-missing": {
    "item": "GAP — UACR / albuminuria absent though KDIGO staging requires it",
    "area": "ranges_var",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "eGFR is present and the spec's own notes say 'stage by GFR + ACR', but no Albumin:Creatinine Ratio (UACR) marker exists. KDIGO 2024 staging is a 2-D GFR x albuminuria heat-map (A1 <30, A2 30-300, A3 >300 mg/g), so without UACR the CKD risk cannot be staged as KDIGO mandates — an internal contradiction with the eGFR notes. Provenance: intl (KDIGO). US↔UK divergence: NICE NG203 also uses ACR categories A1-A3 — concordant. Medium severity."
    ],
    "actions": [
     "Add a UACR marker with KDIGO 2024 A1/A2/A3 cut-points to enable the GFR x ACR staging the eGFR notes reference."
-   ]
+   ],
+   "status": "accepted",
+   "governing_standard": null,
+   "resolution": "Refuted — marker IS already scored in calc-graph (uacr / vitd). Flag is stale; recorded in data/coverage.json (status=present). No change needed.",
+   "verdict": null
   },
   "gap:no-unit-field": {
    "item": "GLOBAL/SYSTEMIC — no units declared on any concentration marker",
@@ -926,7 +1224,11 @@
    ],
    "actions": [
     "Add an explicit 'unit' (and optional 'unit_si'/conversion factor) to every marker base and variant, plus unit detection/conversion in the engine before any production use."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "SI canonical",
+   "resolution": "Every concentration marker now has a units entry (conv + SI + lin) in data/units.json, surfaced on Appendix A and the resolver.",
+   "verdict": null
   },
   "gap:no-method-field": {
    "item": "GAP — no per-marker measurement-method tag (lab vs wearable vs self-report)",
@@ -938,7 +1240,11 @@
    ],
    "actions": [
     "Add a 'method' field (lab/wearable/self-report) to each marker and surface measurement-validity caveats (e.g. PPG-vs-ECG for RHR, estimated-vs-CPET for VO2max)."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "weight:PILLAR_W": {
    "item": "Pillar weight vector (PILLAR_W) is an uncited, non-guideline 12-weight partition presented with false precision",
@@ -950,7 +1256,11 @@
    ],
    "actions": [
     "Label the vector explicitly as expert-Delphi/consensus priors pending calibration, or replace with weights derived from a validated competing-risk/mortality model (NHANES/UK Biobank) with per-weight provenance citations."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived.",
+   "verdict": null
   },
   "gap:no-outcome-calibration": {
    "item": "GAP: no overall mortality/competing-risk calibration anchoring the weights",
@@ -962,7 +1272,11 @@
    ],
    "actions": [
     "Calibrate/validate the composite against a defined outcome in a held-out cohort; report C-statistic and calibration; benchmark vs PREVENT/SCORE2/QRISK3; until then label the score non-diagnostic and weights provisional."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived.",
+   "verdict": null
   },
   "gap:no-conditioned-weight-vectors": {
    "item": "Pillar weights are sex-/age-/life-stage-invariant despite gates promising population emphases",
@@ -974,7 +1288,11 @@
    ],
    "actions": [
     "Deliver sex/age/life-stage-conditioned weight vectors (e.g. raise BCM/HEM for perimenopausal and frail-elderly cohorts) matching the gates, or remove the 'pillar emphasis' claims from gate labels and state the single vector is illustrative."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "gap:weights-no-provenance": {
    "item": "Pillar weights carry no evidence citation / provenance — relative emphasis asserted, not sourced",
@@ -986,7 +1304,11 @@
    ],
    "actions": [
     "Attach an explicit derivation source per weight (e.g. GBD attributable-mortality fractions, named cohort hazard, or documented expert-consensus process) or prominently label the vector 'illustrative, not evidence-derived'."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived.",
+   "verdict": null
   },
   "weight:SLP": {
    "item": "Soft/wearable/PRO-dominated pillars (SLP, FIT, MCS = 0.30) weighted at parity with lab-anchored pillars",
@@ -998,7 +1320,11 @@
    ],
    "actions": [
     "Justify the soft-pillar weighting with outcome evidence or rebalance so weight tracks both outcome-attributability and data reliability; document that wearable/PRO pillars are method-divergent from lab markers."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived.",
+   "verdict": null
   },
   "rangevar:HbA1c:locale:units": {
    "item": "MET pillar (0.12) HbA1c and glucose markers are single US/NGSP convention with no mmol/mol or mmol/L path",
@@ -1010,7 +1336,11 @@
    ],
    "actions": [
     "Make MET marker units locale-aware (HbA1c %/NGSP and mmol/mol/IFCC; glucose mg/dL and mmol/L) with explicit ingest conversion, and state which convention thresholds assume."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "SI (UK·ESC·Gulf) default; US locale",
+   "resolution": "MET HbA1c/glucose now carry SI canonical units (mmol/mol, mmol/L) via data/units.json with US conventional as a display locale.",
+   "verdict": null
   },
   "rangevar:LDL:locale:units": {
    "item": "CV pillar (0.13, highest weight) lipid markers ApoB/LDL-C/HDL-C are mg/dL-only with no mmol/L path",
@@ -1022,7 +1352,11 @@
    ],
    "actions": [
     "Add mmol/L (and g/L for ApoB where used in EU) handling with documented conversion factors; state the assumed reporting convention per marker."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "SI mmol/L (UK·ESC·Gulf) default; US mg/dL locale",
+   "resolution": "CV lipids (ApoB g/L, LDL-C & HDL-C mmol/L) added to data/units.json with conversion + dual display.",
+   "verdict": null
   },
   "weight:CV": {
    "item": "Weight magnitudes — CV (0.13) vs MET (0.12) too compressed for a high-CVD/high-diabetes Gulf cohort",
@@ -1034,7 +1368,11 @@
    ],
    "actions": [
     "For a Gulf deployment, justify or up-weight CV+MET relative to the discretionary-lifestyle pillars via a region-calibrated, ethnicity-aware scheme."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived.",
+   "verdict": null
   },
   "range:VitaminD:base": {
    "item": "Vitamin D (vitd) anchors [30, 20, lo] mismatched to near-universal Gulf deficiency; double-counted across NUT+ENDO",
@@ -1046,7 +1384,11 @@
    ],
    "actions": [
     "Adopt population-aware vitamin-D banding for the Gulf to avoid near-universal red, reconcile US Endocrine vs NICE thresholds, add nmol/L conversion, and resolve NUT/ENDO double-counting (assign vitd to one pillar)."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "IOM 2011 / UK SACN",
+   "resolution": "Aggressive US ≥30 floor replaced with IOM/SACN sufficiency ≥20 ng/mL (50 nmol/L); nmol/L path added; engine th [30,20]→[20,12], impute default 40→20 (Gulf-plausible); re-cited.",
+   "verdict": null
   },
   "range:Waist:base": {
    "item": "Waist circumference cut-points [94, 102, hi] — European male values applied to a South-Asian/Arab cohort",
@@ -1060,7 +1402,11 @@
    "actions": [
     "Implement sex- AND ethnicity-specific waist cut-points (South-Asian/Arab ~90 cm men, ~80 cm women per IDF); mandatory for a Gulf cohort and currently absent.",
     "Make waist anchors sex- and ethnicity-specific (men ~94/102, women ~80/88 Europid; ~90 men South-Asian) via the sex gate plus a South-Asian ethnicity gate; reconcile 105 vs 110 and the reservoir/marker (85 vs 94/102) inconsistency; cite IDF 2006 / WHO 2008 / NICE NG7."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "IDF 2006 (South-Asian)",
+   "resolution": "European cuts (94/102) replaced with IDF South-Asian/Gulf cuts (male ≥90, female ≥80) as the cohort default; engine th [94,102]→[90,100]; re-cited IDF 2006.",
+   "verdict": null
   },
   "gap:no-ethnicity-gate": {
    "item": "GAP — no ethnicity/ancestry gate despite a multi-ethnic, high-consanguinity Gulf cohort",
@@ -1072,36 +1418,48 @@
    ],
    "actions": [
     "Add an ancestry/ethnicity (or self-reported origin) gate to drive waist, lipid/CVD-risk, haemoglobinopathy and vitamin-D frames for the Gulf cohort."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "critical:vo2": {
    "item": "FIT pillar weight = 0.10 with NO critical markers (fit.critical=[])",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Raised by 2 reviewers (weight under-leverage + measurement). fit.critical=[] so no fitness marker can ever floor the score, despite CRF (VO2max) being among the strongest predictors of all-cause/CV mortality (AHA 2016 Scientific Statement, Ross et al., endorses CRF as a clinical vital sign; ~1-MET higher = ~10-25% lower mortality). FIT also rests on wearable, estimated (not CPET-measured) VO2max weighted at parity with lab pillars. Provenance: US/intl. Confirmed by refuter."
    ],
    "actions": [
     "Cite AHA 2016 CRF statement; designate severely low VO2max as a critical/early-warning marker and/or raise FIT weight; tag wearable VO2max as device-estimated with widened uncertainty."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "weight:NUT": {
    "item": "NUT pillar weight = 0.06 on weak/contested micronutrient markers (vitD, B12, omega-3 index)",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Raised by multiple reviewers. NUT carries the same 0.06 as outcome-rich pillars on three low-evidence markers; USPSTF and Endocrine Society 2024 (Demay et al.) advise AGAINST routine 25-OH-D screening in asymptomatic adults; omega-3 index has no guideline-endorsed target (VITAL/STRENGTH largely null for CV events); vitD double-counted in ENDO. Provenance: US. US vs UK: USPSTF/Endocrine Society 2024 and NICE both argue against population vitamin-D blood-level scoring. Confirmed by refuter."
    ],
    "actions": [
     "Down-weight or re-scope NUT, align with Endocrine Society 2024/USPSTF against routine vitamin-D screening, drop or demote omega-3 index absent a guideline target, and resolve vitD double-counting."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived.",
+   "verdict": null
   },
   "weight:ENDO": {
    "item": "ENDO pillar weight = 0.06 on only TSH + a shared vitD; zero critical markers; gated axes absent",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Raised by multiple reviewers. endo.markers=[tsh,vitd] (vitd shared with NUT) and endo.critical=[], so 0.06 is effectively driven by one assay. Per ATA/USPSTF, population TSH screening of asymptomatic adults has insufficient/uncertain outcome evidence. The andropause and perimenopause gates promise sex-hormone emphasis but no testosterone/estradiol/FSH/cortisol markers exist — both an over-weight-for-content and a GAP. Provenance: US/intl. Confirmed by refuter.",
@@ -1110,55 +1468,75 @@
    "actions": [
     "Resolve vitD double-counting, add the sex-hormone/HPA markers the andropause/perimenopause gates imply, or down-weight ENDO to match its thin marker set.",
     "Add a PCOS/menstrual-symptom PRO and a female sexual-function instrument (FSFI); surface at least illustrative bands for the .34-weighted sex-hormone marker so it can be audited; document sex-gating logic."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived.",
+   "verdict": null
   },
   "gap:equal-weight-clustering": {
    "item": "Equal-weight clustering of non-equivalent pillars (HEP=HEM=ENDO=NUT=0.06; REN=INF=BCM=0.07)",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "mixed",
    "reasons": [
     "Raised by multiple reviewers. Four pillars share 0.06 and three share 0.07, implying clinical equivalence no guideline supports across outcome-heterogeneous domains: HEP (FIB-4/ALT, AASLD 2023 MASLD ties fibrosis to mortality), HEM (anaemia/iron), ENDO (TSH/vitD), NUT (micronutrients); and INF (hsCRP, a risk-enhancer per ACC/AHA 2018) set equal to BCM (EWGSOP2 2019/WHO osteoporosis) and REN (KDIGO hard outcomes). Provenance: mixed. Signals weights chosen for tidy summation to 1.0 rather than differential outcome evidence. Confirmed by refuter."
    ],
    "actions": [
     "Differentiate weights by outcome-evidence strength (hard-mortality domains REN/HEP-fibrosis above surrogate domains INF/NUT) and document why any two pillars are equal."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived.",
+   "verdict": null
   },
   "selfreport:vo2-wearable": {
    "item": "FIT pillar (0.10) anchored on wearable, model-estimated VO2max with mixed day/week time bases",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Raised by multiple reviewers. vo2 source 'wearable' unit 'mL/kg/min' (default 45, th 40/30) is an algorithmic HR/pace estimate (+/-10-15% error, device-dependent), not CPET; weighted at parity with lab pillars overstates measurement validity. steps '/day' and mvpa 'min/wk' mix time bases in one pillar mean without normalization. Provenance: intl. Confirmed by refuter."
    ],
    "actions": [
     "Flag wearable VO2max as estimated (method tag), widen uncertainty, distinguish device-estimated vs CPET-measured, and document the day-vs-week time-base mix in the FIT mean."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report/wearable weighting nuance — tied to the confidence down-weighting model (Doc 05); scoped for the weighting-calibration pass.",
+   "verdict": null
   },
   "selfreport:mcs-pro": {
    "item": "MCS pillar (0.10) is 100% self-report PRO weighted at parity with measured pillars; instruments not scale-normalized",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Raised by multiple reviewers. phq/gad/isi all source 'pro' (q_source 0.70, lowest tier), unit 'score', with differing ranges (PHQ-9 0-27, GAD-7 0-21, ISI 0-28) pooled into one mean. Weighting an ordinal PRO-only pillar at CV/MET tier is uncited and internally inconsistent with the spec's own lowest-trust channel. Depression is an AHA-recognised post-ACS CV modifier (2014 statement) but that does not justify a fixed 10% share. Provenance: US/intl. Confirmed by refuter (per-marker 'allo' rescaling partially addresses pooling)."
    ],
    "actions": [
     "Normalize the three instruments to a common 0-1 scale before pooling and document it; justify weighting a PRO-only pillar at parity with measured pillars and reconcile with the pro=0.70 tier."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report/wearable weighting nuance — tied to the confidence down-weighting model (Doc 05); scoped for the weighting-calibration pass.",
+   "verdict": null
   },
   "coupling:nut<-endo:vitd": {
    "item": "ENDO (0.06) and NUT (0.06) share marker vitd — double-counted assay; US-only units",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Raised by multiple reviewers. vitd appears in both endo.markers and nut.markers and feeds the shared micr reservoir, so two separately-weighted pillars partly score the same physical measurement, inflating effective vitamin-D weight beyond its nominal allocation. Provenance: US. US vs UK: vitd 'ng/mL' (US) vs nmol/L (UK: 30=75, 20=50); b12 'pg/mL' (US) vs pmol/L (UK). Confirmed by refuter."
    ],
    "actions": [
     "Avoid double-weighting one assay across two pillars (assign vitd to one pillar or split its contribution); add nmol/L (vitd) and pmol/L (b12) conversions."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off.",
+   "verdict": null
   },
   "critical:spo2": {
    "item": "HEM pillar (0.06) lets a wearable optical SpO2 fire the critical cascade",
@@ -1172,31 +1550,43 @@
    "actions": [
     "Do not let wearable PPG SpO2 fire the critical cascade without confirmation; tag method and add a skin-tone/perfusion validity caveat; add hb g/L conversion.",
     "Do not let wearable-only SpO2 trigger the CRITICAL cascade; require clinical pulse-ox confirmation; document skin-tone bias; cite FDA 2023 pulse-ox guidance."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "range:BodyComposition:base": {
    "item": "BCM body-composition markers assume DEXA-grade measurement but units cannot enforce method",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Raised by multiple reviewers (and BCM markers are CRITICAL). bodyfat '%', almi 'kg/m2', tscore 'SD' tagged source 'clinical' with no method field; body-fat % and ALMI span DEXA/BIA/wearable with large between-method bias (consumer BIA off DEXA by 5-8 absolute %), yet a wearable-scale value scores identically to DEXA against th (bodyfat 25/32, almi 7/5.5). T-score 'SD' is DEXA-site- and reference-database-specific, hidden by one unit; reference databases are young-adult Caucasian, unvalidated for Arab/South-Asian patients. bodyfat is sex-agnostic though healthy female body-fat runs higher. Provenance: intl. Confirmed by refuter."
    ],
    "actions": [
     "Record body-composition measurement method (DEXA/BIA/wearable) and adjust confidence/thresholds; specify T-score skeletal site and reference database; provide sex-specific body-fat cut-points; flag Western references as unvalidated for Gulf ethnicities before triggering critical floors."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "critical:endo-coverage": {
    "item": "ENDO pillar (0.06) has zero critical markers and effectively rests on a single TSH assay",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Raised by multiple reviewers. endo.critical=[] and markers=[tsh,vitd] (vitd shared with NUT), so 0.06 is effectively driven by TSH alone (mIU/L, th 4.5/10). TSH alone is incomplete endocrine measurement (no free T4, sex hormones, or cortisol); the weight implies endocrine breadth the marker set does not measure. Provenance: intl. Confirmed by refuter."
    ],
    "actions": [
     "Broaden ENDO's measured markers to match its weight, or fold residual ENDO weight into pillars with stronger measurement coverage."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "weight:INF": {
    "item": "INF pillar weight = 0.07 over-states hsCRP's adjunctive guideline standing; WBC has no scoring role",
@@ -1208,7 +1598,11 @@
    ],
    "actions": [
     "Reflect hsCRP's adjunctive risk-enhancer status (ACC/AHA 2018/2019) by down-weighting INF or folding it into CV/MET; drop WBC as a scoring marker absent guideline support."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived.",
+   "verdict": null
   },
   "weight:SLP-monotonic": {
    "item": "SLP pillar weight = 0.10 encodes a monotonic threshold contradicting U-shaped sleep-mortality evidence",
@@ -1220,79 +1614,107 @@
    ],
    "actions": [
     "Tie SLP weight to AHA Life's Essential 8 if used and note the monotonic threshold contradicts the U-shaped evidence; consider a two-sided sleep-duration band."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived.",
+   "verdict": null
   },
   "weight:HEM": {
    "item": "HEM pillar weight (0.06) under-weighted given Gulf consanguinity / hereditary anaemias",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "UAE",
    "reasons": [
     "Severity med, provenance UAE. HEM is equal-lowest (0.06) with generic single anchors (hb/plt/spo2/ferr) and no thalassaemia/haemoglobinopathy/G6PD frame. In high-consanguinity Gulf populations beta-thalassaemia trait/disease and G6PD deficiency are highly prevalent (UAE national premarital screening programme), so haematologic burden is disproportionately important and generic Hb/ferritin anchors misclassify thalassaemia carriers. Confirmed by refuter."
    ],
    "actions": [
     "Add a haemoglobinopathy/G6PD frame (MCV/MCH, Hb electrophoresis flags) and reconsider HEM weight for Gulf cohorts; at minimum flag that generic anchors misclassify carriers."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived.",
+   "verdict": null
   },
   "range:LDL:base": {
    "item": "LDL-C anchors [100, 160, hi] are flat — ignore risk-stratified targets and ApoB redundancy",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "mixed",
    "reasons": [
     "Severity med, provenance mixed/UAE. Fixed ldl th[100,160,'hi'] ignores that ACC/AHA and ESC/NICE set LDL goals by absolute CVD risk (<70 or <55 mg/dL for high/very-high risk); post-MI profile 5 LDL 65 is on-target yet scores merely green, and a flat 160 red is far too permissive for a premature-CVD Gulf cohort. Both ldl and apob are CRITICAL in CV and largely collinear, so the critical cascade can double-fire on one lipid construct. US vs UK: ACC/AHA risk-based vs ESC/NICE very-high-risk <55 mg/dL; mg/dL (US) vs mmol/L (UK). Confirmed by refuter."
    ],
    "actions": [
     "Make LDL/ApoB targets risk-tier dependent (primary vs secondary prevention), add mmol/L, and resolve the ApoB+LDL double-critical collinearity."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ESC/EAS 2019",
+   "resolution": "Mis-cited ACC/AHA (BP-guideline alias) corrected to ESC/EAS 2019; very-high-risk goal <55 (and <70 high-risk) added to green band; engine th [100,160] retained.",
+   "verdict": null
   },
   "range:SBP:base": {
    "item": "Systolic BP anchors [120, 140, hi] — hybrid matching neither ACC/AHA nor NICE; no age-banded J-curve; diastolic absent",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "mixed",
    "reasons": [
     "Severity med, provenance mixed. sbp th[120,140,'hi'] is the sole VBP input and CRITICAL in CV; the age gate references a 65+ BP J-curve but the marker has one flat threshold with no age band, so the older-adult/frailty frame is undeliverable, and diastolic is ignored entirely. US vs UK: ACC/AHA 2017 HTN >=130/80 vs NICE >=140/90 (clinic) — the 140 red follows NICE while the 120 yellow nods to ACC/AHA, matching neither cleanly. Confirmed by refuter."
    ],
    "actions": [
     "Pick and cite a guideline (or provide both US/UK frames), add diastolic, and deliver the age-banded J-curve anchors the gate advertises."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "NICE NG136 (ESC 2023)",
+   "resolution": "≥140/90 cut re-cited from ACC/AHA (which is ≥130/80) to NICE NG136 / ESC 2023 — the convention this value actually follows and which Gulf practice adopts. Values unchanged; citation corrected via apply_range_corrections.py.",
+   "verdict": null
   },
   "gap:consanguinity-g6pd": {
    "item": "GAP — consanguinity / family-history and G6PD not captured; HEM weight static",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "UAE",
    "reasons": [
     "Severity med, provenance UAE. High first-cousin marriage rates in the UAE drive autosomal-recessive disease (thalassaemia, G6PD deficiency, inborn errors), but nothing captures consanguinity or family history, and G6PD (important for oxidative-drug/fava-bean haemolysis and for interpreting Hb/HbA1c) is absent; the HEM weight (0.06) is fixed and cannot rise for an at-risk carrier. Confirmed by refuter."
    ],
    "actions": [
     "Capture consanguinity/family-history and G6PD status; allow HEM emphasis to rise for carriers; use G6PD/haemoglobinopathy status to guard HbA1c and Hb/ferritin interpretation."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "gap:pregnancy-frame-undeliverable": {
    "item": "Pregnancy frame advertised by the preg gate but not deliverable from marker anchors",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Severity med, provenance intl/UAE. The preg gate promises 'physiologic-shift ranges and pre-eclampsia/GDM anchors' but markers carry only single generic anchors: profile 7 Hb 11.5 (normal in pregnancy) scores yellow vs the generic 13, glu 96 has no GDM/OGTT frame, BP 112 has no pre-eclampsia anchor. Safety-relevant given regional GDM/pre-eclampsia prevalence. Confirmed by refuter."
    ],
    "actions": [
     "Provide pregnancy-specific anchors (Hb ~11, GDM OGTT thresholds, pre-eclampsia BP/UACR) or remove the unfulfilled claim from the gate."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "gap:weight-evidence-inversion": {
    "item": "Weights sum to 1.00 but FIT/SLP/MCS over-weighted on the weakest, lowest-trust evidence",
    "area": "pillar_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "mixed",
    "reasons": [
     "Severity med, provenance mixed. The 12 weights sum to exactly 1.00 (engine_guard passes), but the three discretionary-lifestyle pillars carry the joint-highest weights (0.10 each) on wearable/PRO data (q_source 0.8/0.7, lowest trust) while hard-outcome lab pillars sit at 0.06-0.07 (q_source 0.95) — inverting the evidence hierarchy so the highest weights sit on the lowest-confidence, most-imputed inputs. Confirmed by refuter."
    ],
    "actions": [
     "Justify weighting the lowest-trust data streams highest, or rebalance so weight tracks both clinical-outcome attributability and data reliability."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "pillar-weights.json now carries calibration_status=expert-prior + per-pillar basis + a provenance/calibration plan (fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity strata). Magnitudes unchanged pending that calibration — annotated, not yet evidence-derived.",
+   "verdict": null
   },
   "reservoir:ath": {
    "item": "Reservoir 'ath' LDL-C anchors [good=90, bad=170] mg/dL not risk-stratified",
@@ -1304,19 +1726,27 @@
    ],
    "actions": [
     "Risk-tier atherogenic LDL/ApoB/SBP anchors by ASCVD tier and secondary-prevention status; lower LDL 'good' toward ~70 (risk-gated); expose non-HDL for NICE alignment; cite ESC/EAS 2019 and ACC/AHA 2018."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off.",
+   "verdict": null
   },
   "reservoir:gly": {
    "item": "Reservoir 'gly' HbA1c anchor bad=7% saturates at treatment target, not max burden",
    "area": "reservoir_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "mixed",
    "reasons": [
     "Raised by 3 reviewers, not overturned. ADA <7% is a treatment TARGET (=53 mmol/mol IFCC), not maximum glycemic burden; uncontrolled diabetes runs 8-14%, so the load curve saturates too early to discriminate moderate from severe hyperglycemia. glu[90,140] also mixes fasting frame (diabetes cut 126, uncontrolled 180-300) with the 2-h OGTT IGT value 140. No mmol/mol path; HbA1c unreliable in hemoglobinopathy. Provenance US/mixed. US/UK divergence: % (NGSP) vs mmol/mol (IFCC). UAE: high thalassaemia/G6PD prevalence makes HbA1c unreliable with no gate routing to fasting glucose/fructosamine."
    ],
    "actions": [
     "Raise HbA1c 'bad' to ~9-10% (75-86 mmol/mol); set fasting-glucose 'bad' to ~180-200 mg/dL; add mmol/mol anchor pair and a hemoglobinopathy gate; cite ADA Standards of Care 2024/2025."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ADA SoC 2024 (expert-prior anchor)",
+   "resolution": "gly HbA1c 'bad' anchor 7%→9% so the burden axis no longer saturates at the treatment target; annotated expert-prior pending calibration.",
+   "verdict": null
   },
   "range:BodyFat:base": {
    "item": "Reservoir 'adi' body-fat anchors [good=18, bad=34] % sex-blind",
@@ -1328,31 +1758,43 @@
    ],
    "actions": [
     "Sex-stratify body-fat anchors (men ~15-20 good/~28-32 bad; women ~22-28 good/~38-40 bad) per ACSM age-sex norms; wire to the sex gate; document the absence of a hard guideline cut-point."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off.",
+   "verdict": null
   },
   "reservoir:hepf": {
    "item": "Reservoir 'hepf' FIB-4 anchor [good=0.9, bad=3] age-blind, inconsistent with marker.th=2.67",
    "area": "reservoir_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Raised by 2 reviewers (anchor + age-adjustment), not overturned. FIB-4 high cut for advanced fibrosis is 2.67 (used in marker.th in this same file) yet reservoir bad=3 — internal inconsistency. The low cut is age-dependent (1.30 if <65, 2.0 if >=65 per AASLD MASLD 2023 / AGA pathway) but applied age-blind, systematically over-flagging the frail-elderly (78M) profile. Provenance US, citation weak. US/UK divergence: NICE prefers ELF; AASLD/AGA use age-adjusted FIB-4."
    ],
    "actions": [
     "Apply age-adjusted FIB-4 low cut (1.3 if <65, 2.0 if >=65); reconcile reservoir bad=3 with marker bad=2.67; cite AASLD 2023 / AGA pathway."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off.",
+   "verdict": null
   },
   "range:CRP:base": {
    "item": "Reservoir 'infl' CRP anchor [good=0.5, bad=8] mg/L conflates chronic and acute, fires false criticals",
    "area": "reservoir_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Raised by 2 reviewers, not overturned. AHA/CDC 2003 hsCRP strata cap chronic interpretation at >3 (high) and exclude >10 as acute infection; bad=8 places max chronic load just below the acute-exclusion threshold (marker th red=10), conflating acute-phase with chronic inflammatory burden. CRP is critical in the inf pillar (inf.critical=['crp']) with no acute-vs-chronic guard or AHA-required repeat measurement, so transient illness fires the critical cascade. Provenance US. US/UK divergence: hsCRP CV strata are US-centric (AHA/CDC); NICE does not routinely use hsCRP; ESC lists it as a risk modifier only."
    ],
    "actions": [
     "Set 'bad' to ~3-5 mg/L for chronic burden; flag hsCRP >10 as acute (exclude, not max score); require repeat measurement before critical fire; reconsider CRP as 'critical'; cite AHA/CDC 2003."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off.",
+   "verdict": null
   },
   "range:VO2:base": {
    "item": "Reservoir 'crf' VO2max anchors [good=45, bad=28] mL/kg/min age/sex-blind, wearable-sourced",
@@ -1364,19 +1806,27 @@
    ],
    "actions": [
     "Replace absolute anchors with age-sex percentile mapping (FRIEND registry / ACSM 11th ed); gate by existing age/sex gates; down-weight wearable-estimated VO2 confidence vs CPET; cite AHA 2016 (CRF as clinical vital sign)."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off.",
+   "verdict": null
   },
   "range:Tscore:base": {
    "item": "Reservoir 'bon' T-score anchors [good=0, bad=-2.5] SD applied age/sex-blind to young adults",
    "area": "reservoir_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Raised by 2 reviewers, not overturned. WHO/ISCD validate T-score and the -2.5 osteoporosis class ONLY for postmenopausal women and men >=50 by DXA; Z-scores are required for younger adults, but the spec applies T-score age/sex-blind to reproductive-age/young profiles (28F/35F) with no gate. Provenance intl, citation weak. US/UK divergence: NICE/UK uses FRAX-based intervention thresholds; US (BHOF/NOF) uses T-score <=-2.5 plus FRAX — spec uses bare T-score without FRAX."
    ],
    "actions": [
     "Restrict T-score to postmenopausal women / men >=50; use Z-score for younger adults; gate by age/sex/lifestage; integrate FRAX for UK alignment; cite WHO 1994 / ISCD Official Positions."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off.",
+   "verdict": null
   },
   "range:VitD:base": {
    "item": "Reservoir 'micr' vitamin-D anchors [good=40, bad=18] ng/mL too aggressive, US-biased, no nmol/L path",
@@ -1388,7 +1838,11 @@
    ],
    "actions": [
     "Lower 'good' toward 20-30 ng/mL per IOM/NAM; add nmol/L conversion (x2.496) / unit gate; use population-relative scoring; caveat Endocrine Society 2024; cite IOM 2011."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "IOM 2011 (expert-prior anchor)",
+   "resolution": "micr vitD anchors re-based to IOM (replete 30, deficient <12 ng/mL) with nmol/L path; B12 anchor unit-tagged (pmol/L) via units.json. Annotated expert-prior pending calibration.",
+   "verdict": null
   },
   "range:Hb:base": {
    "item": "Reservoir 'oxd' hemoglobin anchors [good=14.5, bad=10] g/dL sex/pregnancy-blind",
@@ -1400,7 +1854,11 @@
    ],
    "actions": [
     "Sex-stratify Hb (men good~15/anemia<13; women good~13.5/anemia<12; pregnancy<11) wired to sex+pregnancy gates; add a thalassaemia/hemoglobinopathy frame so low Hb+low MCV is not auto-routed to iron deficiency; cite WHO 2011."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off.",
+   "verdict": null
   },
   "range:UACR:base": {
    "item": "Reservoir 'renr' UACR anchor [good=10, bad=300] mg/g — US unit, no mg/mmol conversion gate",
@@ -1412,7 +1870,11 @@
    ],
    "actions": [
     "Add mg/mmol conversion (÷8.84) / unit-system gate; bind anchor explicitly to mg/g; cite KDIGO 2024."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off.",
+   "verdict": null
   },
   "gap:reservoir-anchor-units": {
    "item": "Reservoir anchors carry no units field — latent unit-coupling defect across all lab-fed reservoirs",
@@ -1424,7 +1886,11 @@
    ],
    "actions": [
     "Bind each reservoir anchor pair to an explicit unit OR canonicalize all lab inputs to one system at ingestion before nrm(); add a unit-system gate (US vs UK/EU)."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "SI canonical",
+   "resolution": "data/units.json supplies the canonical unit per assay that reservoir anchors reference; anchor values themselves are re-stated with units under Package D (reservoir provenance) — pending sign-off.",
+   "verdict": null
   },
   "gap:unit-method-gate": {
    "item": "GAP: no unit-system / measurement-method gate among gates[]",
@@ -1436,7 +1902,11 @@
    ],
    "actions": [
     "Add a unit-system gate that canonicalizes all lab inputs before nrm(), and a method/provenance weighting so wearable/self-report-fed reservoirs are confidence-discounted relative to lab."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "SI canonical",
+   "resolution": "Unit-SYSTEM gate resolved (inbound conversion to SI). Measurement-METHOD gate (e.g. DEXA vs BIA, standardised office BP) is specified as a required ingest gate — pending clinician sign-off.",
+   "verdict": null
   },
   "coupling:all": {
    "item": "reservoir_coupling coefficients (0.08-0.15) uncited, arbitrary, unit-fragile",
@@ -1448,55 +1918,75 @@
    ],
    "actions": [
     "Cite effect-size sources for each magnitude or label explicitly as heuristic expert-prior assumptions subject to sensitivity analysis; document directionality evidence separately; gate cross-reservoir offsets by source confidence; ensure coupled loads are unit-canonicalized and total inflow keeps L_j in [0,1]."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off.",
+   "verdict": null
   },
   "coupling:ath<-renr": {
    "item": "GAP: no renal->atherogenic coupling despite strong CV-renal axis",
    "area": "reservoir_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Raised by 1 reviewer but a genuine coverage gap, not overturned; retained under the severity/validity path as part of coupling coverage. 'ath' receives coupling from gly and infl but not renal function, despite KDIGO designating CKD a CHD risk-equivalent and eGFR/UACR being in ESC SCORE2 and ACC/AHA PREVENT 2023; the CKD-stage-3 profile (60M, eGFR 45, UACR 60) would not propagate elevated CV burden to the atherogenic reservoir. Provenance intl. US/UK divergence: both US (PREVENT 2023) and EU (SCORE2) recognize CKD as CV risk; coupling absent for both. UAE: large South-Asian/African-origin populations with elevated CKD risk."
    ],
    "actions": [
     "Add a renal->CV coupling (CKD as ASCVD multiplier) per KDIGO and ESC SCORE2 / ACC PREVENT 2023; document as a coverage gap."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 14)",
+   "resolution": "calc-graph reservoirs now carry basis + calibration_status + input_units (SI from units.json); couplings carry a basis. Anchors annotated as expert-priors with the renal→atherogenic coupling gap + vitD double-count noted; values pending cohort calibration & sign-off.",
+   "verdict": null
   },
   "gap:unmapped-markers": {
    "item": "GAP: TG, RHR, HRV, HDL, K+, WBC, PLT, TSH, OSA, MVPA, omega3 feed no reservoir",
    "area": "reservoir_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "mixed",
    "reasons": [
     "Raised by 1 reviewer, not overturned; data-confirmed coverage design gap. Several scored markers never enter any reservoir input — notably OSA/AHI (a 'critical' slp marker and major CV/metabolic/sleep amplifier per AASM), TG/HDL (atherogenic dyslipidemia), TSH (the hypothyroid profile's primary abnormality), RHR/HRV (autonomic), K+ (renal/cardiac). Provenance mixed. US/UK divergence: N/A — coverage design gap. UAE: working-age cohort with high OSA/metabolic-syndrome burden."
    ],
    "actions": [
     "Map load-bearing markers into reservoirs (OSA->sld/ath/gly; TG/HDL->ath or dyslipidemia reservoir; TSH->endocrine reservoir; RHR/HRV->autonomic reservoir); document deliberate exclusions."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (markers): DBP, Lp(a), non-HDL-C, sodium, free T4 + fasting/method fields scoped with a concrete add/derive plan, rendered on production-gaps.html. Engine implementation pending sign-off.",
+   "verdict": null
   },
   "rangevar:SBP:age:65plus": {
    "item": "Reservoir 'ath'/'vbp' SBP anchors [good=115, bad=160] mmHg under-weight continuous risk, no age J-curve, no US/UK HTN-definition split",
    "area": "reservoir_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "mixed",
    "reasons": [
     "Raised by 2 reviewers, not overturned. good=115 is reasonable (optimal <120) but bad=160 reaches only Stage-2/severe HTN, under-weighting continuous risk from ~115 mmHg (Lewington/PSC: every 20 mmHg doubles CV mortality); marker th=[120,140] and reservoir bad=160 assert a single BP frame, and the 65+ J-curve the age gate references is never implemented in any anchor. Provenance mixed. US/UK divergence: ACC/AHA 2017 HTN >=130/80 vs NICE/ESC >=140/90 — bad=160 matches neither single threshold. UAE: frail 78M (SBP 142) risks over-treatment under a flat aggressive frame."
    ],
    "actions": [
     "Lower 'bad' toward 140-150 to align with grade-1/Stage-2 HTN; add age-banded SBP anchors (65+ J-curve); document the guideline frame; cite ACC/AHA 2017 and ESC/ESH 2023-24."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Valid variation-level refinement (DOI fix / US-UK split / risk-category gating / race-free CKD-EPI validation / pregnancy trimester ranges / age J-curve). Base range corrected; this dimension scoped for a follow-up variation pass.",
+   "verdict": null
   },
   "gap:no-dbp": {
    "item": "GAP: no diastolic BP marker/anchor anywhere",
    "area": "reservoir_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Raised by 1 reviewer, not overturned; confirmed in data. Only SBP is modelled; DBP matters for isolated diastolic HTN in younger adults and the J-curve in elderly/CKD, and both ACC/AHA and NICE diagnose HTN on systolic OR diastolic. Provenance intl. US/UK divergence: both US and UK diagnose on systolic and/or diastolic. UAE: working-age expat cohort with isolated diastolic HTN risk."
    ],
    "actions": [
     "Add a diastolic BP marker with age-appropriate anchors."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (markers): DBP, Lp(a), non-HDL-C, sodium, free T4 + fasting/method fields scoped with a concrete add/derive plan, rendered on production-gaps.html. Engine implementation pending sign-off.",
+   "verdict": null
   },
   "rangevar:HbA1c:unit:mmol_mol": {
    "item": "marker hba1c % only (NGSP), no mmol/mol path, unreliable in hemoglobinopathy with no gate",
@@ -1508,19 +1998,27 @@
    ],
    "actions": [
     "Support mmol/mol units; add a hemoglobinopathy gate that down-weights HbA1c and substitutes glucose/fructosamine; consider ethnicity adjustment."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "IFCC mmol/mol (UK·ESC·Gulf)",
+   "resolution": "Duplicate of the IFCC unit gap — resolved by data/units.json hba1c SI path (haemoglobinopathy gate tracked separately under range:hba1c:base).",
+   "verdict": null
   },
   "selfreport:allo": {
    "item": "allo reservoir built entirely from self-report PROs (PHQ-9/GAD-7/ISI) for a biological 'allostatic' burden",
    "area": "reservoir_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Raised by 1 reviewer, not overturned; construct-validity mismatch. Allostatic load is a physiologic multi-system construct (cortisol, BP variability, inflammatory/metabolic mediators), yet the reservoir is built solely from subjective PRO instruments (phq/gad/isi, source='pro'), conflating symptom severity with physiologic load and mislabeling the reservoir vs its inputs. Provenance US, citation weak. US/UK divergence: PHQ-9/GAD-7/ISI internationally validated and NICE-endorsed — no band divergence; method is self-report only."
    ],
    "actions": [
     "Relabel the reservoir as psychological symptom load OR add at least one physiologic allostatic mediator; document all inputs are self-report and lower their confidence accordingly."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report-sourced reservoir nuance; scoped with the reservoir calibration pass (Doc 14).",
+   "verdict": null
   },
   "critical:phq": {
    "item": "GAP: PHQ-9 item-9 (suicidality) override absent",
@@ -1532,7 +2030,11 @@
    ],
    "actions": [
     "Add an explicit PHQ-9 item-9 suicide-risk override that fires independently of the total-score band."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "PHQ-9 band collapse + item-9 (suicidality) hard override is a SAFETY gate — routed to the safety layer (Doc 16); pending clinician sign-off, not a silent threshold tweak.",
+   "verdict": null
   },
   "const:r_cohort": {
    "item": "cohort percentile r_cohort sourced from NHANES / UK-Biobank only — no Gulf/MENA reference",
@@ -1544,7 +2046,11 @@
    ],
    "actions": [
     "Acquire/weight to a Gulf/MENA reference cohort, or ethnicity-stratify percentile curves before enabling cohort-raise for this population."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "constants.json now declares calibration_status=expert-prior + per-symbol basis; each flagged constant (R_crit confidence-scaling, flat PURE_CRIT_CAP, q_impute/Rp_impute on criticals, cov_green_floor, NHANES/UK-Biobank-only r_cohort) is tagged for cohort calibration with ethnicity/region strata. Values unchanged pending sign-off.",
+   "verdict": null
   },
   "gap:g6pd": {
    "item": "GAP: G6PD deficiency not represented (markers/reservoirs/gates)",
@@ -1556,7 +2062,11 @@
    ],
    "actions": [
     "Add a G6PD status flag/gate feeding the hematologic pillar and drug-safety nudges for the Gulf cohort."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "gap:hemoglobinopathy": {
    "item": "GAP: thalassaemia/hemoglobinopathy frame absent across hem, gly and iron",
@@ -1568,7 +2078,11 @@
    ],
    "actions": [
     "Add a hemoglobinopathy gate (carrier/disease) that adjusts Hb anchors, suppresses iron-deficiency interpretation, and routes glycaemia off HbA1c."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "rangevar:B12:unit:pmol_L": {
    "item": "micr B12 anchor in pg/mL (good=400, bad=200) — US unit, no pmol/L conversion gate",
@@ -1580,7 +2094,11 @@
    ],
    "actions": [
     "Add pmol/L conversion (x0.738) / unit-system gate; bind anchor explicitly to pg/mL."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "IOM 2011 (expert-prior anchor)",
+   "resolution": "micr vitD anchors re-based to IOM (replete 30, deficient <12 ng/mL) with nmol/L path; B12 anchor unit-tagged (pmol/L) via units.json. Annotated expert-prior pending calibration.",
+   "verdict": null
   },
   "critical:k": {
    "item": "k (potassium) marker one-sided [5.0,6.0,hi] — hypokalaemia invisible, critical only on high side",
@@ -1592,31 +2110,43 @@
    ],
    "actions": [
     "Make potassium a two-sided (U-shaped) marker so low K also flags and fires the critical cascade."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Potassium is clinically two-sided (hypo <3.5 / hyper >5.0) but the engine th is one-sided 'hi'. Two-sided support is an engine structural change — scoped, pending sign-off.",
+   "verdict": null
   },
   "rangevar:TSH:age:pregnancy": {
    "item": "tsh marker th [4.5,10] flat — no age/pregnancy framing despite pregnancy gate",
    "area": "reservoir_weights",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "mixed",
    "reasons": [
     "Raised by 1 reviewer, not overturned. TSH upper reference is age-dependent (rises in older adults) and trimester-specific in pregnancy; flat 4.5 over-treats the elderly (frail 78M) and is wrong for the pregnant 31F, and the existing pregnancy gate provides no TSH override. Provenance mixed, citation weak. US/UK divergence: ATA vs NICE differ on treating subclinical hypothyroidism (4.5-10); both use trimester/age-specific TSH. UAE: pregnant and elderly profiles in cohort."
    ],
    "actions": [
     "Add age- and pregnancy-specific TSH anchors via the existing gates; cite ATA and NICE."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Valid variation-level refinement (DOI fix / US-UK split / risk-category gating / race-free CKD-EPI validation / pregnancy trimester ranges / age J-curve). Base range corrected; this dimension scoped for a follow-up variation pass.",
+   "verdict": null
   },
   "rangevar:FIB-4:age:over65": {
    "item": "FIB-4 bands <1.3 / 1.3-2.67 / >2.67 (all ages), src 'AASLD fibrosis' (HEP, weight .25)",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Provenance US/AASLD. Cut-points are correct for general adults, but current AASLD MASLD 2023 / EASL specify an age-adjusted lower cut-off of 2.0 (not 1.3) for patients >65y to reduce false positives; the spec applies a single 1.3 cut to all ages, which is population-inappropriate for older adults. US/UK divergence: none material. UAE note: applies to ageing Gulf cohort."
    ],
    "actions": [
     "Apply age-adjusted lower cut-off of 2.0 for age >65 per AASLD MASLD 2023 / EASL."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "rangevar:Waist circumference:ethnicity:southasian": {
    "item": "Waist circumference cut-offs <94 M / <80 F ... >=102 M / >=88 F, src 'IDF' (BCM/MET, weight .12)",
@@ -1628,7 +2158,11 @@
    ],
    "actions": [
     "Apply IDF ethnicity-specific waist cut-points (>=90 M / >=80 F for South/East Asian and Arab) or switch primary metric to waist-to-height ratio >0.5; wire the existing ethnicity answer into the waist banding."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "IDF 2006 (South-Asian)",
+   "resolution": "European cuts (94/102) replaced with IDF South-Asian/Gulf cuts (male ≥90, female ≥80) as the cohort default; engine th [94,102]→[90,100]; re-cited IDF 2006.",
+   "verdict": null
   },
   "rangevar:BMI:ethnicity:asian": {
    "item": "BMI red >=30 green 18.5-24.9, src 'WHO (ethnicity-adj)' (BCM, weight .12)",
@@ -1640,19 +2174,27 @@
    ],
    "actions": [
     "Encode the WHO Asian cut-points (>=23 overweight / >=27.5 obese) conditioned on the ethnicity question, or remove the misleading '(ethnicity-adj)' claim."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "range:ApoB:base": {
    "item": "ApoB green <80 (<65 high-risk) mg/dL, src 'ESC/EAS' (CV, weight .18)",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "EU",
    "reasons": [
     "Provenance EU/ESC-EAS. Flagged on severity-high-equivalent unit grounds (the threshold/tiering finding was overturned because numbers match ESC/EAS 2019 and the spec does tier <65 to high-risk). Retained issue: mg/dL-only with no SI unit. US/UK divergence: ApoB is reported in g/L in many UK/EU labs (0.8 g/L = 80 mg/dL); spec uses mg/dL only. UAE note: UAE labs emit SI -- a mg/dL-only schema silently corrupts g/L feeds."
    ],
    "actions": [
     "Restate as ESC/EAS 2019 risk-tiered goals (<65 very-high, <80 high, <100 moderate) with year; add g/L SI unit and an explicit unit field on ingest."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ESC/EAS 2019",
+   "resolution": "ApoB risk-tiered to ESC/EAS 2019 goals (<65 very-high, <80 high, <100 moderate); green <90; engine th [80,100]→[100,120]; re-cited.",
+   "verdict": null
   },
   "gap:si-unit-canonicalization": {
    "item": "Fasting glucose / lipids reported in mg/dL only (CV/MET unit-safety)",
@@ -1664,19 +2206,27 @@
    ],
    "actions": [
     "Adopt a mandatory unit field per analyte and a canonical-SI internal representation platform-wide; provide dual-unit band displays; never assume mg/dL."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "SI canonical",
+   "resolution": "data/units.json declares canonical=SI and converts all inbound feeds to SI before scoring; conventional shown alongside.",
+   "verdict": null
   },
   "rangevar:BMD T-score:population:premenopausal": {
    "item": "BMD T-score bands >=-1.0 / -1.0 to -2.5 / <=-2.5, src 'ISCD/WHO' (BCM, weight .20)",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance intl/ISCD-WHO. WHO densitometric T-score classification applies only to postmenopausal women and men >=50; ISCD specifies Z-scores (not T-scores) for premenopausal women, men <50, and children, so applying T-score osteoporosis cut-offs generally is population-inappropriate (bands themselves are correct for the right population). US/UK divergence: none material. UAE note: applies across the mixed-age cohort."
    ],
    "actions": [
     "Use Z-score with age/sex adjustment for premenopausal women and men <50 per ISCD; restrict T-score classification to >=50/postmenopausal."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "range:Omega-3 Index:base": {
    "item": "Omega-3 index green >=8% red <4%, src 'literature' (NUT, weight .14)",
@@ -1688,7 +2238,11 @@
    ],
    "actions": [
     "Down-weight or label the Omega-3 Index as investigational; no guideline endorses a target."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "gap:no-suicide-risk-instrument": {
    "item": "GAP: No suicide-risk follow-up instrument (C-SSRS) despite PHQ-9 item-9 / EPDS item-10 crisis pathway",
@@ -1700,7 +2254,11 @@
    ],
    "actions": [
     "Add C-SSRS (Columbia) or equivalent as the triggered risk-assessment instrument wired into the crisis pathway; cite Joint Commission NPSG 15.01.01 / USPSTF."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (self_report): C-SSRS suicide-risk escalation (SAFETY, Doc 16), instrument↔question-bank linkage, IPAQ↔wearable + cadence reconciliation. Scoped with plan; implementation pending sign-off.",
+   "verdict": null
   },
   "gap:instruments-not-in-question-bank": {
    "item": "GAP: Instruments catalogued but absent from question-bank (EPDS, IIEF-5, MENQOL, MINI-COG, SARC-F, DAST-10, PHQ-15)",
@@ -1712,43 +2270,59 @@
    ],
    "actions": [
     "Field these instruments verbatim in the question-bank with correct cadence/eligibility gating and scoring, or mark them as not-yet-implemented to avoid implying coverage that does not exist."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (self_report): C-SSRS suicide-risk escalation (SAFETY, Doc 16), instrument↔question-bank linkage, IPAQ↔wearable + cadence reconciliation. Scoped with plan; implementation pending sign-off.",
+   "verdict": null
   },
   "selfreport:AUDIT-C": {
    "item": "AUDIT-C at-risk bands >=4 M / >=3 F, src 'Bush 1998 (WHO)'; standard-drink size undefined",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Provenance US. Provenance error: AUDIT-C is Bush 1998 (US/VA) while the WHO instrument is the full AUDIT (Saunders 1993), so '(WHO)' is wrong; cut-points >=4 M/>=3 F are US/VA thresholds (some use >=3 both sexes). US/UK divergence: a US standard drink = 14 g alcohol, a UK unit = 8 g, WHO = 10 g; cutoffs are calibrated to the 14 g drink, so applying them to UK-unit or intl self-report mis-estimates intake by up to ~75%. UAE note: majority-Muslim Gulf cohort -- standard-drink framing is culturally mismatched and the drink-size/population calibration is unaddressed; regional exposures (khat/areca-nut) are not instrumented."
    ],
    "actions": [
     "Correct attribution (AUDIT-C = Bush 1998; WHO = full AUDIT); pin the standard-drink gram definition per locale and convert UK units; consider making routine alcohol screening conditional rather than Core for this cohort."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "selfreport:mMRC-dyspnoea": {
    "item": "MRC vs mMRC Dyspnoea: grade 1-5 labelled 'mMRC', src 'Fletcher 1959 (mMRC)'",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance intl/UK. Provenance/scale confusion: the original Fletcher/MRC scale is graded 1-5 but the modified mMRC used in current GOLD/ATS COPD guidance is graded 0-4; the spec labels it 'mMRC' but uses 1-5 grading with 'grade >=4 stops after 100m' (which is original MRC numbering -- in mMRC, 100m-stop = grade 2 and grade 4 = too breathless to leave house), mislabelling the instrument and band semantics. US/UK divergence: original MRC 1-5 vs modified mMRC 0-4 (used by NICE/GOLD). UAE note: none specific."
    ],
    "actions": [
     "Decide MRC (1-5) or mMRC (0-4) and align grade range, band descriptors, and citation consistently; GOLD/ATS use mMRC 0-4."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "selfreport:mcs-pillar-citations": {
    "item": "MCS pillar self-report markers cited only as 'validated' (PHQ-9/GAD-7/PSS/UCLA-3/cog/WHO-5)",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance none/intl. In pillars.json the MCS markers are sourced only as 'validated' with no author/year/version, unlike instruments.json -- uncited at the pillar/weight level, preventing verification that bands (PHQ-9 >=15 red, GAD-7 >=15 red) match the instrument. The cognitive screen band is 'normal/borderline/impaired' with no instrument named (Mini-Cog >=3 vs MoCA <26 differ materially). Only PHQ-9 encodes the item-9 safety override; GAD-7/PSS/UCLA-3 give no safety routing. US/UK divergence: none material. UAE note: no note on validated Arabic/Urdu/Tagalog versions or locally re-validated cut-offs, and somatic-presentation of depression in Gulf/South-Asian populations can depress PHQ-9 sensitivity."
    ],
    "actions": [
     "Carry the specific instrument+year citations from instruments.json into pillars.json; name the cognitive screen (Mini-Cog vs MoCA) so bands are verifiable; document validated regional-language versions and culturally-adjusted thresholds."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "weight:FIT": {
    "item": "VO2max / Resting HR / HRV / sleep stages -- wearable measurement validity",
@@ -1760,67 +2334,91 @@
    ],
    "actions": [
     "Apply a measurement-method confidence discount for estimated/wearable inputs; normalize HRV/VO2max to device class and protocol; reserve the highest weights for directly measured values; close the p10-p20 band gap."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "selfreport:DAST-10": {
    "item": "DAST-10 -- item-count mismatch (6 items, 'Sum 0-10') and not in question-bank",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance intl. instruments.json names DAST-10 with scoring 'Sum 0-10' (implying 10 items) but lists only 6 items, and grep returns 0 question-bank references -- internal inconsistency plus a delivery gap. US/UK divergence: none. UAE note: substance-use pathway not actually fielded."
    ],
    "actions": [
     "List all 10 DAST items (or rename to the correct short form) and wire it into the substance pathway in the question-bank."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "selfreport:PHQ-15": {
    "item": "PHQ-15 -- item-count mismatch (11 items, 'Sum 0-30') and not in question-bank",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance intl. Named PHQ-15 (15 somatic symptoms, scoring 0-30) but only 11 items listed and grep returns 0 question-bank references -- count error plus delivery gap; PHQ-15 includes sex-specific items that interact with the platform's male/female split. US/UK divergence: none. UAE note: somatic-presentation of distress is more common in Gulf/South-Asian populations, making PHQ-15 coverage clinically relevant."
    ],
    "actions": [
     "Complete the 15-item sex-aware list and wire into the question-bank, or drop the PHQ-15 claim."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "selfreport:standard-drink-definition": {
    "item": "AUDIT-C / AUDIT 'standard drink' definition (US vs UK)",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Provenance US. Items reference 'standard drinks' and '>=6 drinks on one occasion' with at-risk >=4 M/>=3 F calibrated to the US 14 g drink. US/UK divergence: US standard drink 14 g vs UK unit 8 g vs WHO 10 g -- scoring is not comparable across locales and undefined drink size mis-estimates intake substantially. UAE note: UAE/intl self-report drink size and population calibration are unaddressed. (Distinct from the AUDIT-C provenance flag: this is the cross-locale scoring-calibration defect.)"
    ],
    "actions": [
     "Pin the standard-drink gram definition in the item, convert UK units, and re-validate cut-offs for the deployment population."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "gap:ipaq-wearable-reconciliation": {
    "item": "IPAQ-SF self-report vs wearable cross-check -- measurement reconciliation",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance intl. IPAQ-SF converts self-report to MET-min/week and is cross-checked vs wearable steps/MVPA, but IPAQ-SF substantially over-reports activity (self-report vs accelerometer correlation r~0.3); using it as a scored FIT input without a documented reconciliation rule (which source wins on conflict) is a measurement-validity gap, and the MVPA pillar marker src 'WHO' is a guideline not a measurement method, leaving how MVPA is actually measured unstated. US/UK divergence: none material. UAE note: none specific."
    ],
    "actions": [
     "Define the self-report-vs-wearable reconciliation rule and tag MVPA with its measurement source (wearable vs IPAQ)."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (self_report): C-SSRS suicide-risk escalation (SAFETY, Doc 16), instrument↔question-bank linkage, IPAQ↔wearable + cadence reconciliation. Scoped with plan; implementation pending sign-off.",
+   "verdict": null
   },
   "gap:cadence-reconciliation": {
    "item": "Question-bank cadence not reconciled with instrument 'Core/every-visit' claims",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance intl. instruments.json marks PHQ-2, GAD-2, AUDIT-C, IPAQ-SF, DIET, SUBSTANCE as 'Core (every visit)', but question-bank cadence counts are quarterly 182 / annual 113 / Core 40 / once 12 / on-trigger 7. With only 40 Core items and 7 on-trigger, the every-visit ultra-brief screens (PHQ-2/GAD-2) cannot be confirmed as fired every visit and the many 'on-trigger' instruments cannot be reconciled with the sparse on-trigger set -- an auditable scheduling inconsistency. US/UK divergence: none. UAE note: none specific."
    ],
    "actions": [
     "Cross-validate each instrument's stated cadence against actual question-bank scheduling; reconcile the sparse on-trigger set."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (self_report): C-SSRS suicide-risk escalation (SAFETY, Doc 16), instrument↔question-bank linkage, IPAQ↔wearable + cadence reconciliation. Scoped with plan; implementation pending sign-off.",
+   "verdict": null
   },
   "selfreport:diet-quality": {
    "item": "Diet-quality screener -- scale conflation (MEDAS 0-14 vs HEI 0-100)",
@@ -1832,19 +2430,27 @@
    ],
    "actions": [
     "Pick one validated diet index (MEDAS 0-14 or HEI 0-100), keep its native scale, and cite it specifically."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "rangevar:STOP-BANG-BMI:ethnicity:asian": {
    "item": "STOP-BANG BMI>35 / Neck>40 cm not ethnicity-adjusted (SLP)",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance intl. The STOP-BANG BMI item is 'BMI>35' (US/original Chung 2008); for Asian/South-Asian and many UAE-resident populations OSA and metabolic risk occur at lower BMI (WHO Asian cut-points lower), so a fixed BMI>35 under-detects OSA in the deployment population, and the neck>40 cm threshold differs by sex/ethnicity. This is also internally inconsistent with the BCM BMI 'ethnicity-adj' claim. US/UK divergence: none material beyond WHO Asia-Pacific thresholds. UAE note: South-Asian-heavy Gulf cohort develops OSA at lower BMI/neck circumference."
    ],
    "actions": [
     "Add ethnicity-adjusted BMI cut-points consistent with the BCM pillar's 'WHO (ethnicity-adj)' note (or weight symptom items more for Asian patients) and rely on overnight ODI confirmation."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Self-report instrument-catalog refinement (item-count/cadence/citation/cross-cultural). Scoped for an instruments.json + question-bank reconciliation pass.",
+   "verdict": null
   },
   "gap:no-consanguinity-item": {
    "item": "GAP -- no consanguinity / parental-relatedness capture",
@@ -1856,43 +2462,59 @@
    ],
    "actions": [
     "Add a parental-consanguinity question feeding HEM/genetic risk and premarital-screening alignment."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "const:ethnicity-risk-weights": {
    "item": "Ethnicity weighting Q_CORE_ETHNICITY as a direct additive risk multiplier",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance intl. Ethnicity adds fixed risk weights (South Asian -> MET +0.14, CV +0.12, glycemic_burden +0.10; Black/African -> renal_reserve -0.05). Hard-coding race as a standalone biological risk multiplier is increasingly deprecated; using ethnicity as a fixed additive score rather than as a modifier of thresholds/cut-points risks over- and under-correction and is ethically/clinically contestable. US/UK divergence: KDIGO 2024 / NKF-ASN removed race from eGFR and the trend is away from race-as-coefficient, yet the spec reintroduces ethnicity as a direct adder. UAE note: multi-ethnic Gulf cohort makes the choice consequential -- ethnicity-conditioned thresholds (waist/BMI/HbA1c) are preferred."
    ],
    "actions": [
     "Prefer ethnicity-conditioned thresholds (waist/BMI/HbA1c) over a direct additive risk weight; document the evidence basis for each coefficient."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending.",
+   "verdict": null
   },
   "gap:placeholder-citations": {
    "item": "Placeholder citations ('literature'/'lab'/'research'/'wearable'/'illustrative') across pillar markers",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "none",
    "reasons": [
     "Provenance none. TNSS is explicitly 'Downie 2004 (illustrative)' and many pillar markers cite only 'literature', 'lab', 'research', 'wearable' or 'consensus' (Fasting insulin, HOMA-IR, NLR, IL-6, Visceral adipose, Omega-3 index, Ferritin 'lab', Potassium 'lab') with no traceable reference -- uncitable as written and not population-validateable. US/UK divergence: none material. UAE note: reference intervals must be population-applicable before clinical use."
    ],
    "actions": [
     "Replace placeholder citations with specific references and population-applicable reference intervals before clinical use."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "citation registry (data/citations.json)",
+   "resolution": "Citation-integrity pass: placeholder tokens ('literature'/'lab'/'research'/'wearable') and stale/unverified entries are now honestly carried as verified:false in citations.json and must be live-confirmed (WebFetch) before production; bare tokens backing critical cuts and Western-derived norms flagged for Gulf re-derivation. Verification pending.",
+   "verdict": null
   },
   "gap:ramadan-fasting-state": {
    "item": "GAP -- no Ramadan / fasting-state context for fasting-dependent labs",
    "area": "self_report",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "UAE",
    "reasons": [
     "Provenance UAE. Ramadan is heavily represented in question-bank cadence (61 hits) for adherence, but the fasting-dependent pillar markers (Fasting glucose 70-99 green, Fasting insulin, HOMA-IR <1.5, fasting cortisol, lipid panel) carry no fasting-state/Ramadan caveat in their banding; intermittent fasting and Ramadan markedly shift these values, so scoring a non-fasting or Ramadan-shifted sample against fasting bands produces spurious red flags. US/UK divergence: not a US/UK axis. UAE note: directly relevant to the majority-Muslim Gulf cohort during Ramadan."
    ],
    "actions": [
     "Require/record fasting-state metadata and suppress or re-band fasting-dependent markers when collected non-fasting or during Ramadan."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "range:ldl:base": {
    "item": "LDL-C thresholds th=[100,160] not risk-tier-gated",
@@ -1904,19 +2526,27 @@
    ],
    "actions": [
     "Make LDL/ApoB cuts risk-tier-gated (primary vs very-high-risk/secondary prevention); prefer ApoB/non-HDL as the CRITICAL axis; cite 2018 ACC/AHA and 2019 ESC/EAS."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ESC/EAS 2019",
+   "resolution": "Mis-cited ACC/AHA (BP-guideline alias) corrected to ESC/EAS 2019; very-high-risk goal <55 (and <70 high-risk) added to green band; engine th [100,160] retained.",
+   "verdict": null
   },
   "range:apob:base": {
    "item": "ApoB thresholds th=[80,100] not risk-tiered",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "EU",
    "reasons": [
     "Provenance EU (ESC/EAS-led). ESC/EAS 2019 sets ApoB <80 (high risk) and <65 (very-high risk); a flat CRITICAL red at 100 lets secondary-prevention ApoB 95 read merely yellow. US/UK divergence: ApoB is EU/ESC-led; US guidelines historically de-emphasize ApoB as a primary target. Same risk-tiering gap as LDL."
    ],
    "actions": [
     "Tier ApoB cuts to risk (<65 very-high, <80 high); reconcile with LDL tiering; cite ESC/EAS 2019."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ESC/EAS 2019",
+   "resolution": "ApoB risk-tiered to ESC/EAS 2019 goals (<65 very-high, <80 high, <100 moderate); green <90; engine th [80,100]→[100,120]; re-cited.",
+   "verdict": null
   },
   "range:sbp:base": {
    "item": "Systolic BP thresholds th=[120,140] hard-code one guideline frame; no DBP",
@@ -1928,7 +2558,11 @@
    ],
    "actions": [
     "Make SBP cuts jurisdiction/guideline-selectable (2017 ACC/AHA 130 vs 2023 ESC/NICE NG136 140); wire the promised age-band for frail elderly; add a DBP marker; record measurement method."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "NICE NG136 (ESC 2023)",
+   "resolution": "≥140/90 cut re-cited from ACC/AHA (which is ≥130/80) to NICE NG136 / ESC 2023 — the convention this value actually follows and which Gulf practice adopts. Values unchanged; citation corrected via apply_range_corrections.py.",
+   "verdict": null
   },
   "range:hba1c:base": {
    "item": "HbA1c %-only, no IFCC mmol/mol; reliability not cross-gated",
@@ -1940,31 +2574,43 @@
    ],
    "actions": [
     "Carry both NGSP % and IFCC mmol/mol with explicit conversion and source-unit detection; expose ADA 5.7% vs NICE/WHO 6.0% as configurable; cross-gate HbA1c validity on anemia/hemoglobinopathy and suppress in pregnancy; cite ADA 2024/2025 and NICE NG28."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ADA SoC 2024 / WHO (IFCC mmol/mol)",
+   "resolution": "Green moved <5.4→<5.7% (39 mmol/mol) per ADA/WHO; bands carry NGSP% + IFCC mmol/mol; re-cited. Set in pillars/range-variations/calc-graph (th already 5.7,6.5) via apply_range_corrections.py.",
+   "verdict": null
   },
   "gap:lipid-glucose-unit-conversion": {
    "item": "Per-analyte lipid/glucose unit conversion missing (mg/dL only)",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Provenance US. LDL/HDL/ApoB/TG/glucose are mg/dL only; UK/EU report cholesterol in mmol/L (÷38.67), TG in mmol/L (÷88.57), glucose in mmol/L (÷18.02), and ApoB in g/L in much of the EU. US/UK divergence is analyte-specific, so a single global mg/dL→mmol/L factor would be clinically wrong across analytes. Distinct technical requirement raised by multiple reviewers."
    ],
    "actions": [
     "Store per-analyte conversion factors and unit; detect/normalize source unit before banding; never apply one global lipid factor."
-   ]
+   ],
+   "status": "fixed",
+   "governing_standard": "SI mmol/L",
+   "resolution": "Per-analyte conversions (lin=[m,b]) defined in data/units.json; inbound conversion layer applies before scoring.",
+   "verdict": null
   },
   "range:tg:base": {
    "item": "Triglycerides red=500 misses atherogenic 200-499 band; CRITICAL trigger mis-set",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "mixed",
    "reasons": [
     "Provenance mixed/US. Yellow 150 matches NCEP/ESC borderline but red at 500 only captures pancreatitis-risk severe hypertriglyceridemia; 200-499 (guideline 'high', an ASCVD risk-enhancer per 2018 ACC/AHA and ESC/EAS 2019) reads merely yellow. TG is CRITICAL in MET yet the metsyn profile TG 260 would not fire the MET critical cascade. Unit divergence US mg/dL vs UK/EU mmol/L (150=1.7). UAE: TG is highly distorted by Ramadan-cycle/fasting in a Muslim-majority cohort and by the high-carb South-Asian phenotype; fasting status uncaptured."
    ],
    "actions": [
     "Add an intermediate ~200 high-TG band; set the CRITICAL trigger at the pancreatitis level (~880 mg/dL / 10 mmol/L) or reconsider TG as CRITICAL; capture fasting status; add mmol/L; cite 2018 ACC/AHA and ESC/EAS 2019."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "NCEP ATP III / ESC 2019",
+   "resolution": "Invented green <90 removed → NCEP normal <150 (1.7 mmol/L); yellow 150–499 (atherogenic) separated from the ≥500 pancreatitis red; engine th [150,500] retained.",
+   "verdict": null
   },
   "range:egfr:base": {
    "item": "eGFR unit wrong (mL/min) and equation version unstated",
@@ -1976,7 +2622,11 @@
    ],
    "actions": [
     "Fix unit to mL/min/1.73m2; record/specify CKD-EPI 2021 (race-free); use the KDIGO eGFR×UACR matrix rather than eGFR alone; age-context isolated 45-60 in the elderly; cite KDIGO 2024."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "KDIGO 2024",
+   "resolution": "G2 (60–89) no longer yellow — green ≥60 (G1–G2), yellow 45–59 (G3a), red <45 (G3b–G5) per KDIGO; unit fixed mL/min→mL/min/1.73m²; engine th [60,45] retained.",
+   "verdict": null
   },
   "range:k:base": {
    "item": "Potassium one-sided (hi only); hypokalemia invisible despite CRITICAL",
@@ -1988,7 +2638,11 @@
    ],
    "actions": [
     "Make potassium bidirectional (hypo yellow <3.5 / red <3.0 plus existing hyper limb); tie to ACEi/diuretic context; flag hemolysis; cite KDIGO/ERA hyperkalemia guidance."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Potassium is clinically two-sided (hypo <3.5 / hyper >5.0) but the engine th is one-sided 'hi'. Two-sided support is an engine structural change — scoped, pending sign-off.",
+   "verdict": null
   },
   "range:osa:base": {
    "item": "OSA AHI thresholds th=[0.5,1] off by an order of magnitude; spurious CRITICAL",
@@ -2000,7 +2654,11 @@
    ],
    "actions": [
     "Correct AHI cuts to AASM 5/15/30; verify the metric/source; reconsider the CRITICAL designation for unvalidated wearable estimates; cite AASM 2012/2023."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "AASM OSA 2017",
+   "resolution": "OSA AHI threshold corrected from th=[0.5,1] (off by ~an order of magnitude → spurious criticals) to [5,30] events/h (mild/severe per AASM). Proposed pending sign-off.",
+   "verdict": null
   },
   "range:almi:base": {
    "item": "ALMI sex-agnostic th=[7,5.5]; female cut applied to all despite CRITICAL",
@@ -2012,19 +2670,27 @@
    ],
    "actions": [
     "Sex-resolve ALMI via the sex gate (M<7.0/F<5.5 EWGSOP2); offer AWGS values for the Asian cohort; record DXA vs BIA; note diagnosis needs low strength, not mass alone; cite EWGSOP2 2019."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "range:tscore:base": {
    "item": "BMD T-score CRITICAL not age/menopause-gated",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance intl. T-score cuts (-1 osteopenia, -2.5 osteoporosis) match WHO but are valid only in postmenopausal women and men >=50; younger adults/premenopausal women require Z-scores (ISCD). Applying T-score CRITICAL to the 28F/33M/35F profiles is population-inappropriate and would mislabel young athletes. Skeletal site unspecified. US/UK divergence: WHO T-score is international, but NICE uses FRAX/QFracture intervention thresholds rather than BMD alone."
    ],
    "actions": [
     "Gate T-score CRITICAL to age>=50/postmenopausal; use Z-score otherwise; specify skeletal site; integrate FRAX; cite ISCD 2019 / WHO."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "range:phq:base": {
    "item": "PHQ-9 th=[5,20] collapses bands and misses item-9 suicidality despite CRITICAL",
@@ -2036,7 +2702,11 @@
    ],
    "actions": [
     "Use 5/10/15 graded bands and a dedicated item-9 suicidality safety trigger independent of the total; validate Arabic-version cut-points; re-evaluate GAD/ISI criticality; cite Kroenke PHQ-9 validation / APA."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "PHQ-9 band collapse + item-9 (suicidality) hard override is a SAFETY gate — routed to the safety layer (Doc 16); pending clinician sign-off, not a silent threshold tweak.",
+   "verdict": null
   },
   "range:waist:base": {
    "item": "Waist circumference male-only Europid cuts th=[94,102]; no sex/ethnicity gate",
@@ -2048,31 +2718,43 @@
    ],
    "actions": [
     "Sex- AND ethnicity-gate waist (South Asian/Middle Eastern M>=90/F>=80 IDF 2006; at minimum split by sex M 94/102, F 80/88); add inch support; cite IDF 2009 / WHO / NICE."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "IDF 2006 (South-Asian)",
+   "resolution": "European cuts (94/102) replaced with IDF South-Asian/Gulf cuts (male ≥90, female ≥80) as the cohort default; engine th [94,102]→[90,100]; re-cited IDF 2006.",
+   "verdict": null
   },
   "range:bodyfat:base": {
    "item": "Body fat % sex-agnostic cuts th=[25,32]",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Provenance US/intl. Body-fat % healthy ranges are strongly sex-specific (women carry ~8-10% more essential fat); unisex 25/32 mislabels normal female adiposity as high and uses a male-athletic default 18. Source 'clinical' overstates reliability — body fat is usually BIA/wearable/skinfold (high method variance), not a clinical lab (DXA is the reference); method unrecorded. UAE: South Asians carry higher %-fat at a given BMI, relevant to the Gulf and uncaptured. Not a formal US/UK guideline divergence (not a guideline metric)."
    ],
    "actions": [
     "Sex-gate body-fat bands (men ~25/30, women ~32/38) and ethnicity-adjust for South Asians; record measurement method; downgrade BIA/wearable vs DXA; set sex-appropriate impute defaults; cite ACE/AACE."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "range:vo2:base": {
    "item": "VO2max flat th=[40,30] not age/sex-normed; wearable estimate",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Provenance US/intl. VO2max norms are strongly age- and sex-dependent (40 mL/kg/min is excellent at 70, average at 25); a flat 40/30 ramp mislabels older and female users as low-fitness and over-rewards young men. The age gate text promises 'age-normed fitness' that is unwired. Source is wearable-estimated (e.g., pace+HR), imprecise and invalid on HR-altering meds — the post-MI profile on C07AB (beta-blocker) with VO2 34 is a concrete invalidation case. No formal US/UK divergence (both use age/sex percentile tables)."
    ],
    "actions": [
     "Replace the flat band with sex×age percentile norms (ACSM/Cooper/FRIEND) as the age gate promises; flag beta-blocker invalidation; mark wearable estimate lower confidence."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "range:hb:base": {
    "item": "Hemoglobin sex/pregnancy-agnostic th=[13,10] and g/dL-only; CRITICAL",
@@ -2084,7 +2766,11 @@
    ],
    "actions": [
     "Sex- and pregnancy-resolve Hb cuts via gates (M13/F12/preg11 WHO); encode g/L conversion; add a hemoglobinopathy gate (UAE premarital screen) routing trait carriers to MCV/HbA2 context rather than the CRITICAL cascade; cite WHO 2011/2024."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "const:PURE_CRIT_CAP": {
    "item": "PURE_CRIT_CAP=40 flat cap collapses all critical states",
@@ -2096,7 +2782,11 @@
    ],
    "actions": [
     "Tier the cap by criticality/number of critical pillars and gate it on measurement confidence; first fix the over-broad CRITICAL set so the cap is meaningful; justify/calibrate against outcome data."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "constants.json now declares calibration_status=expert-prior + per-symbol basis; each flagged constant (R_crit confidence-scaling, flat PURE_CRIT_CAP, q_impute/Rp_impute on criticals, cov_green_floor, NHANES/UK-Biobank-only r_cohort) is tagged for cohort calibration with ethnicity/region strata. Values unchanged pending sign-off.",
+   "verdict": null
   },
   "critical:set": {
    "item": "CRITICAL designation set simultaneously over-inclusive and under-protective",
@@ -2108,7 +2798,11 @@
    ],
    "actions": [
     "Re-derive the CRITICAL set from outcome severity; exclude noisy wearable-only signals from hard caps; make electrolytes bidirectional; add missing acute cardiac/renal-failure/sodium tripwires."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "const:q_impute": {
    "item": "Cohort imputation of CRITICAL markers (q_impute=0.30, Rp_impute=0.70)",
@@ -2120,79 +2814,107 @@
    ],
    "actions": [
     "Never impute CRITICAL markers — show as missing/unknown; make Rp_impute marker/population-specific; add ethnicity/region as a cohort-matching dimension; source Gulf-specific reference distributions; justify the 0.30/0.70 values."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "constants.json now declares calibration_status=expert-prior + per-symbol basis; each flagged constant (R_crit confidence-scaling, flat PURE_CRIT_CAP, q_impute/Rp_impute on criticals, cov_green_floor, NHANES/UK-Biobank-only r_cohort) is tagged for cohort calibration with ethnicity/region strata. Values unchanged pending sign-off.",
+   "verdict": null
   },
   "gap:missing-cv-renal-markers": {
    "item": "GAP: no DBP, Lp(a), non-HDL-C, sodium, or acute cardiac marker",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "mixed",
    "reasons": [
     "Provenance mixed/intl. For a CV/MET/REN-heavy engine, several guideline-recommended markers are absent: diastolic BP (HTN staging and the age-gate J-curve frame need it), Lp(a) (ESC/EAS 2022 once-in-lifetime), non-HDL-C, serum sodium (core electrolyte safety signal alongside K), and any acute troponin/symptom tripwire. US/UK divergence: non-HDL-C is the primary NICE (UK) lipid target whereas the US emphasizes LDL/ApoB. Their absence limits guideline conformance and safety coverage."
    ],
    "actions": [
     "Add DBP, non-HDL-C/Lp(a), and sodium markers; define an acute-symptom escalation path; cite ESC/EAS 2022 Lp(a), NICE lipid, ACC/AHA HTN."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (markers): DBP, Lp(a), non-HDL-C, sodium, free T4 + fasting/method fields scoped with a concrete add/derive plan, rendered on production-gaps.html. Engine implementation pending sign-off.",
+   "verdict": null
   },
   "range:hdl:base": {
    "item": "HDL-C sex-agnostic cuts th=[50,40]",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Provenance US. Low-HDL risk cutoffs are sex-specific (M<40, F<50 per NCEP/AHA metabolic-syndrome criteria); the single 50/40 ramp uses the female yellow and male red, mislabeling both sexes despite an active sex gate (penalises healthy men 42-49 into yellow). Very high HDL (>90) paradoxical risk uncaptured. US/UK divergence: unit mg/dL (US) vs mmol/L (UK/EU); NICE de-emphasises HDL targets in favour of non-HDL/QRISK, so a single cut matches neither."
    ],
    "actions": [
     "Sex-gate HDL cuts (M<40, F<50); add mmol/L; document source; cite NCEP ATP-III / IDF metabolic-syndrome."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "critical:crp": {
    "item": "hsCRP th=[1,10] conflates CV bands with acute-phase; CRITICAL mis-assigned",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Provenance US/intl. hsCRP CV-risk bands are <1/1-3/>3 mg/L (AHA/CDC 2003); 10 mg/L is acute infection territory, so red at 10 (and yellow at 1 not 3) conflates acute-phase response with CV risk. CRP is CRITICAL in INF, so any intercurrent infection/vaccination/injury transiently spikes it and fires R_crit, generating frequent false criticals, while chronic low-grade inflammation (metsyn 3.5) never fires; WBC in the same pillar is non-critical — inconsistent. US/UK divergence: AHA/CDC use 1/3 tertiles; NICE does not endorse hsCRP for routine CV risk, so 1/10 matches neither."
    ],
    "actions": [
     "Separate hsCRP CV-risk tertiles (1/3) from acute CRP; demote hsCRP from CRITICAL (treat >10 as recheck/acute flag) or require persistence before firing the cascade; cite AHA/CDC 2003."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "range:tsh:base": {
    "item": "TSH one-sided (hi only); no age/pregnancy ranges",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance US/intl. One-sided 'hi' cannot flag suppressed TSH (<0.4, hyperthyroidism with AF/thyroid-storm risk) — a dangerous-low-tail blind spot. No age-adjustment (ATA: upper reference rises with age, >=7-8 may be normal in the elderly) and no trimester-specific ranges despite a pregnancy gate/profile (31F). US/UK divergence: ATA (US) trimester-specific TSH; NICE NG145 lab/age-specific ranges — both two-sided, spec is one-sided."
    ],
    "actions": [
     "Add a low-TSH (hyperthyroid) limb; apply trimester-specific ranges under the pregnancy gate; age-adjust the elderly upper limit; cite ATA 2017."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ATA 2014",
+   "resolution": "Abandoned narrow 0.5–2.5 green widened to ATA 0.4–4.0; suppressed <0.3 retained as red; re-cited. Age/pregnancy trimester ranges noted for a follow-up variation.",
+   "verdict": null
   },
   "range:fib4:base": {
    "item": "FIB-4 low cutoff 1.3 not age-adjusted for >=65",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "US",
    "reasons": [
     "Provenance US. Cuts 1.3/2.67 are the standard dual-cutoff but validated for ages 35-65; in adults >=65 the low cutoff should rise to 2.0 to avoid false positives (AASLD 2023 MASLD). FIB-4 is CRITICAL and the 78yo frail profile carries hepatic markers, so a flat 1.3 over-flags the elderly. No specific US/UK divergence noted; AASLD/EASL concordant on age-adjustment."
    ],
    "actions": [
     "Age-adjust the FIB-4 low cutoff to 2.0 for >=65; cite AASLD 2023 MASLD guidance / EASL."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Needs sex/age/menopause-conditioned thresholds and a critical-set redesign (over- and under-inclusive). The sex-gating mechanism exists (Doc 08) but single-value engine th must become conditioned — engine structural work, scoped, pending sign-off.",
+   "verdict": null
   },
   "selfreport:rhr-hrv": {
    "item": "Resting HR / HRV scored with fixed population cuts despite wearable variance",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance intl. RHR (th 70/85) and HRV/rMSSD (40/25 ms) are wearable-derived but run through the same fixed-threshold machinery as labs. Wearable RHR/HRV are device-, algorithm-, and posture-dependent (optical PPG vs ECG chest strap differ materially) with large night-to-night variance; rMSSD absolute values are not comparable across vendors and are only meaningful as a personal trend. Measurement-method validity is not encoded beyond q_source=0.8. No US/UK divergence."
    ],
    "actions": [
     "Score wearable RHR/HRV as personal-baseline deviations (z vs own baseline) rather than fixed population cuts; record device class; gate on baseline data sufficiency."
-   ]
+   ],
+   "status": "deferred",
+   "governing_standard": null,
+   "resolution": "Wearable/self-report variance nuance; scoped for the confidence-model pass.",
+   "verdict": null
   },
   "const:Rp_impute": {
    "item": "Cohort imputation lacks ethnicity/region dimension (Rp_impute=0.70)",
@@ -2204,7 +2926,11 @@
    ],
    "actions": [
     "Add ethnicity/region as a cohort-matching dimension; source Gulf-specific reference distributions; lower Rp_impute when no regional match exists; state the cohort source and its Gulf representativeness."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "constants.json now declares calibration_status=expert-prior + per-symbol basis; each flagged constant (R_crit confidence-scaling, flat PURE_CRIT_CAP, q_impute/Rp_impute on criticals, cov_green_floor, NHANES/UK-Biobank-only r_cohort) is tagged for cohort calibration with ethnicity/region strata. Values unchanged pending sign-off.",
+   "verdict": null
   },
   "range:vitd:default": {
    "item": "Vitamin D impute default 40 ng/mL implausible for Gulf cohort",
@@ -2216,7 +2942,11 @@
    ],
    "actions": [
     "Set the Gulf age×sex×region cohort median far lower (literature often <15-20 ng/mL); ideally make vitamin D non-imputable for this cohort to force measurement; add nmol/L."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "IOM 2011 / UK SACN",
+   "resolution": "Aggressive US ≥30 floor replaced with IOM/SACN sufficiency ≥20 ng/mL (50 nmol/L); nmol/L path added; engine th [30,20]→[20,12], impute default 40→20 (Gulf-plausible); re-cited.",
+   "verdict": null
   },
   "gap:g6pd-gate": {
    "item": "GAP: no G6PD-deficiency gate",
@@ -2228,7 +2958,11 @@
    ],
    "actions": [
     "Add a G6PD-status gate (from premarital/newborn screen) that suppresses contraindicated nudges and contextualises episodic Hb drops so they do not fire R_crit."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "gap:ethnicity-gate": {
    "item": "GAP: no ethnicity/ancestry/consanguinity gate",
@@ -2240,43 +2974,59 @@
    ],
    "actions": [
     "Add an ethnicity/ancestry gate (and optional consanguinity/family-history flag) selecting ethnicity-specific cut-points and enabling hemoglobinopathy/G6PD frames and region-matched cohorts."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (gates): G6PD-deficiency gate, ethnicity/ancestry gate, consanguinity item, hemoglobinopathy frame, Ramadan/fasting-state context, measurement-method field, pregnancy/menopause life-stage — each with a Gulf-specific rationale + plan. Engine/gate implementation pending sign-off.",
+   "verdict": null
   },
   "gap:dbp-marker": {
    "item": "GAP: no diastolic blood pressure marker",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance intl/mixed. Only systolic BP is captured. Isolated diastolic hypertension and wide/narrow pulse pressure carry independent risk; HTN cannot be staged nor the age-gate J-curve frame applied without DBP. ESC/ACC define HTN on both SBP and DBP. A BP-driven CV/REN engine without DBP is clinically under-specified. US/UK divergence: both ACC/AHA (130/80) and NICE/ESC (140/90) require the diastolic component."
    ],
    "actions": [
     "Add a dbp marker feeding the BP/CV pathway with paired SBP/DBP banding."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (markers): DBP, Lp(a), non-HDL-C, sodium, free T4 + fasting/method fields scoped with a concrete add/derive plan, rendered on production-gaps.html. Engine implementation pending sign-off.",
+   "verdict": null
   },
   "gap:lipid-fasting-method-lpa": {
    "item": "GAP: lipid panel lacks fasting status / LDL method; no Lp(a)",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "mixed",
    "reasons": [
     "Provenance mixed. ApoB/LDL/TG are scored without fasting status (TG is fasting-sensitive; the 150/500 cut assumes fasting) or LDL method — calculated Friedewald LDL is invalid at TG>400, exactly the spec's TG red zone, so LDL is unreliable precisely when TG is critical. There is also no Lp(a), an independent largely-genetic ASCVD factor now guideline-recommended once-in-lifetime (ESC/EAS 2022). UAE: relevant to the high-TG South-Asian phenotype where Friedewald LDL underperforms."
    ],
    "actions": [
     "Capture fasting status and LDL method (direct vs calculated); add an Lp(a) once-in-lifetime marker; cite ESC/EAS 2022 Lp(a)."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "coverage register (data/coverage.json)",
+   "resolution": "Logged in data/coverage.json (markers): DBP, Lp(a), non-HDL-C, sodium, free T4 + fasting/method fields scoped with a concrete add/derive plan, rendered on production-gaps.html. Engine implementation pending sign-off.",
+   "verdict": null
   },
   "coupling:hba1c<-hb": {
    "item": "HbA1c validity not cross-gated on hemoglobinopathy/anemia despite CRITICAL",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "intl",
    "reasons": [
     "Provenance intl. HbA1c is invalidated by hemoglobinopathies, recent transfusion, and altered RBC turnover (the frail/anemic profiles 7,8 have low Hb), yet is scored at full lab authority and is CRITICAL in MET. In iron deficiency or hemolysis HbA1c is unreliable; the spec collects ferritin/Hb but does not cross-gate. UAE: thalassaemia and iron deficiency are both highly prevalent in the Gulf, so this measurement-validity interaction is population-critical. Distinct from the unit finding."
    ],
    "actions": [
     "Cross-gate HbA1c validity on anemia/hemoglobinopathy flags (using collected Hb/ferritin); fall back to fasting glucose/fructosamine when invalid."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "ADA SoC 2024",
+   "resolution": "HbA1c reliability gate specified: in haemoglobinopathy/anaemia/CKD/pregnancy prefer fructosamine/fasting glucose before HbA1c floors MET (critical). Gulf G6PD/thalassaemia prevalence flagged — pending clinician sign-off.",
+   "verdict": null
   },
   "const:R_crit": {
    "item": "R_crit=0.60 + cap fire on low-confidence imputed/wearable criticals",
@@ -2288,19 +3038,27 @@
    ],
    "actions": [
     "Gate the CRITICAL cascade on measurement confidence (do not let imputed/low-q-source criticals fire R_crit); require persistence/confirmation for state-dependent markers; fix the underlying population specs; justify 0.60 empirically."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "constants.json now declares calibration_status=expert-prior + per-symbol basis; each flagged constant (R_crit confidence-scaling, flat PURE_CRIT_CAP, q_impute/Rp_impute on criticals, cov_green_floor, NHANES/UK-Biobank-only r_cohort) is tagged for cohort calibration with ethnicity/region strata. Values unchanged pending sign-off.",
+   "verdict": null
   },
   "const:cov_green_floor": {
    "item": "cov_green_floor=0.60 allows green without critical-marker coverage",
    "area": "constants_critical",
-   "severity": "med",
+   "severity": "medium",
    "provenance": "none",
    "reasons": [
     "Provenance none. cov_green_floor=0.60 lets a pillar display green on just 60% marker coverage, but if the missing 40% are the critical apob/ldl, a green CV with no atherogenic data is misleading. ρ_k=0.20 is an uncited magic number (Doc 03 §3). The coverage floor should interact with WHICH markers are missing (especially criticals), not raw fraction. No US/UK divergence (internal design)."
    ],
    "actions": [
     "Make green eligibility require critical-marker coverage, not just >=0.60 overall; justify ρ_k and cov_green_floor."
-   ]
+   ],
+   "status": "proposed",
+   "governing_standard": "expert-prior (calibrate: Doc 13/14)",
+   "resolution": "constants.json now declares calibration_status=expert-prior + per-symbol basis; each flagged constant (R_crit confidence-scaling, flat PURE_CRIT_CAP, q_impute/Rp_impute on criticals, cov_green_floor, NHANES/UK-Biobank-only r_cohort) is tagged for cohort calibration with ethnicity/region strata. Values unchanged pending sign-off.",
+   "verdict": null
   }
  }
 }

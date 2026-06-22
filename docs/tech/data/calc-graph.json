@@ -15,7 +15,8 @@
    "q_impute": "q_impute",
    "rp_impute": "Rp_impute",
    "cov_green_floor": "cov_green_floor"
-  }
+  },
+  "reservoir_calibration": "Reservoir anchors [good,bad] and coupling coefficients are expert-priors (see each reservoir.basis / reservoir.calibration_status). Expert-prior, NOT outcome-calibrated. No guideline assigns these. Calibration plan: fit to all-cause/CV mortality + competing risks on the local cohort with ethnicity/region strata (Doc 13 cohort percentiles · Doc 14 validation harness) before production."
  },
  "markers": {
   "sbp": {
@@ -35,8 +36,8 @@
    "unit": "mg/dL",
    "default": 70,
    "th": [
-    80,
     100,
+    120,
     "hi"
    ],
    "doc": "06",
@@ -137,8 +138,8 @@
    "unit": "cm",
    "default": 85,
    "th": [
-    94,
-    102,
+    90,
+    100,
     "hi"
    ],
    "doc": "06",
@@ -146,7 +147,7 @@
   },
   "egfr": {
    "label": "eGFR",
-   "unit": "mL/min",
+   "unit": "mL/min/1.73m²",
    "default": 100,
    "th": [
     60,
@@ -302,10 +303,10 @@
   "vitd": {
    "label": "Vitamin D (25-OH)",
    "unit": "ng/mL",
-   "default": 40,
+   "default": 20,
    "th": [
-    30,
     20,
+    12,
     "lo"
    ],
    "doc": "06",
@@ -403,8 +404,8 @@
    "unit": "events/h",
    "default": 0,
    "th": [
-    0.5,
-    1,
+    5,
+    30,
     "hi"
    ],
    "doc": "10",
@@ -504,7 +505,14 @@
      115,
      160
     ]
-   ]
+   ],
+   "basis": "apoB/LDL/SBP atherogenic load; anchors expert-prior, not risk-tiered (calibrate)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "apob": "g/L",
+    "ldl": "mmol/L",
+    "sbp": "mmHg"
+   }
   },
   "vbp": {
    "label": "VBP · vascular/BP",
@@ -516,7 +524,12 @@
      115,
      160
     ]
-   ]
+   ],
+   "basis": "vascular BP load (expert-prior)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "sbp": "mmHg"
+   }
   },
   "gly": {
    "label": "GLY · glycemic",
@@ -526,7 +539,7 @@
     [
      "hba1c",
      5.4,
-     7
+     9
     ],
     [
      "glu",
@@ -538,7 +551,14 @@
      85,
      105
     ]
-   ]
+   ],
+   "basis": "glycaemic burden; bad raised off treatment-target saturation (proposed)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "hba1c": "mmol/mol",
+    "glu": "mmol/L",
+    "waist": "cm"
+   }
   },
   "adi": {
    "label": "ADI · adiposity",
@@ -555,7 +575,13 @@
      18,
      34
     ]
-   ]
+   ],
+   "basis": "adiposity; bodyfat anchors sex-blind — sex-gating pending (expert-prior)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "waist": "cm",
+    "bodyfat": "%"
+   }
   },
   "hepf": {
    "label": "HEPF · hepatic fat",
@@ -572,7 +598,13 @@
      0.9,
      3
     ]
-   ]
+   ],
+   "basis": "hepatic fibrosis; FIB-4 age-blind — age-gating pending (expert-prior)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "alt": "U/L",
+    "fib4": "index"
+   }
   },
   "infl": {
    "label": "INFL · inflammatory",
@@ -589,7 +621,13 @@
      18,
      34
     ]
-   ]
+   ],
+   "basis": "chronic inflammation; CRP conflates acute-phase — acute gate pending (expert-prior)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "crp": "mg/L",
+    "bodyfat": "%"
+   }
   },
   "allo": {
    "label": "ALLO · allostatic",
@@ -611,7 +649,14 @@
      4,
      18
     ]
-   ]
+   ],
+   "basis": "allostatic/mental load; 100% PRO (expert-prior)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "phq": "score",
+    "gad": "score",
+    "isi": "score"
+   }
   },
   "sld": {
    "label": "SLD · sleep debt",
@@ -628,7 +673,13 @@
      92,
      72
     ]
-   ]
+   ],
+   "basis": "sleep debt (expert-prior)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "sleepdur": "h",
+    "sleepeff": "%"
+   }
   },
   "crf": {
    "label": "CRF · cardioresp",
@@ -645,7 +696,13 @@
      9000,
      4000
     ]
-   ]
+   ],
+   "basis": "cardiorespiratory fitness; VO2 age/sex-blind — norming pending (expert-prior)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "vo2": "mL/kg/min",
+    "steps": "/day"
+   }
   },
   "mus": {
    "label": "MUS · muscle",
@@ -657,7 +714,12 @@
      8,
      5.5
     ]
-   ]
+   ],
+   "basis": "muscle/ALMI; sex-blind cut pending (expert-prior)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "almi": "kg/m²"
+   }
   },
   "bon": {
    "label": "BON · bone",
@@ -669,7 +731,12 @@
      0,
      -2.5
     ]
-   ]
+   ],
+   "basis": "bone/T-score; age/menopause gate pending (expert-prior)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "tscore": "SD"
+   }
   },
   "renr": {
    "label": "RENR · renal",
@@ -686,7 +753,13 @@
      10,
      300
     ]
-   ]
+   ],
+   "basis": "renal reserve; UACR unit now SI-gated (expert-prior)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "egfr": "mL/min/1.73m²",
+    "uacr": "mg/mmol"
+   }
   },
   "micr": {
    "label": "MICR · micronutrient",
@@ -695,15 +768,21 @@
    "inputs": [
     [
      "vitd",
-     40,
-     18
+     30,
+     12
     ],
     [
      "b12",
      400,
      200
     ]
-   ]
+   ],
+   "basis": "micronutrient; vitD anchors re-based to IOM (proposed)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "vitd": "nmol/L",
+    "b12": "pmol/L"
+   }
   },
   "oxd": {
    "label": "OXD · oxygen",
@@ -720,7 +799,13 @@
      98,
      90
     ]
-   ]
+   ],
+   "basis": "oxygen-carrying; Hb sex/pregnancy-blind — gating pending (expert-prior)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "hb": "g/L",
+    "spo2": "%"
+   }
   },
   "iron": {
    "label": "IRON · iron",
@@ -732,7 +817,12 @@
      80,
      15
     ]
-   ]
+   ],
+   "basis": "iron stores (expert-prior)",
+   "calibration_status": "expert-prior",
+   "input_units": {
+    "ferr": "µg/L"
+   }
   }
  },
  "reservoir_coupling": [
@@ -747,7 +837,8 @@
      "infl",
      0.15
     ]
-   ]
+   ],
+   "basis": "expert-prior cross-system coupling — calibrate vs joint cohort covariance (Doc 14)"
   },
   {
    "t": "infl",
@@ -760,7 +851,8 @@
      "adi",
      0.1
     ]
-   ]
+   ],
+   "basis": "expert-prior cross-system coupling — calibrate vs joint cohort covariance (Doc 14)"
   },
   {
    "t": "gly",
@@ -775,7 +867,8 @@
      "crf",
      0.08
     ]
-   ]
+   ],
+   "basis": "expert-prior cross-system coupling — calibrate vs joint cohort covariance (Doc 14)"
   },
   {
    "t": "allo",
@@ -784,7 +877,8 @@
      "sld",
      0.12
     ]
-   ]
+   ],
+   "basis": "expert-prior cross-system coupling — calibrate vs joint cohort covariance (Doc 14)"
   },
   {
    "t": "sld",
@@ -793,7 +887,8 @@
      "allo",
      0.12
     ]
-   ]
+   ],
+   "basis": "expert-prior cross-system coupling — calibrate vs joint cohort covariance (Doc 14)"
   }
  ],
  "pillars": {
