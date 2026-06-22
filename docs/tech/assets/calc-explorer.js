@@ -80,7 +80,7 @@
       gauge("Confidence", R.confidence.toFixed(2)) + gauge("Coverage", pct(R.coverage)+(R.lowCoverage?" ⚠":"")) +
       gauge("Trajectory", R.companion.trajectory) + gauge("Early-warn", R.companion.ew?"● ON":"○ off") +
       gauge("Provenance", meas+" meas · "+imp+" imp") + gauge("Critical", R.crit.length?("⚑ "+R.crit.join(",").toUpperCase()):"none");
-    Object.keys(PILLEL).forEach(function(pid){ var el=PILLEL[pid], d=R.detail[pid], z=PS.markerZone(d.R);
+    Object.keys(PILLEL).forEach(function(pid){ var el=PILLEL[pid], d=R.detail[pid], z=PS.pillarZone(d.R);
       el._r.textContent=d.R.toFixed(2); el._bar.style.width=Math.round(d.R*100)+"%"; el._bar.style.background=zoneColor(z);
       el.classList.toggle("crit",d.crit); el.classList.toggle("lowcov",d.lowCoverage); });
     Object.keys(RESEL).forEach(function(rid){ RESEL[rid]._fill.style.height=Math.round(R.res.coupled[rid]*100)+"%"; });
@@ -267,7 +267,7 @@
     var arr=Object.keys(D.pillars).map(function(pid){ return {pid:pid, c:D.pillars[pid].weight*Math.pow(R.detail[pid].R,D.const.delta)}; });
     var tot=arr.reduce(function(s,x){return s+x.c;},0)||1, lost=Math.max(0,100-R.score);
     arr.sort(function(a,b){return b.c-a.c;}); var maxc=arr[0].c||1;
-    host.innerHTML=arr.slice(0,8).map(function(x){ var z=PS.markerZone(R.detail[x.pid].R);
+    host.innerHTML=arr.slice(0,8).map(function(x){ var z=PS.pillarZone(R.detail[x.pid].R);
       return '<div class="fd-wf" data-pid="'+x.pid+'"><span class="id">'+x.pid.toUpperCase()+'</span><span class="t"><i style="width:'+Math.round(x.c/maxc*100)+'%;background:'+zoneColor(z)+'"></i></span><span class="v">'+(x.c/tot*lost).toFixed(1)+'</span></div>'; }).join("");
     [].forEach.call(host.querySelectorAll(".fd-wf"),function(el){ el.onclick=function(){ var pid=el.getAttribute("data-pid"); traceCtx({pid:pid}, D.pillars[pid].label); }; }); }
   function renderSystems(){ var host=document.getElementById("fdSystems"); if(!host) return;
@@ -292,7 +292,7 @@
     if(!R.crit.length){ host.innerHTML='<div class="fd-ok">✓ no pillar critical · PureScore not capped</div>'; return; }
     var uncapped=Math.round(100*(1-R.Rtot)), T=state.softmaxT;
     var html=R.crit.map(function(pid){ var d=R.detail[pid], ms=d.markers;
-      var trig=Object.keys(ms).filter(function(m){ return ms[m].critical&&ms[m].state==="present"&&ms[m].r!=null&&ms[m].r>=0.66; });
+      var trig=Object.keys(ms).filter(function(m){ return ms[m].critical&&ms[m].state==="present"&&ms[m].r!=null&&ms[m].r>=0.50; });
       var items=Object.keys(ms).filter(function(m){return ms[m].r!=null;});
       var exps=items.map(function(m){return Math.exp(ms[m].r/T);}), se=exps.reduce(function(a,b){return a+b;},0)||1;
       var dom=items.map(function(m,i){return {m:m,w:exps[i]/se};}).sort(function(a,b){return b.w-a.w;})[0];

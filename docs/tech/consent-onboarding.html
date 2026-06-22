@@ -127,9 +127,10 @@ code{font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;backgr
   a{color:#0b57b3}
   .sec-body{padding-left:16px}
 }
-</style></head>
+</style><script src="assets/consent-config.js"></script></head>
 <body>
 <div class="topbar">
+  <a class="tag" href="index.html" style="text-decoration:none">← Tech Wiki</a>
   <span class="brand">Hikma<b>Engine</b> · PureScore</span>
   <span class="tag">Consent &amp; Onboarding</span>
   <span class="grow"></span>
@@ -185,6 +186,13 @@ code{font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;backgr
 </div>
 
 <script>
+/* ============================ DEPLOYMENT CONFIG ============================ */
+/* Ops/legal fill assets/consent-config.js; fall back to the visible {{TOKEN}} when blank so an
+   unconfigured deployment is obviously a draft rather than silently shipping a wrong value. */
+const CFG = window.PURESCORE_CONSENT || {};
+const PS_CONTROLLER = CFG.controller || "{{CONTROLLER_LEGAL_NAME}}";
+const PS_CVER = CFG.version || "{{CONSENT_VERSION}}";
+const PS_ENDPOINT = CFG.auditEndpoint || "";
 /* ============================ DATA ============================ */
 /* Verification date applied to all "verified" citations */
 const VDATE = "2026-06-20";
@@ -864,7 +872,9 @@ function renderStage(){
   const K = SNAPK[state.lang];
 
   let html = '';
-  html += '<div class="print-only"><b>PureScore — Patient Consent &amp; Data-Protection Notice</b> · '+j.name+' · prepared '+VDATE+' · DRAFT pending legal sign-off</div>';
+  html += '<div class="print-only"><b>PureScore — Patient Consent &amp; Data-Protection Notice</b> · '+j.name+
+    ' · consent version '+PS_CVER+' · generated '+new Date().toISOString().slice(0,16).replace("T"," ")+' UTC'+
+    ' · prepared '+VDATE+' · DRAFT pending legal sign-off</div>';
   if(ar) html += '<div class="arnote">⚑ '+AR_NOTE+'</div>';
 
   /* header */
@@ -942,8 +952,8 @@ function toast(msg){
 function saveConsent(){
   const j = J.find(x=>x.id===state.country);
   const rec = {
-    controller:"{{CONTROLLER_LEGAL_NAME}}",
-    consentVersion:"{{CONSENT_VERSION}}",
+    controller:PS_CONTROLLER,
+    consentVersion:PS_CVER,
     jurisdiction:j.id, jurisdictionName:j.name, region:j.region,
     language:state.lang,
     timestamp:new Date().toISOString(),
@@ -952,7 +962,7 @@ function saveConsent(){
   };
   try{ localStorage.setItem("purescore_consent_"+j.id, JSON.stringify(rec)); }catch(e){}
   console.log("[PureScore consent record]", rec);
-  const EP = "{{CONSENT_AUDIT_ENDPOINT}}";
+  const EP = PS_ENDPOINT;
   if(EP && EP.indexOf("{{")!==0){
     fetch(EP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(rec)})
       .then(()=>toast("✅ "+u("saved")+" — "+u("sent")))

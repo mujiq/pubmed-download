@@ -188,13 +188,13 @@ The five views share one calculation: <b>Overview</b> (all systems at once) · <
   <div class="cu-view" data-view="critical"><pre class="mermaid">flowchart TB
   MK["markers · labs · vitals"]:::io
   M["1 · critical marker fires<br/>r_i at red · 0.5 or more"]:::crit
-  G{"2 · confirm gate"}:::eng
+  G["2 · confirm gate"]:::eng
   MK --> M --> G
   G -->|implausible / device / drug-expected| WATCH["Watch + reconfirm"]:::wait
   G -->|corroborated| ALERT["3 · ALERT"]:::crit
   ALERT --> CP["4 · critical pillar · Rk to 0.60"]:::crit
   CP --> CAP["5 · PureScore capped at 40<br/>status CRITICAL"]:::crit
-  CAP --> ESC{"6 · emergency tier?"}:::eng
+  CAP --> ESC["6 · emergency tier?"]:::eng
   ESC -->|yes| HUM["escalate to human · Doc 16"]:::crit
   ESC -->|no| MON["urgent / routine · monitor"]:::wait
   SC["CLINICAL SCORES · gated<br/>ASCVD SCORE2 FINDRISC KDIGO KFRE FIB4 FRAX PhenoAge"]:::clin
@@ -231,6 +231,7 @@ The five views share one calculation: <b>Overview</b> (all systems at once) · <
 .cu-view{overflow:auto}
 .cu-view pre.mermaid{background:transparent;text-align:center}
 .cu-view pre.mermaid g.node{cursor:pointer}
+.cu-view pre.cu-dia{visibility:hidden}
 /* filter re-lighting: when filtering, fade group-specific nodes, then re-light matches */
 .cu.filtering .gYoung,.cu.filtering .gMid,.cu.filtering .gOld,.cu.filtering .gFrail,
 .cu.filtering .gFemale,.cu.filtering .gMale,.cu.filtering .gPreg,.cu.filtering .gMeno,
@@ -272,20 +273,24 @@ The five views share one calculation: <b>Overview</b> (all systems at once) · <
   function setFull(on){cu.classList.toggle("full",on);fullBtn.textContent=on?"✕ Exit full screen":"⛶ Full screen";}
   fullBtn.addEventListener("click",function(){setFull(!cu.classList.contains("full"));});
   document.addEventListener("keydown",function(e){if(e.key==="Escape"&&cu.classList.contains("full"))setFull(false);});
-  // mermaid (startOnLoad, htmlLabels) must measure each diagram WHILE VISIBLE. Keep all views
-  // visible until every diagram has a valid rendered SVG, then hide the inactive ones (a fixed
-  // timer races mermaid and leaves the non-default tabs error/collapsed).
-  function rendered(v){
-    var svg=v.querySelector("svg"); if(!svg) return false;
-    if(svg.querySelector('[aria-roledescription="error"], .error-icon, .error-text')) return false;
-    var vb=svg.getAttribute("viewBox")||"";
-    if(/(^|\s)-?8 -?8 16 16\b/.test(vb)) return false;
-    var w=parseFloat((svg.getAttribute("style")||"").replace(/.*max-width:\s*/,""));
-    return !(w>0 && w<40);
+  // Render the 5 diagrams SEQUENTIALLY (not via mermaid's concurrent startOnLoad). Rendering five
+  // htmlLabels diagrams at once races mermaid's foreignObject measurement and intermittently leaves
+  // the last view as an error/collapsed SVG. This classic script runs BEFORE the deferred mermaid
+  // module, so we strip the `mermaid` class first (startOnLoad then skips them), then render one at a
+  // time via window.mermaid once it is available. All views are visible during render (so labels
+  // measure), then we hide the inactive ones.
+  var DIAS=[].slice.call(cu.querySelectorAll("pre.mermaid"));
+  DIAS.forEach(function(pre){pre.classList.remove("mermaid");pre.classList.add("cu-dia");});
+  function renderSeq(i){
+    if(i>=DIAS.length){setView("overview");filter();return;}
+    var pre=DIAS[i];
+    if(window.mermaid&&window.mermaid.run){
+      pre.classList.add("mermaid");
+      var done=function(){pre.classList.remove("cu-dia");renderSeq(i+1);};
+      window.mermaid.run({nodes:[pre],suppressErrors:true}).then(done,done);
+    } else { setTimeout(function(){renderSeq(i);},40); }
   }
-  function allRendered(){return [].every.call(cu.querySelectorAll(".cu-view"),rendered);}
-  var tries=0;
-  (function wait(){ if(allRendered()||tries++>240){setView("overview");filter();return;} setTimeout(wait,50); })();
+  renderSeq(0);
 })();</script>
 
 <h2 id="formulas">The exact formulas (Pipeline view, with symbols)</h2>

@@ -8,7 +8,9 @@
   },
   "uses_constants": {
    "delta": "δ",
+   "gamma": "γ",
    "rho": "ρ_k",
+   "kappa_resp": "κ_resp",
    "r_crit": "R_crit",
    "pure_crit_cap": "PURE_CRIT_CAP",
    "phi": "φ",
