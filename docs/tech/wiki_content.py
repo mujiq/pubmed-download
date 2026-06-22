@@ -266,34 +266,63 @@ def write_weights_data():
         W = dict(_load("pillar-weights.json")["weights"])
     except Exception:
         W = {}
+    try:
+        GLOSS = _load("marker-glossary.json")["markers"]
+    except Exception:
+        GLOSS = {}
     def fw(s):
         try:
             return round(float(str(s).strip()), 4)
         except Exception:
             return 0.0
+    # calc-graph marker key → display label (to resolve reservoir inputs)
+    cg = {}
+    try:
+        cg = _load("calc-graph.json")
+    except Exception:
+        cg = {}
+    cglabel = {k: v.get("label", k) for k, v in cg.get("markers", {}).items()}
+    # reservoir inputs (display labels) + feeds
+    reservoirs = {}; coupling = []
+    for rk, rv in cg.get("reservoirs", {}).items():
+        reservoirs[rk] = {"label": rv.get("label", rk), "basis": rv.get("basis", ""),
+                          "feeds": (rv.get("feeds", "") or "").upper(), "polarity": rv.get("polarity", ""),
+                          "inputs": [cglabel.get(i[0], i[0]) for i in rv.get("inputs", [])]}
+    for c in cg.get("reservoir_coupling", []):
+        t = c.get("t")
+        for s, coef in c.get("add", []):
+            coupling.append({"from": s, "to": t, "coef": coef, "kind": "add"})
+        for s, coef in c.get("subDeficit", []):
+            coupling.append({"from": s, "to": t, "coef": coef, "kind": "sub"})
+    def norm(s):
+        return _re.sub(r"[^a-z0-9]", "", (s or "").lower())
+    # marker-name → reservoirs that consume it (lenient normalized match within the fed pillar)
+    def res_for_marker(pid, mkname):
+        out2 = []
+        nm = norm(mkname)
+        for rk, rv in reservoirs.items():
+            if rv["feeds"] != pid:
+                continue
+            for inp in rv["inputs"]:
+                ni = norm(inp)
+                if ni and (ni == nm or nm.startswith(ni) or ni.startswith(nm)):
+                    out2.append(rk); break
+        return out2
     pillars = {}
     for pid, name, desc, rows in PILLARS:
         ms = []
         for r in rows:
             mk = r[0]; src = r[8] if len(r) > 8 else ""
             _, chip = _CHAN_BUCKET.get(marker_channel(mk, src), ("bio", "lab"))
-            ms.append({"n": mk, "w": fw(r[7] if len(r) > 7 else 0), "ch": chip,
+            gl = GLOSS.get(mk, {})
+            ms.append({"n": mk, "full": gl.get("full", mk), "desc": gl.get("desc", ""),
+                       "w": fw(r[7] if len(r) > 7 else 0), "ch": chip,
+                       "unit": r[1] if len(r) > 1 else "", "tier": r[2] if len(r) > 2 else "",
+                       "g": r[4] if len(r) > 4 else "", "y": r[5] if len(r) > 5 else "", "r": r[6] if len(r) > 6 else "",
+                       "src": src, "crit": bool(r[9]) if len(r) > 9 else False,
+                       "res": res_for_marker(pid, mk),
                        "a": "mk-%s-%s" % (pid.lower(), _slug_metric(mk))})
-        pillars[pid] = {"name": name, "w": W.get(pid, 0), "markers": ms}
-    reservoirs = {}; coupling = []
-    try:
-        cg = _load("calc-graph.json")
-        for rk, rv in cg.get("reservoirs", {}).items():
-            reservoirs[rk] = {"label": rv.get("label", rk), "feeds": (rv.get("feeds", "") or "").upper(),
-                              "polarity": rv.get("polarity", ""), "inputs": [i[0] for i in rv.get("inputs", [])]}
-        for c in cg.get("reservoir_coupling", []):
-            t = c.get("t")
-            for s, coef in c.get("add", []):
-                coupling.append({"from": s, "to": t, "coef": coef, "kind": "add"})
-            for s, coef in c.get("subDeficit", []):
-                coupling.append({"from": s, "to": t, "coef": coef, "kind": "sub"})
-    except Exception:
-        pass
+        pillars[pid] = {"name": name, "desc": desc, "w": W.get(pid, 0), "markers": ms}
     out = {"pillars": pillars, "reservoirs": reservoirs, "coupling": coupling}
     js = ("/* GENERATED from pillar-weights.json + pillars.json + calc-graph.json — pillar weights & correlations diagram. */\n"
           "window.PURESCORE_WEIGHTS=" + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n")
@@ -345,7 +374,7 @@ MERMAID = {
   PS(("PureScore")) --> CV & MET & REN & HEP
   PS --> INF & HEM & ENDO & BCM
   PS --> NUT & SLP & FIT & MCS"""),
- "03":("The scoring pipeline — uber-view (click any stage to jump to its section)", """flowchart TB
+ "03":("The scoring pipeline — uber-view (hover any node for detail · click a stage to jump to its section)", """flowchart TB
   subgraph IN["Inputs · raw marker values x_i"]
     direction LR
     LAB["Labs<br/>clinical-grade"]:::io
@@ -360,14 +389,18 @@ MERMAID = {
   S4["<b>Stage 4 · status + critical override</b><br/>critical-marker red ⇒ R_k ← R_crit 0.60"]:::safe
   S5["<b>Stage 5 · PureScore°</b><br/>δ-power-mean(W_k , R_k) · δ = 2<br/>W_k = base · cohort · goal · acute"]:::worst
   S1 --> S2 --> S2B --> S3 --> S4 --> S5
+  S4 -.-> PILL["<b>per-pillar layer</b><br/>S_k = 100·(1 - R_k) · status R/Y/G<br/>coverage · binding constraint"]:::ps
   S5 --> CR{"any pillar<br/>critical?"}:::safe
   CR -->|yes| CAP["<b>Critical cascade</b><br/>PureScore ≤ 40 · status CRITICAL<br/>emergency ⇒ escalate · Doc 16"]:::crit
   CR -->|no| OUT["<b>PureScore 0–100</b><br/>+ overall_status"]:::ps
+  RNG["Personalized ranges<br/>sex · age · condition · range-variations<br/>Doc 08 / 09"]:::pers -->|reshapes bands| S1
+  COH["Cohort percentile g(q_i) · shrinkage<br/>low representativeness ⇒ suppress φ<br/>Doc 13"]:::meta -->|r_cohort| S2
   RES[("Reservoirs B̃_k<br/>chronic burden · Doc 04")]:::reser -->|ρ_k = 0.2| S3
-  CONF["confidence_i · coverage cov_k<br/>Doc 06 §2"]:::meta -->|ŵ_i = w_i·conf| S3
+  CONF["confidence_i · coverage cov_k<br/>missing ⇒ impute median / drop · D33<br/>Doc 06 §2"]:::meta -->|ŵ_i = w_i·conf| S3
+  CS["Clinical scores · gated · Doc 10<br/>ASCVD · FINDRISC · KDIGO · FIB-4 · FRAX · PhenoAge"]:::pers -->|feedback max() · raise-only| S3
   PERS["personal z_i · EB baseline μ,σ<br/>Doc 05 §5.1"]:::meta --> S2B
-  WT["cohort · goal · acute multipliers<br/>Doc 08 / 09 / 10"]:::meta --> S5
-  S2B -.->|same z_i stream| COMP["Companion vector<br/>Trajectory · Early-warning · Modifiability…<br/>Doc 05 §4"]:::meta
+  WT["cohort · goal · acute multipliers<br/>Doc 08 / 09 / 10"]:::pers --> S5
+  S2B -.->|same z_i stream| COMP["Companion vector<br/>Confidence · Trajectory · Early-warning · Modifiability…<br/>Doc 05 §4"]:::meta
   OUT --> EXP["Explainability object<br/>binding constraint · top contributors<br/>§7 → nudges Doc 11"]:::meta
   classDef io fill:#0c1c2b,stroke:#4aa3df,color:#cfe8ff;
   classDef safe fill:#10202a,stroke:#4aa3df,color:#cfe8ff;
@@ -377,15 +410,24 @@ MERMAID = {
   classDef ps fill:#10241c,stroke:#3ad6a0,color:#bdf5e0,stroke-width:2px;
   classDef reser fill:#0c2018,stroke:#2dd4bf,color:#bff5ec;
   classDef meta fill:#1c1226,stroke:#a98bd6,color:#e6d8ff;
-  click S1 "#1-stage-1-marker-risk-from-clinical-bands" "Stage 1 — marker risk"
-  click S2 "#2-stage-2-blend-with-cohort-percentile-safety-dominant" "Stage 2 — cohort blend"
-  click S2B "#2b-stage-2b-personal-baseline-responsiveness-the-feedback-te" "Stage 2b — personal baseline"
-  click S3 "#3-stage-3-pillar-risk-worst-sensitive-aggregation-confidence" "Stage 3 — pillar risk"
-  click S4 "#4-stage-4-pillar-status-and-the-critical-override" "Stage 4 — critical override"
-  click S5 "#5-stage-5-purescore-personalized-weights-critical-cascade" "Stage 5 — PureScore"
-  click CAP "#5-3-critical-cascade-the-safety-cap" "Critical cascade"
-  click RES "04-moniac-reservoir-dynamics.html" "Doc 04 — reservoirs"
-  click COMP "05-critical-review-and-purescore-2.0.html" "Doc 05 — companion vector\""""),
+  classDef pers fill:#2a1606,stroke:#f0903a,color:#ffd9b0;
+  click S1 "#1-stage-1-marker-risk-from-clinical-bands" "Stage 1 — clinical band: raw x_i becomes marker risk r in [0,1] from green/yellow/red cuts (0.15 / 0.50), optimum-centred within green. Continuous and monotone, smooth except intentional critical steps."
+  click S2 "#2-stage-2-blend-with-cohort-percentile-safety-dominant" "Stage 2 — cohort blend: r = max(r_clin, phi*r_cohort), phi 0.6. Raise-only — the cohort percentile can add concern but never lowers the clinical anchor; powers stack-ranking."
+  click S2B "#2b-stage-2b-personal-baseline-responsiveness-the-feedback-te" "Stage 2b — personal baseline: z = (x - mu)/sigma (empirical-Bayes, shrinks to cohort at cold-start). Feedback kappa*tanh(z/2), kappa 0.10 cap, band-clamped so it never relaxes red or critical. The same z drives Trajectory and Early-warning."
+  click S3 "#3-stage-3-pillar-risk-worst-sensitive-aggregation-confidence" "Stage 3 — pillar risk: R_k = gamma-power-mean of confidence-weighted marker risks (w_hat = w*confidence), gamma 3 (worst-sensitive), plus rho*B_tilde reservoir load. S_k = 100*(1 - R_k)."
+  click S4 "#4-stage-4-pillar-status-and-the-critical-override" "Stage 4 — critical override: a red critical marker forces R_k up to at least R_crit 0.60; the pillar status becomes green, yellow or red."
+  click S5 "#5-stage-5-purescore-personalized-weights-critical-cascade" "Stage 5 — PureScore: W_k = base*cohort*goal*acute (normalized to sum 1); R_total = delta-power-mean(W_k, R_k), delta 2; PureScore = 100*(1 - R_total)."
+  click PILL "#4-stage-4-pillar-status-and-the-critical-override" "Per-pillar layer: each pillar exposes S_k = 100*(1 - R_k), a status (green/yellow/red), coverage, and its binding constraint and top contributors."
+  click CAP "#5-3-critical-cascade-the-safety-cap" "Critical cascade: any critical pillar caps PureScore at 40 and sets status CRITICAL; an emergency tier escalates to a human (Doc 16). It cannot be averaged away."
+  click RNG "08-sex-specific-models.html" "Personalized ranges: sex, age-band, life-stage and condition shift the Stage-1 bands (range-variations) — for example J-curve BP for the elderly, pregnancy frames, and tighter CKD or diabetes targets."
+  click COH "13-cohort-percentiles-and-validation.html" "Cohort percentile g(q): adverse percentile mapped to risk with empirical-Bayes shrinkage. If representativeness is low (out-of-distribution or a small cell) the cohort blend phi is suppressed and confidence is reduced."
+  click CS "10-clinical-scores-integration.html" "Clinical scores (gated, clinician-facing): ASCVD/SCORE2, FINDRISC, KDIGO/KFRE, FIB-4, FRAX, PhenoAge. They feed back as max() — raise risk or weight only, and never clear a critical pillar or lift the cap."
+  click CONF "06-data-model-and-reference-ranges.html" "Confidence: coverage x source quality x stability. Missing markers impute to the age x sex cohort median (D33) or drop and lower confidence; low-confidence markers are down-weighted (w_hat)."
+  click PERS "05-critical-review-and-purescore-2.0.html" "Personal baseline z from empirical-Bayes mu and sigma (Doc 05 section 5.1)."
+  click WT "08-sex-specific-models.html" "Pillar weights W_k = base longevity weight x cohort (disease) x goal x acute multipliers, normalized to sum 1 (Doc 08/09/10)."
+  click RES "04-moniac-reservoir-dynamics.html" "Reservoirs (Doc 04): 15 MONIAC stocks with kappa coupling; each adds rho*B_tilde of chronic burden or asset load to its pillar."
+  click COMP "05-critical-review-and-purescore-2.0.html" "Companion vector (Doc 05 section 4): Confidence, Data-sufficiency, Criticality, Trajectory, Early-warning (Watch to Advisory to Alert), Representativeness, Skew, Volatility, Modifiability and Stress-load — they ride alongside the number and never move the anchor."
+  click EXP "11-daily-nudge-engine.html" "Explainability: the binding constraint, top contributors and weights feed the nudge engine (Doc 11).\""""),
  "04":("Reservoir hydraulics", """flowchart LR
   IN["inflows<br/>behaviours / values"] --> RES[("Reservoir B_j<br/>stock + memory")]
   V["valves<br/>interventions"] --> IN
@@ -980,7 +1022,7 @@ def build_questions_hub():
     adh = _load("adherence.json")["items"]
     cnt = {s: {p: 0 for p in _Q_PH} for s in _Q_SEC}
     for q in qs:
-        s = q.get("section", "lifestyle"); p = q.get("phase", "ongoing")
+        s = _q_section(q); p = _q_phase(q)
         if s in cnt: cnt[s][p] += 1
     for a in adh:  # adherence check-ins fire on cadence → ongoing (the no-EHR screener is onboarding)
         cnt["adherence"]["ongoing"] += 1
@@ -3785,6 +3827,7 @@ def build_spec_audit():
     nb = sum(1 for f in allf if f.get("sev") == "blocker")
     nm = sum(1 for f in allf if f.get("sev") == "major")
     nk = sum(1 for f in allf if f.get("sev") == "minor")
+    nfix = sum(1 for f in allf if f.get("status") == "fixed")
     h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Gaps &amp; roadmap &rsaquo; Spec build-readiness</div>',
          '<h1>Spec build-readiness audit</h1>',
          '<p class="lead">A per-chapter content audit of the source specs (Docs 01&ndash;19) asking one question: '
@@ -3795,8 +3838,8 @@ def build_spec_audit():
          '<span class="chip b-red">blocker</span> = cannot implement as written; '
          '<span class="chip b-yellow">major</span> = ambiguous / likely-wrong guess; '
          '<span class="chip b-mut">minor</span> = clarity or edge case.</p>',
-         '<p class="small muted">%d findings &middot; %d blockers &middot; %d major &middot; %d minor &middot; across %d chapters.</p>'
-         % (len(allf), nb, nm, nk, len(secs)),
+         '<p class="small muted">%d findings &middot; %d blockers &middot; %d major &middot; %d minor &middot; %d already fixed &middot; across %d chapters.</p>'
+         % (len(allf), nb, nm, nk, nfix, len(secs)),
          '<div class="callout safety"><div class="ct">The systemic blocker</div>'
          'Most blockers are <b>not</b> structural &mdash; the equations, gates and state machine are specified. '
          'They are <b>numeric</b>: coefficients, thresholds and reservoir constants (κ, λ, shrinkage k, calibration '
@@ -3820,10 +3863,11 @@ def build_spec_audit():
         h.append('<div class="tablewrap"><table><thead><tr><th>Doc</th><th>Severity</th><th>Type</th>'
                  '<th>Gap</th><th>Suggested resolution</th></tr></thead><tbody>')
         for f in fs:
+            fixed = ' <span class="chip b-green">fixed</span>' if f.get("status") == "fixed" else ""
             h.append('<tr><td class="small mono">%s</td><td>%s</td><td class="small"><code>%s</code></td>'
-                     '<td class="small">%s</td><td class="small muted">%s</td></tr>'
+                     '<td class="small">%s</td><td class="small muted">%s%s</td></tr>'
                      % (_esc(f.get("doc", "")), SEV.get(f.get("sev"), _esc(f.get("sev", ""))),
-                        _esc(f.get("type", "")), _esc(f.get("gap", "")), _esc(f.get("fix", ""))))
+                        _esc(f.get("type", "")), _esc(f.get("gap", "")), _esc(f.get("fix", "")), fixed))
         h.append('</tbody></table></div>')
     h.append('<p class="small muted">Method: %s</p>' % _esc(data.get("method", "")))
     return "Spec build-readiness audit", "".join(h)
