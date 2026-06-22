@@ -1,0 +1,1455 @@
+{
+ "_meta": {
+  "title": "PureScore reservoir-flow model (BIOMONIAC)",
+  "basis": "Runnable MONIAC companion to Doc 04. 15 canonical reservoirs (codes/polarity/feeds anchored to calc-graph.json), 5 transfer-function shapes, evidence-tagged flows. Ported from the 9-reservoir cardiometabolic sim and expanded to 15. ILLUSTRATIVE / expert-prior — calibrate vs Doc 13/14 before any clinical use.",
+  "shapes": [
+   "linear",
+   "saturating",
+   "log",
+   "threshold",
+   "j_curve"
+  ],
+  "counts": {
+   "reservoirs": 15,
+   "valves": 19,
+   "flows": 98,
+   "outcomes": 5
+  }
+ },
+ "reservoirs": [
+  {
+   "id": "gly",
+   "name": "Glycemic",
+   "pol": "burden",
+   "feeds": "met",
+   "sp": 30,
+   "tau": 21,
+   "sat": [
+    0,
+    100
+   ],
+   "bio": "HbA1c {p1} %|4.8|0.045"
+  },
+  {
+   "id": "ath",
+   "name": "Atherogenic",
+   "pol": "burden",
+   "feeds": "cv",
+   "sp": 40,
+   "tau": 30,
+   "sat": [
+    5,
+    100
+   ],
+   "bio": "ApoB {p0} mg/dL|50|1.1"
+  },
+  {
+   "id": "vbp",
+   "name": "Vascular / BP",
+   "pol": "burden",
+   "feeds": "cv",
+   "sp": 35,
+   "tau": 14,
+   "sat": [
+    5,
+    100
+   ],
+   "bio": "SBP {p0} mmHg|100|0.7"
+  },
+  {
+   "id": "adi",
+   "name": "Adiposity",
+   "pol": "burden",
+   "feeds": "met",
+   "sp": 35,
+   "tau": 60,
+   "sat": [
+    2,
+    100
+   ],
+   "bio": "waist {p0} cm|70|0.45"
+  },
+  {
+   "id": "hepf",
+   "name": "Hepatic fat",
+   "pol": "burden",
+   "feeds": "hep",
+   "sp": 25,
+   "tau": 45,
+   "sat": [
+    0,
+    100
+   ],
+   "bio": "FIB-4 {p1}|0.5|0.022"
+  },
+  {
+   "id": "infl",
+   "name": "Inflammation",
+   "pol": "burden",
+   "feeds": "inf",
+   "sp": 30,
+   "tau": 21,
+   "sat": [
+    2,
+    100
+   ],
+   "bio": "hs-CRP {p1} mg/L|0.0|0.0",
+   "bioexp": "crp"
+  },
+  {
+   "id": "allo",
+   "name": "Allostatic load",
+   "pol": "burden",
+   "feeds": "mcs",
+   "sp": 25,
+   "tau": 14,
+   "sat": [
+    0,
+    100
+   ],
+   "bio": "load {p0}/100|0|1"
+  },
+  {
+   "id": "sld",
+   "name": "Sleep debt",
+   "pol": "burden",
+   "feeds": "slp",
+   "sp": 15,
+   "tau": 5,
+   "sat": [
+    0,
+    100
+   ],
+   "bio": "deficit {p1} h/ngt|0|0.09"
+  },
+  {
+   "id": "crf",
+   "name": "Cardiorespiratory",
+   "pol": "asset",
+   "feeds": "fit",
+   "sp": 50,
+   "tau": 42,
+   "sat": [
+    5,
+    98
+   ],
+   "bio": "VO2max {p0} mL/kg/min|20|0.4"
+  },
+  {
+   "id": "mus",
+   "name": "Muscle reserve",
+   "pol": "asset",
+   "feeds": "bcm",
+   "sp": 50,
+   "tau": 90,
+   "sat": [
+    5,
+    98
+   ],
+   "bio": "ALMI {p1} kg/m2|5.5|0.025"
+  },
+  {
+   "id": "bon",
+   "name": "Bone reserve",
+   "pol": "asset",
+   "feeds": "bcm",
+   "sp": 55,
+   "tau": 365,
+   "sat": [
+    5,
+    98
+   ],
+   "bio": "T-score {p1}|-2.5|0.035"
+  },
+  {
+   "id": "renr",
+   "name": "Renal reserve",
+   "pol": "asset",
+   "feeds": "ren",
+   "sp": 60,
+   "tau": 180,
+   "sat": [
+    5,
+    99
+   ],
+   "bio": "eGFR {p0} mL/min|45|0.6"
+  },
+  {
+   "id": "micr",
+   "name": "Micronutrient",
+   "pol": "asset",
+   "feeds": "nut",
+   "sp": 55,
+   "tau": 30,
+   "sat": [
+    5,
+    98
+   ],
+   "bio": "vit-D {p0} nmol/L|25|0.85"
+  },
+  {
+   "id": "oxd",
+   "name": "Oxygen delivery",
+   "pol": "asset",
+   "feeds": "hem",
+   "sp": 55,
+   "tau": 30,
+   "sat": [
+    10,
+    99
+   ],
+   "bio": "SpO2 {p0} %|92|0.08"
+  },
+  {
+   "id": "iron",
+   "name": "Iron reserve",
+   "pol": "asset",
+   "feeds": "hem",
+   "sp": 55,
+   "tau": 45,
+   "sat": [
+    5,
+    98
+   ],
+   "bio": "ferritin {p0} ug/L|15|1.1"
+  }
+ ],
+ "valves": [
+  {
+   "id": "V_STEPS",
+   "name": "Daily Steps",
+   "rng": [
+    1000,
+    15000
+   ],
+   "unit": "steps/day",
+   "up": true,
+   "p": 0
+  },
+  {
+   "id": "V_MVPA",
+   "name": "Aerobic Exercise",
+   "rng": [
+    0,
+    420
+   ],
+   "unit": "min/wk",
+   "up": true,
+   "p": 0
+  },
+  {
+   "id": "V_RESIST",
+   "name": "Resistance Training",
+   "rng": [
+    0,
+    5
+   ],
+   "unit": "sess/wk",
+   "up": true,
+   "p": 1
+  },
+  {
+   "id": "V_SLP_DUR",
+   "name": "Sleep Duration",
+   "rng": [
+    4,
+    9
+   ],
+   "unit": "h/night",
+   "up": true,
+   "p": 1
+  },
+  {
+   "id": "V_SLP_REG",
+   "name": "Sleep Regularity",
+   "rng": [
+    30,
+    95
+   ],
+   "unit": "SRI pts",
+   "up": true,
+   "p": 0
+  },
+  {
+   "id": "V_DIET_PATTERN",
+   "name": "Diet Quality (MEDAS)",
+   "rng": [
+    0,
+    14
+   ],
+   "unit": "pts",
+   "up": true,
+   "p": 1
+  },
+  {
+   "id": "V_PROTEIN",
+   "name": "Protein Intake",
+   "rng": [
+    0.4,
+    2.0
+   ],
+   "unit": "g/kg/day",
+   "up": true,
+   "p": 1
+  },
+  {
+   "id": "V_MINDFULNESS",
+   "name": "Mindfulness",
+   "rng": [
+    0,
+    60
+   ],
+   "unit": "min/day",
+   "up": true,
+   "p": 0
+  },
+  {
+   "id": "V_LIGHT",
+   "name": "Light Hygiene",
+   "rng": [
+    0,
+    100
+   ],
+   "unit": "pts",
+   "up": true,
+   "p": 0
+  },
+  {
+   "id": "V_VITD",
+   "name": "Vitamin D / Sun",
+   "rng": [
+    0,
+    4000
+   ],
+   "unit": "IU/day",
+   "up": true,
+   "p": 0
+  },
+  {
+   "id": "V_IRON",
+   "name": "Iron-rich Diet",
+   "rng": [
+    0,
+    100
+   ],
+   "unit": "pts",
+   "up": true,
+   "p": 0
+  },
+  {
+   "id": "V_ENERGY_BAL",
+   "name": "Energy Balance",
+   "rng": [
+    -750,
+    750
+   ],
+   "unit": "kcal/day",
+   "up": false,
+   "p": 0
+  },
+  {
+   "id": "V_GLYCEMIC_LOAD",
+   "name": "Glycemic Load",
+   "rng": [
+    40,
+    250
+   ],
+   "unit": "GL/day",
+   "up": false,
+   "p": 0
+  },
+  {
+   "id": "V_SODIUM",
+   "name": "Sodium Intake",
+   "rng": [
+    1000,
+    6000
+   ],
+   "unit": "mg/day",
+   "up": false,
+   "p": 0
+  },
+  {
+   "id": "V_ALCOHOL",
+   "name": "Alcohol",
+   "rng": [
+    0,
+    35
+   ],
+   "unit": "drinks/wk",
+   "up": false,
+   "p": 1
+  },
+  {
+   "id": "V_NICOTINE",
+   "name": "Tobacco",
+   "rng": [
+    0,
+    40
+   ],
+   "unit": "cig/day",
+   "up": false,
+   "p": 0
+  }
+ ],
+ "rx_valves": [
+  {
+   "id": "V_MED_STATIN",
+   "name": "Statin",
+   "rng": [
+    0,
+    3
+   ],
+   "unit": "intensity",
+   "up": true,
+   "p": 1,
+   "rx": true
+  },
+  {
+   "id": "V_MED_ANTIHTN",
+   "name": "Antihypertensive",
+   "rng": [
+    0,
+    3
+   ],
+   "unit": "intensity",
+   "up": true,
+   "p": 1,
+   "rx": true
+  },
+  {
+   "id": "V_MED_GLP1",
+   "name": "GLP-1 RA",
+   "rng": [
+    0,
+    3
+   ],
+   "unit": "intensity",
+   "up": true,
+   "p": 1,
+   "rx": true
+  }
+ ],
+ "outcomes": [
+  {
+   "id": "O_ASCVD",
+   "name": "10-yr ASCVD Risk",
+   "pol": "burden",
+   "w": 0.25
+  },
+  {
+   "id": "O_T2DM",
+   "name": "Type 2 Diabetes",
+   "pol": "burden",
+   "w": 0.15
+  },
+  {
+   "id": "O_MORT",
+   "name": "Mortality Hazard",
+   "pol": "burden",
+   "w": 0.3
+  },
+  {
+   "id": "O_ENERGY",
+   "name": "Vitality & Energy",
+   "pol": "asset",
+   "w": 0.2
+  },
+  {
+   "id": "O_BIOAGE",
+   "name": "Biological Age Gap",
+   "pol": "burden",
+   "w": 0.1
+  }
+ ],
+ "flows": [
+  {
+   "src": "V_MVPA",
+   "tgt": "crf",
+   "s": 1,
+   "g": 28,
+   "sh": "saturating",
+   "t": 42,
+   "c": 0.92
+  },
+  {
+   "src": "V_MVPA",
+   "tgt": "gly",
+   "s": -1,
+   "g": 18,
+   "sh": "saturating",
+   "t": 7,
+   "c": 0.9
+  },
+  {
+   "src": "V_MVPA",
+   "tgt": "adi",
+   "s": -1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 60,
+   "c": 0.8
+  },
+  {
+   "src": "V_MVPA",
+   "tgt": "vbp",
+   "s": -1,
+   "g": 9,
+   "sh": "saturating",
+   "t": 21,
+   "c": 0.85
+  },
+  {
+   "src": "V_MVPA",
+   "tgt": "infl",
+   "s": -1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.75
+  },
+  {
+   "src": "V_MVPA",
+   "tgt": "allo",
+   "s": -1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 28,
+   "c": 0.6,
+   "basis": "exercise lowers allostatic load (recovery; folds sim R_ANS)"
+  },
+  {
+   "src": "V_MVPA",
+   "tgt": "bon",
+   "s": 1,
+   "g": 5,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.5,
+   "basis": "weight-bearing aerobic -> bone (new)"
+  },
+  {
+   "src": "V_STEPS",
+   "tgt": "gly",
+   "s": -1,
+   "g": 9,
+   "sh": "saturating",
+   "t": 10,
+   "c": 0.8
+  },
+  {
+   "src": "V_STEPS",
+   "tgt": "adi",
+   "s": -1,
+   "g": 6,
+   "sh": "saturating",
+   "t": 60,
+   "c": 0.7
+  },
+  {
+   "src": "V_RESIST",
+   "tgt": "gly",
+   "s": -1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 21,
+   "c": 0.75
+  },
+  {
+   "src": "V_RESIST",
+   "tgt": "adi",
+   "s": -1,
+   "g": 5,
+   "sh": "saturating",
+   "t": 60,
+   "c": 0.65
+  },
+  {
+   "src": "V_RESIST",
+   "tgt": "crf",
+   "s": 1,
+   "g": 7,
+   "sh": "saturating",
+   "t": 42,
+   "c": 0.6
+  },
+  {
+   "src": "V_RESIST",
+   "tgt": "mus",
+   "s": 1,
+   "g": 22,
+   "sh": "saturating",
+   "t": 60,
+   "c": 0.85,
+   "basis": "resistance training -> muscle reserve (new)"
+  },
+  {
+   "src": "V_RESIST",
+   "tgt": "bon",
+   "s": 1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.7,
+   "basis": "resistance/load -> bone reserve (new)"
+  },
+  {
+   "src": "V_PROTEIN",
+   "tgt": "mus",
+   "s": 1,
+   "g": 16,
+   "sh": "saturating",
+   "t": 60,
+   "c": 0.7,
+   "basis": "adequate protein -> muscle reserve (new)"
+  },
+  {
+   "src": "V_SLP_DUR",
+   "tgt": "sld",
+   "s": -1,
+   "g": 30,
+   "sh": "linear",
+   "t": 3,
+   "c": 0.9
+  },
+  {
+   "src": "V_SLP_DUR",
+   "tgt": "gly",
+   "s": -1,
+   "g": 12,
+   "sh": "threshold",
+   "t": 5,
+   "c": 0.85
+  },
+  {
+   "src": "V_SLP_DUR",
+   "tgt": "allo",
+   "s": -1,
+   "g": 14,
+   "sh": "saturating",
+   "t": 6,
+   "c": 0.75,
+   "basis": "sleep -> recovery (folds sim R_ANS + R_STR)"
+  },
+  {
+   "src": "V_SLP_REG",
+   "tgt": "sld",
+   "s": -1,
+   "g": 12,
+   "sh": "linear",
+   "t": 7,
+   "c": 0.7
+  },
+  {
+   "src": "V_SLP_REG",
+   "tgt": "allo",
+   "s": -1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 14,
+   "c": 0.6
+  },
+  {
+   "src": "V_SLP_REG",
+   "tgt": "gly",
+   "s": -1,
+   "g": 7,
+   "sh": "saturating",
+   "t": 14,
+   "c": 0.65
+  },
+  {
+   "src": "V_ENERGY_BAL",
+   "tgt": "adi",
+   "s": 1,
+   "g": 22,
+   "sh": "linear",
+   "t": 45,
+   "c": 0.9
+  },
+  {
+   "src": "V_GLYCEMIC_LOAD",
+   "tgt": "gly",
+   "s": 1,
+   "g": 16,
+   "sh": "saturating",
+   "t": 14,
+   "c": 0.8
+  },
+  {
+   "src": "V_GLYCEMIC_LOAD",
+   "tgt": "ath",
+   "s": 1,
+   "g": 7,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.6
+  },
+  {
+   "src": "V_SODIUM",
+   "tgt": "vbp",
+   "s": 1,
+   "g": 14,
+   "sh": "saturating",
+   "t": 10,
+   "c": 0.85
+  },
+  {
+   "src": "V_DIET_PATTERN",
+   "tgt": "ath",
+   "s": -1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.8
+  },
+  {
+   "src": "V_DIET_PATTERN",
+   "tgt": "infl",
+   "s": -1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.75
+  },
+  {
+   "src": "V_DIET_PATTERN",
+   "tgt": "vbp",
+   "s": -1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 21,
+   "c": 0.8
+  },
+  {
+   "src": "V_DIET_PATTERN",
+   "tgt": "micr",
+   "s": 1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.6,
+   "basis": "diet quality -> micronutrient status (new)"
+  },
+  {
+   "src": "V_DIET_PATTERN",
+   "tgt": "iron",
+   "s": 1,
+   "g": 5,
+   "sh": "saturating",
+   "t": 45,
+   "c": 0.5,
+   "basis": "diet quality -> iron status (new)"
+  },
+  {
+   "src": "V_ALCOHOL",
+   "tgt": "vbp",
+   "s": 1,
+   "g": 9,
+   "sh": "saturating",
+   "t": 10,
+   "c": 0.8
+  },
+  {
+   "src": "V_ALCOHOL",
+   "tgt": "sld",
+   "s": 1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 2,
+   "c": 0.75
+  },
+  {
+   "src": "V_ALCOHOL",
+   "tgt": "ath",
+   "s": 1,
+   "g": 5,
+   "sh": "saturating",
+   "t": 21,
+   "c": 0.55
+  },
+  {
+   "src": "V_ALCOHOL",
+   "tgt": "infl",
+   "s": 1,
+   "g": 5,
+   "sh": "j_curve",
+   "t": 21,
+   "c": 0.5
+  },
+  {
+   "src": "V_ALCOHOL",
+   "tgt": "hepf",
+   "s": 1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.7,
+   "basis": "alcohol -> hepatic fat (new)"
+  },
+  {
+   "src": "V_NICOTINE",
+   "tgt": "ath",
+   "s": 1,
+   "g": 6,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.6
+  },
+  {
+   "src": "V_NICOTINE",
+   "tgt": "infl",
+   "s": 1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.75
+  },
+  {
+   "src": "V_MINDFULNESS",
+   "tgt": "allo",
+   "s": -1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 21,
+   "c": 0.65
+  },
+  {
+   "src": "V_LIGHT",
+   "tgt": "sld",
+   "s": -1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 10,
+   "c": 0.6
+  },
+  {
+   "src": "V_LIGHT",
+   "tgt": "allo",
+   "s": -1,
+   "g": 4,
+   "sh": "saturating",
+   "t": 21,
+   "c": 0.45
+  },
+  {
+   "src": "V_VITD",
+   "tgt": "bon",
+   "s": 1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 90,
+   "c": 0.7,
+   "basis": "vitamin D -> bone reserve (new)"
+  },
+  {
+   "src": "V_VITD",
+   "tgt": "micr",
+   "s": 1,
+   "g": 15,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.7,
+   "basis": "vitamin D -> micronutrient status (new)"
+  },
+  {
+   "src": "V_VITD",
+   "tgt": "infl",
+   "s": -1,
+   "g": 4,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.4,
+   "basis": "vitamin D anti-inflammatory (low conf, new)"
+  },
+  {
+   "src": "V_IRON",
+   "tgt": "iron",
+   "s": 1,
+   "g": 18,
+   "sh": "saturating",
+   "t": 45,
+   "c": 0.7,
+   "basis": "iron-rich diet -> iron reserve (new)"
+  },
+  {
+   "src": "V_IRON",
+   "tgt": "oxd",
+   "s": 1,
+   "g": 6,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.5,
+   "basis": "iron -> oxygen delivery (new)"
+  },
+  {
+   "src": "V_MED_STATIN",
+   "tgt": "ath",
+   "s": -1,
+   "g": 45,
+   "sh": "log",
+   "t": 21,
+   "c": 0.98
+  },
+  {
+   "src": "V_MED_ANTIHTN",
+   "tgt": "vbp",
+   "s": -1,
+   "g": 40,
+   "sh": "log",
+   "t": 14,
+   "c": 0.97
+  },
+  {
+   "src": "V_MED_GLP1",
+   "tgt": "gly",
+   "s": -1,
+   "g": 35,
+   "sh": "log",
+   "t": 30,
+   "c": 0.95
+  },
+  {
+   "src": "V_MED_GLP1",
+   "tgt": "adi",
+   "s": -1,
+   "g": 30,
+   "sh": "log",
+   "t": 90,
+   "c": 0.95
+  },
+  {
+   "src": "adi",
+   "tgt": "gly",
+   "s": 1,
+   "g": 20,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.85
+  },
+  {
+   "src": "adi",
+   "tgt": "vbp",
+   "s": 1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.75
+  },
+  {
+   "src": "adi",
+   "tgt": "infl",
+   "s": 1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.85,
+   "basis": "canonical kappa infl<-adi 0.10"
+  },
+  {
+   "src": "adi",
+   "tgt": "ath",
+   "s": 1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.7
+  },
+  {
+   "src": "adi",
+   "tgt": "hepf",
+   "s": 1,
+   "g": 18,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.8,
+   "basis": "visceral adiposity -> hepatic fat (new)"
+  },
+  {
+   "src": "sld",
+   "tgt": "gly",
+   "s": 1,
+   "g": 10,
+   "sh": "threshold",
+   "t": 7,
+   "c": 0.8,
+   "basis": "canonical kappa gly<-sld 0.10"
+  },
+  {
+   "src": "sld",
+   "tgt": "infl",
+   "s": 1,
+   "g": 15,
+   "sh": "saturating",
+   "t": 7,
+   "c": 0.75,
+   "basis": "canonical kappa infl<-sld 0.15"
+  },
+  {
+   "src": "sld",
+   "tgt": "allo",
+   "s": 1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 7,
+   "c": 0.75,
+   "basis": "canonical kappa allo<-sld 0.12 (+ sim spiral)"
+  },
+  {
+   "src": "allo",
+   "tgt": "sld",
+   "s": 1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 5,
+   "c": 0.6,
+   "basis": "canonical kappa sld<-allo 0.12 (vicious spiral)"
+  },
+  {
+   "src": "allo",
+   "tgt": "vbp",
+   "s": 1,
+   "g": 9,
+   "sh": "saturating",
+   "t": 14,
+   "c": 0.6
+  },
+  {
+   "src": "allo",
+   "tgt": "gly",
+   "s": 1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 14,
+   "c": 0.55
+  },
+  {
+   "src": "gly",
+   "tgt": "ath",
+   "s": 1,
+   "g": 15,
+   "sh": "saturating",
+   "t": 60,
+   "c": 0.7,
+   "basis": "canonical kappa ath<-gly 0.15"
+  },
+  {
+   "src": "infl",
+   "tgt": "ath",
+   "s": 1,
+   "g": 15,
+   "sh": "saturating",
+   "t": 60,
+   "c": 0.7,
+   "basis": "canonical kappa ath<-infl 0.15"
+  },
+  {
+   "src": "crf",
+   "tgt": "gly",
+   "s": -1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.6,
+   "basis": "canonical kappa gly<-crf deficit 0.08"
+  },
+  {
+   "src": "crf",
+   "tgt": "allo",
+   "s": -1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.6
+  },
+  {
+   "src": "crf",
+   "tgt": "infl",
+   "s": -1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.6
+  },
+  {
+   "src": "hepf",
+   "tgt": "gly",
+   "s": 1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 45,
+   "c": 0.6,
+   "basis": "fatty liver -> insulin resistance (new)"
+  },
+  {
+   "src": "hepf",
+   "tgt": "infl",
+   "s": 1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 45,
+   "c": 0.55,
+   "basis": "hepatic fat -> inflammation (new)"
+  },
+  {
+   "src": "hepf",
+   "tgt": "ath",
+   "s": 1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 60,
+   "c": 0.5,
+   "basis": "hepatic fat -> atherogenic lipids (new)"
+  },
+  {
+   "src": "mus",
+   "tgt": "gly",
+   "s": -1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.7,
+   "basis": "muscle = glucose sink (new)"
+  },
+  {
+   "src": "mus",
+   "tgt": "crf",
+   "s": 1,
+   "g": 6,
+   "sh": "saturating",
+   "t": 60,
+   "c": 0.5,
+   "basis": "muscle supports fitness (new)"
+  },
+  {
+   "src": "vbp",
+   "tgt": "renr",
+   "s": -1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.7,
+   "basis": "hypertension depletes renal reserve (new)"
+  },
+  {
+   "src": "gly",
+   "tgt": "renr",
+   "s": -1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.6,
+   "basis": "hyperglycaemia depletes renal reserve (new)"
+  },
+  {
+   "src": "iron",
+   "tgt": "oxd",
+   "s": 1,
+   "g": 15,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.7,
+   "basis": "iron -> oxygen delivery (new)"
+  },
+  {
+   "src": "micr",
+   "tgt": "iron",
+   "s": 1,
+   "g": 6,
+   "sh": "saturating",
+   "t": 45,
+   "c": 0.5,
+   "basis": "micronutrients support iron status (new)"
+  },
+  {
+   "src": "micr",
+   "tgt": "infl",
+   "s": -1,
+   "g": 6,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.5,
+   "basis": "micronutrients lower inflammation (new)"
+  },
+  {
+   "src": "oxd",
+   "tgt": "crf",
+   "s": 1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 30,
+   "c": 0.55,
+   "basis": "oxygen delivery supports fitness (new)"
+  },
+  {
+   "src": "gly",
+   "tgt": "O_ASCVD",
+   "s": 1,
+   "g": 14,
+   "sh": "saturating",
+   "t": 120,
+   "c": 0.8
+  },
+  {
+   "src": "vbp",
+   "tgt": "O_ASCVD",
+   "s": 1,
+   "g": 22,
+   "sh": "linear",
+   "t": 120,
+   "c": 0.9
+  },
+  {
+   "src": "ath",
+   "tgt": "O_ASCVD",
+   "s": 1,
+   "g": 22,
+   "sh": "linear",
+   "t": 180,
+   "c": 0.95
+  },
+  {
+   "src": "infl",
+   "tgt": "O_ASCVD",
+   "s": 1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.7
+  },
+  {
+   "src": "V_NICOTINE",
+   "tgt": "O_ASCVD",
+   "s": 1,
+   "g": 13,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.9
+  },
+  {
+   "src": "gly",
+   "tgt": "O_T2DM",
+   "s": 1,
+   "g": 40,
+   "sh": "saturating",
+   "t": 120,
+   "c": 0.9
+  },
+  {
+   "src": "adi",
+   "tgt": "O_T2DM",
+   "s": 1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 120,
+   "c": 0.75
+  },
+  {
+   "src": "V_STEPS",
+   "tgt": "O_MORT",
+   "s": -1,
+   "g": 14,
+   "sh": "saturating",
+   "t": 90,
+   "c": 0.82
+  },
+  {
+   "src": "crf",
+   "tgt": "O_MORT",
+   "s": -1,
+   "g": 30,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.9
+  },
+  {
+   "src": "infl",
+   "tgt": "O_MORT",
+   "s": 1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.65
+  },
+  {
+   "src": "O_ASCVD",
+   "tgt": "O_MORT",
+   "s": 1,
+   "g": 16,
+   "sh": "linear",
+   "t": 1,
+   "c": 0.85
+  },
+  {
+   "src": "mus",
+   "tgt": "O_MORT",
+   "s": -1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.7,
+   "basis": "muscle mass -> survival (new)"
+  },
+  {
+   "src": "renr",
+   "tgt": "O_MORT",
+   "s": -1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.6,
+   "basis": "renal reserve -> survival (new)"
+  },
+  {
+   "src": "bon",
+   "tgt": "O_MORT",
+   "s": -1,
+   "g": 6,
+   "sh": "saturating",
+   "t": 365,
+   "c": 0.5,
+   "basis": "bone reserve -> fracture-related survival (new)"
+  },
+  {
+   "src": "infl",
+   "tgt": "O_BIOAGE",
+   "s": 1,
+   "g": 18,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.65
+  },
+  {
+   "src": "crf",
+   "tgt": "O_BIOAGE",
+   "s": -1,
+   "g": 16,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.6
+  },
+  {
+   "src": "gly",
+   "tgt": "O_BIOAGE",
+   "s": 1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 180,
+   "c": 0.55
+  },
+  {
+   "src": "allo",
+   "tgt": "O_ENERGY",
+   "s": -1,
+   "g": 18,
+   "sh": "saturating",
+   "t": 7,
+   "c": 0.6,
+   "basis": "allostatic load drains vitality (folds sim R_ANS/R_STR)"
+  },
+  {
+   "src": "sld",
+   "tgt": "O_ENERGY",
+   "s": -1,
+   "g": 24,
+   "sh": "saturating",
+   "t": 3,
+   "c": 0.75
+  },
+  {
+   "src": "oxd",
+   "tgt": "O_ENERGY",
+   "s": 1,
+   "g": 12,
+   "sh": "saturating",
+   "t": 14,
+   "c": 0.6,
+   "basis": "oxygen delivery -> energy (new)"
+  },
+  {
+   "src": "iron",
+   "tgt": "O_ENERGY",
+   "s": 1,
+   "g": 10,
+   "sh": "saturating",
+   "t": 21,
+   "c": 0.6,
+   "basis": "iron repletion -> energy / less fatigue (new)"
+  },
+  {
+   "src": "micr",
+   "tgt": "O_ENERGY",
+   "s": 1,
+   "g": 8,
+   "sh": "saturating",
+   "t": 21,
+   "c": 0.5,
+   "basis": "micronutrients -> energy (new)"
+  }
+ ],
+ "patients": [
+  {
+   "name": "Omar H.",
+   "meta": "44M · UAE · Moderate cardiometabolic risk",
+   "res": {
+    "crf": 35,
+    "allo": 50,
+    "sld": 55,
+    "gly": 60,
+    "adi": 62,
+    "vbp": 55,
+    "ath": 58,
+    "infl": 52,
+    "hepf": 55,
+    "mus": 48,
+    "bon": 55,
+    "renr": 62,
+    "micr": 45,
+    "oxd": 58,
+    "iron": 52
+   }
+  },
+  {
+   "name": "Fatima S.",
+   "meta": "58F · GCC · High cardiovascular risk",
+   "res": {
+    "crf": 30,
+    "allo": 62,
+    "sld": 60,
+    "gly": 68,
+    "adi": 64,
+    "vbp": 72,
+    "ath": 60,
+    "infl": 58,
+    "hepf": 58,
+    "mus": 40,
+    "bon": 42,
+    "renr": 55,
+    "micr": 40,
+    "oxd": 52,
+    "iron": 44
+   }
+  },
+  {
+   "name": "Daniel R.",
+   "meta": "39M · Western · Early pre-diabetes trajectory",
+   "res": {
+    "crf": 55,
+    "allo": 45,
+    "sld": 42,
+    "gly": 48,
+    "adi": 50,
+    "vbp": 40,
+    "ath": 45,
+    "infl": 38,
+    "hepf": 48,
+    "mus": 58,
+    "bon": 60,
+    "renr": 70,
+    "micr": 58,
+    "oxd": 62,
+    "iron": 55
+   }
+  }
+ ]
+}
