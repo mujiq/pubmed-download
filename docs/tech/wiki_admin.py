@@ -137,8 +137,8 @@ def build_admin_lab():
     return "Admin · Lab ranges", "".join(h)
 
 def build_admin_weights():
-    h = [_crumb("Weights &amp; constants"), '<h1>Review — Weights, Constants &amp; Imputation</h1>',
-         _adminbar("PureScore weights &amp; scoring constants"),
+    h = [_crumb("Weights & constants"), '<h1>Review — Weights, Constants &amp; Imputation</h1>',
+         _adminbar("PureScore weights & scoring constants"),
          '<p class="lead">Pillar weights, scoring constants (including the continuous Stage 2b responsiveness), '
          'within-pillar marker weights, and the imputation/confidence policy that governs fallback values. '
          'Math: <a class="xref" href="03-scoring-formula.html">Doc 03</a>.</p>', ILLUS,
@@ -206,7 +206,7 @@ def build_admin_lifestyle():
     return "Admin · Lifestyle", "".join(h)
 
 def build_admin_personas():
-    h = [_crumb("Personas &amp; frames"), '<h1>Review — Personas &amp; Cohort Frames</h1>',
+    h = [_crumb("Personas & frames"), '<h1>Review — Personas &amp; Cohort Frames</h1>',
          _adminbar("Persona / cohort-frame review"),
          '<p class="lead">Cohort frames adjust interpretation (ranges, weight multipliers, confidence) without ever '
          'relaxing the clinical safety anchor. Detail in <a class="xref" href="appendix-personas.html">Appendix D</a>; '
@@ -230,8 +230,8 @@ def build_admin_personas():
     return "Admin · Personas", "".join(h)
 
 def build_admin_governance():
-    h = [_crumb("Governance &amp; sign-off"), '<h1>Governance — Quarterly Review &amp; Sign-off</h1>',
-         _adminbar("Workflow, sign-off &amp; audit"),
+    h = [_crumb("Governance & sign-off"), '<h1>Governance — Quarterly Review &amp; Sign-off</h1>',
+         _adminbar("Workflow, sign-off & audit"),
          '<p class="lead">The control process behind every screen in this section: who proposes, who reviews, what '
          'gates a change must clear, and how it is signed off and audited.</p>', ILLUS, GOV_NOTE,
          '<div class="diagram"><div class="dt">Review workflow</div><pre class="mermaid">flowchart LR\n'

@@ -18,7 +18,7 @@
   }
   function setOpen(g, open) {
     g.classList.toggle('open', open);
-    var h = g.querySelector('.grp-h'); if (h) h.setAttribute('aria-expanded', open ? 'true' : 'false');
+    var h = g.querySelector('.grp-tog'); if (h) h.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
   // restore persisted open-state (merged with the active group); first visit => only active open (collapsed default)
@@ -27,9 +27,9 @@
   var ag = side && side.querySelector('a.active');
   if (ag) { var p = ag.closest('.navgrp'); if (p) setOpen(p, true); try { ag.scrollIntoView({ block: 'center' }); } catch (e) {} }
 
-  // toggle a group
+  // toggle a group (caret only — the chapter title is a link to the landing page)
   groups.forEach(function (g) {
-    var h = g.querySelector('.grp-h');
+    var h = g.querySelector('.grp-tog');
     if (h) h.addEventListener('click', function () { setOpen(g, !g.classList.contains('open')); save(); });
   });
   // expand / collapse all

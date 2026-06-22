@@ -1,0 +1,294 @@
+<div class="crumbs"><a href="index.html">Home</a> › 8 · System &amp; build › PureScore calculation — Uber-diagram</div>
+<h1>PureScore — How it is calculated (Uber-diagram)</h1>
+<p class="lead">One page that holds <b>every system that touches the number</b>, five ways. Built for developers and architects to confirm <b>no step is left unturned</b> — the core pipeline, the reservoir layer, the companion meta-vector, the personalization modifiers and the safety/clinical gates. Switch <b>view</b> to change the lens; set the <b>age / sex / condition</b> filters to re-light the steps that change for that group; double-click any node to open its source page. Anchored to <a class="xref" href="05-critical-review-and-purescore-2.0.html">Doc 05</a> (companion vector) and the JSON-canonical engine.</p>
+
+<div class="callout spec"><div class="ct">How to read this</div>
+The five views share one calculation: <b>Overview</b> (all systems at once) · <b>Pipeline</b> (the exact 5-stage formula chain) · <b>Companion</b> (the 10 meta-dimensions that ride alongside) · <b>Personalization</b> (how sex/age/condition reshape ranges &amp; weights) · <b>Critical &amp; Clinical</b> (the safety cascade, confirmation gates, the 7 gated scores and the actuarial firewall). The <b>filters</b> annotate the diagram (they highlight which steps change for the selected group — they do not recompute; use the <a class="xref" href="purescore-uber-map.html">Calculation Explorer</a> to run live numbers). Symbols are kept ASCII in the diagrams; the exact formulas with γ, δ, κ, φ are in the callout under the Pipeline view.</div>
+
+<div class="callout note"><div class="ct">Illustrative</div>A design model, not a shipped engine. Constants are expert-prior and must be calibrated (<a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13</a>/<a class="xref" href="14-validation-and-calibration-harness.html">Doc 14</a>); re-verify before any clinical or production use (README §5.6).</div>
+
+<div class="cu" id="cu">
+  <div class="cu-bar">
+    <span class="cu-lab">Filters</span>
+    <label class="cu-f">Age <select id="fAge">
+      <option value="">any</option><option value="young">18–40</option><option value="mid">40–65</option>
+      <option value="old">65–80</option><option value="frail">80+</option></select></label>
+    <label class="cu-f">Sex <select id="fSex">
+      <option value="">any</option><option value="f">female</option><option value="m">male</option></select></label>
+    <label class="cu-f">Condition <select id="fCond">
+      <option value="">none</option><option value="preg">pregnancy</option><option value="meno">menopause</option>
+      <option value="ckd">CKD</option><option value="dm">diabetes</option></select></label>
+    <button class="cu-clear" id="fClear" type="button">clear</button>
+    <span class="cu-grow"></span>
+    <span class="cu-lab">View</span>
+    <button class="cu-tab on" data-view="overview" type="button">Overview</button>
+    <button class="cu-tab" data-view="pipeline" type="button">Pipeline</button>
+    <button class="cu-tab" data-view="companion" type="button">Companion</button>
+    <button class="cu-tab" data-view="person" type="button">Personalization</button>
+    <button class="cu-tab" data-view="critical" type="button">Critical &amp; Clinical</button>
+  </div>
+
+  <div class="cu-drill">Explore ↗
+    <a href="07-data-streams-and-experience.html">inputs</a><a href="03-scoring-formula.html">scoring</a>
+    <a href="04-moniac-reservoir-dynamics.html">reservoirs</a><a href="reservoir-sim.html">sim</a>
+    <a href="02-pillars-and-marker-catalog.html">pillars</a><a href="05-critical-review-and-purescore-2.0.html">companion</a>
+    <a href="08-sex-specific-models.html">sex</a><a href="09-acute-events-and-life-stage-plans.html">age/acute</a>
+    <a href="10-clinical-scores-integration.html">clinical scores</a><a href="16-safety-governance-and-regulatory.html">safety</a>
+    <a href="appendix-personas.html">personas</a><a href="appendix-persona-matrix.html">persona matrix</a>
+    <a href="reference-range-resolver.html">range resolver</a><a href="purescore-uber-map.html">Calc Explorer</a></div>
+
+  <div class="cu-view" data-view="overview"><pre class="mermaid">flowchart LR
+  IN["INPUTS<br/>labs · wearables · PROs"]:::io
+  MR["MARKER RISK<br/>1 bands · 2 cohort blend · 2b personal z"]:::eng
+  RES["RESERVOIRS x15<br/>MONIAC · kappa coupling"]:::res
+  PK["PILLAR RISK Rk<br/>gamma-mean + rho*B"]:::eng
+  PS["PURESCORE<br/>delta-mean · 100(1-Rtotal)"]:::ps
+  CR["CRITICAL CASCADE<br/>crit pillar to cap 40 to escalate"]:::crit
+  CV["COMPANION VECTOR<br/>10 meta-dimensions"]:::comp
+  PZ["PERSONALIZATION<br/>sex · age · life-stage · condition"]:::pers
+  CS["CLINICAL SCORES<br/>gated · feedback as max"]:::clin
+  IN --> MR --> PK --> PS --> CR
+  RES -->|rho*B_tilde| PK
+  CS -.->|raise-only| PK
+  PZ -.->|reshapes ranges and weights| MR
+  PZ -.-> PK
+  PS --> CV
+  click IN "07-data-streams-and-experience.html" "Doc 07 — data streams"
+  click MR "03-scoring-formula.html" "Doc 03 — scoring formula"
+  click RES "reservoir-sim.html" "Reservoir simulator"
+  click PK "02-pillars-and-marker-catalog.html" "Doc 02 — pillars & markers"
+  click PS "purescore-uber-map.html" "Calculation Explorer"
+  click CR "16-safety-governance-and-regulatory.html" "Doc 16 — safety"
+  click CV "05-critical-review-and-purescore-2.0.html" "Doc 05 — companion vector"
+  click PZ "08-sex-specific-models.html" "Doc 08 — sex-specific"
+  click CS "10-clinical-scores-integration.html" "Doc 10 — clinical scores"
+  classDef io fill:#0c1c2b,stroke:#4aa3df,color:#cfe8ff;
+  classDef eng fill:#141a2e,stroke:#8b97f0,color:#dfe4ff;
+  classDef res fill:#0c2018,stroke:#2dd4bf,color:#bff5ec;
+  classDef ps fill:#10241c,stroke:#3ad6a0,color:#bdf5e0,stroke-width:2px;
+  classDef crit fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;
+  classDef comp fill:#1c1226,stroke:#a98bd6,color:#e6d8ff;
+  classDef pers fill:#241f0c,stroke:#edb14a,color:#ffe6b0;
+  classDef clin fill:#10202a,stroke:#4aa3df,color:#cfe8ff;</pre></div>
+
+  <div class="cu-view" data-view="pipeline"><pre class="mermaid">flowchart TB
+  X["raw marker x_i"]:::io
+  S1["Stage 1 · clinical band<br/>r_clin in 0..1"]:::eng
+  S2["Stage 2 · cohort blend<br/>max(r_clin, phi*cohort)"]:::eng
+  S2b["Stage 2b · personal baseline<br/>plus kappa*tanh(z/2)"]:::eng
+  W["confidence weight<br/>w_hat = w * confidence"]:::eng
+  RK["Stage 3 · pillar risk Rk<br/>gamma-mean + rho*B_tilde"]:::eng
+  ST["Stage 4 · status / critical<br/>if critical Rk to 0.60"]:::crit
+  WK["Stage 5 · pillar weights Wk<br/>base · cohort · goal · acute"]:::pers
+  RT["R_total · delta-mean"]:::eng
+  PS["PureScore = 100(1 - R_total)"]:::ps
+  CAP["critical cascade · cap 40"]:::crit
+  RV["reservoirs B_tilde · Doc 04"]:::res
+  X --> S1 --> S2 --> S2b --> W --> RK --> ST --> WK --> RT --> PS --> CAP
+  RV -->|rho*B_tilde| RK
+  click X "06-data-model-and-reference-ranges.html" "Doc 06 — data model"
+  click S1 "03-scoring-formula.html" "Doc 03 §1 — clinical band"
+  click S2 "13-cohort-percentiles-and-validation.html" "Doc 13 — cohort blend phi"
+  click S2b "05-critical-review-and-purescore-2.0.html" "Doc 05 §5 — personal baseline"
+  click RK "02-pillars-and-marker-catalog.html" "Doc 02 — pillars"
+  click ST "16-safety-governance-and-regulatory.html" "Doc 16 — critical"
+  click WK "09-acute-events-and-life-stage-plans.html" "Doc 09 — acute/goal weights"
+  click PS "purescore-uber-map.html" "Calculation Explorer"
+  click RV "reservoir-sim.html" "Reservoir simulator"
+  classDef io fill:#0c1c2b,stroke:#4aa3df,color:#cfe8ff;
+  classDef eng fill:#141a2e,stroke:#8b97f0,color:#dfe4ff;
+  classDef res fill:#0c2018,stroke:#2dd4bf,color:#bff5ec;
+  classDef ps fill:#10241c,stroke:#3ad6a0,color:#bdf5e0,stroke-width:2px;
+  classDef crit fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;
+  classDef pers fill:#241f0c,stroke:#edb14a,color:#ffe6b0;</pre></div>
+
+  <div class="cu-view" data-view="companion"><pre class="mermaid">flowchart TB
+  PS(["PureScore + status<br/>the headline number"]):::ps
+  CF["Confidence<br/>coverage x source quality"]:::comp
+  SU["Data Sufficiency<br/>fresh-data fraction"]:::comp
+  CR["Criticality<br/>max escalation tier + count"]:::crit
+  TR["Trajectory<br/>robust slope of Sk"]:::comp
+  EW["Early-warning ladder<br/>Watch to Advisory to Alert"]:::crit
+  RP["Representativeness<br/>OOD distance; low to suppress phi"]:::comp
+  SK["Skew<br/>heavy-tail to log transform"]:::comp
+  VO["Volatility<br/>damps Confidence and Trajectory"]:::comp
+  MO["Modifiability<br/>modifiable vs fixed share"]:::comp
+  ST["Stress-load<br/>read-only · never moves anchor"]:::pers
+  PS --- CF
+  PS --- SU
+  PS --- CR
+  PS --- TR
+  PS --- EW
+  PS --- RP
+  PS --- SK
+  PS --- VO
+  PS --- MO
+  PS --- ST
+  click CF "05-critical-review-and-purescore-2.0.html" "Doc 05 §4 — confidence"
+  click EW "05-critical-review-and-purescore-2.0.html" "Doc 05 §5 — early-warning"
+  click RP "05-critical-review-and-purescore-2.0.html" "Doc 05 §7 — representativeness"
+  click ST "05-critical-review-and-purescore-2.0.html" "Doc 05 §4.1 — stress-load"
+  click PS "12-recommended-actions-catalogue.html" "Doc 12 — companion vector use"
+  classDef ps fill:#10241c,stroke:#3ad6a0,color:#bdf5e0,stroke-width:2px;
+  classDef comp fill:#1c1226,stroke:#a98bd6,color:#e6d8ff;
+  classDef crit fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;
+  classDef pers fill:#241f0c,stroke:#edb14a,color:#ffe6b0;</pre></div>
+
+  <div class="cu-view" data-view="person"><pre class="mermaid">flowchart LR
+  BASE["base ranges and weights<br/>(default cohort)"]:::eng
+  SEXF["Female frame<br/>ENDO · CV ApoB drift · HEM"]:::gFemale
+  SEXM["Male frame<br/>andropause · PSA gating"]:::gMale
+  YOUNG["Age 18-40<br/>prevention focus · no age bands"]:::gYoung
+  MID["Age 40-65<br/>standard bands · CV accrual"]:::gMid
+  OLD["Age 65-80<br/>J-curve BP · VO2 age-norm"]:::gOld
+  FRAIL["Age 80+<br/>low-yield flags muted · competing risk"]:::gFrail
+  PREG["Pregnancy<br/>Hb drop ok · eGFR +25 · PE anchors kept"]:::gPreg
+  MENO["Menopause<br/>CV up · BMD reds sooner"]:::gMeno
+  CKD["CKD<br/>BP under 120 · SGLT2i dip = Watch"]:::gCKD
+  DM["Diabetes<br/>MET/REN/CV up · managed tags"]:::gDM
+  OUT["reshaped ranges and weights<br/>to Stage 1-5"]:::eng
+  BASE --> SEXF --> OUT
+  BASE --> SEXM --> OUT
+  BASE --> YOUNG --> OUT
+  BASE --> MID --> OUT
+  BASE --> OLD --> OUT
+  BASE --> FRAIL --> OUT
+  BASE --> PREG --> OUT
+  BASE --> MENO --> OUT
+  BASE --> CKD --> OUT
+  BASE --> DM --> OUT
+  click SEXF "08-sex-specific-models.html" "Doc 08 — female model"
+  click SEXM "08-sex-specific-models.html" "Doc 08 — male model"
+  click OLD "09-acute-events-and-life-stage-plans.html" "Doc 09 — age frames"
+  click FRAIL "09-acute-events-and-life-stage-plans.html" "Doc 09 — frailty"
+  click PREG "appendix-personas.html" "Personas — pregnancy"
+  click MENO "appendix-personas.html" "Personas — postmenopausal"
+  click CKD "appendix-persona-matrix.html" "Persona matrix — CKD"
+  click DM "appendix-personas.html" "Personas — diabetes"
+  click OUT "reference-range-resolver.html" "Reference-range resolver"
+  classDef eng fill:#141a2e,stroke:#8b97f0,color:#dfe4ff;
+  classDef gYoung fill:#241f0c,stroke:#edb14a,color:#ffe6b0;
+  classDef gMid fill:#241f0c,stroke:#edb14a,color:#ffe6b0;
+  classDef gOld fill:#241f0c,stroke:#e0a020,color:#ffe6b0;
+  classDef gFrail fill:#241f0c,stroke:#e0a020,color:#ffe6b0;
+  classDef gFemale fill:#2a0c1f,stroke:#f06aa0,color:#ffd0e6;
+  classDef gMale fill:#0c1c2b,stroke:#4aa3df,color:#cfe8ff;
+  classDef gPreg fill:#2a0c1f,stroke:#f06aa0,color:#ffd0e6;
+  classDef gMeno fill:#2a0c1f,stroke:#f06aa0,color:#ffd0e6;
+  classDef gCKD fill:#2a1606,stroke:#f0903a,color:#ffd9b0;
+  classDef gDM fill:#2a1606,stroke:#f0903a,color:#ffd9b0;</pre></div>
+
+  <div class="cu-view" data-view="critical"><pre class="mermaid">flowchart TB
+  M["marker r_i &gt;= 0.5 AND critical"]:::crit
+  G{"confirm gate"}:::eng
+  M --> G
+  G -->|implausible / device / drug-expected| WATCH["Watch + reconfirm"]:::wait
+  G -->|corroborated| ALERT["ALERT"]:::crit
+  ALERT --> CP["critical pillar · Rk to 0.60"]:::crit
+  CP --> CAP["PureScore &lt;= 40 · status CRITICAL"]:::crit
+  CAP --> ESC{"emergency tier?"}:::eng
+  ESC -->|yes| HUM["escalate to human · Doc 16"]:::crit
+  ESC -->|no| MON["urgent / routine · monitor"]:::wait
+  SC["CLINICAL SCORES · gated<br/>ASCVD SCORE2 FINDRISC KDIGO KFRE FIB4 FRAX PhenoAge"]:::clin
+  SC -->|feedback as max · raise-only| CP
+  FW["ACTUARIAL FIREWALL<br/>wellness score never reaches pricing"]:::gov
+  CAP -.->|firewalled| FW
+  click M "02-pillars-and-marker-catalog.html" "Doc 02 — critical markers"
+  click G "05-critical-review-and-purescore-2.0.html" "Doc 05 §3.4 — confirmation gate"
+  click HUM "16-safety-governance-and-regulatory.html" "Doc 16 — escalation"
+  click SC "10-clinical-scores-integration.html" "Doc 10 — clinical scores"
+  click FW "19-actuarial-pricing-and-insurance.html" "Doc 19 — actuarial firewall"
+  classDef crit fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;
+  classDef eng fill:#141a2e,stroke:#8b97f0,color:#dfe4ff;
+  classDef wait fill:#1d1a0c,stroke:#edb14a,color:#ffe6b0;
+  classDef clin fill:#10202a,stroke:#4aa3df,color:#cfe8ff;
+  classDef gov fill:#1a1226,stroke:#a98bd6,color:#e6d8ff;</pre></div>
+</div>
+
+<style>
+.cu{border:1px solid var(--line,#243042);border-radius:12px;padding:10px;margin:12px 0;background:var(--bg2,#0b1119)}
+.cu-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.cu-lab{font-size:11px;color:var(--dim,#8aa0b6);text-transform:uppercase;letter-spacing:.04em;margin:0 2px}
+.cu-f{font-size:12px;color:var(--dim,#8aa0b6);display:flex;align-items:center;gap:4px}
+.cu-f select{font:inherit;font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid var(--line,#2a3340);background:var(--bg,#0c1320);color:inherit;cursor:pointer}
+.cu-clear{font:inherit;font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--line,#2a3340);background:transparent;color:var(--dim,#8aa0b6);cursor:pointer;display:none}
+.cu.filtering .cu-clear{display:inline-block}
+.cu-tab{font:inherit;font-size:12.5px;padding:5px 11px;border-radius:8px;border:1px solid var(--line,#2a3340);background:var(--bg,#0c1320);color:inherit;cursor:pointer}
+.cu-tab.on{background:#2b5a86;border-color:#2b5a86;color:#fff;font-weight:700}
+.cu-grow{flex:1}
+.cu-drill{font-size:11px;color:var(--dim,#8aa0b6);margin:2px 0 8px}
+.cu-drill a{margin-left:7px;color:#7cc1ef;text-decoration:none}.cu-drill a:hover{text-decoration:underline}
+.cu-view{overflow:auto}
+.cu-view pre.mermaid{background:transparent;text-align:center}
+.cu-view pre.mermaid g.node{cursor:pointer}
+/* filter re-lighting: when filtering, fade group-specific nodes, then re-light matches */
+.cu.filtering .gYoung,.cu.filtering .gMid,.cu.filtering .gOld,.cu.filtering .gFrail,
+.cu.filtering .gFemale,.cu.filtering .gMale,.cu.filtering .gPreg,.cu.filtering .gMeno,
+.cu.filtering .gCKD,.cu.filtering .gDM{opacity:.16}
+.cu.sel-young .gYoung,.cu.sel-mid .gMid,.cu.sel-old .gOld,.cu.sel-frail .gFrail,
+.cu.sel-f .gFemale,.cu.sel-m .gMale,.cu.sel-preg .gPreg,.cu.sel-meno .gMeno,
+.cu.sel-ckd .gCKD,.cu.sel-dm .gDM{opacity:1;filter:brightness(1.32) saturate(1.3)}
+/* sex/age also light their natural condition partners */
+.cu.sel-f .gMeno,.cu.sel-f .gPreg{opacity:1}
+</style>
+<script>(function(){
+  var cu=document.getElementById("cu"); if(!cu) return;
+  function setView(v){
+    [].forEach.call(cu.querySelectorAll(".cu-view"),function(el){el.style.display=(el.getAttribute("data-view")===v)?"block":"none";});
+    [].forEach.call(cu.querySelectorAll(".cu-tab"),function(b){b.classList.toggle("on",b.getAttribute("data-view")===v);});
+  }
+  [].forEach.call(cu.querySelectorAll(".cu-tab"),function(b){b.addEventListener("click",function(){setView(b.getAttribute("data-view"));});});
+  var fAge=document.getElementById("fAge"),fSex=document.getElementById("fSex"),fCond=document.getElementById("fCond");
+  var SEL=["sel-young","sel-mid","sel-old","sel-frail","sel-f","sel-m","sel-preg","sel-meno","sel-ckd","sel-dm"];
+  function filter(){
+    SEL.forEach(function(c){cu.classList.remove(c);});
+    var on=[];
+    if(fAge.value) on.push("sel-"+fAge.value);
+    if(fSex.value) on.push("sel-"+fSex.value);
+    if(fCond.value) on.push("sel-"+fCond.value);
+    on.forEach(function(c){cu.classList.add(c);});
+    cu.classList.toggle("filtering", on.length>0);
+  }
+  [fAge,fSex,fCond].forEach(function(s){s.addEventListener("change",function(){filter(); if(cu.querySelector('.cu-tab[data-view="person"]')&&(fAge.value||fSex.value||fCond.value)){setView("person");}});});
+  document.getElementById("fClear").addEventListener("click",function(){fAge.value="";fSex.value="";fCond.value="";filter();});
+  // mermaid (startOnLoad, htmlLabels) must measure each diagram WHILE VISIBLE. Keep all views
+  // visible until every diagram has a valid rendered SVG, then hide the inactive ones (a fixed
+  // timer races mermaid and leaves the non-default tabs error/collapsed).
+  function rendered(v){
+    var svg=v.querySelector("svg"); if(!svg) return false;
+    if(svg.querySelector('[aria-roledescription="error"], .error-icon, .error-text')) return false;
+    var vb=svg.getAttribute("viewBox")||"";
+    if(/(^|\s)-?8 -?8 16 16\b/.test(vb)) return false;
+    var w=parseFloat((svg.getAttribute("style")||"").replace(/.*max-width:\s*/,""));
+    return !(w>0 && w<40);
+  }
+  function allRendered(){return [].every.call(cu.querySelectorAll(".cu-view"),rendered);}
+  var tries=0;
+  (function wait(){ if(allRendered()||tries++>240){setView("overview");filter();return;} setTimeout(wait,50); })();
+})();</script>
+
+<h2 id="formulas">The exact formulas (Pipeline view, with symbols)</h2>
+<div class="callout spec"><div class="ct">Stage-by-stage</div>
+<ol>
+<li><b>Stage 1 — clinical band:</b> raw <code>x_i</code> → <code>r_i^clin ∈ [0,1]</code> from green/yellow/red bands (cuts 0.15 / 0.50), optimum-centred within green.</li>
+<li><b>Stage 2 — cohort blend:</b> <code>r_i = max(r_i^clin, φ·r_i^cohort)</code>, <code>φ = 0.60</code> — raises concern, never lowers the clinical anchor.</li>
+<li><b>Stage 2b — personal baseline:</b> <code>z_i = (x_i − μ_i^base)/σ_i^base</code>; feedback term <code>κ_resp·tanh(z_i/2)</code>, <code>κ_resp = 0.10</code> cap. Same signal drives Trajectory + Early-warning.</li>
+<li><b>Stage 3 — pillar risk:</b> <code>ŵ_i = w_i·confidence_i</code>; <code>R_k = (Σ ŵ_i·r_i^γ / Σ ŵ_i)^(1/γ) + ρ_k·B̃_k</code>, <code>γ = 3</code>, <code>ρ_k ≈ 0.20</code> (reservoir contribution). <code>S_k = 100·(1 − R_k)</code>.</li>
+<li><b>Stage 4 — critical:</b> if a critical marker is red, <code>R_k ← max(R_k, 0.60)</code> (<code>R_crit</code>).</li>
+<li><b>Stage 5 — PureScore:</b> <code>W_k = W_k^base·m_k^cohort·m_k^goal·m_k^acute</code> (ΣW_k=1); <code>R_total = (Σ W_k·R_k^δ / Σ W_k)^(1/δ)</code>, <code>δ = 2</code>; <code>PureScore = 100·(1 − R_total)</code>. <b>Critical cascade:</b> any critical pillar → PureScore ≤ 40, status CRITICAL.</li>
+</ol>
+Constants live in <code>data/constants.json</code> (canonical); change them there, never in a page.</div>
+
+<h2 id="dimensions">Every dimension, and where to dig in</h2>
+<div class="tablewrap"><table><thead><tr><th>Dimension</th><th>What it adds to the calc</th><th>Source</th></tr></thead><tbody>
+<tr><td><b>Core pipeline</b></td><td>marker→pillar→PureScore (5 stages, power means γ/δ, confidence weighting)</td><td><a class="xref" href="03-scoring-formula.html">Doc 03</a> · <code>calc-graph.json</code></td></tr>
+<tr><td><b>Reservoirs (MONIAC)</b></td><td>15 stocks with κ coupling add a ρ_k·B̃_k burden/asset load to each pillar</td><td><a class="xref" href="04-moniac-reservoir-dynamics.html">Doc 04</a> · <a href="reservoir-sim.html">simulator</a></td></tr>
+<tr><td><b>Companion vector</b></td><td>10 meta-dimensions ride alongside the number (never move the anchor); drive nudges + early-warning</td><td><a class="xref" href="05-critical-review-and-purescore-2.0.html">Doc 05 §4–5</a></td></tr>
+<tr><td><b>Personalization</b></td><td>sex / age-band / life-stage / condition reshape ranges (range-variations) &amp; weights (m_k)</td><td><a class="xref" href="08-sex-specific-models.html">Doc 08</a> · <a class="xref" href="09-acute-events-and-life-stage-plans.html">Doc 09</a> · <a href="appendix-personas.html">personas</a></td></tr>
+<tr><td><b>Critical &amp; gates</b></td><td>critical cascade (cap 40), confirmation gates, escalation tiers</td><td><a class="xref" href="16-safety-governance-and-regulatory.html">Doc 16</a></td></tr>
+<tr><td><b>Clinical scores</b></td><td>7 gated scores feed back as max() — raise-only, never clear critical / lift cap</td><td><a class="xref" href="10-clinical-scores-integration.html">Doc 10</a></td></tr>
+<tr><td><b>Cohort / percentiles</b></td><td>φ blend, shrinkage, representativeness suppression</td><td><a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13</a></td></tr>
+<tr><td><b>Actuarial firewall</b></td><td>the wellness score never reaches pricing</td><td><a class="xref" href="19-actuarial-pricing-and-insurance.html">Doc 19</a></td></tr>
+</tbody></table></div>
+
+<blockquote><p>To run live numbers per profile, open the <a class="xref" href="purescore-uber-map.html">Calculation Explorer</a> (5 roots × 13 profiles, editable leaves); to drive the reservoir layer, open the <a class="xref" href="reservoir-sim.html">Reservoir simulator</a>.</p></blockquote>
