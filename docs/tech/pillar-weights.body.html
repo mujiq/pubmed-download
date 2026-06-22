@@ -161,8 +161,9 @@ controls here change <b>marker applicability &amp; reference ranges</b>, not the
     var top=r.bottom+sy+8; if(top+hov.offsetHeight>sy+window.innerHeight) top=r.top+sy-hov.offsetHeight-8;
     hov.style.left=left+"px";hov.style.top=Math.max(sy+4,top)+"px";
   }
-  host.addEventListener("mouseover",function(e){var t=e.target.closest&&e.target.closest("[data-hk]");if(t)show(t,t.getAttribute("data-hk"),t.getAttribute("data-hi"));});
-  host.addEventListener("mouseout",function(e){var t=e.target.closest&&e.target.closest("[data-hk]");if(t)hide();});
+  host.addEventListener("mouseover",function(e){var t=e.target.closest&&e.target.closest("[data-hk]");if(!t)return;var k=t.getAttribute("data-hk"),id=t.getAttribute("data-hi");show(t,k,id);
+    if(st.view==="sankey"&&(k==="p"||k==="m"))skFocus(k,id,(k==="m"&&MK[id])?MK[id]._p:null);});
+  host.addEventListener("mouseout",function(e){var t=e.target.closest&&e.target.closest("[data-hk]");if(t){hide();if(st.view==="sankey")skUnfocus();}});
   window.addEventListener("scroll",hide,{passive:true});
   function hk(kind,id){return ' data-hk="'+kind+'" data-hi="'+esc(id).replace(/"/g,"&quot;")+'"';}
 
@@ -299,14 +300,19 @@ controls here change <b>marker applicability &amp; reference ranges</b>, not the
     var dim=0,tot=0;ORDER.forEach(function(c){P[c].markers.forEach(function(m){tot++;if(mApp(m).na)dim++;});});
     n.textContent=(dim?dim+" markers dimmed (not applicable) · ":"")+"showing applicability for this cohort";
   }
-  function render(){hide();host.innerHTML=st.view==="fan"?fan():st.view==="sankey"?sankey():st.view==="layer"?layer():matrix();legend();fnote();}
+  function render(){hide();host.innerHTML=st.view==="fan"?fan():st.view==="sankey"?sankey():st.view==="layer"?layer():matrix();legend();fnote();
+    var skb=document.getElementById("pw-sk");if(skb)skb.style.display=st.view==="sankey"?"flex":"none";}
   [].forEach.call(document.querySelectorAll(".pw-tab"),function(b){b.onclick=function(){st.view=b.getAttribute("data-view");[].forEach.call(document.querySelectorAll(".pw-tab"),function(x){x.classList.toggle("on",x===b);});render();};});
   [].forEach.call(document.querySelectorAll(".pw-chip"),function(b){b.onclick=function(){var k=b.getAttribute("data-t");st.t[k]=!st.t[k];b.classList.toggle("on",st.t[k]);render();};});
-  [].forEach.call(document.querySelectorAll(".pw-seg"),function(seg){var fac=seg.getAttribute("data-f");
-    [].forEach.call(seg.querySelectorAll("button"),function(b){b.onclick=function(){st.f[fac]=b.getAttribute("data-v");
+  [].forEach.call(document.querySelectorAll(".pw-seg"),function(seg){var ff=seg.getAttribute("data-f"),sg=seg.getAttribute("data-sk");
+    [].forEach.call(seg.querySelectorAll("button"),function(b){b.onclick=function(){var v=b.getAttribute("data-v");if(ff)st.f[ff]=v;else if(sg)st.sk[sg]=v;
       [].forEach.call(seg.querySelectorAll("button"),function(x){x.classList.toggle("on",x===b);});render();};});});
+  [].forEach.call(document.querySelectorAll(".pw-skchip"),function(b){b.onclick=function(){var k=b.getAttribute("data-sk");st.sk[k]=!st.sk[k];b.classList.toggle("on",st.sk[k]);render();};});
+  var fsel=document.getElementById("pw-focus");
+  if(fsel){ORDER.forEach(function(c){var o=document.createElement("option");o.value=c;o.textContent=c+" · "+P[c].name;fsel.appendChild(o);});fsel.value=st.sk.focus;
+    fsel.onchange=function(){st.sk.focus=fsel.value;st.sk.mode="focus";[].forEach.call(document.querySelectorAll('.pw-seg[data-sk="mode"] button'),function(x){x.classList.toggle("on",x.getAttribute("data-v")==="focus");});render();};}
   document.getElementById("pw-reset").onclick=function(){st.f={sex:"all",age:"all",stage:"all"};
-    [].forEach.call(document.querySelectorAll(".pw-seg button"),function(x){x.classList.toggle("on",x.getAttribute("data-v")==="all");});render();};
+    [].forEach.call(document.querySelectorAll('.pw-seg[data-f] button'),function(x){x.classList.toggle("on",x.getAttribute("data-v")==="all");});render();};
   render();
 })();
 </script>
