@@ -1,0 +1,1025 @@
+{
+ "_meta": {
+  "source": "data/units.json (build_wiki write_unit_data → assets/units-data.js)",
+  "canonical": "SI",
+  "policy": "SI-canonical: the engine stores one canonical SI value per marker; every inbound feed is converted to SI (lin=[m,b], si=m·conv+b) before scoring; the UI shows BOTH SI and conventional. Default governing convention is UK/ESC/Gulf (SI units); US conventional is a display locale. Lp(a) is intentionally non-convertible (store native assay unit). Illustrative — re-verify (README §5.6).",
+  "default_display_locale": "UAE/Gulf → SI (conventional shown in parentheses)"
+ },
+ "markers": {
+  "hba1c": {
+   "conv": {
+    "u": "%",
+    "sys": "NGSP/DCCT (US)"
+   },
+   "si": {
+    "u": "mmol/mol",
+    "sys": "IFCC (UK/Gulf/EU)"
+   },
+   "lin": [
+    10.929,
+    -23.5
+   ],
+   "th_conv": [
+    5.7,
+    6.5,
+    "hi"
+   ],
+   "th_si": [
+    38.8,
+    47.54,
+    "hi"
+   ],
+   "dual": true,
+   "convertible": true,
+   "note": "UK & Gulf labs report IFCC mmol/mol; US reports NGSP %. mmol/mol=(%−2.15)×10.929. A %-only band silently mis-scores a mmol/mol feed."
+  },
+  "glu": {
+   "conv": {
+    "u": "mg/dL",
+    "sys": "US"
+   },
+   "si": {
+    "u": "mmol/L",
+    "sys": "SI (UK/EU/Gulf)"
+   },
+   "lin": [
+    0.05551,
+    0
+   ],
+   "th_conv": [
+    100,
+    126,
+    "hi"
+   ],
+   "th_si": [
+    5.55,
+    6.99,
+    "hi"
+   ],
+   "dual": true,
+   "convertible": true,
+   "note": "Fasting glucose. mmol/L=mg/dL×0.05551."
+  },
+  "ldl": {
+   "conv": {
+    "u": "mg/dL",
+    "sys": "US"
+   },
+   "si": {
+    "u": "mmol/L",
+    "sys": "SI"
+   },
+   "lin": [
+    0.02586,
+    0
+   ],
+   "th_conv": [
+    100,
+    160,
+    "hi"
+   ],
+   "th_si": [
+    2.59,
+    4.14,
+    "hi"
+   ],
+   "dual": true,
+   "convertible": true,
+   "note": "mmol/L=mg/dL×0.02586."
+  },
+  "hdl": {
+   "conv": {
+    "u": "mg/dL",
+    "sys": "US"
+   },
+   "si": {
+    "u": "mmol/L",
+    "sys": "SI"
+   },
+   "lin": [
+    0.02586,
+    0
+   ],
+   "th_conv": [
+    50,
+    40,
+    "lo"
+   ],
+   "th_si": [
+    1.29,
+    1.03,
+    "lo"
+   ],
+   "dual": true,
+   "convertible": true,
+   "note": "mmol/L=mg/dL×0.02586."
+  },
+  "tg": {
+   "conv": {
+    "u": "mg/dL",
+    "sys": "US"
+   },
+   "si": {
+    "u": "mmol/L",
+    "sys": "SI"
+   },
+   "lin": [
+    0.01129,
+    0
+   ],
+   "th_conv": [
+    150,
+    500,
+    "hi"
+   ],
+   "th_si": [
+    1.69,
+    5.64,
+    "hi"
+   ],
+   "dual": true,
+   "convertible": true,
+   "note": "mmol/L=mg/dL×0.01129."
+  },
+  "apob": {
+   "conv": {
+    "u": "mg/dL",
+    "sys": "US"
+   },
+   "si": {
+    "u": "g/L",
+    "sys": "SI"
+   },
+   "lin": [
+    0.01,
+    0
+   ],
+   "th_conv": [
+    80,
+    100,
+    "hi"
+   ],
+   "th_si": [
+    0.8,
+    1.0,
+    "hi"
+   ],
+   "dual": true,
+   "convertible": true,
+   "note": "g/L=mg/dL×0.01."
+  },
+  "vitd": {
+   "conv": {
+    "u": "ng/mL",
+    "sys": "US"
+   },
+   "si": {
+    "u": "nmol/L",
+    "sys": "SI"
+   },
+   "lin": [
+    2.496,
+    0
+   ],
+   "th_conv": [
+    30,
+    20,
+    "lo"
+   ],
+   "th_si": [
+    74.88,
+    49.92,
+    "lo"
+   ],
+   "dual": true,
+   "convertible": true,
+   "note": "25-OH vit D. nmol/L=ng/mL×2.496."
+  },
+  "b12": {
+   "conv": {
+    "u": "pg/mL",
+    "sys": "US"
+   },
+   "si": {
+    "u": "pmol/L",
+    "sys": "SI"
+   },
+   "lin": [
+    0.7378,
+    0
+   ],
+   "th_conv": [
+    300,
+    200,
+    "lo"
+   ],
+   "th_si": [
+    221.34,
+    147.56,
+    "lo"
+   ],
+   "dual": true,
+   "convertible": true,
+   "note": "pmol/L=pg/mL×0.7378."
+  },
+  "uacr": {
+   "conv": {
+    "u": "mg/g",
+    "sys": "US"
+   },
+   "si": {
+    "u": "mg/mmol",
+    "sys": "SI"
+   },
+   "lin": [
+    0.113,
+    0
+   ],
+   "th_conv": [
+    30,
+    300,
+    "hi"
+   ],
+   "th_si": [
+    3.39,
+    33.9,
+    "hi"
+   ],
+   "dual": true,
+   "convertible": true,
+   "note": "ACR. mg/mmol=mg/g×0.113."
+  },
+  "hb": {
+   "conv": {
+    "u": "g/dL",
+    "sys": "US"
+   },
+   "si": {
+    "u": "g/L",
+    "sys": "SI (UK)"
+   },
+   "lin": [
+    10.0,
+    0
+   ],
+   "th_conv": [
+    13,
+    10,
+    "lo"
+   ],
+   "th_si": [
+    130.0,
+    100.0,
+    "lo"
+   ],
+   "dual": true,
+   "convertible": true,
+   "note": "UK labs report g/L (e.g. 130 g/L = 13 g/dL); US reports g/dL. g/L=g/dL×10."
+  },
+  "ferr": {
+   "conv": {
+    "u": "ng/mL",
+    "sys": "US"
+   },
+   "si": {
+    "u": "µg/L",
+    "sys": "SI"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    30,
+    15,
+    "lo"
+   ],
+   "th_si": [
+    30.0,
+    15.0,
+    "lo"
+   ],
+   "dual": true,
+   "convertible": true,
+   "note": "Numerically identical (1 ng/mL = 1 µg/L); nomenclature only."
+  },
+  "lpa": {
+   "conv": {
+    "u": "mg/dL",
+    "sys": "mass (US)"
+   },
+   "si": {
+    "u": "nmol/L",
+    "sys": "molar (UK/EU)"
+   },
+   "lin": null,
+   "th_conv": null,
+   "th_si": null,
+   "dual": true,
+   "convertible": false,
+   "note": "Lp(a) mass (mg/dL) and molar (nmol/L) are NOT linearly convertible — the ratio depends on apo(a) isoform size. Store the assay's native unit; never auto-convert. Prefer nmol/L (isoform-independent)."
+  },
+  "sbp": {
+   "conv": {
+    "u": "mmHg",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "mmHg",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    120,
+    140,
+    "hi"
+   ],
+   "th_si": [
+    120,
+    140,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "rhr": {
+   "conv": {
+    "u": "bpm",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "bpm",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    70,
+    85,
+    "hi"
+   ],
+   "th_si": [
+    70,
+    85,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "hrv": {
+   "conv": {
+    "u": "ms",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "ms",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    40,
+    25,
+    "lo"
+   ],
+   "th_si": [
+    40,
+    25,
+    "lo"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "waist": {
+   "conv": {
+    "u": "cm",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "cm",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    94,
+    102,
+    "hi"
+   ],
+   "th_si": [
+    94,
+    102,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "egfr": {
+   "conv": {
+    "u": "mL/min/1.73m²",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "mL/min/1.73m²",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    60,
+    45,
+    "lo"
+   ],
+   "th_si": [
+    60,
+    45,
+    "lo"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "k": {
+   "conv": {
+    "u": "mmol/L",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "mmol/L",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    5.0,
+    6.0,
+    "hi"
+   ],
+   "th_si": [
+    5.0,
+    6.0,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "crp": {
+   "conv": {
+    "u": "mg/L",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "mg/L",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    1,
+    10,
+    "hi"
+   ],
+   "th_si": [
+    1,
+    10,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "alt": {
+   "conv": {
+    "u": "U/L",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "U/L",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    40,
+    200,
+    "hi"
+   ],
+   "th_si": [
+    40,
+    200,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "fib4": {
+   "conv": {
+    "u": "index",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "index",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    1.3,
+    2.67,
+    "hi"
+   ],
+   "th_si": [
+    1.3,
+    2.67,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "wbc": {
+   "conv": {
+    "u": "10⁹/L",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "10⁹/L",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    11,
+    20,
+    "hi"
+   ],
+   "th_si": [
+    11,
+    20,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "plt": {
+   "conv": {
+    "u": "10⁹/L",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "10⁹/L",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    150,
+    50,
+    "lo"
+   ],
+   "th_si": [
+    150,
+    50,
+    "lo"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "spo2": {
+   "conv": {
+    "u": "%",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "%",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    95,
+    90,
+    "lo"
+   ],
+   "th_si": [
+    95,
+    90,
+    "lo"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "tsh": {
+   "conv": {
+    "u": "mIU/L",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "mIU/L",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    4.5,
+    10,
+    "hi"
+   ],
+   "th_si": [
+    4.5,
+    10,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "bodyfat": {
+   "conv": {
+    "u": "%",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "%",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    25,
+    32,
+    "hi"
+   ],
+   "th_si": [
+    25,
+    32,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "almi": {
+   "conv": {
+    "u": "kg/m²",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "kg/m²",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    7,
+    5.5,
+    "lo"
+   ],
+   "th_si": [
+    7,
+    5.5,
+    "lo"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "tscore": {
+   "conv": {
+    "u": "SD",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "SD",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    -1,
+    -2.5,
+    "lo"
+   ],
+   "th_si": [
+    -1,
+    -2.5,
+    "lo"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "omega3": {
+   "conv": {
+    "u": "%",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "%",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    8,
+    4,
+    "lo"
+   ],
+   "th_si": [
+    8,
+    4,
+    "lo"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "sleepdur": {
+   "conv": {
+    "u": "h",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "h",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    7,
+    6,
+    "lo"
+   ],
+   "th_si": [
+    7,
+    6,
+    "lo"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "sleepeff": {
+   "conv": {
+    "u": "%",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "%",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    85,
+    75,
+    "lo"
+   ],
+   "th_si": [
+    85,
+    75,
+    "lo"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "osa": {
+   "conv": {
+    "u": "events/h",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "events/h",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    0.5,
+    1,
+    "hi"
+   ],
+   "th_si": [
+    0.5,
+    1,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "vo2": {
+   "conv": {
+    "u": "mL/kg/min",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "mL/kg/min",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    40,
+    30,
+    "lo"
+   ],
+   "th_si": [
+    40,
+    30,
+    "lo"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "steps": {
+   "conv": {
+    "u": "/day",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "/day",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    8000,
+    5000,
+    "lo"
+   ],
+   "th_si": [
+    8000,
+    5000,
+    "lo"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "mvpa": {
+   "conv": {
+    "u": "min/wk",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "min/wk",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    150,
+    75,
+    "lo"
+   ],
+   "th_si": [
+    150,
+    75,
+    "lo"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "phq": {
+   "conv": {
+    "u": "score",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "score",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    5,
+    20,
+    "hi"
+   ],
+   "th_si": [
+    5,
+    20,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "gad": {
+   "conv": {
+    "u": "score",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "score",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    5,
+    15,
+    "hi"
+   ],
+   "th_si": [
+    5,
+    15,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  },
+  "isi": {
+   "conv": {
+    "u": "score",
+    "sys": "SI / unit-stable"
+   },
+   "si": {
+    "u": "score",
+    "sys": "SI / unit-stable"
+   },
+   "lin": [
+    1.0,
+    0
+   ],
+   "th_conv": [
+    8,
+    15,
+    "hi"
+   ],
+   "th_si": [
+    8,
+    15,
+    "hi"
+   ],
+   "dual": false,
+   "convertible": true,
+   "note": ""
+  }
+ }
+}

@@ -176,7 +176,8 @@ NAV = [
                  (DOCMAP["19"], SHORT["19"], "19")]),
  ("6 · Gaps, blind-spots & roadmap", [("production-gaps.html", "Production readiness — gaps"),
                  (DOCMAP["17"], SHORT["17"], "17"), ("appendix-coverage-audit.html", "Coverage audit")]),
- ("7 · System & build", [("states.html", "Patient life-state machine"),
+ ("7 · System & build", [("purescore-system.html", "System at a glance"),
+                 ("states.html", "Patient life-state machine"),
                  ("engagement-state-machines.html", "Engagement state machines"),
                  ("class-model.html", "Class model"),
                  ("dossier-erd.html", "Data model (ERD)"), ("dossier-c4.html", "C4 architecture"),
@@ -214,6 +215,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "admin-index.html":"Admin · Dashboard","admin-lab-ranges.html":"Admin · Lab ranges",
           "admin-weights.html":"Admin · Weights","admin-lifestyle.html":"Admin · Lifestyle",
           "admin-personas.html":"Admin · Personas","admin-governance.html":"Admin · Governance",
+          "purescore-system.html":"System at a glance",
           "feedback-loop.html":"Live feedback-loop demo","states.html":"Patient life-state machine",
           "class-model.html":"Class model",
           "engagement-state-machines.html":"Engagement state machines",
@@ -230,10 +232,108 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "appendix-persona-matrix.html#spreadsheet":"Persona-matrix grid","appendix-question-bank.html#spreadsheet":"Question-bank grid","dossier-erd.html#spreadsheet":"Data-model grid"}
 for n in DOCMAP: PTITLE[DOCMAP[n]] = "Doc %s · %s" % (n, SHORT[n])
 
+# ----------------------------------------------------------------- left-pane facet taxonomy
+# Six filter dimensions. `module` is derived from the NAV chapter; `content-type` and `maturity`
+# are derived from the filename / flagged content; `audience`, `persona` and `jurisdiction` are
+# curated with sensible defaults. This is a first-pass taxonomy — refined during the content audit.
+def _mod_label(grp):                                   # "5 · Trust & govern" -> "Trust & govern"
+    return re.sub(r"^\s*\d+\s*·\s*", "", grp)
+MOD_LABEL, _MOD_OF = {}, {}                            # slug->label ; href->slug
+for _g, _items in NAV:
+    _lab = _mod_label(_g); _sl = slug(_lab); MOD_LABEL[_sl] = _lab
+    for _it in _items: _MOD_OF.setdefault(_it[0], _sl)
+
+CT_LABELS = {"spec":"Spec doc","catalog":"Reference catalog","diagram":"Diagram / model",
+             "explorer":"Interactive explorer","admin":"Admin mockup","meta":"Guide / index"}
+def _ctype(fn):
+    if fn in ("index.html", "conventions.html", "decisions.html"): return "meta"
+    if fn.startswith("admin-"): return "admin"
+    if fn in ("purescore-uber-map.html", "feedback-loop.html", "reference-range-resolver.html",
+              "consent-onboarding.html"): return "explorer"
+    if fn.startswith("dossier-") or fn in ("states.html", "engagement-state-machines.html", "class-model.html"):
+        return "diagram"
+    if fn.startswith("appendix-"): return "catalog"
+    return "spec"
+
+MAT_LABELS = {"draft":"Draft","counsel":"Needs counsel review","roadmap":"Gap / roadmap"}
+_MAT = {"consent-onboarding.html":"counsel", DOCMAP["16"]:"counsel", DOCMAP["18"]:"counsel",
+        "production-gaps.html":"roadmap", DOCMAP["17"]:"roadmap", "appendix-coverage-audit.html":"roadmap"}
+def _maturity(fn): return _MAT.get(fn, "draft")
+
+AUD_LABELS = {"eng":"Engineer","clin":"Clinician","ds":"Data scientist","comp":"Compliance / legal","prod":"Product"}
+ALL_AUD = ["eng","clin","ds","comp","prod"]
+_AUD = {
+  DOCMAP["02"]:["eng","ds","clin"], DOCMAP["03"]:["eng","ds"], DOCMAP["04"]:["eng","ds"],
+  DOCMAP["05"]:["eng","ds","clin"], DOCMAP["06"]:["eng","ds"], DOCMAP["07"]:["eng","prod"],
+  DOCMAP["08"]:["clin","ds"], DOCMAP["09"]:["clin","prod"], DOCMAP["10"]:["clin","ds"],
+  DOCMAP["11"]:["prod","clin","eng"], DOCMAP["12"]:["prod","clin"], DOCMAP["13"]:["ds","comp"],
+  DOCMAP["14"]:["ds","eng"], DOCMAP["15"]:["comp","ds"], DOCMAP["16"]:["comp","clin"],
+  DOCMAP["17"]:["clin","comp"], DOCMAP["18"]:["comp","prod"], DOCMAP["19"]:["ds","comp","prod"],
+  "purescore-uber-map.html":["eng","ds"], "class-model.html":["eng"], "purescore-overview.html":["prod","clin"],
+  "dossier-erd.html":["eng"], "dossier-c4.html":["eng"], "dossier-api.html":["eng"],
+  "dossier-sequences.html":["eng"], "dossier-stories.html":["prod","eng"],
+  "consent-onboarding.html":["comp","prod"], "production-gaps.html":["eng","prod","comp"],
+  "states.html":["eng","clin"], "engagement-state-machines.html":["eng","prod"],
+  "appendix-coverage-audit.html":["ds","comp"],
+}
+for _fn in ("admin-index.html","admin-lab-ranges.html","admin-weights.html","admin-lifestyle.html",
+            "admin-personas.html","admin-governance.html"):
+    _AUD[_fn] = ["clin","prod"]
+def _audience(fn): return _AUD.get(fn, ALL_AUD)
+
+PER_LABELS = {"all":"All patients","female":"Female-specific","male":"Male-specific",
+              "lifestage":"Life-stage / acute","persona":"Persona-modelled"}
+_PER = {
+  DOCMAP["08"]:["female","male"], "purescore-sex.html":["female","male"],
+  DOCMAP["09"]:["lifestage"], "states.html":["lifestage"],
+  "appendix-personas.html":["persona"], "appendix-persona-matrix.html":["persona"],
+}
+def _persona(fn): return _PER.get(fn, ["all"])
+
+JUR_LABELS = {"global":"Global","uae":"UAE","gcc":"GCC","eu":"EU","us":"US"}
+_JUR = {
+  DOCMAP["18"]:["uae","gcc"], "consent-onboarding.html":["global","uae","gcc","eu","us"],
+  DOCMAP["16"]:["global","uae","eu","us"], DOCMAP["19"]:["global","uae"],
+}
+def _juris(fn): return _JUR.get(fn, ["global"])
+
+def page_facets(fn):
+    return {"mod":[_MOD_OF.get(fn, "other")], "ct":[_ctype(fn)], "mat":[_maturity(fn)],
+            "aud":_audience(fn), "per":_persona(fn), "jur":_juris(fn)}
+
+# (key, dropdown title, slug->label map) — order = display order of the filter dropdowns
+FACET_DEFS = [("mod","Module",MOD_LABEL), ("ct","Type",CT_LABELS), ("aud","Audience",AUD_LABELS),
+              ("mat","Maturity",MAT_LABELS), ("per","Persona",PER_LABELS), ("jur","Region",JUR_LABELS)]
+
+def _facet_data_attrs(fn):
+    pf = page_facets(fn)
+    return "".join(' data-%s="%s"' % (k, " ".join(pf[k])) for k, _, _ in FACET_DEFS)
+
+def _filter_panel():
+    used = {k: set() for k, _, _ in FACET_DEFS}
+    for _g, _items in NAV:
+        for _it in _items:
+            pf = page_facets(_it[0])
+            for k in used: used[k].update(pf[k])
+    rows = []
+    for key, title, labels in FACET_DEFS:
+        opts = ['<option value="">%s · all</option>' % esc(title)]
+        for v in sorted(used.get(key, []), key=lambda x: labels.get(x, x).lower()):
+            opts.append('<option value="%s">%s</option>' % (esc(v), esc(labels.get(v, v))))
+        rows.append('<select class="nf-sel" data-facet="%s" aria-label="Filter by %s">%s</select>'
+                    % (key, esc(title), "".join(opts)))
+    return ('<details class="nav-filter"><summary><span class="nf-ic">⚲</span> Filter pages'
+            '<span class="nf-active"></span></summary>'
+            '<div class="nf-body">%s'
+            '<button type="button" class="nf-clear">Clear filters</button>'
+            '<div class="nf-count" aria-live="polite"></div></div></details>'
+            % "".join(rows))
+
 def sidebar(active):
     s = ['<aside class="side">',
          '<div class="side-tools"><button class="side-allbtn" data-act="expand">expand all</button>'
-         '<button class="side-allbtn" data-act="collapse">collapse all</button></div>']
+         '<button class="side-allbtn" data-act="collapse">collapse all</button></div>',
+         _filter_panel()]
     for gi, (grp, items) in enumerate(NAV):
         is_active = active in [it[0] for it in items]
         s.append('<div class="navgrp%s" data-grp="g%d">' % (" open" if is_active else "", gi))
@@ -246,7 +346,8 @@ def sidebar(active):
         for it in items:
             href, label = it[0], it[1]
             num = ('<span class="n">%s</span>' % it[2]) if len(it) > 2 else ""
-            s.append('<a href="%s"%s>%s%s</a>' % (href, ' class="active"' if href == active else "", num, label))
+            s.append('<a class="navlink%s" href="%s"%s>%s%s</a>'
+                     % (" active" if href == active else "", href, _facet_data_attrs(href), num, label))
         s.append('</div></div>')
     s.append("</aside>")
     return "".join(s)
@@ -309,7 +410,7 @@ def page(fn, tab_title, body):
 <input id="search" type="search" placeholder="Filter pages…  ( / )"></div>
 <div class="shell">%s<main class="main">%s%s%s<footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · """
 """illustrative design, re-verify before production (README §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
-<script src="assets/wiki.js"></script></body></html>""") % (
+<script src="assets/search-index.js"></script><script src="assets/search.js"></script><script src="assets/wiki.js"></script></body></html>""") % (
         esc(tab_title), MERMAID_HEAD, sidebar(fn), _chapter_strip(fn), body, prevnext(fn))
     with open(os.path.join(HERE, fn), "w", encoding="utf-8") as f:
         f.write(fix_mermaid(html))
@@ -365,11 +466,12 @@ def render_index():
          ('<div class="section-h">Where do I start?</div><div class="grid c3 roles">'
           '<a class="card role" href="01-vision-principles-and-lessons.html"><div class="role-i">🧭</div>'
           '<h3>New here</h3><p>Read the book front-to-back. Start with the vision, then the Overview and the system map.</p>'
-          '<div class="role-links"><a href="purescore-overview.html">Overview</a>'
+          '<div class="role-links"><a href="purescore-system.html">System at a glance</a>'
           '<a href="purescore-uber-map.html">How it all connects</a><a href="03-scoring-formula.html">Scoring formula</a></div></a>'
           '<a class="card role" href="admin-index.html"><div class="role-i">🩺</div>'
           '<h3>Clinician</h3><p>How the score is kept safe, contextual and reviewable. Jump to the Admin area.</p>'
-          '<div class="role-links"><a href="16-safety-governance-and-regulatory.html">Safety &amp; governance</a>'
+          '<div class="role-links"><a href="purescore-system.html">System at a glance</a>'
+          '<a href="16-safety-governance-and-regulatory.html">Safety &amp; governance</a>'
           '<a href="10-clinical-scores-integration.html">Clinical scores</a><a href="appendix-coverage-audit.html">Coverage audit</a></div></a>'
           '<a class="card role" href="class-model.html"><div class="role-i">🛠️</div>'
           '<h3>Engineer</h3><p>The production object model and contracts. Start with the class explorer.</p>'
@@ -450,6 +552,7 @@ def main():
     C.write_cite_data()   # generate assets/cite-data.js from data/citations.json (citation popovers)
     C.write_range_data()  # generate assets/range-data.js from data/range-variations.json (range-variation views)
     C.write_flag_data()   # generate assets/flags-data.js from data/clinical-flags.json (inline audit ⚠ badges)
+    C.write_unit_data()   # generate assets/units-data.js from data/units.json (SI-canonical units + conversions)
     render_index()
     for n in sorted(DOCMAP): render_doc(n)
     render_simple("README.md", "conventions.html", "Conventions & glossary", "Conventions & glossary")
@@ -496,7 +599,8 @@ def main():
         tab, body = build(); page(fn, tab, body)
     built = len(ORDER)
     for fn, tab in [("feedback-loop.html", "Live feedback-loop demo"), ("states.html", "Patient state machine"),
-                    ("engagement-state-machines.html", "Engagement state machines")]:
+                    ("engagement-state-machines.html", "Engagement state machines"),
+                    ("purescore-system.html", "System at a glance")]:
         body = os.path.join(HERE, fn[:-5] + ".body.html")
         if os.path.exists(body):
             page(fn, tab, open(body, encoding="utf-8").read())
@@ -504,8 +608,10 @@ def main():
             built -= 1
     print("Generated %d pages → %s" % (built, HERE))
     _inject_connects()
+    _build_search_index()
     _consistency_check()
     _engine_guard()
+    _flag_guard()
 
 def _engine_guard():
     """HARD guard (per D32): data/*.json is canonical for the scoring engine. Fail the build if
@@ -573,7 +679,7 @@ def _consistency_check():
 _DIAGRAMS = {"purescore-uber-map.html", "purescore-uber-map.html", "states.html", "engagement-state-machines.html",
              "class-model.html", "dossier-erd.html", "dossier-c4.html", "dossier-sequences.html",
              "class-model.html", "wearable-baselines.html", "purescore-wearable-baselines.html",
-             "consent-onboarding.html"}
+             "consent-onboarding.html", "purescore-system.html"}
 _GRID_OF = {"appendix-biomarkers.html": "appendix-biomarkers.html#spreadsheet", "appendix-wearables.html": "appendix-wearables.html#spreadsheet",
             "appendix-personas.html": "appendix-personas.html#spreadsheet", "appendix-lifestyles.html": "appendix-lifestyles.html#spreadsheet",
             "appendix-adherence.html": "appendix-adherence.html#spreadsheet", "appendix-goals.html": "appendix-goals.html#spreadsheet",
@@ -656,6 +762,54 @@ def _inject_connects():
         if nh != h:
             open(os.path.join(HERE, fn), "w", encoding="utf-8").write(nh); n += 1
     print("  [connects] injected 'Connects to' on %d pages" % n)
+
+# ----------------------------------------------------------------- full-text search index
+# Indexes every generated page at section granularity: page title + each h1/h2/h3 (with its
+# #anchor) + a short text snippet. Compact (headings+snippets, not full body) so it loads fast
+# on every page. Consumed by assets/search.js (top-bar dropdown + ⌘K palette).
+_TAGS = re.compile(r"<[^>]+>")
+_ENT = {"&amp;": "&", "&lt;": "<", "&gt;": ">", "&nbsp;": " ", "&#39;": "'", "&quot;": '"',
+        "&mdash;": "—", "&middot;": "·", "&times;": "×", "&rarr;": "→", "&larr;": "←", "&hellip;": "…"}
+def _plain(html):
+    t = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.S | re.I)
+    t = _TAGS.sub(" ", t)
+    for k, v in _ENT.items(): t = t.replace(k, v)
+    t = re.sub(r"&#\d+;", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+def _build_search_index():
+    recs = []
+    for f in sorted(glob.glob(os.path.join(HERE, "*.html"))):
+        fn = os.path.basename(f)
+        h = open(f, encoding="utf-8").read()
+        m = re.search(r'<main class="main">(.*)</main>', h, re.S)
+        body = m.group(1) if m else h
+        body = body.split('<div class="connects">')[0].split('<nav class="pn">')[0]
+        title = PTITLE.get(fn) or _navlabel(fn) or fn
+        secs, heads = [], list(re.finditer(r'<h([1-3])(?:\s+id="([^"]+)")?[^>]*>(.*?)</h\1>', body, flags=re.S))
+        for i, mm in enumerate(heads):
+            htext = _plain(mm.group(3))
+            if not htext: continue
+            end = heads[i + 1].start() if i + 1 < len(heads) else len(body)
+            secs.append({"i": mm.group(2) or "", "h": htext, "s": _plain(body[mm.end():end])[:160]})
+            if len(secs) >= 80: break          # cap pathological pages (e.g. the question bank)
+        if not secs:
+            secs = [{"i": "", "h": title, "s": _plain(body)[:160]}]
+        recs.append({"f": fn, "t": title, "m": MOD_LABEL.get(_MOD_OF.get(fn, ""), ""), "secs": secs})
+    js = "window.PURESCORE_SEARCH=" + json.dumps(recs, ensure_ascii=False, separators=(",", ":")) + ";"
+    open(os.path.join(HERE, "assets", "search-index.js"), "w", encoding="utf-8").write(js)
+    nsec = sum(len(r["secs"]) for r in recs)
+    print("  [search] indexed %d pages · %d sections → assets/search-index.js (%d KB)"
+          % (len(recs), nsec, len(js.encode("utf-8")) // 1024))
+
+def _flag_guard():
+    """Audit-rerun regression (per Package F): HARD-fail the build if any clinical-audit flag is
+    left untriaged, a remediations.json key dangles (renamed/removed flag), or a resolved flag's
+    canonical value was reverted. Single source: validate_flags.py."""
+    import validate_flags
+    if validate_flags.main() != 0:
+        raise SystemExit("! build failed: clinical-flag guard — see validate_flags.py")
+
 
 if __name__ == "__main__":
     main()

@@ -192,6 +192,29 @@ def write_flag_data():
     return f
 _FLAG_ASSETS = '<script src="assets/flags-data.js"></script><script src="assets/clinical-flags.js"></script>'
 
+def write_unit_data():
+    """Emit assets/units-data.js (window.PURESCORE_UNITS) from data/units.json — the SI-canonical
+    unit registry + conversions that drive dual-unit display and the inbound conversion layer.
+    Merges each marker's calc-graph label so the UI can match appendix/resolver rows by name."""
+    try:
+        u = _load("units.json")
+    except Exception:
+        u = {"_meta": {}, "markers": {}}
+    try:
+        cg = _load("calc-graph.json")
+        labels = {k: v.get("label", k) for k, v in cg.get("markers", {}).items()}
+    except Exception:
+        labels = {}
+    extra = {"lpa": "Lp(a)"}
+    for mk, v in u.get("markers", {}).items():
+        v["label"] = labels.get(mk, extra.get(mk, mk))
+    js = ("/* GENERATED from data/units.json — SI-canonical unit registry & conversions. Edit the JSON. */\n"
+          "window.PURESCORE_UNITS=" + json.dumps(u, ensure_ascii=False, separators=(",", ":")) + ";\n")
+    with open(os.path.join(_HERE, "assets", "units-data.js"), "w", encoding="utf-8") as fh:
+        fh.write(js)
+    return u
+_UNIT_ASSETS = '<script src="assets/units-data.js"></script><script src="assets/units.js"></script>'
+
 # ----------------------------------------------------------------- per-doc summaries
 SUMMARY = {
  "01":"Vision, design principles, and the institutional lessons (Babylon / Kaiser / Mayo) PureScore is engineered around.",
@@ -430,6 +453,11 @@ def build_biomarkers():
                      % (_esc(mk), nm, star, _esc(unit), t, t.replace("/","/"), _chan_chip(marker_channel(mk, src)),
                         _rngbar(ts), _esc(g), _esc(y), _esc(r), _esc(w), _cite_chip(src, mk)))
         h.append('</tbody></table></div>')
+    h.append('<h2 id="units">Units &amp; SI conversion</h2>')
+    h.append('<p class="small muted">Canonical unit is <b>SI</b> (UK/ESC/Gulf convention); the US conventional unit is shown alongside. '
+             'Every inbound feed is converted to SI before scoring, so a UK/Gulf lab reporting mmol/mol or mmol/L is scored correctly. '
+             'Source of truth: <code>data/units.json</code>. Lp(a) is intentionally non-convertible (store the native assay unit).</p>')
+    h.append('<div id="unitTable"></div>')
     h.append('<h2 id="modifiers">Cross-cutting modifiers</h2>')
     h.append('<div class="tablewrap"><table><thead><tr><th>Modifier</th><th>Source</th><th>Effect</th></tr></thead><tbody>')
     for nm, sr, ef in MODIFIERS:
@@ -442,7 +470,7 @@ def build_biomarkers():
              'the table/section where the range lives, DOI/PMID, and opens the document in a new tab. '
              '<span class="cite-key"><span class="cite-dot v"></span>verified link</span> '
              '<span class="cite-key"><span class="cite-dot d"></span>document-level</span></p>')
-    h.append(_CITE_ASSETS); h.append(_RANGE_ASSETS); h.append(_FLAG_ASSETS)
+    h.append(_CITE_ASSETS); h.append(_RANGE_ASSETS); h.append(_FLAG_ASSETS); h.append(_UNIT_ASSETS)
     return "Appendix A · Markers (all channels)", "".join(h)
 
 def build_range_resolver():
@@ -462,6 +490,7 @@ def build_range_resolver():
          'Single source of truth: <code>data/range-variations.json</code>. Illustrative (README &sect;5.6).</p>', ILLUS,
          '<div class="diagram"><div class="dt">Resolution order &middot; precedence: medication / condition &gt; life-stage &gt; sex / age</div>'
          '<pre class="mermaid">%s</pre></div>' % flow,
+         '<div id="cfFlags"></div>',
          '<h2 id="resolver">Step-through resolver</h2>',
          '<p class="small muted">Pick a marker and a context; incompatible options are auto-disabled (a male cannot be pregnant). Each step shows what changed and its citation.</p>',
          '<div class="rr-tool">'
@@ -472,10 +501,15 @@ def build_range_resolver():
          '<select id="rrCond" class="rv-sel"></select><select id="rrMed" class="rv-sel"></select>'
          '<button class="rv-btn" id="rrRun">resolve &rarr;</button></div>'
          '<div id="rrOut" class="rr-out"></div>',
+         '<h2 id="units">Units &amp; SI conversion layer</h2>',
+         '<p class="small muted">Before any range is applied, the inbound value is converted to its <b>canonical SI unit</b> '
+         '(UK/ESC/Gulf convention). The resolver therefore behaves identically whether a feed arrives in US conventional '
+         '(mg/dL, %, ng/mL) or SI (mmol/L, mmol/mol, nmol/L). Lp(a) is non-convertible — store the native assay unit.</p>',
+         '<div id="unitTable"></div>',
          '<div class="callout note"><div class="ct">Referenced everywhere</div>These ranges are the single source rendered on '
          '<a class="xref" href="appendix-biomarkers.html">Appendix A · Markers</a> (4 views), the sex-specific model, and the '
          'Doctor’s-board lab-ranges page. Every variation’s citation opens its source in a new tab.</div>',
-         _CITE_ASSETS, _RANGE_ASSETS, '<script src="assets/resolver.js"></script>']
+         _CITE_ASSETS, _RANGE_ASSETS, '<script src="assets/resolver.js"></script>', _FLAG_ASSETS, _UNIT_ASSETS]
     return "Reference-range resolver", "".join(h)
 
 def build_wearables():
@@ -1463,9 +1497,12 @@ a.ce-chip:hover{border-color:#2ee6c9;color:#fff}
 .ce-tip b{color:#fff}
 @media(max-width:900px){.fd-main{grid-template-columns:1fr}.fd-strip{grid-template-columns:1fr}.fd-pillgrid{grid-template-columns:repeat(4,1fr)}}
 </style>
+<div id="cfFlags" style="max-width:1180px;margin:20px auto 0"></div>
 <script src="assets/calc-data.js"></script>
 <script src="assets/engine.js"></script>
-<script src="assets/calc-explorer.js"></script>"""
+<script src="assets/calc-explorer.js"></script>
+<script src="assets/flags-data.js"></script>
+<script src="assets/clinical-flags.js"></script>"""
     return "Calculation Explorer", body
 
 # =================================================================== APPENDIX F — lifestyles & personas
@@ -3538,6 +3575,28 @@ def build_production_gaps():
         for area, st, exists, needed in items:
             h.append('<tr><td><b>%s</b></td><td>%s</td><td class="small muted">%s</td><td class="small">%s</td></tr>'
                      % (area, sev[st], exists, needed))
+        h.append('</tbody></table></div>')
+    # --- Clinical coverage register (data/coverage.json) — closes the audit's gap:/coverage flags ---
+    try:
+        cov = _load("coverage.json")
+    except Exception:
+        cov = {"markers": [], "gates": [], "self_report": []}
+    cst = {"missing": '<span class="chip b-red">missing</span>', "partial": '<span class="chip b-yellow">partial</span>',
+           "present": '<span class="chip b-green">present</span>', "derive": '<span class="chip b-acc">derive</span>',
+           "gate": '<span class="chip b-mut">gate</span>'}
+    h.append('<h2 id="coverage">Clinical coverage register</h2>')
+    h.append('<p class="small muted">Marker / gate / self-report coverage from the adversarial clinical audit — the canonical answer to '
+             '&ldquo;what does the engine score, what is a deliberate gate, and what is genuinely missing?&rdquo; '
+             'Single source: <code>data/coverage.json</code>. Tracked against the audit flags on '
+             '<a class="xref" href="appendix-biomarkers.html">Appendix A</a>.</p>')
+    for sec, rows, c1 in (("Markers", cov.get("markers", []), "Marker"),
+                          ("Gates &amp; modifiers", cov.get("gates", []), "Gate"),
+                          ("Self-report representation", cov.get("self_report", []), "Area")):
+        h.append('<h3>%s</h3><div class="tablewrap"><table><thead><tr><th>%s</th><th>Status</th><th>Plan</th></tr></thead><tbody>' % (sec, c1))
+        for r in rows:
+            nm = r.get("name") or r.get("area", "")
+            h.append('<tr><td><b>%s</b></td><td>%s</td><td class="small">%s</td></tr>'
+                     % (_esc(nm), cst.get(r.get("status"), _esc(r.get("status", ""))), _esc(r.get("plan", ""))))
         h.append('</tbody></table></div>')
     return "Production readiness — gaps", "".join(h)
 
