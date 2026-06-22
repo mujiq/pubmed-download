@@ -124,3 +124,96 @@
 })();
 
 /* command palette (⌘K / Ctrl-K) and the top-bar search box now live in assets/search.js */
+
+/* Acronym glossary — hover tooltips for pillar codes, guideline bodies and lab markers.
+   Scoped to the Pillars & Marker Catalogue (Doc 02); widen the path test to go wiki-wide.
+   Uses native <abbr title> so tooltips are never clipped by scrollable marker tables. */
+(function () {
+  if (!/02-pillars-and-marker-catalog\.html$/.test(location.pathname)) return;
+  var main = document.querySelector('.main'); if (!main) return;
+  var G = {
+    // 12 pillars
+    "CV":"Cardiovascular & Vascular pillar — heart and blood-vessel health (BP, ApoB/LDL, Lp(a), CAC).",
+    "MET":"Metabolic & Glycemic pillar — glucose and energy metabolism (HbA1c, fasting glucose, triglycerides).",
+    "REN":"Renal pillar — kidney filtration and electrolyte handling (eGFR, UACR, cystatin C).",
+    "HEP":"Hepatic pillar — liver health (ALT, AST, GGT, hepatic fat / FIB-4).",
+    "INF":"Inflammation & Immune pillar — systemic inflammation and immune status (hs-CRP, WBC, ferritin).",
+    "HEM":"Hematologic & Oxygen-transport pillar — blood and oxygen carriage (haemoglobin, iron studies, RDW).",
+    "ENDO":"Endocrine & Hormonal pillar — hormones, often sex-specific (TSH, testosterone/oestradiol, cortisol).",
+    "BCM":"Body Composition & Musculoskeletal pillar — fat / muscle / bone (waist, DEXA body fat, grip strength).",
+    "NUT":"Nutrition & Micronutrients pillar — diet quality and micronutrient status (vitamin D, B12, omega-3).",
+    "SLP":"Sleep & Circadian Recovery pillar — sleep quantity, quality and regularity (duration, SRI, OSA risk).",
+    "FIT":"Physical Activity & Cardiorespiratory Fitness pillar — exercise and aerobic capacity (VO2max, steps, MVPA).",
+    "MCS":"Mental, Cognitive & Social Health pillar — mood, stress and cognition (PHQ-9, GAD-7, PSS).",
+    // guideline bodies & references
+    "AHA":"American Heart Association — US cardiovascular guideline body.",
+    "ACC":"American College of Cardiology — US cardiology guidelines (ACC/AHA risk thresholds).",
+    "ESC":"European Society of Cardiology — European cardiovascular guidelines.",
+    "ADA":"American Diabetes Association — diabetes standards (e.g. HbA1c cut-points).",
+    "KDIGO":"Kidney Disease: Improving Global Outcomes — international kidney-disease staging.",
+    "AASLD":"American Association for the Study of Liver Diseases — hepatology guidelines.",
+    "ATA":"American Thyroid Association — thyroid-disease guidelines.",
+    "ISCD":"International Society for Clinical Densitometry — bone-density (DEXA) standards.",
+    "WHO":"World Health Organization.",
+    "NHANES":"US National Health and Nutrition Examination Survey — population reference distributions.",
+    // labs, markers & instruments
+    "BP":"Blood Pressure — systolic/diastolic (mmHg).",
+    "SBP":"Systolic Blood Pressure (mmHg).",
+    "HR":"Heart Rate (beats per minute).",
+    "HRV":"Heart-Rate Variability — autonomic-recovery marker (ms, e.g. RMSSD).",
+    "LDL":"Low-Density Lipoprotein cholesterol — atherogenic lipid.",
+    "ApoB":"Apolipoprotein B — count of atherogenic particles; preferred lipid-risk marker.",
+    "HbA1c":"Glycated haemoglobin — ~3-month average glucose (% or mmol/mol).",
+    "hs-CRP":"high-sensitivity C-Reactive Protein — systemic inflammation marker (mg/L).",
+    "ALT":"Alanine aminotransferase — liver enzyme (U/L).",
+    "AST":"Aspartate aminotransferase — liver enzyme (U/L).",
+    "WBC":"White Blood Cell count — immune / inflammation marker.",
+    "UACR":"Urine Albumin-to-Creatinine Ratio — early kidney-damage marker (mg/g).",
+    "eGFR":"estimated Glomerular Filtration Rate — kidney function (mL/min/1.73m²).",
+    "CAC":"Coronary Artery Calcium score — CT measure of coronary plaque burden.",
+    "CGM":"Continuous Glucose Monitor — wearable glucose sensor.",
+    "DEXA":"Dual-energy X-ray Absorptiometry — body-composition and bone-density scan.",
+    "DXA":"Dual-energy X-ray Absorptiometry — body-composition and bone-density scan.",
+    "FIB-4":"Fibrosis-4 index — non-invasive liver-fibrosis estimate (age, AST, ALT, platelets).",
+    "MRI":"Magnetic Resonance Imaging.",
+    "OSA":"Obstructive Sleep Apnoea.",
+    "PHQ-9":"Patient Health Questionnaire-9 — validated depression screener.",
+    "GAD-7":"Generalized Anxiety Disorder-7 — validated anxiety screener.",
+    "PSS":"Perceived Stress Scale — validated stress questionnaire.",
+    "PRO":"Patient-Reported Outcome — standardized self-report instrument.",
+    "VO2max":"Maximal oxygen uptake — gold-standard cardiorespiratory-fitness measure (mL/kg/min).",
+    "ASCVD":"Atherosclerotic Cardiovascular Disease — 10-year risk estimate.",
+    "Lp(a)":"Lipoprotein(a) — largely genetic atherogenic lipid particle.",
+    "FINDRISC":"Finnish Diabetes Risk Score — type-2-diabetes risk questionnaire.",
+    "MEDAS":"Mediterranean Diet Adherence Screener.",
+    "SRI":"Sleep Regularity Index."
+  };
+  function esc(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  var keys = Object.keys(G).sort(function (a, b) { return b.length - a.length; });
+  var src = '(?<![A-Za-z0-9])(' + keys.map(esc).join('|') + ')(?![A-Za-z0-9])';
+  var probe = new RegExp(src);
+  var rxg = new RegExp(src, 'g');
+  var SKIP = { A:1, ABBR:1, CODE:1, PRE:1, SCRIPT:1, STYLE:1, BUTTON:1, H1:1 };
+  var walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT, {
+    acceptNode: function (n) {
+      if (!n.nodeValue || !n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      for (var p = n.parentNode; p && p !== main; p = p.parentNode) { if (SKIP[p.nodeName]) return NodeFilter.FILTER_REJECT; }
+      return probe.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    }
+  });
+  var nodes = [], t; while ((t = walker.nextNode())) nodes.push(t);
+  nodes.forEach(function (node) {
+    var s = node.nodeValue, frag = document.createDocumentFragment(), last = 0, m; rxg.lastIndex = 0;
+    while ((m = rxg.exec(s))) {
+      if (m.index > last) frag.appendChild(document.createTextNode(s.slice(last, m.index)));
+      var ab = document.createElement('abbr');
+      ab.className = 'gloss'; ab.title = G[m[1]]; ab.setAttribute('tabindex', '0'); ab.textContent = m[1];
+      frag.appendChild(ab); last = m.index + m[1].length;
+    }
+    if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+  });
+  var st = document.createElement('style');
+  st.textContent = '.main abbr.gloss{border-bottom:1px dotted var(--accent,#5cd6c0);cursor:help;text-decoration:none}';
+  document.head.appendChild(st);
+})();
