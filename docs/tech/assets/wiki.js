@@ -45,30 +45,43 @@
   if (btn && side) btn.addEventListener('click', function () { side.classList.toggle('open'); });
   if (main && side) main.addEventListener('click', function () { side.classList.remove('open'); });
 
-  // search — filters links and auto-opens groups with matches; restores on clear
-  var s = document.getElementById('search');
-  if (s) {
-    s.addEventListener('input', function () {
-      var q = s.value.trim().toLowerCase();
-      groups.forEach(function (g) {
-        var any = false;
-        [].slice.call(g.querySelectorAll('.grp-b a')).forEach(function (a) {
-          var hit = !q || a.textContent.toLowerCase().indexOf(q) > -1;
-          a.style.display = hit ? '' : 'none'; if (hit && q) any = true;
-        });
-        if (q) { g.style.display = any ? '' : 'none'; if (any) setOpen(g, true); }
-        else { g.style.display = ''; }
+  // (the top-bar search box is owned by search.js — full-text content search, not a sidebar filter)
+
+  /* ---- facet filters: narrow the sidebar by module / type / audience / maturity / persona / region ---- */
+  var fwrap = side && side.querySelector('.nav-filter');
+  if (fwrap) {
+    var selects = [].slice.call(fwrap.querySelectorAll('.nf-sel'));
+    var countEl = fwrap.querySelector('.nf-count');
+    var activeEl = fwrap.querySelector('.nf-active');
+    var clearBtn = fwrap.querySelector('.nf-clear');
+    var navlinks = [].slice.call(side.querySelectorAll('.grp-b a.navlink'));
+
+    function tokens(a, facet) { return (a.getAttribute('data-' + facet) || '').split(/\s+/).filter(Boolean); }
+    function apply() {
+      var active = selects.filter(function (s) { return s.value; });
+      var shown = 0;
+      navlinks.forEach(function (a) {
+        var ok = active.every(function (s) { return tokens(a, s.getAttribute('data-facet')).indexOf(s.value) > -1; });
+        a.style.display = ok ? '' : 'none'; if (ok) shown++;
       });
-      if (!q) {
+      groups.forEach(function (g) {
+        var any = [].slice.call(g.querySelectorAll('.grp-b a.navlink')).some(function (a) { return a.style.display !== 'none'; });
+        g.style.display = (active.length && !any) ? 'none' : '';
+        if (active.length && any) setOpen(g, true);          // open groups that still have hits
+      });
+      var n = active.length;
+      fwrap.classList.toggle('filtering', n > 0);
+      if (activeEl) activeEl.textContent = n ? ' · ' + n : '';
+      if (countEl) countEl.textContent = n ? (shown + ' of ' + navlinks.length + ' pages match') : '';
+      if (clearBtn) clearBtn.style.display = n ? '' : 'none';
+      if (!n) {                                              // restore persisted open-state on clear
         var st = load();
-        groups.forEach(function (g) {
-          setOpen(g, (st ? st.indexOf(g.getAttribute('data-grp')) > -1 : false) || !!g.querySelector('a.active'));
-        });
+        groups.forEach(function (g) { setOpen(g, (st ? st.indexOf(g.getAttribute('data-grp')) > -1 : false) || !!g.querySelector('a.active')); });
       }
-    });
-    document.addEventListener('keydown', function (e) {
-      if (e.key === '/' && document.activeElement !== s) { e.preventDefault(); s.focus(); }
-    });
+    }
+    selects.forEach(function (s) { s.addEventListener('change', apply); });
+    if (clearBtn) clearBtn.addEventListener('click', function () { selects.forEach(function (s) { s.value = ''; }); apply(); });
+    apply();
   }
 })();
 
@@ -110,36 +123,4 @@
   h1.parentNode.insertBefore(d, h1.nextSibling);
 })();
 
-/* ---- command palette (⌘K / Ctrl-K) — jump to any page ---- */
-(function () {
-  var links = [].slice.call(document.querySelectorAll('.side a[href]'));
-  var seen = {}, items = [];
-  links.forEach(function (a) {
-    var h = a.getAttribute('href');
-    if (h && h.indexOf('.html') > -1 && !seen[h]) { seen[h] = 1; items.push({ h: h, l: a.textContent.replace(/\s+/g, ' ').trim() }); }
-  });
-  var modal = document.createElement('div'); modal.className = 'cmdk';
-  modal.innerHTML = '<div class="cmdk-box"><input class="cmdk-in" placeholder="Jump to a page…  (⌘K · Esc to close)"><ul class="cmdk-list"></ul></div>';
-  document.body.appendChild(modal);
-  var inp = modal.querySelector('.cmdk-in'), list = modal.querySelector('.cmdk-list'), sel = 0, shown = [];
-  function render(q) {
-    q = (q || '').toLowerCase();
-    shown = items.filter(function (it) { return !q || it.l.toLowerCase().indexOf(q) > -1; }).slice(0, 50);
-    sel = 0;
-    list.innerHTML = shown.map(function (it, i) { return '<li class="' + (i === 0 ? 'sel' : '') + '" data-h="' + it.h + '">' + it.l + '</li>'; }).join('');
-  }
-  function paint() { [].slice.call(list.children).forEach(function (li, i) { li.classList.toggle('sel', i === sel); if (i === sel) li.scrollIntoView({ block: 'nearest' }); }); }
-  function open() { modal.classList.add('on'); inp.value = ''; render(''); setTimeout(function () { inp.focus(); }, 10); }
-  function close() { modal.classList.remove('on'); }
-  document.addEventListener('keydown', function (e) {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); modal.classList.contains('on') ? close() : open(); return; }
-    if (!modal.classList.contains('on')) return;
-    if (e.key === 'Escape') close();
-    else if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, shown.length - 1); paint(); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); paint(); }
-    else if (e.key === 'Enter') { e.preventDefault(); var li = list.children[sel]; if (li) location.href = li.getAttribute('data-h'); }
-  });
-  inp.addEventListener('input', function () { render(inp.value); });
-  list.addEventListener('click', function (e) { var li = e.target.closest('li'); if (li) location.href = li.getAttribute('data-h'); });
-  modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
-})();
+/* command palette (⌘K / Ctrl-K) and the top-bar search box now live in assets/search.js */

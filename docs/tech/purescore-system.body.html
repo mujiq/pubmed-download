@@ -1,0 +1,148 @@
+<div class="crumbs"><a href="index.html">Home</a> › 7 · System &amp; build › System at a glance</div>
+<h1>PureScore — System at a glance</h1>
+<p class="lead">One map of the whole platform for a clinical board: how a lab value, a wearable reading or a questionnaire becomes a safe, personalized, governed recommendation. The same six modules are shown three ways — <b>Flow</b> (how data becomes guidance), <b>Trust &amp; Safety</b> (where the guardrails sit), and <b>Modules</b> (how it is built). Everything below is one diagram you filter, not eight you reconcile.</p>
+
+<div class="callout spec"><div class="ct">How to read this</div>
+Colour = <b>module</b>, and it stays the same across all three views, so you learn it once:
+<span class="b-blue">intake</span>, <span class="b-violet">engine</span> (scoring + interpretation), <span class="b-yellow">action</span> (nudges &amp; care plan), <span class="b-red">safety</span>, <span class="b-violet">governance</span> and <span class="b-green">outcome</span>.
+Use the <b>View</b> tabs to switch the story, and the <b>Show</b> chips to peel a layer off (e.g. hide the engine internals to see just the patient journey). Each module links to its detailed page underneath.</div>
+
+<div class="callout note"><div class="ct">Illustrative</div>This is a design model for orientation and discussion — not a shipped architecture or a clinical sign-off. Module boundaries and flows must be reconciled with the production system and re-verified before any clinical or production use (README §5.6).</div>
+
+<div class="nv" id="sv">
+  <div class="nv-bar">
+    <span class="nv-lab">View</span>
+    <button class="nv-tab on" data-view="flow" type="button">Flow</button>
+    <button class="nv-tab" data-view="trust" type="button">Trust &amp; Safety</button>
+    <button class="nv-tab" data-view="mod" type="button">Modules</button>
+    <span class="nv-grow"></span>
+    <span class="nv-lab">Show</span>
+    <button class="sv-chip on" data-layer="pt" type="button">Patient journey</button>
+    <button class="sv-chip on" data-layer="en" type="button">Engine</button>
+    <button class="sv-chip on" data-layer="sg" type="button">Safety &amp; governance</button>
+  </div>
+
+  <div class="nv-view" data-view="flow"><pre class="mermaid">flowchart LR
+  PT(["patient"]):::inp
+  IN["INTAKE<br/>labs · wearables · check-ins · self-reports"]:::inp
+  SC["SCORING<br/>pillars · reservoirs · PureScore"]:::eng
+  IT["INTERPRET<br/>companion vector · personalization"]:::eng
+  AC["ACTION<br/>top-5 nudges · care plan"]:::act
+  OUT["OUTCOME<br/>adherence · realized delta"]:::out
+  PT --> IN --> SC --> IT --> AC
+  AC -->|delivered to| PT
+  AC --> OUT
+  OUT -->|recalibrate p-hat · baselines| SC
+  SC -.->|red flag| SAF["SAFETY"]:::saf
+  classDef inp fill:#0c1c2b,stroke:#4aa3df,color:#cfe8ff,stroke-width:1px;
+  classDef eng fill:#141a2e,stroke:#8b97f0,color:#dfe4ff,stroke-width:1px;
+  classDef act fill:#241f0c,stroke:#edb14a,color:#ffe6b0,stroke-width:1px;
+  classDef out fill:#10241c,stroke:#3ad6a0,color:#bdf5e0,stroke-width:1px;
+  classDef saf fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;
+  classDef gov fill:#1c1226,stroke:#a98bd6,color:#e6d8ff,stroke-width:1px;</pre></div>
+
+  <div class="nv-view" data-view="trust"><pre class="mermaid">flowchart TB
+  IN["INTAKE"]:::inp --> SC["SCORING"]:::eng --> IT["INTERPRET"]:::eng --> AC["ACTION"]:::act
+  CONS{{"consent · opt-in"}}:::gov --> IN
+  IN -.->|red-flag PRO · critical marker| SAF
+  IT -.->|early-warning tier| SAF
+  AC -.->|safety-critical nudge| SAF
+  SAF["SAFETY &amp; ESCALATION<br/>clinician-in-loop · on-call · emergency contact"]:::saf
+  SAF -->|guaranteed ack or escalate| HUM["human care team"]:::saf
+  GOV["GOVERNANCE<br/>validation · fairness &amp; drift · audit · sign-off"]:::gov
+  GOV -.->|gates| SC
+  GOV -.->|monitors| AC
+  SC -.->|firewalled| FW["ACTUARIAL FIREWALL<br/>wellness is not pricing"]:::gov
+  classDef inp fill:#0c1c2b,stroke:#4aa3df,color:#cfe8ff,stroke-width:1px;
+  classDef eng fill:#141a2e,stroke:#8b97f0,color:#dfe4ff,stroke-width:1px;
+  classDef act fill:#241f0c,stroke:#edb14a,color:#ffe6b0,stroke-width:1px;
+  classDef out fill:#10241c,stroke:#3ad6a0,color:#bdf5e0,stroke-width:1px;
+  classDef saf fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;
+  classDef gov fill:#1c1226,stroke:#a98bd6,color:#e6d8ff,stroke-width:1px;</pre></div>
+
+  <div class="nv-view" data-view="mod"><pre class="mermaid">flowchart LR
+  PAPP["Patient app"]:::inp
+  CCON["Clinician console"]:::saf
+  GW["API gateway"]:::eng
+  INGEST["Ingestion"]:::inp
+  SCORE["Scoring engine"]:::eng
+  RES["Reservoir engine"]:::eng
+  QS["Question service"]:::act
+  NS["Nudge / Notification"]:::act
+  SAFES["Safety / escalation"]:::saf
+  DB[("Patient record")]:::eng
+  TS[("Time-series store")]:::eng
+  AUD[("Append-only audit")]:::gov
+  ACT2["Actuarial layer<br/>firewalled"]:::gov
+  PAPP --> GW
+  CCON --> GW
+  GW --> INGEST --> SCORE --> RES
+  GW --> QS
+  SCORE --> NS --> PAPP
+  SAFES --> CCON
+  INGEST --> DB
+  RES --> TS
+  GW -.-> AUD
+  SCORE -.->|firewall| ACT2
+  classDef inp fill:#0c1c2b,stroke:#4aa3df,color:#cfe8ff,stroke-width:1px;
+  classDef eng fill:#141a2e,stroke:#8b97f0,color:#dfe4ff,stroke-width:1px;
+  classDef act fill:#241f0c,stroke:#edb14a,color:#ffe6b0,stroke-width:1px;
+  classDef out fill:#10241c,stroke:#3ad6a0,color:#bdf5e0,stroke-width:1px;
+  classDef saf fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;
+  classDef gov fill:#1c1226,stroke:#a98bd6,color:#e6d8ff,stroke-width:1px;</pre></div>
+</div>
+
+<style>
+.nv{border:1px solid var(--line,#243042);border-radius:12px;padding:10px;margin:12px 0;background:var(--bg2,#0b1119)}
+.nv-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.nv-lab{font-size:11px;color:var(--dim,#8aa0b6);text-transform:uppercase;letter-spacing:.04em;margin:0 2px}
+.nv-tab,.sv-chip{font:inherit;font-size:12.5px;padding:5px 11px;border-radius:8px;border:1px solid var(--line,#2a3340);background:var(--bg,#0c1320);color:inherit;cursor:pointer}
+.nv-tab.on{background:#2b5a86;border-color:#2b5a86;color:#fff;font-weight:700}
+.sv-chip.on{background:#10241c;border-color:#3ad6a0;color:#bdf5e0}
+.nv-grow{flex:1}
+.nv-view{overflow:auto}
+.nv-view pre.mermaid{background:transparent;text-align:center}
+.sv-off-pt .inp,.sv-off-pt .act,.sv-off-pt .out{opacity:.12}
+.sv-off-en .eng{opacity:.12}
+.sv-off-sg .saf,.sv-off-sg .gov{opacity:.12}
+.b-blue{color:#7cc1ef;font-weight:700}.b-violet{color:#bda6ee;font-weight:700}
+</style>
+<script>(function(){
+  var sv=document.getElementById("sv"); if(!sv) return;
+  function setView(v){
+    [].forEach.call(sv.querySelectorAll(".nv-view"),function(el){el.style.display=(el.getAttribute("data-view")===v)?"block":"none";});
+    [].forEach.call(sv.querySelectorAll(".nv-tab"),function(b){b.classList.toggle("on",b.getAttribute("data-view")===v);});
+  }
+  [].forEach.call(sv.querySelectorAll(".nv-tab"),function(b){b.addEventListener("click",function(){setView(b.getAttribute("data-view"));});});
+  function layers(){
+    [].forEach.call(sv.querySelectorAll(".sv-chip"),function(c){
+      sv.classList.toggle("sv-off-"+c.getAttribute("data-layer"), !c.classList.contains("on"));
+    });
+  }
+  [].forEach.call(sv.querySelectorAll(".sv-chip"),function(c){c.addEventListener("click",function(){c.classList.toggle("on");layers();});});
+  // mermaid (startOnLoad) renders all blocks on load; hide non-active AFTER that
+  window.addEventListener("load",function(){ setTimeout(function(){ setView("flow"); layers(); },60); });
+})();</script>
+
+<h2 id="modules">The six modules — what each owns, and where to dig in</h2>
+<div class="tablewrap"><table><thead><tr><th>Module</th><th>What it does (board view)</th><th>Owns</th><th>Drill down</th></tr></thead><tbody>
+<tr><td><b><span class="b-blue">Intake</span></b></td><td>Collects every signal — labs, wearables, prompted check-ins (PHQ-9, GAD-7…) and unprompted self-reports — and tags each with a trust tier and confidence before it is allowed to move the score.</td><td>Provenance, consent, plausibility, de-duplication</td><td><a class="xref" href="07-data-streams-and-experience.html">Doc 07</a> · <a class="xref" href="06-data-model-and-reference-ranges.html">Doc 06</a> · <a href="appendix-biomarkers.html">Markers</a> · <a href="questions-hub.html">Intake</a></td></tr>
+<tr><td><b><span class="b-violet">Engine</span></b></td><td>Turns markers into pillar scores and the overall PureScore, runs the reservoir dynamics, then interprets with the companion vector (confidence, trajectory, early-warning) and personalizes by sex, life-stage and condition.</td><td>Scoring math, reservoirs, personalization</td><td><a href="purescore-uber-map.html">Calculation Explorer</a> · <a class="xref" href="03-scoring-formula.html">Doc 03</a> · <a class="xref" href="04-moniac-reservoir-dynamics.html">Doc 04</a> · <a class="xref" href="05-critical-review-and-purescore-2.0.html">Doc 05</a></td></tr>
+<tr><td><b><span class="b-yellow">Action</span></b></td><td>Selects the daily top-5 actions (impact-attributed, ease-weighted, safe, diverse) and delivers them respectfully — quiet hours, caps, opt-out — as nudges and care-plan steps.</td><td>Action catalogue, nudge ranking &amp; delivery</td><td><a class="xref" href="11-daily-nudge-engine.html">Doc 11</a> · <a class="xref" href="12-recommended-actions-catalogue.html">Doc 12</a> · <a href="engagement-state-machines.html">Engagement machines</a></td></tr>
+<tr><td><b><span class="b-red">Safety</span></b></td><td>A firewall above engagement: red-flag PROs, critical markers and disputed-harm signals bypass all engagement rules, fan out on every channel and <em>must</em> be acknowledged or they escalate to a human.</td><td>Escalation tiers, crisis pathway, clinician-in-the-loop</td><td><a class="xref" href="16-safety-governance-and-regulatory.html">Doc 16</a> · <a class="xref" href="17-clinician-red-team-and-blind-spots.html">Doc 17</a></td></tr>
+<tr><td><b><span class="b-violet">Governance</span></b></td><td>Keeps the system trustworthy: validation &amp; calibration gates, fairness and drift monitoring, append-only audit, model-version sign-off, and the actuarial firewall that keeps wellness separate from pricing.</td><td>Validation, fairness, audit, firewall, sign-off</td><td><a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13</a> · <a class="xref" href="14-validation-and-calibration-harness.html">Doc 14</a> · <a class="xref" href="15-evidence-registry-and-provenance.html">Doc 15</a> · <a class="xref" href="19-actuarial-pricing-and-insurance.html">Doc 19</a></td></tr>
+<tr><td><b><span class="b-green">Outcome</span></b></td><td>Closes the loop: did the patient actually do it? Verified adherence and realized change recalibrate the per-patient model so tomorrow's guidance reflects what this person really does.</td><td>Adherence verification, calibration feedback</td><td><a href="appendix-adherence.html">Adherence</a> · <a href="feedback-loop.html">Feedback-loop demo</a> · <a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13</a></td></tr>
+</tbody></table></div>
+
+<h2 id="build">From modules to build</h2>
+<p>The <b>Modules</b> view above is the bridge to the engineering set: each module maps to one or more services in the <a href="dossier-c4.html">C4 architecture</a>, whose runtime objects are the <a href="class-model.html">class model</a>, persisted per the <a href="dossier-erd.html">data model (ERD)</a>, exposed through the <a href="dossier-api.html">API contracts</a>, and choreographed in the <a href="dossier-sequences.html">runtime sequences</a>. The whole-patient state that all of this drives lives in the <a href="states.html">patient life-state machine</a>.</p>
+
+<div class="callout spec"><div class="ct">What the board should take away</div>
+<ol>
+<li><b>Nothing moves the score without provenance.</b> Self-reports carry lower weight than devices, devices lower than labs, and missing data widens uncertainty rather than guessing.</li>
+<li><b>Safety is a separate, guaranteed channel.</b> It is not "a high-priority nudge" — it bypasses engagement rules and escalates to a human if unacknowledged.</li>
+<li><b>The loop is closed and audited.</b> Every recommendation is checked for adherence, every transition is append-only logged, and the model is versioned and signed off.</li>
+<li><b>Wellness and pricing are firewalled.</b> The actuarial layer is gated and consented separately and never reaches back into the clinical score.</li>
+</ol></div>
+
+<blockquote><p>Related: walk the engagement layer in detail at the <a class="xref" href="engagement-state-machines.html">Engagement state machines</a>, the patient journey at the <a class="xref" href="states.html">Patient life-state machine</a>, or the live scoring response in the <a class="xref" href="feedback-loop.html">feedback-loop demo</a>.</p></blockquote>
