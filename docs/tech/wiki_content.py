@@ -3601,6 +3601,67 @@ def build_production_gaps():
     return "Production readiness — gaps", "".join(h)
 
 
+def build_spec_audit():
+    """Spec BUILD-READINESS audit — could an engineer build the engine from the specs as written?
+    Distinct axis from production-gaps.html (product/app surface). Data-driven from
+    data/spec-audit.json (a per-chapter content audit of Docs 01–19). Severity:
+    blocker (cannot implement) / major (ambiguous, likely-wrong guess) / minor (clarity / edge case)."""
+    try:
+        data = _load("spec-audit.json")
+    except Exception:
+        data = {"method": "", "sections": []}
+    SEV = {"blocker": '<span class="chip b-red">blocker</span>',
+           "major": '<span class="chip b-yellow">major</span>',
+           "minor": '<span class="chip b-mut">minor</span>'}
+    secs = data.get("sections", [])
+    allf = [f for s in secs for f in s.get("findings", [])]
+    nb = sum(1 for f in allf if f.get("sev") == "blocker")
+    nm = sum(1 for f in allf if f.get("sev") == "major")
+    nk = sum(1 for f in allf if f.get("sev") == "minor")
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Gaps &amp; roadmap &rsaquo; Spec build-readiness</div>',
+         '<h1>Spec build-readiness audit</h1>',
+         '<p class="lead">A per-chapter content audit of the source specs (Docs 01&ndash;19) asking one question: '
+         '<b>could a competent engineer implement exactly what is written, without guessing?</b> '
+         'This is a different axis from the '
+         '<a class="xref" href="production-gaps.html">Production-readiness</a> page (which tracks the product/app surface &mdash; '
+         'auth, offline, analytics). Here the subject is the <b>methodology spec itself</b>. '
+         '<span class="chip b-red">blocker</span> = cannot implement as written; '
+         '<span class="chip b-yellow">major</span> = ambiguous / likely-wrong guess; '
+         '<span class="chip b-mut">minor</span> = clarity or edge case.</p>',
+         '<p class="small muted">%d findings &middot; %d blockers &middot; %d major &middot; %d minor &middot; across %d chapters.</p>'
+         % (len(allf), nb, nm, nk, len(secs)),
+         '<div class="callout safety"><div class="ct">The systemic blocker</div>'
+         'Most blockers are <b>not</b> structural &mdash; the equations, gates and state machine are specified. '
+         'They are <b>numeric</b>: coefficients, thresholds and reservoir constants (κ, λ, shrinkage k, calibration '
+         'tolerances, clinical-score coefficients, pricing relativities) are repeatedly &ldquo;illustrative&rdquo; or '
+         '&ldquo;awaits real cohort data&rdquo; (Doc&nbsp;17&nbsp;&sect;K, Doc&nbsp;19, Doc&nbsp;13). '
+         'So the work splits cleanly into two classes:</div>',
+         '<div class="tablewrap"><table><thead><tr><th>Resolution class</th><th>What it covers</th><th>Who closes it</th></tr></thead><tbody>'
+         '<tr><td><b>Authorable now</b></td><td class="small">Undefined formulas that should simply be written out, '
+         'enum / naming reconciliations, dangling references, missing edge-case rules &mdash; no new data needed.</td>'
+         '<td class="small">Spec authors</td></tr>'
+         '<tr><td><b>Needs calibration data</b></td><td class="small">Every numeric constant deferred to fitting on a '
+         'consented cohort, plus the clinical-score coefficient sets and actuarial relativities.</td>'
+         '<td class="small">Data science + the Doc&nbsp;13/14 harness, gated by counsel/clinical sign-off where flagged</td></tr>'
+         '</tbody></table></div>', ILLUS]
+    for s in secs:
+        fs = s.get("findings", [])
+        order = {"blocker": 0, "major": 1, "minor": 2}
+        fs = sorted(fs, key=lambda f: order.get(f.get("sev"), 9))
+        anchor = re.sub(r"[^a-z0-9]+", "-", s.get("title", "").lower()).strip("-") or "s"
+        h.append('<h2 id="%s">%s <span class="kref">(%d)</span></h2>' % (anchor, _esc(s.get("title", "")), len(fs)))
+        h.append('<div class="tablewrap"><table><thead><tr><th>Doc</th><th>Severity</th><th>Type</th>'
+                 '<th>Gap</th><th>Suggested resolution</th></tr></thead><tbody>')
+        for f in fs:
+            h.append('<tr><td class="small mono">%s</td><td>%s</td><td class="small"><code>%s</code></td>'
+                     '<td class="small">%s</td><td class="small muted">%s</td></tr>'
+                     % (_esc(f.get("doc", "")), SEV.get(f.get("sev"), _esc(f.get("sev", ""))),
+                        _esc(f.get("type", "")), _esc(f.get("gap", "")), _esc(f.get("fix", ""))))
+        h.append('</tbody></table></div>')
+    h.append('<p class="small muted">Method: %s</p>' % _esc(data.get("method", "")))
+    return "Spec build-readiness audit", "".join(h)
+
+
 # =================================================================== WEARABLE CORROBORATION (closes F4)
 def _wear_corr_counts():
     """Per-metric count of question-bank questions whose wearable corroborations resolve to it."""

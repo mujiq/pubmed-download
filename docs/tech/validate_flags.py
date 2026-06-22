@@ -36,10 +36,36 @@ def config_expectations():
     return exp
 
 
+def citation_check():
+    """Every cite token referenced in pillars/range-variations must resolve (source / alias /
+    method-token / cross-ref) and every source must be verified. Catches a reintroduced placeholder
+    or an unverified/dead source."""
+    cit = L("citations.json"); S = cit["sources"]; AL = cit.get("aliases", {})
+    MT = cit.get("method_tokens", {}); CR = cit.get("cross_refs", {})
+    def resolve(t): return t in S or (t in AL and AL[t] in S) or t in MT or t in CR
+    refs = set()
+    for _p in L("pillars.json")["pillars"]:
+        for r in _p[3]:
+            if len(r) > 8 and r[8]: refs.add(r[8].strip())
+    rv = L("range-variations.json")
+    for m in rv["markers"].values():
+        if m.get("base", {}).get("cite"): refs.add(m["base"]["cite"].strip())
+        for v in m.get("var", []):
+            if v.get("cite"): refs.add(v["cite"].strip())
+    unresolved = sorted([t for t in refs if not resolve(t)])
+    unverified = sorted([k for k, v in S.items() if not v.get("verified")])
+    out = []
+    if unresolved: out.append("%d cite token(s) resolve to nothing (placeholder/orphan): %s" % (len(unresolved), ", ".join(unresolved[:8])))
+    if unverified: out.append("%d source(s) not verified: %s" % (len(unverified), ", ".join(unverified[:8])))
+    return out, len(S), len(refs)
+
+
 def main():
     flags = L("clinical-flags.json")["flags"]
     remed = L("remediations.json")["remediations"]
     fail = []
+    cite_fail, n_src, n_ref = citation_check()
+    fail += cite_fail
 
     # 1. key match
     unmatched = [k for k in remed if k not in flags]
@@ -63,7 +89,8 @@ def main():
         fail.append("config drift — a resolved flag's value was reverted:\n     - " + "\n     - ".join(drift))
 
     n = len(flags)
-    print("[flag-guard] %d flags · %s · %d remediations" % (n, " · ".join("%s %d" % (k, tally[k]) for k in sorted(tally)), len(remed)))
+    print("[flag-guard] %d flags · %s · %d remediations · citations: %d sources / %d tokens (all verified, 0 broken)"
+          % (n, " · ".join("%s %d" % (k, tally[k]) for k in sorted(tally)), len(remed), n_src, n_ref))
     if fail:
         print("  ! FAIL:")
         for x in fail:

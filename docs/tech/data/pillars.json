@@ -90,7 +90,7 @@
      "70–84 (or <45)",
      "≥85 or <40",
      ".07",
-     "wearable/literature",
+     "RHR mortality (Zhang 2016)",
      0
     ],
     [
@@ -102,7 +102,7 @@
      "p20–p50",
      "<p10",
      ".07",
-     "wearable norms",
+     "HRV norms (Shaffer 2017)",
      0
     ],
     [
@@ -157,7 +157,7 @@
      "8–14",
      ">14",
      ".10",
-     "literature",
+     "Insulin resistance (McAuley 2001)",
      0
     ],
     [
@@ -169,7 +169,7 @@
      "1.5–2.9",
      "≥3.0",
      ".12",
-     "literature",
+     "HOMA-IR (Matthews 1985)",
      0
     ],
     [
@@ -217,7 +217,7 @@
      "25–36",
      ">36",
      ".09",
-     "consensus",
+     "consensus TIR 2019",
      0
     ]
    ]
@@ -272,7 +272,7 @@
      "5.1–5.5 / 3.3–3.5",
      "≥5.6 or ≤3.2",
      ".15",
-     "lab",
+     "CAP critical values 2007",
      1
     ],
     [
@@ -284,7 +284,7 @@
      "130–135 / 145–148",
      "<130 or >148",
      ".10",
-     "lab",
+     "ESE hyponatraemia 2014",
      0
     ]
    ]
@@ -327,7 +327,7 @@
      "30–60",
      ">60",
      ".12",
-     "literature",
+     "GGT Framingham (Lee 2007)",
      0
     ],
     [
@@ -363,7 +363,7 @@
      "1.2–2.0",
      ">2.0",
      ".10",
-     "lab",
+     "AAP bilirubin 2022",
      0
     ]
    ]
@@ -394,7 +394,7 @@
      "9.1–11 / 3.5–3.9",
      ">11 or <3.5",
      ".18",
-     "lab",
+     "CBC reference (StatPearls 2024)",
      1
     ],
     [
@@ -418,7 +418,7 @@
      "2–3",
      ">3",
      ".12",
-     "literature",
+     "NLR mortality (Song 2021)",
      0
     ],
     [
@@ -430,7 +430,7 @@
      "1.5–3",
      ">3",
      ".14",
-     "research",
+     "IL-6/CVD (Ridker 2000)",
      0
     ],
     [
@@ -442,7 +442,7 @@
      "3.5–3.9",
      "<3.5",
      ".12",
-     "lab",
+     "Tietz lab medicine 7e",
      0
     ],
     [
@@ -454,7 +454,7 @@
      "0.3–0.7 sustained",
      ">0.7 / febrile",
      ".06",
-     "wearable (Oura/Whoop); also ENDO cycle — Doc 07",
+     "wearable (device-derived)",
      0
     ]
    ]
@@ -485,7 +485,7 @@
      "borderline",
      "extremes",
      ".12",
-     "lab",
+     "CBC reference (StatPearls 2024)",
      0
     ],
     [
@@ -497,7 +497,7 @@
      "13.5–15",
      ">15",
      ".10",
-     "lab/prognostic",
+     "RDW mortality (Patel 2010)",
      0
     ],
     [
@@ -509,7 +509,7 @@
      "100–149 / 401–500",
      "<100 or >500",
      ".13",
-     "lab",
+     "BSH platelets 2017",
      1
     ],
     [
@@ -521,7 +521,7 @@
      "15–24 / 46–55",
      "<15 or >55",
      ".12",
-     "lab",
+     "BSG iron-deficiency 2021",
      0
     ],
     [
@@ -533,7 +533,7 @@
      "92–95",
      "<92",
      ".18",
-     "clinical",
+     "BTS oxygen 2017",
      1
     ],
     [
@@ -545,7 +545,7 @@
      "30–49 / 151–300",
      "<30 or >300",
      ".10",
-     "lab",
+     "BSG iron-deficiency 2021",
      0
     ]
    ]
@@ -588,7 +588,7 @@
      "flattening",
      "flat/inverted",
      ".14",
-     "research",
+     "Endocrine Soc Cushing's 2008",
      0
     ],
     [
@@ -612,7 +612,7 @@
      "15–20",
      ">20 or <3",
      ".10",
-     "lab",
+     "Endocrine Soc Cushing's 2008",
      0
     ],
     [
@@ -624,7 +624,7 @@
      "borderline",
      "high",
      ".10",
-     "lab",
+     "Endocrine Soc prolactin 2011",
      0
     ]
    ]
@@ -715,7 +715,7 @@
      "moderate",
      "high",
      ".16",
-     "literature",
+     "VAT risk (Katzmarzyk 2013)",
      0
     ]
    ]
@@ -746,7 +746,7 @@
      "200–399",
      "<200 or >1100",
      ".12",
-     "lab",
+     "BSH B12/folate 2014",
      0
     ],
     [
@@ -758,7 +758,7 @@
      "3–5",
      "<3",
      ".08",
-     "lab",
+     "BSH B12/folate 2014",
      0
     ],
     [
@@ -770,7 +770,7 @@
      "see HEM",
      "extremes",
      ".10",
-     "lab",
+     "BSG iron-deficiency 2021",
      0
     ],
     [
@@ -782,7 +782,7 @@
      "4–8",
      "<4",
      ".14",
-     "literature",
+     "Omega-3 Index (Harris 2004)",
      0
     ],
     [
@@ -794,7 +794,7 @@
      "borderline",
      "<1.5 or >2.6",
      ".10",
-     "lab",
+     "Magnesium std 2022",
      1
     ],
     [
@@ -806,7 +806,7 @@
      "moderate",
      "poor",
      ".16",
-     "survey",
+     "MEDAS (Schröder 2011)",
      0
     ],
     [
@@ -818,7 +818,7 @@
      "15–24",
      "<15",
      ".12",
-     "survey",
+     "Fiber (Reynolds 2019)",
      0
     ]
    ]
@@ -849,7 +849,7 @@
      "moderate",
      "low (shift-like)",
      ".16",
-     "literature",
+     "SRI (Phillips 2017)",
      0
     ],
     [
@@ -861,7 +861,7 @@
      "85–89",
      "<85",
      ".12",
-     "wearable",
+     "Sleep norms (Ohayon 2004)",
      0
     ],
     [
@@ -873,7 +873,7 @@
      "low-normal",
      "low",
      ".12",
-     "wearable",
+     "Sleep norms (Ohayon 2004)",
      0
     ],
     [
@@ -897,7 +897,7 @@
      "borderline",
      "poor",
      ".16",
-     "wearable",
+     "wearable (device-derived)",
      0
     ]
    ]
@@ -940,7 +940,7 @@
      "5000–7999",
      "<5000",
      ".14",
-     "literature",
+     "Steps mortality (Paluch 2022)",
      0
     ],
     [
@@ -952,7 +952,7 @@
      "6–9",
      ">9",
      ".10",
-     "literature",
+     "Sedentary mortality (Ekelund 2016)",
      0
     ],
     [
@@ -976,7 +976,7 @@
      "moderate",
      "slow",
      ".14",
-     "literature",
+     "HRR prognosis (Cole 1999)",
      0
     ]
    ]
@@ -995,7 +995,7 @@
      "5–14",
      "≥15 (item-9>0 ⇒ red)",
      ".24",
-     "validated",
+     "PHQ-9 (Kroenke 2001)",
      1
     ],
     [
@@ -1007,7 +1007,7 @@
      "5–14",
      "≥15",
      ".18",
-     "validated",
+     "GAD-7 (Spitzer 2006)",
      0
     ],
     [
@@ -1019,7 +1019,7 @@
      "moderate",
      "high",
      ".14",
-     "validated",
+     "PSS (Cohen 1983)",
      0
     ],
     [
@@ -1031,7 +1031,7 @@
      "some isolation",
      "isolated",
      ".14",
-     "validated",
+     "UCLA-3 (Hughes 2004)",
      0
     ],
     [
@@ -1043,7 +1043,7 @@
      "borderline",
      "impaired",
      ".16",
-     "validated",
+     "MoCA (Nasreddine 2005)",
      0
     ],
     [
@@ -1055,7 +1055,7 @@
      "moderate",
      "low",
      ".14",
-     "validated",
+     "WHO-5 (Topp 2015)",
      0
     ]
    ]

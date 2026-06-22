@@ -120,8 +120,21 @@ Use the <b>View</b> tabs to switch the story, and the <b>Show</b> chips to peel 
     });
   }
   [].forEach.call(sv.querySelectorAll(".sv-chip"),function(c){c.addEventListener("click",function(){c.classList.toggle("on");layers();});});
-  // mermaid (startOnLoad) renders all blocks on load; hide non-active AFTER that
-  window.addEventListener("load",function(){ setTimeout(function(){ setView("flow"); layers(); },60); });
+  // mermaid (startOnLoad, htmlLabels) must measure each diagram WHILE VISIBLE. All views start
+  // visible; we only hide the inactive ones AFTER every diagram has a valid rendered SVG — never
+  // on a fixed timer (which races mermaid and breaks the non-default tabs).
+  function rendered(v){
+    var svg=v.querySelector("svg"); if(!svg) return false;
+    if(svg.querySelector('[aria-roledescription="error"], .error-icon, .error-text')) return false;
+    var vb=svg.getAttribute("viewBox")||"";
+    if(/(^|\s)-?8 -?8 16 16\b/.test(vb)) return false;   // collapsed (NaN-measured) bbox
+    var w=parseFloat((svg.getAttribute("style")||"").replace(/.*max-width:\s*/,""));
+    return !(w>0 && w<40);                                 // tiny == failed measure
+  }
+  function allRendered(){return [].every.call(sv.querySelectorAll(".nv-view"),rendered);}
+  function reveal(){setView("flow");layers();}
+  var tries=0;
+  (function wait(){ if(allRendered()||tries++>240){reveal();return;} setTimeout(wait,50); })();
 })();</script>
 
 <h2 id="modules">The six modules — what each owns, and where to dig in</h2>

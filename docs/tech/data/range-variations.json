@@ -400,7 +400,7 @@
     "g": "400–900",
     "y": "200–399",
     "r": "<200 or >1100",
-    "cite": "lab"
+    "cite": "BSH B12/folate 2014"
    },
    "var": [
     {
@@ -520,7 +520,7 @@
     "g": "50–69",
     "y": "70–84 (or <45)",
     "r": "≥85 or <40",
-    "cite": "wearable/literature"
+    "cite": "RHR mortality (Zhang 2016)"
    },
    "var": [
     {
@@ -535,7 +535,7 @@
      "key": "Female",
      "g": "—",
      "delta": "resting HR ~2–7 bpm higher on average",
-     "cite": "wearable/literature"
+     "cite": "RHR mortality (Zhang 2016)"
     }
    ]
   },

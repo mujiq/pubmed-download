@@ -175,6 +175,7 @@ NAV = [
                  (DOCMAP["18"], SHORT["18"], "18"),
                  (DOCMAP["19"], SHORT["19"], "19")]),
  ("6 · Gaps, blind-spots & roadmap", [("production-gaps.html", "Production readiness — gaps"),
+                 ("spec-audit.html", "Spec build-readiness"),
                  (DOCMAP["17"], SHORT["17"], "17"), ("appendix-coverage-audit.html", "Coverage audit")]),
  ("7 · System & build", [("purescore-system.html", "System at a glance"),
                  ("states.html", "Patient life-state machine"),
@@ -203,6 +204,7 @@ NAV_BLURB = {
 ORDER = [it[0] for grp, items in NAV for it in items]
 PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
           "production-gaps.html":"Production readiness — gaps",
+          "spec-audit.html":"Spec build-readiness audit",
           "appendix-biomarkers.html":"Appendix A · Markers (all channels)","reference-range-resolver.html":"Reference-range resolver",
           "appendix-wearables.html":"Appendix B · Wearables",
           "appendix-questions.html":"Appendix C · Screeners & PROs","appendix-personas.html":"Appendix D · Personas",
@@ -257,7 +259,8 @@ def _ctype(fn):
 
 MAT_LABELS = {"draft":"Draft","counsel":"Needs counsel review","roadmap":"Gap / roadmap"}
 _MAT = {"consent-onboarding.html":"counsel", DOCMAP["16"]:"counsel", DOCMAP["18"]:"counsel",
-        "production-gaps.html":"roadmap", DOCMAP["17"]:"roadmap", "appendix-coverage-audit.html":"roadmap"}
+        "production-gaps.html":"roadmap", "spec-audit.html":"roadmap",
+        DOCMAP["17"]:"roadmap", "appendix-coverage-audit.html":"roadmap"}
 def _maturity(fn): return _MAT.get(fn, "draft")
 
 AUD_LABELS = {"eng":"Engineer","clin":"Clinician","ds":"Data scientist","comp":"Compliance / legal","prod":"Product"}
@@ -273,6 +276,7 @@ _AUD = {
   "dossier-erd.html":["eng"], "dossier-c4.html":["eng"], "dossier-api.html":["eng"],
   "dossier-sequences.html":["eng"], "dossier-stories.html":["prod","eng"],
   "consent-onboarding.html":["comp","prod"], "production-gaps.html":["eng","prod","comp"],
+  "spec-audit.html":["eng","ds","comp"],
   "states.html":["eng","clin"], "engagement-state-machines.html":["eng","prod"],
   "appendix-coverage-audit.html":["ds","comp"],
 }
@@ -455,7 +459,11 @@ def render_index():
   DLV --> D11["16 Safety"]
   D3 --> D11
   D18 --> ADMIN["Admin (clinician config)"]
-  D7 --> FB["Feedback-loop demo"]"""
+  D7 --> FB["Feedback-loop demo"]
+  SYS["System at a glance<br/>(board overview · 3 lenses)"] -.-> D0
+  SYS -.-> D3
+  SYS -.-> D7
+  SYS -.-> D16"""
     b = ['<div class="hero"><h1>Hikma<span style="color:#2ecc71">Engine</span> — Technical Wiki</h1>',
          '<p class="lead">The HikmaEngine health-intelligence platform: data &amp; intake, the '
          '<a href="purescore-overview.html"><b>PureScore</b> scoring engine</a> (one subsystem — pillars, '
@@ -576,6 +584,7 @@ def main():
                       ("appendix-wearable-corroboration.html", "build_wearable_corroboration"),
                       ("class-model.html", "build_class_model"),
                       ("production-gaps.html", "build_production_gaps"),
+                      ("spec-audit.html", "build_spec_audit"),
                       ("purescore-uber-map.html", "build_purescore_uber"),
                       ("purescore-overview.html", "build_purescore_overview"),
                       ("purescore-wearable-baselines.html", "build_wearable_baselines"),
