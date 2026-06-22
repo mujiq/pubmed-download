@@ -105,6 +105,13 @@ code{font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;backgr
 .summary-bar b{color:var(--ink)}
 .miniact{cursor:pointer;border:1px solid var(--line2);background:var(--chip);color:var(--mut);border-radius:7px;padding:4px 10px;font-size:12px}
 .miniact:hover{border-color:var(--grn);color:var(--ink)}
+.miniact.save{border-color:var(--grn);background:var(--grnd);color:#fff;font-weight:700}
+.miniact.save:hover{background:#27b765}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:#13251b;border:1px solid var(--grn);color:#eafff2;padding:11px 18px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.5);font-size:13.5px;opacity:0;pointer-events:none;transition:.25s;z-index:90;max-width:90vw}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.arnote{border:1px solid #6b4a1a;background:#201708;color:#ffd9a0;border-radius:9px;padding:9px 13px;margin-bottom:14px;font-size:12.8px}
+[dir=rtl] .ctl-lbl{margin-right:0;margin-left:4px}
+[dir=rtl] .summary-bar .grow{order:-1}
 .print-only{display:none}
 @media (max-width:760px){.snap-grid{grid-template-columns:1fr}.snap-cell{border-right:none}.sec-body{padding-left:16px}}
 @media print{
@@ -142,25 +149,23 @@ code{font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;backgr
 
   <div class="controls">
     <div class="ctl-row" style="margin-bottom:8px">
-      <span class="ctl-lbl">Region</span>
+      <span class="ctl-lbl" id="lblLang">Language</span>
+      <div id="langChips"></div>
+    </div>
+    <div class="ctl-row" style="margin-bottom:8px">
+      <span class="ctl-lbl" id="lblRegion">Region</span>
       <div id="regionChips"></div>
     </div>
     <div class="ctl-row">
-      <span class="ctl-lbl">Country</span>
+      <span class="ctl-lbl" id="lblCountry">Country</span>
       <div class="country-grid" id="countryGrid"></div>
     </div>
   </div>
 
-  <div class="summary-bar">
-    <span>Granular consents: <b id="cntTotal">11</b></span>
-    <span>· On by default: <b id="cntOn">—</b></span>
-    <span>· Required to use the service: <b>1</b> (account &amp; identity)</span>
-    <span class="grow"></span>
-    <button class="miniact" id="acceptAll">Accept recommended</button>
-    <button class="miniact" id="rejectOpt">Reject all optional</button>
-  </div>
+  <div class="summary-bar" id="summaryBar"></div>
 
   <div class="stage" id="stage"></div>
+  <div id="toast"></div>
 
   <div class="legend">
     <h4>How to read this screen</h4>
@@ -188,12 +193,114 @@ const UNV = '<span class="flag-unv">⚑ verify with counsel</span>';
 
 /* ---- Regions ---- */
 const REGIONS = [
-  {id:"GCC", label:"GCC / Gulf"},
-  {id:"NAF", label:"North Africa"},
-  {id:"SAS", label:"South Asia"},
-  {id:"EUR", label:"Europe"},
-  {id:"NAM", label:"North America"},
+  {id:"GCC", label:"GCC / Gulf", ar:"الخليج"},
+  {id:"NAF", label:"North Africa", ar:"شمال أفريقيا"},
+  {id:"SAS", label:"South Asia", ar:"جنوب آسيا"},
+  {id:"EUR", label:"Europe", ar:"أوروبا"},
+  {id:"NAM", label:"North America", ar:"أمريكا الشمالية"},
 ];
+
+/* ====================== i18n (English master + Arabic) ====================== */
+/* Arabic is machine-drafted and clearly flagged as pending certified legal review.
+   Per-jurisdiction legal citations stay in English by design (see arnote). */
+const UI = {
+ en:{ lang:"Language", region:"Region", country:"Country", all:"All",
+   granular:"Granular consents", onDefault:"on by default", reqService:"required to use the service",
+   accountId:"(account &amp; identity)", acceptRec:"Accept recommended", rejectOpt:"Reject all optional",
+   save:"💾 Save my choices", pdf:"⬇︎ Download this country (PDF)", snap:"⚖️ Regulatory snapshot —",
+   collect:"What we collect", basis:"Why &amp; legal basis", retention:"Retention",
+   withdraw:"Withdraw / erase / anonymize", specReq:"specific requirement",
+   beforeDecide:"Before you decide", yourConf:"Your confirmation", def:"default:",
+   saved:"Consent record saved", localOnly:"stored locally — wire {{CONSENT_AUDIT_ENDPOINT}} to persist server-side",
+   sent:"posted to the audit endpoint" },
+ ar:{ lang:"اللغة", region:"المنطقة", country:"الدولة", all:"الكل",
+   granular:"الموافقات التفصيلية", onDefault:"مُفعّلة افتراضيًا", reqService:"مطلوبة لاستخدام الخدمة",
+   accountId:"(الحساب والهوية)", acceptRec:"قبول الموصى به", rejectOpt:"رفض كل الاختياري",
+   save:"💾 حفظ خياراتي", pdf:"⬇︎ تنزيل هذه الدولة (PDF)", snap:"⚖️ لمحة تنظيمية —",
+   collect:"ما الذي نجمعه", basis:"السبب والأساس القانوني", retention:"مدة الاحتفاظ",
+   withdraw:"السحب / المحو / إخفاء الهوية", specReq:"متطلب خاص",
+   beforeDecide:"قبل أن تقرر", yourConf:"إقرارك", def:"الافتراضي:",
+   saved:"تم حفظ سجل الموافقة", localOnly:"مُخزَّن محليًا — اربط {{CONSENT_AUDIT_ENDPOINT}} للحفظ على الخادم",
+   sent:"أُرسل إلى نقطة تدقيق السجل" }
+};
+const AR_NOTE = "محتوى مُترجَم آليًا — في انتظار المراجعة القانونية المعتمدة. تظل النصوص القانونية والمراجع التنظيمية بالإنجليزية إلى حين الترجمة المعتمدة.";
+const SNAPK = {
+ en:["Governing law","Data-protection authority","Health-data rules","Health-sector regulator(s)","Consent for health/genetic data","Data-subject rights","Cross-border transfer","Data localization","Medical-records retention","Consent language"],
+ ar:["القانون الحاكم","هيئة حماية البيانات","قواعد البيانات الصحية","الجهات المنظِّمة للقطاع الصحي","الموافقة على البيانات الصحية/الجينية","حقوق صاحب البيانات","النقل عبر الحدود","توطين البيانات","الاحتفاظ بالسجلات الطبية","لغة الموافقة"]
+};
+const SBLABEL = {
+ en:{req:"Required",high:"Sensitive",elev:"Extra-sensitive",off:"Off by default",none:""},
+ ar:{req:"مطلوبة",high:"حساسة",elev:"بالغة الحساسية",off:"مُعطّلة افتراضيًا",none:""}
+};
+/* Arabic master copy for the 11 consent sections (patient-facing) */
+const AR_SEC = {
+ account:{title:"الحساب والهوية", purpose:"إنشاء حسابك وتأمينه، والتحقق من هويتك، وتمكينك من تسجيل الدخول.",
+   collect:["الاسم، البريد الإلكتروني/الهاتف، تاريخ الميلاد، الجنس","بيانات الدخول وسجلات الجهاز والأمان","الدولة/المنطقة لتطبيق النظام القانوني الصحيح"],
+   basis:"ضرورية لتقديم الخدمة التي تطلبها (تنفيذ العقد) — هذه الموافقة مطلوبة للاحتفاظ بحساب.",
+   retDefault:"طوال نشاط الحساب + 24 شهرًا بعد إغلاقه",
+   retNote:"تُحذف بيانات الهوية للحساب المغلق أو يُخفى تعريفها بعد المدة أعلاه ما لم يُلزم القانون بمدة أطول.",
+   withdrawal:"يمكنك إغلاق حسابك في أي وقت؛ ويؤدي ذلك إلى إنهاء الوصول إلى الخدمة وبدء الحذف/إخفاء الهوية وفق الجدول أعلاه."},
+ wearable:{title:"الأجهزة القابلة للارتداء وإشارات الأجهزة", purpose:"قراءة النشاط والنوم ومعدل ضربات القلب وغيرها من الإشارات من الأجهزة القابلة للارتداء/الهواتف لحساب PureScore الخاص بك.",
+   collect:["الخطوات والنشاط والطاقة والتمارين","مراحل النوم ومدته","معدل ضربات القلب وتغيّره وتشبّع الأكسجين ومعدل التنفس","مصدر الجهاز/التطبيق والطوابع الزمنية"],
+   basis:"موافقتك الصريحة على معالجة بيانات الأجهزة القابلة للارتداء المتعلقة بالصحة لأغراض تقييم العافية. اختيارية — يعمل PureScore على المعدّلات المرجعية للفئة بدونها.",
+   retDefault:"طوال نشاط الحساب + 36 شهرًا (البيانات الخام)؛ والمجمّعة لمدة أطول",
+   retNote:"يتم تقليل دقة التدفقات الخام عالية التردد وتجميعها مع الوقت لتقليل ما نحتفظ به.",
+   withdrawal:"افصل أي جهاز أو اسحب هذه الموافقة في أي وقت؛ يتوقف الاستيراد فورًا وتُحذف التدفقات المخزّنة عند الطلب."},
+ labs:{title:"البيانات المخبرية والمؤشرات الحيوية (سريرية)", purpose:"استخدام نتائج الدم والبول والمختبر لتقييم الركائز السريرية والإشارة إلى القيم التي يُستحسن مناقشتها مع طبيب.",
+   collect:["لوحات مخبرية (الدهون، الأيض، الكلى، الكبد، الهرمونات، إلخ)","العلامات الحيوية والقياسات الجسمية","التشخيصات/الحالات والأدوية التي تشاركها"],
+   basis:"موافقتك الصريحة على معالجة البيانات الصحية (فئة خاصة) لأغراض تفسير العافية. لا يُصدر PureScore تشخيصًا أبدًا؛ وتُصعَّد القيم الحرجة إلى إنسان.",
+   retDefault:"طوال نشاط الحساب + 10 سنوات (أو الحد الأدنى المحلي للسجلات الطبية، أيهما أطول)",
+   retNote:"حيثما يحدد القانون المحلي مدة احتفاظ إلزامية بالسجلات الطبية، يَجُبّ ذلك الحدُّ الأدنى الإعدادَ الافتراضي ويظهر في لمحة الدولة.",
+   withdrawal:"اسحب موافقتك في أي وقت؛ نتوقف عن استخدام البيانات المخبرية للتقييم ونحذفها عند الطلب، مع مراعاة أي حد احتفاظ إلزامي (عندها تُقفل/يُخفى تعريفها ولا تُستخدم)."},
+ genetic:{title:"البيانات الجينية والجينومية", purpose:"استخدام المدخلات الجينية/فوق الجينية (مثل ساعات عمر الـ DNAm والمؤشرات الوراثية) لإثراء تفسير الشيخوخة والتفسير السريري — بموافقة فقط.",
+   collect:["نتائج النمط الجيني/التسلسل التي ترفعها","مخرجات الساعة فوق الجينية/المثيلة","تعليقات المخاطر الجينية المُشتقة"],
+   basis:"موافقة صريحة منفصلة على البيانات الجينية، تُخزَّن منفصلة بتشفير على مستوى الحقل. ومعزولة هيكليًا عن أي استخدام تسعيري/تأميني (جدار ناري بنمط GINA، الوثيقة 16 §4.4).",
+   retDefault:"حتى تسحب موافقتك — مُقلَّصة، لا تتجاوز الغرض",
+   retNote:"لا تُستخدم البيانات الجينية أبدًا في الاكتتاب التأميني أو التسعير أو قرارات التوظيف، ويمكن حذفها دون فقدان الميزات الأخرى.",
+   withdrawal:"احذف بياناتك الجينية في أي وقت دون أي تأثير على بقية PureScore. وتُوجَّه النتائج القابلة للتنفيذ سريريًا عبر طبيب، لا كتشخيص آلي."},
+ reproductive:{title:"بيانات الصحة الإنجابية والجنسية", purpose:"تشغيل نماذج الدورة والخصوبة والحمل وما بعد الولادة وانقطاع الطمث — أكثر فئات البيانات حساسية، وتُعالَج بحماية مشددة.",
+   collect:["إشارات الدورة الشهرية والخصوبة","حالة الحمل/ما بعد الولادة","سياق انقطاع الطمث والعلاج الهرموني"],
+   basis:"موافقة صريحة مشددة. لا مشاركة مع أطراف ثالثة افتراضيًا؛ مع تفضيل المعالجة على الجهاز/المؤقتة لأكثر الإشارات حساسية (الوثيقة 16 §4.5).",
+   retDefault:"حتى تسحب موافقتك — مُقلَّصة؛ ومؤقتة حيثما أمكن",
+   retNote:"نقلّل مدة الاحتفاظ، ونقاوم الطلبات القانونية المفرطة حيثما كان ذلك مشروعًا، ولا نحتفظ أو نشارك بما يتجاوز الغرض المعلن.",
+   withdrawal:"حذف وتصدير كاملان وسهلان في أي وقت. وتظل المؤشرات الحرجة تُصعَّد إلى إنسان للسلامة، لكن لا تُحفظ أو تُشارك البيانات بما يتجاوز ذلك."},
+ mental:{title:"بيانات الصحة النفسية", purpose:"استخدام المزاج والتوتر والمقاييس المعتمدة (مثل PHQ-9 وGAD-7) لدعم ركيزة الصحة النفسية/الإدراكية.",
+   collect:["إجابات المقاييس ودرجاتها","المزاج والتوتر والضيق المرتبط بالنوم المُبلَّغ ذاتيًا"],
+   basis:"موافقة صريحة على بيانات الصحة النفسية (فئة خاصة). تنطبق قاعدة أزمات صارمة: تُصعَّد مؤشرات إيذاء النفس فورًا إلى مسار أزمات بشري (الوثيقة 16 §2.2).",
+   retDefault:"طوال نشاط الحساب + 12 شهرًا",
+   retNote:"تُحفظ فقط بالقدر اللازم لتفسير الاتجاهات ولسلامتك؛ وقابلة للحذف عند الطلب.",
+   withdrawal:"اسحب في أي وقت؛ نتوقف عن استخدام مدخلات الصحة النفسية للتقييم ونحذفها عند الطلب. وتُسجَّل تصعيدات السلامة للمساءلة."},
+ ai:{title:"تحسين الذكاء الاصطناعي ودعم القرار", purpose:"استخدام بياناتك لتحسين نماذج PureScore ودعم القرار وأنظمة الذكاء الاصطناعي — غرض مستقل بموافقة خاصة به.",
+   collect:["سمات مُشتقة من بياناتك بعد إخفاء الهوية","النتائج/الملاحظات المستخدمة لمعايرة النماذج"],
+   basis:"موافقة منفصلة محددة قابلة للسحب — لا يُعاد توظيف بيانات تقييمك لتدريب النماذج بدونها (تحديد الغرض، الوثيقة 16 §4.2). ويمكنك استخدام PureScore بالكامل دون تفعيلها.",
+   retDefault:"تُخفى هوية نسخ التدريب القابلة للتعريف خلال 30 يومًا من السحب",
+   retNote:"عند السحب، تُزال النسخ القابلة للتعريف من خطوط التدريب خلال المدة أعلاه. وقد تُستبقى المشتقات المُجمّعة/مخفية الهوية التي لا يمكن ربطها بك.",
+   withdrawal:"اسحب في أي وقت؛ نتوقف عن استخدام بياناتك لتحسين النماذج ونُخفي هوية نسخ التدريب القابلة للتعريف خلال المدة المذكورة."},
+ clinician:{title:"المشاركة مع طبقة الأطباء", purpose:"مشاركة بياناتك وتقديرات المخاطر السريرية المُقيَّدة مع طبيب تختاره ليراجعها ويتصرّف إنسان.",
+   collect:["درجة PureScore وتفاصيل الركائز","الدرجات السريرية المُقيَّدة (للطبيب فقط)","المدخلات اللازمة لمراجعة الطبيب"],
+   basis:"موافقتك على الإفصاح عن البيانات الصحية لطبيب/فريق رعاية مُسمّى ضمن وصول قائم على الأدوار. ولا تُعرض عليك تقديرات المخاطر الخاصة بالطبيب كتشخيص (الوثيقة 16 §1.5).",
+   retDefault:"وفق التزامات حفظ السجلات لدى طبيبك",
+   retNote:"بمجرد المشاركة، تخضع نسخة طبيبك لواجبات حفظ السجلات المهنية في ولايته القضائية.",
+   withdrawal:"ألغِ وصول أي طبيب في أي وقت؛ تتوقف المشاركة المستقبلية. وتظل السجلات التي بحوزته خاضعة لالتزاماته القانونية."},
+ payer:{title:"الاستخدام التأميني/الاكتواري", purpose:"السماح باستخدام بياناتك لأغراض التأمين/الاكتواري — منفصل تمامًا، ومُعطّل ما لم تختر صراحةً تفعيله.",
+   collect:["بيانات مُجمّعة/مخفية الهوية حيثما أمكن","فقط فئات البيانات التي تأذن بها تحديدًا"],
+   basis:"موافقة صريحة منفصلة، مُقيَّدة ومعزولة عن التقييم (الوثيقة 16 §1.5، الوثيقة 19). والبيانات الجينية ممنوعة هيكليًا من هذه الطبقة (جدار ناري بنمط GINA).",
+   retDefault:"فقط أثناء سريان علاقة تأمينية أذنت بها",
+   retNote:"لا يحدث أي استخدام تأميني/اكتواري دون هذه الموافقة الصريحة القابلة للسحب.",
+   withdrawal:"اسحب في أي وقت؛ تتوقف المعالجة التأمينية/الاكتوارية. ولا تُدمج هذه الموافقة أبدًا مع الميزات الأساسية."},
+ transfer:{title:"النقل عبر الحدود", purpose:"السماح بنقل/معالجة بياناتك خارج دولتك عند الحاجة لتشغيل الخدمة والبنية التحتية للذكاء الاصطناعي.",
+   collect:["فئات البيانات التي فعّلتها، تُنقل بموجب ضمانات"],
+   basis:"حيثما يتطلب القانون، موافقتك الصريحة على النقل الدولي — تُستخدم مع قرارات الكفاية والضمانات التعاقدية (مثل SCCs/IDTA). وتظهر الآلية المنطبقة في لمحة الدولة.",
+   retDefault:"الكفاية + الشروط التعاقدية المعيارية، وإلا الموافقة الصريحة",
+   retNote:"تشترط بعض الولايات أيضًا التخزين داخل الدولة أو موافقة الجهة المنظِّمة — راجع صف التوطين في لمحة الدولة.",
+   withdrawal:"حيثما يعتمد النقل على موافقتك، يمكنك سحبها؛ عندها نُبقي المعالجة ضمن الحدود المسموحة أو نُقيّد الميزات المتأثرة."},
+ marketing:{title:"التسويق والاتصالات التسويقية", purpose:"إرسال أخبار المنتج والنصائح والعروض. اختياري تمامًا ومُعطّل ما لم تختر تفعيله.",
+   collect:["تفضيلات التواصل","تفاعلك مع الرسائل"],
+   basis:"موافقة منفصلة بالاشتراك. لا تُستخدم البيانات الحساسة/الصحية للتسويق أبدًا. ويمكنك إلغاء الاشتراك في أي وقت.",
+   retDefault:"حتى تلغي الاشتراك",
+   retNote:"لا نستخدم أبدًا البيانات من الفئة الخاصة (الصحية، الجينية، الإنجابية، النفسية) للتسويق.",
+   withdrawal:"ألغِ الاشتراك من أي رسالة أو عطّل هذا في أي وقت؛ يتوقف التسويق فورًا."}
+};
 
 /* ---- The 11 granular consent classes (master English copy) ---- */
 const SECTIONS = [
@@ -593,13 +700,15 @@ const J = [
 ];
 
 /* ============================ RENDER ============================ */
-const state = { region:"GCC", country:"ae", consent:{} };
+const state = { region:"GCC", country:"ae", lang:"en", consent:{} };
 function defaults(){ const o={}; SECTIONS.forEach(s=>o[s.id]=!!s.defaultOn); return o; }
 state.consent = defaults();
 
 const $ = s=>document.querySelector(s);
+const u = k => UI[state.lang][k];
 const sbClass = {req:"s-req",high:"s-high",elev:"s-elev",off:"s-off",none:""};
-const sbLabel = {req:"Required",high:"Sensitive",elev:"Extra-sensitive",off:"Off by default",none:""};
+/* per-section copy resolved for the active language (English master / Arabic draft) */
+function sec(s){ return state.lang==="ar" ? Object.assign({}, s, AR_SEC[s.id]) : s; }
 const flagPill = f => f==="yes" ? '<span class="pill p-yes">Localized — yes</span>' : f==="no" ? '<span class="pill p-no">No</span>' : '<span class="pill p-cond">Conditional</span>';
 
 /* country-specific legal callouts injected into specific sections */
@@ -668,8 +777,17 @@ function countryNote(jid, secId){
 }
 
 function renderControls(){
-  $("#regionChips").innerHTML = '<span class="chip'+(state.region==="ALL"?" on":"")+'" data-r="ALL">All</span>' +
-    REGIONS.map(r=>'<span class="chip'+(state.region===r.id?" on":"")+'" data-r="'+r.id+'">'+r.label+'</span>').join("");
+  /* translated chrome labels */
+  $("#lblLang").textContent = u("lang"); $("#lblRegion").textContent = u("region"); $("#lblCountry").textContent = u("country");
+  /* language toggle */
+  $("#langChips").innerHTML =
+    '<span class="chip'+(state.lang==="en"?" on":"")+'" data-l="en">English</span>'+
+    '<span class="chip'+(state.lang==="ar"?" on":"")+'" data-l="ar">العربية</span>';
+  document.querySelectorAll('#langChips .chip').forEach(c=>c.onclick=()=>{ state.lang=c.dataset.l; renderControls(); renderSummary(); renderStage(); });
+  /* regions */
+  const rlabel = r => state.lang==="ar" ? r.ar : r.label;
+  $("#regionChips").innerHTML = '<span class="chip'+(state.region==="ALL"?" on":"")+'" data-r="ALL">'+u("all")+'</span>' +
+    REGIONS.map(r=>'<span class="chip'+(state.region===r.id?" on":"")+'" data-r="'+r.id+'">'+rlabel(r)+'</span>').join("");
   const list = J.filter(j=> state.region==="ALL" || j.region===state.region);
   $("#countryGrid").innerHTML = list.map(j=>'<button class="cbtn'+(state.country===j.id?" on":"")+'" data-c="'+j.id+'"><span class="fl">'+j.flag+'</span>'+j.name+'</button>').join("");
   document.querySelectorAll('#regionChips .chip').forEach(c=>c.onclick=()=>{
@@ -681,85 +799,127 @@ function renderControls(){
   document.querySelectorAll('#countryGrid .cbtn').forEach(b=>b.onclick=()=>{ state.country=b.dataset.c; renderControls(); renderStage(); });
 }
 
+function renderSummary(){
+  const onCount = SECTIONS.filter(s=>state.consent[s.id]).length;
+  $("#summaryBar").innerHTML =
+    '<span>'+u("granular")+': <b>'+SECTIONS.length+'</b></span>'+
+    '<span>· '+onCount+' '+u("onDefault")+'</span>'+
+    '<span>· <b>1</b> '+u("reqService")+' '+u("accountId")+'</span>'+
+    '<span class="grow"></span>'+
+    '<button class="miniact" id="acceptAll">'+u("acceptRec")+'</button>'+
+    '<button class="miniact" id="rejectOpt">'+u("rejectOpt")+'</button>'+
+    '<button class="miniact save" id="saveBtn">'+u("save")+'</button>';
+  $("#acceptAll").onclick=()=>{ SECTIONS.forEach(s=> state.consent[s.id]= s.required?true:(s.sens==="off"?false:true)); renderSummary(); renderStage(); };
+  $("#rejectOpt").onclick=()=>{ SECTIONS.forEach(s=> state.consent[s.id]= !!s.required); renderSummary(); renderStage(); };
+  $("#saveBtn").onclick=saveConsent;
+}
+
 function snapCell(k,vv,citeHtml,verified,note){
   let c = citeHtml ? '<div class="cite">'+citeHtml+(verified?' · '+v:'')+'</div>' : '';
   let n = note ? '<small>'+note+'</small>' : '';
   return '<div class="snap-cell"><div class="k">'+k+'</div><div class="v">'+vv+n+c+'</div></div>';
 }
 
-function renderStage(){
-  const j = J.find(x=>x.id===state.country);
-  let onCount = SECTIONS.filter(s=>state.consent[s.id]).length;
-  $("#cntOn").textContent = onCount;
-
-  let html = '';
-  html += '<div class="print-only"><b>PureScore — Patient Consent &amp; Data-Protection Notice</b> · '+j.name+' · prepared '+VDATE+' · DRAFT pending legal sign-off</div>';
-
-  /* header */
-  html += '<div class="ch-head"><div class="ch-flag">'+j.flag+'</div>'+
-    '<div class="ch-title"><h2>'+j.name+'</h2><div class="sub">'+j.sub+'</div></div>'+
-    '<div class="ch-spacer"></div>'+ j.lang +
-    '<button class="pdfbtn" onclick="printCountry()">⬇︎ Download this country (PDF)</button></div>';
-
-  /* jurisdiction snapshot */
-  html += '<div class="snap"><div class="snap-h">⚖️ Regulatory snapshot — '+j.name+'</div><div class="snap-grid">';
-  html += snapCell("Governing law", j.law.name+' <small>'+j.law.eff+'</small>', j.law.cite, j.law.verified, j.law.note);
-  html += snapCell("Data-protection authority", j.authority.name, j.authority.cite, j.authority.verified, j.authority.note);
-  html += snapCell("Health-data rules", j.health.name, j.health.cite, j.health.verified, j.health.note);
-  html += snapCell("Health-sector regulator(s)", j.regulators, null, false, null);
-  html += snapCell("Consent for health/genetic data", j.consent, null, false, null);
-  html += snapCell("Data-subject rights", j.rights, null, false, null);
-  html += snapCell("Cross-border transfer", j.cross, null, false, null);
-  html += snapCell("Data localization", j.local.txt+' '+flagPill(j.local.flag), null, false, null);
-  html += snapCell("Medical-records retention", (j.medret.mandatory?'<span class="retflag">▲ mandatory minimum</span> ':'')+j.medret.txt, null, false, j.medret.note);
-  html += snapCell("Consent language", j.langNote, null, false, null);
-  html += '</div></div>';
-
-  /* preamble */
-  html += '<div class="preamble"><h3>Before you decide</h3>'+
-    '<b>'+'{{CONTROLLER_LEGAL_NAME}}'.replace(/{{|}}/g,'')+'</b> — placeholder: <span class="tok">{{CONTROLLER_LEGAL_NAME}}</span> ('+
-    '“we”) is the data controller for your information. '+
+function preambleHTML(j){
+  const repToken = '<span class="tok">{{'+j.id.toUpperCase().replace("-","_")+'_LOCAL_REP}}</span>';
+  const hasRep = ["ae","sa","qa","kw","bh","om","eg","ma"].includes(j.id);
+  if(state.lang==="ar"){
+    return '<div class="preamble"><h3>'+u("beforeDecide")+'</h3>'+
+      '<b><span class="tok">{{CONTROLLER_LEGAL_NAME}}</span></b> («نحن») هو المتحكِّم في بياناتك. '+
+      'تواصل مع مسؤول حماية البيانات لدينا عبر <span class="tok">{{DPO_EMAIL}}</span>'+
+      (hasRep?' وممثلنا المحلي '+repToken:'')+
+      (["gb","gr"].includes(j.id)?' (وعند الاقتضاء، ممثلنا بموجب المادة 27 <span class="tok">{{EU_UK_ART27_REP}}</span>)':'')+
+      (j.id==="in"?' ومسؤول الشكاوى في الهند <span class="tok">{{IN_GRIEVANCE_OFFICER}}</span>':'')+
+      '. PureScore منتج <b>بدرجة العافية مع إشراك الطبيب</b> — وليس جهازًا طبيًا تشخيصيًا ولا يحل محل الطبيب؛ وتُصعَّد أي قيمة حرجة إلى إنسان. '+
+      'كل موافقة أدناه <b>منفصلة ومحددة وقابلة للسحب</b>. وإيقاف أي موافقة اختيارية لا يلغي ميزات العافية الأساسية. '+
+      'ويمكنك في أي وقت الوصول إلى بياناتك وتصحيحها وتصديرها وتقييدها وسحبها وطلب <b>حذفها أو إخفاء هويتها</b> عبر <span class="tok">{{PRIVACY_PORTAL_URL}}</span>.</div>';
+  }
+  return '<div class="preamble"><h3>'+u("beforeDecide")+'</h3>'+
+    '<b><span class="tok">{{CONTROLLER_LEGAL_NAME}}</span></b> (“we”) is the data controller for your information. '+
     'Contact our Data Protection Officer at <span class="tok">{{DPO_EMAIL}}</span>'+
-    (["ae","sa","qa","kw","bh","om","eg","ma"].includes(j.id)?' and our local representative <span class="tok">{{'+j.id.toUpperCase().replace("-","_")+'_LOCAL_REP}}</span>':'')+
+    (hasRep?' and our local representative '+repToken:'')+
     (["gb","gr"].includes(j.id)?' (and, where required, our Art. 27 representative <span class="tok">{{EU_UK_ART27_REP}}</span>)':'')+
     (j.id==="in"?' and our India grievance officer <span class="tok">{{IN_GRIEVANCE_OFFICER}}</span>':'')+
     '. PureScore is a <b>wellness-grade, clinician-in-the-loop</b> product — it is not a diagnostic medical device and never replaces a clinician; any critical value is escalated to a human. '+
     'Each consent below is <b>separate, specific and revocable</b>. Turning any optional consent off never removes your core wellness features. '+
     'You can access, correct, export, restrict, withdraw, and request <b>deletion or anonymization</b> of your data at any time via <span class="tok">{{PRIVACY_PORTAL_URL}}</span>.</div>';
+}
+
+function attestHTML(){
+  if(state.lang==="ar"){
+    return '<div class="preamble"><h3>'+u("yourConf")+'</h3>'+
+      'بالمتابعة، تؤكد أنك تبلغ <span class="tok">{{MIN_AGE}}</span>+ عامًا (أو ولي أمر يوافق نيابة عن مُعال)، وأنك قرأت هذا الإشعار بلغة تفهمها، وأن الموافقات التي فعّلتها أعلاه مُعطاة بحرية وصراحة. '+
+      'ويمكنك تغيير هذه الخيارات في أي وقت. ويُسجَّل هذا (خياراتك والإصدار <span class="tok">{{CONSENT_VERSION}}</span> والطابع الزمني) بشكل غير قابل للتعديل لحمايتك (الوثيقة 16 §4.3).</div>';
+  }
+  return '<div class="preamble"><h3>'+u("yourConf")+'</h3>'+
+    'By continuing, you confirm you are <span class="tok">{{MIN_AGE}}</span>+ (or a guardian consenting for a dependent), that you have read this notice in a language you understand, and that the consents you switched on above are given freely and explicitly. '+
+    'You can change any of these choices at any time. This record (your choices, the version <span class="tok">{{CONSENT_VERSION}}</span>, and timestamp) is logged immutably for your protection (Doc 16 §4.3).</div>';
+}
+
+function renderStage(){
+  const j = J.find(x=>x.id===state.country);
+  const ar = state.lang==="ar";
+  document.documentElement.setAttribute("dir", ar?"rtl":"ltr");
+  document.documentElement.setAttribute("lang", ar?"ar":"en");
+  const K = SNAPK[state.lang];
+
+  let html = '';
+  html += '<div class="print-only"><b>PureScore — Patient Consent &amp; Data-Protection Notice</b> · '+j.name+' · prepared '+VDATE+' · DRAFT pending legal sign-off</div>';
+  if(ar) html += '<div class="arnote">⚑ '+AR_NOTE+'</div>';
+
+  /* header */
+  html += '<div class="ch-head"><div class="ch-flag">'+j.flag+'</div>'+
+    '<div class="ch-title"><h2>'+j.name+'</h2><div class="sub">'+j.sub+'</div></div>'+
+    '<div class="ch-spacer"></div>'+ j.lang +
+    '<button class="pdfbtn" onclick="printCountry()">'+u("pdf")+'</button></div>';
+
+  /* jurisdiction snapshot (legal text stays English by design — see arnote) */
+  html += '<div class="snap"><div class="snap-h">'+u("snap")+' '+j.name+'</div><div class="snap-grid">';
+  html += snapCell(K[0], j.law.name+' <small>'+j.law.eff+'</small>', j.law.cite, j.law.verified, j.law.note);
+  html += snapCell(K[1], j.authority.name, j.authority.cite, j.authority.verified, j.authority.note);
+  html += snapCell(K[2], j.health.name, j.health.cite, j.health.verified, j.health.note);
+  html += snapCell(K[3], j.regulators, null, false, null);
+  html += snapCell(K[4], j.consent, null, false, null);
+  html += snapCell(K[5], j.rights, null, false, null);
+  html += snapCell(K[6], j.cross, null, false, null);
+  html += snapCell(K[7], j.local.txt+' '+flagPill(j.local.flag), null, false, null);
+  html += snapCell(K[8], (j.medret.mandatory?'<span class="retflag">▲ mandatory minimum</span> ':'')+j.medret.txt, null, false, j.medret.note);
+  html += snapCell(K[9], j.langNote, null, false, null);
+  html += '</div></div>';
+
+  html += preambleHTML(j);
 
   /* sections */
-  SECTIONS.forEach(s=>{
-    const on = state.consent[s.id];
-    const sb = s.sens!=="none" ? '<span class="sbadge '+sbClass[s.sens]+'">'+sbLabel[s.sens]+'</span>' : '';
-    const cn = countryNote(j.id, s.id);
-    let retLine = '<span class="tok">'+s.retToken+'</span> default: <b>'+s.retDefault+'</b>';
-    if(s.id==="labs" && j.medret.mandatory){
-      retLine += ' <span class="retflag">▲ '+j.name+' mandatory minimum: '+j.medret.txt+'</span>';
+  SECTIONS.forEach(s0=>{
+    const s = sec(s0);
+    const on = state.consent[s0.id];
+    const sb = s0.sens!=="none" ? '<span class="sbadge '+sbClass[s0.sens]+'">'+SBLABEL[state.lang][s0.sens]+'</span>' : '';
+    const cn = countryNote(j.id, s0.id);
+    let retLine = '<span class="tok">'+s0.retToken+'</span> '+u("def")+' <b>'+s.retDefault+'</b>';
+    if(s0.id==="labs" && j.medret.mandatory){
+      retLine += ' <span class="retflag">▲ '+j.name+': '+j.medret.txt+'</span>';
     }
     html += '<div class="sec">'+
       '<div class="sec-h">'+
-        '<div class="sec-ic">'+s.ic+'</div>'+
+        '<div class="sec-ic">'+s0.ic+'</div>'+
         '<div class="sec-tt"><h3>'+s.title+' '+sb+'</h3><div class="purpose">'+s.purpose+'</div></div>'+
-        '<div class="tg"><label class="switch"><input type="checkbox" data-sec="'+s.id+'" '+(on?"checked":"")+(s.required?" disabled":"")+'><span class="slider"></span></label></div>'+
+        '<div class="tg"><label class="switch"><input type="checkbox" data-sec="'+s0.id+'" '+(on?"checked":"")+(s0.required?" disabled":"")+'><span class="slider"></span></label></div>'+
       '</div>'+
       '<div class="sec-body">'+
-        '<div class="fld"><div class="flh">What we collect</div><ul>'+s.collect.map(c=>'<li>'+c+'</li>').join("")+'</ul></div>'+
-        '<div class="fld"><div class="flh">Why &amp; legal basis</div><div class="flv">'+s.basis+'</div></div>'+
-        '<div class="fld"><div class="flh">Retention</div><div class="flv">'+retLine+'<br><small style="color:var(--mut)">'+s.retNote+'</small></div></div>'+
-        '<div class="fld"><div class="flh">Withdraw / erase / anonymize</div><div class="flv">'+s.withdrawal+'</div></div>'+
-        (cn?'<div class="note warn"><div class="nh">'+j.name+' — specific requirement</div>'+cn+'</div>':'')+
+        '<div class="fld"><div class="flh">'+u("collect")+'</div><ul>'+s.collect.map(c=>'<li>'+c+'</li>').join("")+'</ul></div>'+
+        '<div class="fld"><div class="flh">'+u("basis")+'</div><div class="flv">'+s.basis+'</div></div>'+
+        '<div class="fld"><div class="flh">'+u("retention")+'</div><div class="flv">'+retLine+'<br><small style="color:var(--mut)">'+s.retNote+'</small></div></div>'+
+        '<div class="fld"><div class="flh">'+u("withdraw")+'</div><div class="flv">'+s.withdrawal+'</div></div>'+
+        (cn?'<div class="note warn"><div class="nh">'+j.name+' — '+u("specReq")+'</div>'+cn+'</div>':'')+
       '</div>'+
     '</div>';
   });
 
-  /* attestation */
-  html += '<div class="preamble"><h3>Your confirmation</h3>'+
-    'By continuing, you confirm you are <span class="tok">{{MIN_AGE}}</span>+ (or a guardian consenting for a dependent), that you have read this notice in a language you understand, and that the consents you switched on above are given freely and explicitly. '+
-    'You can change any of these choices at any time. This record (your choices, the version <span class="tok">{{CONSENT_VERSION}}</span>, and timestamp) is logged immutably for your protection (Doc 16 §4.3).</div>';
+  html += attestHTML();
 
   $("#stage").innerHTML = html;
   document.querySelectorAll('#stage input[type=checkbox]').forEach(cb=>cb.onchange=()=>{
-    state.consent[cb.dataset.sec]=cb.checked; renderStage();
+    state.consent[cb.dataset.sec]=cb.checked; renderSummary(); renderStage();
   });
 }
 
@@ -771,10 +931,40 @@ function printCountry(){
   setTimeout(()=>document.title=old, 500);
 }
 
-$("#acceptAll").onclick=()=>{ SECTIONS.forEach(s=> state.consent[s.id]= s.required?true:(s.sens==="off"?false:true)); renderStage(); };
-$("#rejectOpt").onclick=()=>{ SECTIONS.forEach(s=> state.consent[s.id]= !!s.required); renderStage(); };
+let toastT;
+function toast(msg){
+  const t=$("#toast"); t.innerHTML=msg; t.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"), 4200);
+}
+
+/* Build the immutable consent record and persist it (Doc 16 §4.3).
+   Static-site friendly: always stored locally; POSTs to the audit endpoint once wired. */
+function saveConsent(){
+  const j = J.find(x=>x.id===state.country);
+  const rec = {
+    controller:"{{CONTROLLER_LEGAL_NAME}}",
+    consentVersion:"{{CONSENT_VERSION}}",
+    jurisdiction:j.id, jurisdictionName:j.name, region:j.region,
+    language:state.lang,
+    timestamp:new Date().toISOString(),
+    choices:Object.assign({}, state.consent),
+    userAgent:navigator.userAgent
+  };
+  try{ localStorage.setItem("purescore_consent_"+j.id, JSON.stringify(rec)); }catch(e){}
+  console.log("[PureScore consent record]", rec);
+  const EP = "{{CONSENT_AUDIT_ENDPOINT}}";
+  if(EP && EP.indexOf("{{")!==0){
+    fetch(EP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(rec)})
+      .then(()=>toast("✅ "+u("saved")+" — "+u("sent")))
+      .catch(()=>toast("✅ "+u("saved")+" — "+u("localOnly")));
+    toast("⏳ "+u("saved")+" — "+u("sent")+"…");
+  } else {
+    toast("✅ "+u("saved")+" — "+j.name+". "+u("localOnly"));
+  }
+}
 
 renderControls();
+renderSummary();
 renderStage();
 </script>
 </body></html>

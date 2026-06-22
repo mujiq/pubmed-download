@@ -14,8 +14,13 @@ was lost when the wiki was rebuilt between sessions).
   `engagement-state-machines.body.html`). Edit the **fragment / builder**, never the
   generated `.html`.
 - **Standalone full pages** (their own `<html>`, not wiki chrome) such as
-  `wearable-baselines.html` are **not generated** — they exist as-is and are only *linked*
-  from the nav. Do not regenerate or overwrite them.
+  `wearable-baselines.html` and `consent-onboarding.html` (an RTL/Arabic UAE consent +
+  onboarding interactive prototype) are **not generated** — they exist as-is and are only
+  *linked* from the nav (`NAV`/`PTITLE` only; **not** in `ORDER`, no builder, no `.body.html`).
+  Do not regenerate or overwrite them, and do not try to wrap them via `page()` (it would
+  destroy their full-document CSS/JS). They are registered in `_DIAGRAMS` so cross-page
+  "Connects to" chips classify them correctly; `_inject_connects` skips them automatically
+  (no `<nav class="pn">`).
 
 ## To add or change a page / menu
 1. Edit `NAV` (sidebar groups), `ORDER` (prev/next sequence), and `PTITLE` (titles) in

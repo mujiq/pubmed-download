@@ -171,6 +171,7 @@ NAV = [
                  ("feedback-loop.html", "Feedback-loop demo")]),
  ("5 · Trust & govern", [(DOCMAP["13"], SHORT["13"], "13"), (DOCMAP["14"], SHORT["14"], "14"),
                  (DOCMAP["15"], SHORT["15"], "15"), (DOCMAP["16"], SHORT["16"], "16"),
+                 ("consent-onboarding.html", "Consent & onboarding"),
                  (DOCMAP["18"], SHORT["18"], "18"),
                  (DOCMAP["19"], SHORT["19"], "19")]),
  ("6 · Gaps, blind-spots & roadmap", [("production-gaps.html", "Production readiness — gaps"),
@@ -218,6 +219,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "engagement-state-machines.html":"Engagement state machines",
           "purescore-uber-map.html":"Calculation Explorer",
           "wearable-baselines.html":"Wearable Baselines",
+          "consent-onboarding.html":"Consent & onboarding",
           "purescore-overview.html":"PureScore · Overview","purescore-wearable-baselines.html":"Baselines (Wearables)",
           "purescore-sex.html":"PureScore by sex",
           "dossier-sequences.html":"Sequences",
@@ -348,7 +350,9 @@ def render_index():
   D12 --> D13["14 Validation"]
   D1 --> D18["07 Data streams"] --> D7
   D7 --> D16["12 Actions"]
-  D3 --> D11["16 Safety"]
+  D7 --> DLV["Notify · firewall<br/>channels · quiet hours · escalate"]
+  DLV --> D11["16 Safety"]
+  D3 --> D11
   D18 --> ADMIN["Admin (clinician config)"]
   D7 --> FB["Feedback-loop demo"]"""
     b = ['<div class="hero"><h1>Hikma<span style="color:#2ecc71">Engine</span> — Technical Wiki</h1>',
@@ -568,7 +572,8 @@ def _consistency_check():
 # ----------------------------------------------------------------- "Connects to" footer (auto-derived)
 _DIAGRAMS = {"purescore-uber-map.html", "purescore-uber-map.html", "states.html", "engagement-state-machines.html",
              "class-model.html", "dossier-erd.html", "dossier-c4.html", "dossier-sequences.html",
-             "class-model.html", "wearable-baselines.html", "purescore-wearable-baselines.html"}
+             "class-model.html", "wearable-baselines.html", "purescore-wearable-baselines.html",
+             "consent-onboarding.html"}
 _GRID_OF = {"appendix-biomarkers.html": "appendix-biomarkers.html#spreadsheet", "appendix-wearables.html": "appendix-wearables.html#spreadsheet",
             "appendix-personas.html": "appendix-personas.html#spreadsheet", "appendix-lifestyles.html": "appendix-lifestyles.html#spreadsheet",
             "appendix-adherence.html": "appendix-adherence.html#spreadsheet", "appendix-goals.html": "appendix-goals.html#spreadsheet",
