@@ -22,9 +22,9 @@ controls here change <b>marker applicability &amp; reference ranges</b>, not the
   <span class="pw-lab">Layers</span>
   <button class="pw-chip on" data-t="edges" type="button">weighted edges</button>
   <button class="pw-chip on" data-t="heat" type="button">heat &amp; bar</button>
-  <button class="pw-chip" data-t="markers" type="button">markers</button>
-  <button class="pw-chip" data-t="res" type="button">reservoirs</button>
-  <button class="pw-chip" data-t="sexage" type="button">sex/age badges</button>
+  <button class="pw-chip on" data-t="markers" type="button">markers</button>
+  <button class="pw-chip on" data-t="res" type="button">reservoirs</button>
+  <button class="pw-chip on" data-t="sexage" type="button">sex/age badges</button>
 </div>
 <div class="pw-filter" id="pw-filter">
   <span class="pw-lab">Filter</span>
@@ -91,7 +91,8 @@ controls here change <b>marker applicability &amp; reference ranges</b>, not the
   function heat(w){var t=Math.max(0,Math.min(1,w/WMAX));return "rgb("+lerp(14,46,t)+","+lerp(42,200,t)+","+lerp(46,170,t)+")";}
   function resFor(code){var o=[];for(var k in RES){if(RES[k].feeds===code)o.push(k);}return o;}
   var MK={};ORDER.forEach(function(c){P[c].markers.forEach(function(m){m._p=c;MK[m.a]=m;});});
-  var st={view:"fan",t:{edges:true,heat:true,markers:false,res:false,sexage:false},f:{sex:"all",age:"all",stage:"all"}};
+  var st={view:"fan",t:{edges:true,heat:true,markers:true,res:true,sexage:true},f:{sex:"all",age:"all",stage:"all"}};
+  function acr(name){var b=String(name).split("(")[0].trim();return b.length>13?b.slice(0,12)+"…":b;}
 
   /* sex/age applicability for the current filter/badge state */
   function mApp(m){
@@ -181,28 +182,36 @@ controls here change <b>marker applicability &amp; reference ranges</b>, not the
   function ribbon(x0,y0,h0,x1,y1,h1,col,op){var mx=(x0+x1)/2;
     return '<path d="M '+x0+' '+y0+' C '+mx+' '+y0+', '+mx+' '+y1+', '+x1+' '+y1+' L '+x1+' '+(y1+h1)+' C '+mx+' '+(y1+h1)+', '+mx+' '+(y0+h0)+', '+x0+' '+(y0+h0)+' Z" fill="'+col+'" fill-opacity="'+op+'"/>';}
   function sankey(){
-    var W=980,H=560,top=22,bot=22,Htot=H-top-bot,gap=8,xM=70,wM=12,xR=300,wR=58,xP=560,wP=130,xS=860,wS=64;
-    var sumW=ORDER.reduce(function(a,c){return a+P[c].w;},0)||1,avail=Htot-(ORDER.length-1)*gap;
+    var W=980,top=22,bot=22,gap=8,xM=200,wM=11,xR=360,wR=54,xP=560,wP=130,xS=860,wS=64,minRow=12;
+    var sumW=ORDER.reduce(function(a,c){return a+P[c].w;},0)||1;
+    var needed=st.t.markers?Math.max.apply(null,ORDER.map(function(c){return P[c].markers.length*minRow/(P[c].w/sumW);})):340;
+    var avail=Math.min(Math.max(needed,340),900),H=top+bot+avail+(ORDER.length-1)*gap;
     var py={},yy=top;ORDER.forEach(function(c){var h=P[c].w/sumW*avail;py[c]={y:yy,h:h};yy+=h+gap;});
     var totH=ORDER.reduce(function(a,c){return a+py[c].h;},0);
-    var s='<svg viewBox="0 0 '+W+' '+H+'">';
+    var s='<svg viewBox="0 0 '+W+' '+H.toFixed(0)+'">';
     s+='<rect'+hk("p",ORDER[0])+' x="'+xS+'" y="'+top+'" width="'+wS+'" height="'+totH.toFixed(1)+'" rx="5" fill="#10242a" stroke="#2ee6c9"/>';
     s+='<text x="'+(xS+wS/2)+'" y="'+(top+totH/2)+'" text-anchor="middle" fill="#bff5ec" font-size="11" font-weight="700" transform="rotate(90 '+(xS+wS/2)+' '+(top+totH/2)+')">PureScore</text>';
+    if(st.t.markers)s+='<text x="'+(xM-4)+'" y="13" text-anchor="end" fill="#8aa6c0" font-size="9">marker &middot; weight</text><text x="'+((xP+wP+xS)/2)+'" y="13" text-anchor="middle" fill="#8aa6c0" font-size="9">W_k</text>';
     var sy=top;
-    ORDER.forEach(function(c){var p=P[c],o=py[c],fill=st.t.heat?heat(p.w):"#13233e";
-      s+=ribbon(xP+wP,o.y,o.h,xS,sy,o.h,"#2ee6c9",0.26);sy+=o.h;
+    ORDER.forEach(function(c){var p=P[c],o=py[c],fill=st.t.heat?heat(p.w):"#13233e",mid=(o.y+sy)/2+o.h/2;
+      s+=ribbon(xP+wP,o.y,o.h,xS,sy,o.h,"#2ee6c9",0.26);
+      s+='<text x="'+((xP+wP+xS)/2)+'" y="'+(mid-2).toFixed(1)+'" text-anchor="middle" fill="#bff5ec" font-size="9.5" font-weight="600">'+pct(p.w)+'</text>';
+      sy+=o.h;
       s+='<g'+hk("p",c)+'><rect x="'+xP+'" y="'+o.y.toFixed(1)+'" width="'+wP+'" height="'+o.h.toFixed(1)+'" rx="4" fill="'+fill+'" stroke="#2b5a86"/>';
-      s+='<text x="'+(xP+8)+'" y="'+(o.y+o.h/2+4).toFixed(1)+'" fill="#fff" font-size="11" font-weight="700">'+esc(c)+' <tspan fill="#cfe0f5" font-weight="400">'+pct(p.w)+'</tspan></text></g>';
+      s+='<text x="'+(xP+8)+'" y="'+(o.y+o.h/2+(o.h>26?-1:4)).toFixed(1)+'" fill="#fff" font-size="11" font-weight="700">'+esc(c)+' <tspan fill="#cfe0f5" font-weight="400">'+pct(p.w)+'</tspan></text>';
+      if(o.h>26)s+='<text x="'+(xP+8)+'" y="'+(o.y+o.h/2+12).toFixed(1)+'" fill="#9fb3c8" font-size="8.5">'+esc(p.name.slice(0,22))+'</text>';
+      s+='</g>';
       if(!st.t.markers) return;
       var ms=p.markers.slice(),sm=ms.reduce(function(a,m){return a+(m.w||0.01);},0)||1;
       if(st.t.res){ms.sort(function(a,b){var ra=(a.res&&a.res[0])||"~",rb=(b.res&&b.res[0])||"~";return ra<rb?-1:ra>rb?1:0;});}
       var groups={};if(st.t.res){ms.forEach(function(m){var rk=(m.res&&m.res[0])||null;if(rk){(groups[rk]=groups[rk]||{y:null,h:0}).h+=(m.w||0.01)/sm*o.h;}});}
       var myy=o.y;
-      ms.forEach(function(m){var mh=(m.w||0.01)/sm*o.h,col=CH[m.ch]||"#789";
-        s+='<rect'+hk("m",m.a)+mAttr(m)+' x="'+(xM-wM)+'" y="'+myy.toFixed(1)+'" width="'+wM+'" height="'+Math.max(mh-0.6,1.4).toFixed(1)+'" rx="2" fill="'+col+'"/>';
+      ms.forEach(function(m){var mh=(m.w||0.01)/sm*o.h,col=CH[m.ch]||"#789",ap=mApp(m);
+        s+='<a href="appendix-biomarkers.html#'+encodeURIComponent(m.a)+'"><rect'+hk("m",m.a)+mAttr(m)+' x="'+(xM-wM)+'" y="'+myy.toFixed(1)+'" width="'+wM+'" height="'+Math.max(mh-0.8,2).toFixed(1)+'" rx="2" fill="'+col+'"/></a>';
+        if(mh>=9)s+='<text x="'+(xM-wM-4)+'" y="'+(myy+mh/2+3).toFixed(1)+'" text-anchor="end" fill="'+col+'" font-size="8.5"'+(ap.na?' opacity="0.45"':'')+'>'+esc(acr(m.n))+' <tspan fill="#7f93a8">'+pct(m.w)+'</tspan></text>';
         var rk=st.t.res&&m.res&&m.res[0];
-        if(rk){if(groups[rk].y===null)groups[rk].y=myy;s+=ribbon(xM,myy,mh,xR,myy,mh,col,mApp(m).na?0.05:0.18);}
-        else s+=ribbon(xM,myy,mh,xP,myy,mh,col,mApp(m).na?0.05:0.16);
+        if(rk){if(groups[rk].y===null)groups[rk].y=myy;s+=ribbon(xM,myy,mh,xR,myy,mh,col,ap.na?0.05:0.18);}
+        else s+=ribbon(xM,myy,mh,xP,myy,mh,col,ap.na?0.05:0.16);
         myy+=mh;});
       if(st.t.res){for(var rk2 in groups){var gr=groups[rk2];if(gr.y===null)continue;
         s+='<g'+hk("r",rk2)+'><rect x="'+xR+'" y="'+gr.y.toFixed(1)+'" width="'+wR+'" height="'+Math.max(gr.h-0.6,2).toFixed(1)+'" rx="3" fill="#0c1c2b" stroke="#7fbfe6"/>';

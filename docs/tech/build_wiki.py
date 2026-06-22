@@ -182,6 +182,7 @@ NAV = [
  ("7 · Gaps, blind-spots & roadmap", [("production-gaps.html", "Production readiness — gaps"),
                  ("spec-audit.html", "Spec build-readiness"),
                  ("editorial-review.html", "Editorial & cohesion review"),
+                 ("consolidation-plan.html", "Consolidation plan"),
                  (DOCMAP["17"], SHORT["17"], "17"), ("appendix-coverage-audit.html", "Coverage audit")]),
  ("8 · System & build", [("purescore-system.html", "System at a glance"),
                  ("purescore-calc-uber.html", "PureScore Calc Diagram"),
@@ -341,6 +342,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "spec-audit.html":"Spec build-readiness audit",
           "pillar-weights.html":"Pillar weights & correlations",
           "editorial-review.html":"Editorial & cohesion review",
+          "consolidation-plan.html":"Consolidation plan",
           "care-pathways.html":"Care pathways — condition pathways","care-roles.html":"Care team & roles",
           "prevention-engagement.html":"Prevention & engagement",
           "appendix-biomarkers.html":"Appendix A · Markers (all channels)","reference-range-resolver.html":"Reference-range resolver",
@@ -401,6 +403,7 @@ def _ctype(fn):
 MAT_LABELS = {"draft":"Draft","counsel":"Needs counsel review","roadmap":"Gap / roadmap"}
 _MAT = {"consent-onboarding.html":"counsel", DOCMAP["16"]:"counsel", DOCMAP["18"]:"counsel",
         "production-gaps.html":"roadmap", "spec-audit.html":"roadmap", "editorial-review.html":"roadmap",
+        "consolidation-plan.html":"roadmap",
         DOCMAP["17"]:"roadmap", "appendix-coverage-audit.html":"roadmap"}
 def _maturity(fn): return _MAT.get(fn, "draft")
 
@@ -785,6 +788,7 @@ def main():
                       ("production-gaps.html", "build_production_gaps"),
                       ("spec-audit.html", "build_spec_audit"),
                       ("editorial-review.html", "build_editorial_review"),
+                      ("consolidation-plan.html", "build_consolidation_plan"),
                       ("care-pathways.html", "build_care_pathways"), ("care-roles.html", "build_care_roles"),
                       ("prevention-engagement.html", "build_prevention"),
                       ("purescore-uber-map.html", "build_purescore_uber"),

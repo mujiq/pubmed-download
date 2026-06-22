@@ -3960,6 +3960,57 @@ def build_editorial_review():
     return "Editorial & cohesion review", "".join(h)
 
 
+def build_consolidation_plan():
+    """Merge/consolidation plan — a 5-agent scan for overlap that should collapse to one canonical
+    home. Data-driven from data/consolidation-plan.json. PLAN ONLY: nothing is merged until approved.
+    Each candidate carries an id (CPn / Kn) you can reference when approving."""
+    try:
+        data = _load("consolidation-plan.json")
+    except Exception:
+        data = {"method": "", "framing": "", "sections": []}
+    RISK = {"high": '<span class="chip b-red">high</span>', "med": '<span class="chip b-yellow">med</span>',
+            "low": '<span class="chip b-mut">low</span>'}
+    secs = data.get("sections", [])
+    allf = [f for s in secs for f in s.get("findings", [])]
+    merges = [f for f in allf if f.get("id", "").startswith("CP")]
+    keeps = [f for f in allf if f.get("id", "").startswith("K")]
+    excl = [f for f in allf if f.get("id", "").startswith("X")]
+    nm = sum(1 for f in merges if f.get("risk") == "med")
+    nl = sum(1 for f in merges if f.get("risk") == "low")
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Gaps &amp; roadmap &rsaquo; Consolidation plan</div>',
+         '<h1>Consolidation plan <span class="small muted">&middot; wiki pages &amp; diagrams</span></h1>',
+         '<p class="lead">Where the wiki repeats itself &mdash; pages or sections that overlap enough to collapse to '
+         '<b>one canonical home</b>, so each concept has a single update site. Five agents scanned every page (generated HTML, '
+         'builders, data, diagrams). <b>Scoped to the wiki surface you manage</b> &mdash; the numbered spec spine (Docs 01&ndash;19 '
+         'markdown) is out of scope; where a page restates a spec, the fix edits the <b>page</b> (point at the spec), never the spec. '
+         '<b>Plan only</b> &mdash; nothing is merged until you approve a candidate by its id. '
+         '<span class="chip b-yellow">med</span> = a standalone page or one that must preserve cross-refs / a diagram-data guard; '
+         '<span class="chip b-mut">low</span> = generated-page render or label cleanup.</p>',
+         '<p class="small muted">%d page &amp; diagram merge candidates &middot; %d low &middot; %d med &middot; plus %d confirmed keep-separate and %d out-of-scope (source spec / data).</p>'
+         % (len(merges), nl, nm, len(keeps), len(excl)),
+         '<div class="callout note"><div class="ct">Read this first</div>%s</div>' % _esc(data.get("framing", "")), ILLUS]
+    order = {"high": 2, "med": 1, "low": 0}
+    for s in secs:
+        fs = s.get("findings", [])
+        anchor = re.sub(r"[^a-z0-9]+", "-", s.get("title", "").lower()).strip("-") or "s"
+        h.append('<h2 id="%s">%s <span class="kref">(%d)</span></h2>' % (anchor, _esc(s.get("title", "")), len(fs)))
+        h.append('<div class="tablewrap"><table><thead><tr><th>#</th><th>Pages</th><th>Overlap</th>'
+                 '<th>Canonical &amp; mechanism</th><th>Risk</th></tr></thead><tbody>')
+        for f in fs:
+            pages = " &middot; ".join('<code>%s</code>' % _esc(p) for p in f.get("pages", []))
+            overlap = ('<b>%s</b> <span class="chip b-mut">%s</span><div class="small muted" style="margin-top:3px">%s</div>'
+                       % (_esc(f.get("title", "")), _esc(f.get("type", "")), _esc(f.get("overlap", ""))))
+            canon = '%s<div class="small" style="margin-top:3px"><b>%s</b></div>' % (_esc(f.get("canonical", "")), _esc(f.get("mechanism", "")))
+            if f.get("gain") and f.get("gain") != "—":
+                canon += '<div class="small muted" style="margin-top:2px">gain: %s</div>' % _esc(f["gain"])
+            h.append('<tr><td class="mono small">%s</td><td class="small">%s</td><td class="small">%s</td>'
+                     '<td class="small">%s</td><td>%s</td></tr>'
+                     % (_esc(f.get("id", "")), pages, overlap, canon, RISK.get(f.get("risk"), _esc(f.get("risk", "")))))
+        h.append('</tbody></table></div>')
+    h.append('<p class="small muted">Method: %s</p>' % _esc(data.get("method", "")))
+    return "Consolidation plan", "".join(h)
+
+
 # =================================================================== CARE PATHWAYS & DELIVERY
 _RC = {"aligned": '<span class="chip b-green">aligned</span>', "partial": '<span class="chip b-yellow">partial</span>',
        "divergent": '<span class="chip b-red">divergent</span>'}
