@@ -215,6 +215,25 @@ def write_unit_data():
     return u
 _UNIT_ASSETS = '<script src="assets/units-data.js"></script><script src="assets/units.js"></script>'
 
+def write_pillar_data():
+    """Emit assets/pillars-data.js (window.PURESCORE_PILLARS) — per-pillar name, weight W_k, marker
+    coverage (count + core markers) and description, for the pillar-fan hover cards + click-to-section."""
+    try:
+        W = dict(_load("pillar-weights.json")["weights"])
+    except Exception:
+        W = {}
+    out = {}
+    for pid, name, desc, rows in PILLARS:
+        markers = [{"n": r[0], "w": (r[7] if len(r) > 7 else ""), "t": (r[2] if len(r) > 2 else "")} for r in rows]
+        core = [m["n"] for m in markers if m["t"] == "C"][:6]
+        out[pid] = {"name": name, "desc": desc, "weight": W.get(pid),
+                    "n": len(markers), "core": core, "markers": markers}
+    js = ("/* GENERATED from pillars.json + pillar-weights.json — pillar-fan hover/click. Edit the JSON. */\n"
+          "window.PURESCORE_PILLARS=" + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n")
+    with open(os.path.join(_HERE, "assets", "pillars-data.js"), "w", encoding="utf-8") as f:
+        f.write(js)
+    return out
+
 # ----------------------------------------------------------------- per-doc summaries
 SUMMARY = {
  "01":"Vision, design principles, and the institutional lessons (Babylon / Kaiser / Mayo) PureScore is engineered around.",
@@ -299,7 +318,7 @@ MERMAID = {
   EB --> CAL["calibration · fairness · drift"]"""),
  "19":("Gated actuarial firewall", """flowchart LR
   S["PureScore (wellness)"] -. separate consent .-> ACT["actuarial layer"]
-  ACT --> FW["firewall: no protected-class proxy<br/>may worsen price/access"]"""),
+  ACT --> FW["firewall: no protected-class proxy<br/>must not worsen price/access"]"""),
  "16":("Escalation tiers", """flowchart TD
   R["red / critical marker"] --> E{"escalation tier"}
   E -->|emergency| ER["seek care now + on-call clinician"]
@@ -368,7 +387,7 @@ def _rngbar(two_sided):
 
 ILLUS = ('<div class="callout note"><div class="ct">Illustrative</div>All bands, weights and cut-points '
          'on this page are literature/guideline-anchored examples and <b>must be re-verified and '
-         'cohort-adjusted before any production use</b> (README §5.6). This is design documentation, '
+         'cohort-adjusted before any production use</b> (<a class="xref" href="conventions.html">Conventions</a> &sect;5.6). This is design documentation, '
          'not a validated medical device.</div>')
 
 # =================================================================== typed source channel per marker (closes F7)
@@ -487,7 +506,7 @@ def build_range_resolver():
          '<p class="lead">A base reference range is adjusted by the patient’s <b>sex &middot; age &middot; life-stage &middot; condition &middot; medication</b>. '
          'This page shows the <b>resolution order</b> and lets you <b>step through</b> any marker + context to see each slice applied — '
          'with the citation behind every shift — so a developer or clinician can verify the effective range. '
-         'Single source of truth: <code>data/range-variations.json</code>. Illustrative (README &sect;5.6).</p>', ILLUS,
+         'Single source of truth: <code>data/range-variations.json</code>. Illustrative (<a class="xref" href="conventions.html">Conventions</a> &sect;5.6).</p>', ILLUS,
          '<div class="diagram"><div class="dt">Resolution order &middot; precedence: medication / condition &gt; life-stage &gt; sex / age</div>'
          '<pre class="mermaid">%s</pre></div>' % flow,
          '<div id="cfFlags"></div>',
@@ -3678,6 +3697,60 @@ def build_spec_audit():
         h.append('</tbody></table></div>')
     h.append('<p class="small muted">Method: %s</p>' % _esc(data.get("method", "")))
     return "Spec build-readiness audit", "".join(h)
+
+
+def build_editorial_review():
+    """Editorial & cohesion review — a multi-agent comb-through of every rendered page plus a
+    mechanical link/anchor scan. Data-driven from data/editorial-review.json. A third, distinct
+    axis from spec-audit (can an engineer build it?) and production-gaps (what does the app still
+    need?): this asks whether the wiki READS as one cohesive product for clinicians, devs & product."""
+    try:
+        data = _load("editorial-review.json")
+    except Exception:
+        data = {"method": "", "sections": []}
+    SEV = {"high": '<span class="chip b-red">high</span>', "med": '<span class="chip b-yellow">med</span>',
+           "low": '<span class="chip b-mut">low</span>'}
+    secs = data.get("sections", [])
+    allf = [f for s in secs for f in s.get("findings", [])]
+    nh = sum(1 for f in allf if f.get("sev") == "high")
+    nm = sum(1 for f in allf if f.get("sev") == "med")
+    nl = sum(1 for f in allf if f.get("sev") == "low")
+    nfix = sum(1 for f in allf if f.get("status") == "fixed")
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Gaps &amp; roadmap &rsaquo; Editorial &amp; cohesion review</div>',
+         '<h1>Editorial &amp; cohesion review</h1>',
+         '<p class="lead">A page-by-page comb-through of the whole wiki (six review agents, one per chapter cluster) '
+         'plus a mechanical link/anchor scan, asking a single question: <b>does this read as one cohesive product '
+         'for clinicians, developers and product?</b> It is a third axis, distinct from '
+         '<a class="xref" href="spec-audit.html">Spec build-readiness</a> (can an engineer build it?) and '
+         '<a class="xref" href="production-gaps.html">Production readiness</a> (what does the app still need?). '
+         '<span class="chip b-red">high</span> = visibly wrong or breaks the &ldquo;one product&rdquo; feel; '
+         '<span class="chip b-yellow">med</span> = an inconsistency a reader will notice; '
+         '<span class="chip b-mut">low</span> = polish.</p>',
+         '<p class="small muted">%d findings &middot; %d high &middot; %d med &middot; %d low &middot; %d already fixed &middot; across %d areas.</p>'
+         % (len(allf), nh, nm, nl, nfix, len(secs)),
+         '<div class="callout note"><div class="ct">How to use this</div>'
+         'Per your direction these are <b>tracked, not yet applied</b> — except a handful of defects in the '
+         'newly-added chapter landing pages (marked <span class="chip b-green">fixed</span>), which were corrected in place. '
+         'Every fix lives in the source / builders (<code>../purescore/*.md</code>, <code>wiki_content.py</code>, '
+         '<code>build_wiki.py</code>, <code>data/*.json</code>), never the generated HTML. The biggest wins are the '
+         'cross-cutting items at the top: relabelling the &ldquo;README&rdquo; links and filling the glossary fix dozens of '
+         'pages at once.</div>', ILLUS]
+    order = {"high": 0, "med": 1, "low": 2}
+    for s in secs:
+        fs = sorted(s.get("findings", []), key=lambda f: order.get(f.get("sev"), 9))
+        anchor = re.sub(r"[^a-z0-9]+", "-", s.get("title", "").lower()).strip("-") or "s"
+        h.append('<h2 id="%s">%s <span class="kref">(%d)</span></h2>' % (anchor, _esc(s.get("title", "")), len(fs)))
+        h.append('<div class="tablewrap"><table><thead><tr><th>Page</th><th>Severity</th><th>Dimension</th>'
+                 '<th>Finding</th><th>Suggested fix</th></tr></thead><tbody>')
+        for f in fs:
+            fixed = (' <span class="chip b-green">fixed</span>') if f.get("status") == "fixed" else ""
+            h.append('<tr><td class="small mono">%s</td><td>%s</td><td class="small"><code>%s</code></td>'
+                     '<td class="small">%s</td><td class="small muted">%s%s</td></tr>'
+                     % (_esc(f.get("page", "")), SEV.get(f.get("sev"), _esc(f.get("sev", ""))),
+                        _esc(f.get("dim", "")), _esc(f.get("finding", "")), _esc(f.get("fix", "")), fixed))
+        h.append('</tbody></table></div>')
+    h.append('<p class="small muted">Method: %s</p>' % _esc(data.get("method", "")))
+    return "Editorial & cohesion review", "".join(h)
 
 
 # =================================================================== CARE PATHWAYS & DELIVERY

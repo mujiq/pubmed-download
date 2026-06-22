@@ -38,7 +38,7 @@ def linkify(s):
         n = m.group(1).zfill(2)
         return ('<a class="xref" href="%s">Doc %s</a>' % (DOCMAP[n], m.group(1))) if n in DOCMAP else m.group(0)
     s = re.sub(r"\bDoc (\d{1,2})\b", rep, s)
-    s = re.sub(r"\bREADME\b", '<a class="xref" href="conventions.html">README</a>', s)
+    s = re.sub(r"\bREADME\b", '<a class="xref" href="conventions.html">Conventions</a>', s)
     return s
 
 def inline(t):
@@ -180,6 +180,7 @@ NAV = [
                  (DOCMAP["19"], SHORT["19"], "19")]),
  ("7 · Gaps, blind-spots & roadmap", [("production-gaps.html", "Production readiness — gaps"),
                  ("spec-audit.html", "Spec build-readiness"),
+                 ("editorial-review.html", "Editorial & cohesion review"),
                  (DOCMAP["17"], SHORT["17"], "17"), ("appendix-coverage-audit.html", "Coverage audit")]),
  ("8 · System & build", [("purescore-system.html", "System at a glance"),
                  ("states.html", "Patient life-state machine"),
@@ -198,17 +199,145 @@ NAV_BLURB = {
  "2 · Inputs & intake": "Where the data comes from: labs, wearables, the question intake, and coverage.",
  "3 · Making it personal": "Context that reshapes the score: sex, life-stage, conditions, personas.",
  "4 · Acting on it": "Turning the score into nudges, actions, adherence and goals.",
- "5 · Trust & govern": "Validation, safety, evidence, fairness, localization and actuarial.",
- "6 · Gaps, blind-spots & roadmap": "What's missing or partial for a production-grade patient app — plus the clinician red-team and coverage audit.",
- "7 · System & build": "The whole machine end-to-end: state machines, the object model, ERD, C4, API, stories.",
- "8 · Admin (clinician config)": "The clinician configuration & sign-off surfaces.",
+ "5 · Care pathways & delivery": "How the engine plugs into real care: pathways, roles, and prevention/engagement.",
+ "6 · Trust & govern": "Validation, safety, evidence, fairness, localization and actuarial.",
+ "7 · Gaps, blind-spots & roadmap": "What's missing or partial — product gaps, the spec audit, the clinician red-team and coverage audit.",
+ "8 · System & build": "The whole machine end-to-end: state machines, the object model, ERD, C4, API, stories.",
+ "9 · Admin (clinician config)": "The clinician configuration & sign-off surfaces.",
 }
 
 # prev/next follows the sidebar reading order exactly (derived from NAV)
 ORDER = [it[0] for grp, items in NAV for it in items]
+
+# ----------------------------------------------------------------- display numbering + chapter landings
+# Display-only "chapter.section" numbers, derived from NAV order. Files and the Doc NN system are
+# untouched — this is purely a presentation layer (sidebar badges + page header + landing pages).
+SEC_NO, CHAP_NO, CHAP_LANDING = {}, {}, {}
+for _grp, _items in NAV:
+    _m = re.match(r"^\s*(\d+)\s*·", _grp)
+    _cno = _m.group(1) if _m else "0"          # "Start here" -> chapter 0 (front-matter; items unnumbered)
+    CHAP_NO[_grp] = _cno
+    CHAP_LANDING[_grp] = "chapter-%s.html" % _cno
+    if _m:
+        for _i, _it in enumerate(_items, 1):
+            SEC_NO.setdefault(_it[0], "%s.%d" % (_cno, _i))
+
+# Curated chapter intros + per-audience "start here" pointers (the auto page-list is derived from NAV).
+# Keyed by the live NAV group label so it tracks concurrent NAV edits; missing keys fall back gracefully.
+CHAPTERS = {
+ "Start here": {"intro": "New here? This is the orientation layer. PureScore turns labs, wearables and a structured intake into one explainable health score — start with the vision, then watch the math run live in the Calculation Explorer.",
+   "starts": [("For clinicians", "01-vision-principles-and-lessons.html", "Vision & principles"),
+              ("For developers", "purescore-uber-map.html", "Calculation Explorer"),
+              ("For product", "conventions.html", "Conventions & glossary")]},
+ "1 · How scoring works": {"intro": "The core engine, end to end: how markers roll up through 12 pillars into a single score, how the MONIAC-style reservoirs (a hydraulic-analogy model) give the score momentum and memory, and what PureScore 2.0 adds. This is the math everything else builds on.",
+   "starts": [("For clinicians", "purescore-overview.html", "Overview"),
+              ("For developers", "03-scoring-formula.html", "Scoring formula"),
+              ("For product", "reservoir-sim.html", "Reservoir simulator")]},
+ "2 · Inputs & intake": {"intro": "Where every number comes from — labs, wearables and the question intake — and how confidence, coverage and reference ranges are tracked so a score is never more certain than its data.",
+   "starts": [("For clinicians", "appendix-biomarkers.html", "Markers (all channels)"),
+              ("For developers", "06-data-model-and-reference-ranges.html", "Data model & ranges"),
+              ("For product", "appendix-onboarding.html", "Onboarding & first-run")]},
+ "3 · Making it personal": {"intro": "The context that reshapes a score: biological sex, life-stage and acute events, established clinical-risk equations, and the persona models used to pressure-test it across very different patients.",
+   "starts": [("For clinicians", "08-sex-specific-models.html", "Sex-specific models"),
+              ("For developers", "appendix-persona-matrix.html", "Persona matrix"),
+              ("For product", "appendix-personas.html", "Personas")]},
+ "4 · Acting on it": {"intro": "Turning a score into action: the daily nudge engine, the recommended-actions catalogue, and how adherence and goals feed back into the model.",
+   "starts": [("For clinicians", "12-recommended-actions-catalogue.html", "Actions catalogue"),
+              ("For developers", "11-daily-nudge-engine.html", "Nudge engine"),
+              ("For product", "feedback-loop.html", "Feedback-loop demo")]},
+ "5 · Care pathways & delivery": {"intro": "How the engine plugs into real care: condition-specific pathways, the care team and their roles, and the prevention/engagement layer that keeps patients in the loop.",
+   "starts": [("For clinicians", "care-pathways.html", "Condition pathways"),
+              ("For developers", "care-roles.html", "Care team & roles"),
+              ("For product", "prevention-engagement.html", "Prevention & engagement")]},
+ "6 · Trust & govern": {"intro": "Why you can trust the number: cohort validation and calibration, the evidence registry behind every band, safety/escalation governance, consent, localization and actuarial fairness.",
+   "starts": [("For clinicians", "16-safety-governance-and-regulatory.html", "Safety & governance"),
+              ("For developers", "14-validation-and-calibration-harness.html", "Validation harness"),
+              ("For product", "consent-onboarding.html", "Consent & onboarding")]},
+ "7 · Gaps, blind-spots & roadmap": {"intro": "An honest ledger of what is not done. Product-readiness gaps for the patient app, the spec build-readiness audit, the clinician red-team, and the coverage audit — the work still ahead.",
+   "starts": [("For clinicians", "17-clinician-red-team-and-blind-spots.html", "Clinician red-team"),
+              ("For developers", "spec-audit.html", "Spec build-readiness"),
+              ("For product", "production-gaps.html", "Production readiness — gaps")]},
+ "8 · System & build": {"intro": "The whole machine as software: the system-at-a-glance map, patient and engagement state machines, the object/class model, and the ERD / C4 / API / sequence / story dossiers an engineer builds from.",
+   "starts": [("For clinicians", "states.html", "Patient life-state machine"),
+              ("For developers", "dossier-c4.html", "C4 architecture"),
+              ("For product", "dossier-stories.html", "User stories")]},
+ "9 · Admin (clinician config)": {"intro": "The clinician-facing configuration surfaces — lab ranges, weights, lifestyle/PRO settings, personas and the governance sign-off flow — shown as interactive mockups.",
+   "starts": [("For clinicians", "admin-governance.html", "Governance & sign-off"),
+              ("For developers", "admin-weights.html", "Weights & constants"),
+              ("For product", "admin-index.html", "Dashboard")]},
+}
+
+# One-line page descriptions for the chapter landing lists (fall back to the NAV label when absent).
+PDESC = {
+ "index.html": "The wiki home and role-based entry points.",
+ "purescore-uber-map.html": "Run the full scoring pipeline live — audit tree, dataflow map and editable leaves.",
+ "01-vision-principles-and-lessons.html": "What PureScore is, the principles it holds to, and lessons that shaped it.",
+ "conventions.html": "Notation, glossary and the conventions every other page assumes.",
+ "decisions.html": "The running decision log (D-numbers) referenced throughout the specs.",
+ "purescore-overview.html": "A plain-language tour of pillars → markers → score before the formal math.",
+ "02-pillars-and-marker-catalog.html": "The 12 pillars and every marker, with bands, weights and sources.",
+ "03-scoring-formula.html": "The marker-risk → pillar → PureScore math, stage by stage.",
+ "04-moniac-reservoir-dynamics.html": "The reservoir/flow model that gives the score momentum and memory.",
+ "reservoir-sim.html": "An interactive sandbox for the reservoir dynamics.",
+ "05-critical-review-and-purescore-2.0.html": "A self-critique of v1 and the PureScore 2.0 redesign (companion vector, managed states).",
+ "06-data-model-and-reference-ranges.html": "Core entities, marker definitions, confidence and reference-range resolution.",
+ "07-data-streams-and-experience.html": "The data streams (labs, wearables, intake) and how they reach the engine.",
+ "appendix-biomarkers.html": "The full marker catalogue across every channel, sortable.",
+ "reference-range-resolver.html": "How a raw value resolves to a band given age, sex and cohort.",
+ "appendix-wearables.html": "Every wearable-derived metric and how it is used.",
+ "purescore-wearable-baselines.html": "Personal-baseline logic for wearable signals.",
+ "questions-hub.html": "An overview of the question intake and how it is structured.",
+ "appendix-onboarding.html": "The onboarding and first-run question flow.",
+ "appendix-questions.html": "Validated screeners and patient-reported outcomes.",
+ "appendix-question-bank.html": "The complete question bank, grouped and searchable.",
+ "appendix-lifestyles.html": "Lifestyle inputs and how they modify the score.",
+ "appendix-wearable-corroboration.html": "How wearable signals corroborate self-reported answers.",
+ "eligibility-gating.html": "Eligibility rules and the gating that decides what is asked.",
+ "08-sex-specific-models.html": "How biological sex reshapes bands, weights and reservoirs.",
+ "09-acute-events-and-life-stage-plans.html": "Acute-event handling and life-stage (pregnancy, menopause) plans.",
+ "10-clinical-scores-integration.html": "Established clinical risk scores and how they feed PureScore.",
+ "appendix-personas.html": "The persona library used to pressure-test the model.",
+ "appendix-persona-matrix.html": "Marker × persona weights in flat, sortable form.",
+ "purescore-sex.html": "The score viewed through a sex-specific lens (segmented toggle).",
+ "11-daily-nudge-engine.html": "How the engine selects, ranks and delivers daily nudges.",
+ "12-recommended-actions-catalogue.html": "The catalogue of recommended actions with effects and safety filters.",
+ "appendix-adherence.html": "Adherence check-ins and how they feed back.",
+ "appendix-goals.html": "The goal catalogue and goal-aware weighting.",
+ "feedback-loop.html": "A live demo of the score → action → adherence feedback loop.",
+ "care-pathways.html": "Condition-specific care pathways the engine plugs into.",
+ "care-roles.html": "The care team, their roles and hand-offs.",
+ "prevention-engagement.html": "The prevention and engagement layer that retains patients.",
+ "13-cohort-percentiles-and-validation.html": "Cohort percentiles, shrinkage and the validation approach.",
+ "14-validation-and-calibration-harness.html": "The calibration/validation harness and its release gates.",
+ "15-evidence-registry-and-provenance.html": "The evidence registry and provenance behind every band.",
+ "16-safety-governance-and-regulatory.html": "Safety escalation, governance and regulatory posture.",
+ "consent-onboarding.html": "Jurisdiction-aware patient consent and the audit record.",
+ "18-uae-localization.html": "UAE/Gulf clinical localization and Ramadan handling.",
+ "19-actuarial-pricing-and-insurance.html": "Actuarial pricing, credibility and fairness testing.",
+ "production-gaps.html": "What a production-grade patient app still needs (product surface).",
+ "spec-audit.html": "Build-readiness audit of the specs themselves (can an engineer build this?).",
+ "17-clinician-red-team-and-blind-spots.html": "A clinician's adversarial review of the engine's blind spots.",
+ "appendix-coverage-audit.html": "Marker / gate / self-report coverage register.",
+ "purescore-system.html": "A single-screen map of the whole engine — how every subsystem connects end to end.",
+ "states.html": "The patient life-state machine — how a patient moves between baseline, acute and life-stage states.",
+ "engagement-state-machines.html": "The nudge-delivery and engagement lifecycle machines (firewall, channels, escalation).",
+ "class-model.html": "The full object model — class diagram plus a per-class engineering explorer.",
+ "dossier-erd.html": "The entity-relationship model: every persisted entity and its fields.",
+ "dossier-c4.html": "C4 architecture views — system context, containers and components.",
+ "dossier-api.html": "Request/response contracts for the scoring and intake endpoints.",
+ "dossier-sequences.html": "Key runtime sequences — scoring, intake, nudge delivery and escalation.",
+ "dossier-stories.html": "User stories mapped to the engine capabilities that satisfy them.",
+ "admin-index.html": "The clinician admin dashboard mockup.",
+ "admin-lab-ranges.html": "Configure lab reference ranges.",
+ "admin-weights.html": "Configure pillar weights and constants.",
+ "admin-lifestyle.html": "Configure lifestyle / PRO inputs.",
+ "admin-personas.html": "Configure personas and framing.",
+ "admin-governance.html": "Governance and sign-off workflow.",
+}
 PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
           "production-gaps.html":"Production readiness — gaps",
           "spec-audit.html":"Spec build-readiness audit",
+          "editorial-review.html":"Editorial & cohesion review",
           "care-pathways.html":"Care pathways — condition pathways","care-roles.html":"Care team & roles",
           "prevention-engagement.html":"Prevention & engagement",
           "appendix-biomarkers.html":"Appendix A · Markers (all channels)","reference-range-resolver.html":"Reference-range resolver",
@@ -240,6 +369,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "appendix-lifestyles.html#spreadsheet":"Lifestyles grid","appendix-adherence.html#spreadsheet":"Adherence grid","appendix-goals.html#spreadsheet":"Goals grid",
           "appendix-persona-matrix.html#spreadsheet":"Persona-matrix grid","appendix-question-bank.html#spreadsheet":"Question-bank grid","dossier-erd.html#spreadsheet":"Data-model grid"}
 for n in DOCMAP: PTITLE[DOCMAP[n]] = "Doc %s · %s" % (n, SHORT[n])
+for _grp, _fn in CHAP_LANDING.items(): PTITLE[_fn] = "%s — chapter overview" % _grp
 
 # ----------------------------------------------------------------- left-pane facet taxonomy
 # Six filter dimensions. `module` is derived from the NAV chapter; `content-type` and `maturity`
@@ -266,7 +396,7 @@ def _ctype(fn):
 
 MAT_LABELS = {"draft":"Draft","counsel":"Needs counsel review","roadmap":"Gap / roadmap"}
 _MAT = {"consent-onboarding.html":"counsel", DOCMAP["16"]:"counsel", DOCMAP["18"]:"counsel",
-        "production-gaps.html":"roadmap", "spec-audit.html":"roadmap",
+        "production-gaps.html":"roadmap", "spec-audit.html":"roadmap", "editorial-review.html":"roadmap",
         DOCMAP["17"]:"roadmap", "appendix-coverage-audit.html":"roadmap"}
 def _maturity(fn): return _MAT.get(fn, "draft")
 
@@ -346,19 +476,26 @@ def sidebar(active):
          '<button class="side-allbtn" data-act="collapse">collapse all</button></div>',
          _filter_panel()]
     for gi, (grp, items) in enumerate(NAV):
-        is_active = active in [it[0] for it in items]
+        hrefs = [it[0] for it in items]
+        landing = CHAP_LANDING.get(grp)
+        is_active = active in hrefs or active == landing
         s.append('<div class="navgrp%s" data-grp="g%d">' % (" open" if is_active else "", gi))
-        s.append('<button class="grp-h" aria-expanded="%s"><span class="grp-car">▸</span>'
-                 '<span class="grp-t">%s</span></button>' % ("true" if is_active else "false", esc(grp)))
+        title_html = (('<a class="grp-t%s" href="%s">%s</a>' % (" active" if active == landing else "", landing, esc(grp)))
+                      if landing else ('<span class="grp-t">%s</span>' % esc(grp)))
+        s.append('<div class="grp-h"><button class="grp-tog" aria-expanded="%s" aria-label="Toggle %s">'
+                 '<span class="grp-car">▸</span></button>%s</div>'
+                 % ("true" if is_active else "false", esc(grp), title_html))
         s.append('<div class="grp-b">')
         blurb = NAV_BLURB.get(grp, "")
         if blurb:
             s.append('<div class="grp-blurb">%s</div>' % esc(blurb))
         for it in items:
             href, label = it[0], it[1]
-            num = ('<span class="n">%s</span>' % it[2]) if len(it) > 2 else ""
-            s.append('<a class="navlink%s" href="%s"%s>%s%s</a>'
-                     % (" active" if href == active else "", href, _facet_data_attrs(href), num, label))
+            sn = SEC_NO.get(href, "")
+            secno = ('<span class="secno">%s</span>' % sn) if sn else '<span class="secno secno-x">·</span>'
+            docb = (' <span class="ndoc">Doc %s</span>' % it[2]) if len(it) > 2 else ""
+            s.append('<a class="navlink%s" href="%s"%s>%s<span class="nl-t">%s</span>%s</a>'
+                     % (" active" if href == active else "", href, _facet_data_attrs(href), secno, label, docb))
         s.append('</div></div>')
     s.append("</aside>")
     return "".join(s)
@@ -399,13 +536,20 @@ def _chapter_strip(fn):
         hrefs = [it[0] for it in items]
         if fn in hrefs:
             blurb = NAV_BLURB.get(g, "")
-            sibs = "".join('<a class="chx-l%s" href="%s">%s</a>'
-                           % (" cur" if it[0] == fn else "", it[0], esc(it[1])) for it in items)
-            return ('<div class="chapter-ctx"><div class="chx-top"><span class="chx-name">%s</span>'
+            landing = CHAP_LANDING.get(g)
+            sn = SEC_NO.get(fn, "")
+            secbadge = ('<span class="chx-sec">%s</span>' % sn) if sn else ""
+            name = (('<a class="chx-name" href="%s">%s</a>' % (landing, esc(g))) if landing
+                    else ('<span class="chx-name">%s</span>' % esc(g)))
+            sibs = "".join('<a class="chx-l%s" href="%s">%s%s</a>'
+                           % (" cur" if it[0] == fn else "", it[0],
+                              ('<span class="chx-n">%s</span>' % SEC_NO[it[0]]) if it[0] in SEC_NO else "",
+                              esc(it[1])) for it in items)
+            return ('<div class="chapter-ctx"><div class="chx-top">%s%s'
                     '<span class="chx-blurb">%s</span></div>'
-                    '<details class="chx-d"><summary>%d pages in this chapter</summary>'
+                    '<details class="chx-d"><summary>%d pages in this chapter · overview ›</summary>'
                     '<nav class="chx-list">%s</nav></details></div>'
-                    % (esc(g), esc(blurb), len(items), sibs))
+                    % (secbadge, name, esc(blurb), len(items), sibs))
     return ""
 
 def page(fn, tab_title, body):
@@ -420,8 +564,8 @@ def page(fn, tab_title, body):
 <span class="tag">design spec — not clinically validated</span><span class="grow"></span>
 <input id="search" type="search" placeholder="Filter pages…  ( / )"></div>
 <div class="shell">%s<main class="main">%s%s%s<footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · """
-"""illustrative design, re-verify before production (README §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
-<script src="assets/search-index.js"></script><script src="assets/search.js"></script><script src="assets/wiki.js"></script></body></html>""") % (
+"""illustrative design, re-verify before production (<a class="xref" href="conventions.html">Conventions</a> §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
+<script src="assets/search-index.js"></script><script src="assets/search.js"></script><script src="assets/wiki.js"></script><script src="assets/pillars-data.js"></script><script src="assets/pillar-map.js"></script></body></html>""") % (
         esc(tab_title), MERMAID_HEAD, sidebar(fn), _chapter_strip(fn), body, prevnext(fn))
     with open(os.path.join(HERE, fn), "w", encoding="utf-8") as f:
         f.write(fix_mermaid(html))
@@ -448,6 +592,41 @@ def render_simple(mdname, fn, tab, crumb_label):
     html, _ = md_to_html(md)
     body = '<div class="crumbs"><a href="index.html">Home</a> › %s</div>' % esc(crumb_label) + html
     page(fn, tab, body)
+
+# ----------------------------------------------------------------- chapter landing pages
+def render_chapters():
+    """One landing page per NAV chapter — curated intro + per-audience 'start here' + auto page list.
+    Fully NAV-derived so it tracks concurrent NAV edits; intros/starts/descriptions degrade gracefully."""
+    for grp, items in NAV:
+        fn = CHAP_LANDING.get(grp)
+        if not fn:
+            continue
+        meta = CHAPTERS.get(grp, {})
+        intro = meta.get("intro") or NAV_BLURB.get(grp, "")
+        cno = CHAP_NO.get(grp, "")
+        b = ['<div class="crumbs"><a href="index.html">Home</a> › %s</div>' % esc(grp),
+             '<h1>%s</h1>' % esc(grp)]
+        if intro:
+            b.append('<p class="lead">%s</p>' % esc(intro))
+        starts = meta.get("starts", [])
+        if starts:
+            b.append('<div class="ch-starts">')
+            for aud, href, label in starts:
+                b.append('<a class="ch-start" href="%s"><span class="cs-aud">%s</span>'
+                         '<span class="cs-go">%s →</span></a>' % (href, esc(aud), esc(label)))
+            b.append('</div>')
+        b.append('<h2 id="pages" class="ch-list-h">Pages in this chapter</h2><div class="ch-list">')
+        for it in items:
+            href, label = it[0], it[1]
+            sn = SEC_NO.get(href, "")
+            secno = ('<span class="cl-no">%s</span>' % sn) if sn else '<span class="cl-no cl-no-x"></span>'
+            docb = (' <span class="ndoc">Doc %s</span>' % it[2]) if len(it) > 2 else ""
+            desc = PDESC.get(href, "")
+            b.append('<a class="ch-row" href="%s">%s<span class="cl-main">'
+                     '<span class="cl-t">%s%s</span><span class="cl-d">%s</span></span></a>'
+                     % (href, secno, esc(label), docb, esc(desc)))
+        b.append('</div>')
+        page(fn, "%s — chapter overview" % grp, "".join(b))
 
 # ----------------------------------------------------------------- index landing
 def render_index():
@@ -573,7 +752,9 @@ def main():
     C.write_range_data()  # generate assets/range-data.js from data/range-variations.json (range-variation views)
     C.write_flag_data()   # generate assets/flags-data.js from data/clinical-flags.json (inline audit ⚠ badges)
     C.write_unit_data()   # generate assets/units-data.js from data/units.json (SI-canonical units + conversions)
+    C.write_pillar_data() # generate assets/pillars-data.js (pillar-fan hover cards + click-to-section)
     render_index()
+    render_chapters()
     for n in sorted(DOCMAP): render_doc(n)
     render_simple("README.md", "conventions.html", "Conventions & glossary", "Conventions & glossary")
     render_simple("decisions.md", "decisions.html", "Decision log", "Decision log")
@@ -597,6 +778,7 @@ def main():
                       ("class-model.html", "build_class_model"),
                       ("production-gaps.html", "build_production_gaps"),
                       ("spec-audit.html", "build_spec_audit"),
+                      ("editorial-review.html", "build_editorial_review"),
                       ("care-pathways.html", "build_care_pathways"), ("care-roles.html", "build_care_roles"),
                       ("prevention-engagement.html", "build_prevention"),
                       ("purescore-uber-map.html", "build_purescore_uber"),
