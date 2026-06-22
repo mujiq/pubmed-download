@@ -4,137 +4,777 @@
     {
       "title": "Scoring core — Docs 02–05",
       "findings": [
-        {"doc": "Doc 03 §1", "sev": "blocker", "type": "undefined-formula", "gap": "Low-side risk penalty given only as “mirror of the above”; undefined for one-sided and negative-anchored markers (e.g. BMD T-score ≤ −2.5), and the saturating denominator for the low side is unspecified.", "fix": "State the explicit low-side formula with a scale-safe, width-based denominator that is defined for negative anchors."},
-        {"doc": "Doc 03 §1", "sev": "blocker", "type": "internal-inconsistency", "gap": "In-green “gentle gradient” r_green∈[0,0.15) toward m_i has no formula, and contradicts the piecewise branch that sets r=0 on [L,U].", "fix": "Supply the in-green function and reconcile it with the green-core r=0 branch."},
-        {"doc": "Doc 03 §2", "sev": "blocker", "type": "undefined-formula", "gap": "Cohort risk r_cohort=g(q_i) given only qualitatively (g(0.5)=0, rises toward tails). No functional form, slope, or two-sided handling — Stage-2 output is uncomputable.", "fix": "Pin g (e.g. piecewise/logistic in percentile) with stated parameters."},
-        {"doc": "Doc 04 §2–3", "sev": "blocker", "type": "undefined-constant", "gap": "Reservoir state equation depends on κ_in, inflow a/b, λ_j (only “weeks–months”), B*, B_max, B_target and the full κ_jl matrix — all deferred to Doc 13 with no values. No reservoir can advance one step.", "fix": "Ship a default parameter table, or explicitly mark Doc 04 non-buildable without the Doc 13 calibration set."},
-        {"doc": "Doc 04 §5", "sev": "blocker", "type": "undefined-constant", "gap": "B̃_k needs link weights u_kj (only which pillars listed, not weights); no normalization of u, and the asset term 1−B_j/B_target can go negative with no clamp.", "fix": "Provide the u_kj values and per-term clamping."},
-        {"doc": "Doc 03 §2b/§3", "sev": "major", "type": "undefined-formula", "gap": "band_clamp is load-bearing but never defined — its band edges on the continuous r-scale and composition with max(...) are unspecified.", "fix": "Define band_clamp(r) precisely (edges + clamp behaviour)."},
-        {"doc": "Doc 03 §3", "sev": "major", "type": "undefined-constant", "gap": "ŵ_i = w_i·confidence_i, but confidence_i scale/inputs are deferred to Doc 06 §2; pillar aggregation can't run without it.", "fix": "Define confidence ∈ [0,1] and its inputs, or inline the Doc 06 definition."},
-        {"doc": "Doc 03 §3", "sev": "major", "type": "undefined-constant", "gap": "“Low coverage caps how green a pillar may be displayed” — cap value/threshold is prose only.", "fix": "Pin the coverage threshold and the display-cap formula."},
-        {"doc": "Doc 03 §3", "sev": "major", "type": "missing-edge-case", "gap": "Power-mean divides by Σŵ_i; if all markers in a pillar are unobserved (or confidences 0), denominator = 0. No empty-pillar rule.", "fix": "Specify behaviour when Σŵ_i = 0 (reservoir-only, or INSUFFICIENT)."},
-        {"doc": "Doc 02↔03", "sev": "major", "type": "internal-inconsistency", "gap": "Doc 03 §4 assumes a machine-readable critical/escalation flag per marker, but Doc 02 marks criticality inconsistently and has no escalation∈{emergency,urgent,routine} column. The critical set is not unambiguously derivable.", "fix": "Add explicit critical + escalation columns to every Doc 02 table."},
-        {"doc": "Doc 05 §3.1", "sev": "major", "type": "dangling-reference", "gap": "Managed-state / confounder logic depends on drug_targets(i,Mx) and confounds(drug,marker) tables (contents, classes, per-pair c_conf) that are referenced but not provided.", "fix": "Supply these tables (or cite a provided data file)."},
-        {"doc": "Doc 05 §4", "sev": "major", "type": "undefined-formula", "gap": "Companion-dimension features defined only qualitatively: stability_k, meanConf_k, Tr_k (which slope estimator/window?), Vo_k (window?), Mo_k (how partitioned?), Rp_k (which distance, scaled how to 0–100?).", "fix": "Give concrete estimators, windows and scalings for each."},
-        {"doc": "Doc 05 §4.1/§5.3", "sev": "major", "type": "undefined-constant", "gap": "St = 100·σ(a·B̄_ALLO + b·z_auto) and the Watch-raise logic depend on coefficients a, b (undefined) and tier cut-points (unspecified).", "fix": "Pin a, b and the low/elevated/high tier thresholds."},
-        {"doc": "Doc 05 §6", "sev": "major", "type": "undefined-constant", "gap": "Progress formula uses PureScore_floor which is never defined; can divide by zero if PureScore_max = PureScore_floor.", "fix": "Define PureScore_floor and guard the denominator."},
-        {"doc": "Doc 05 §5.3", "sev": "major", "type": "missing-acceptance-criteria", "gap": "Ladder uses mild/high D_M and an Advisory D_M* that is “χ²-based per cohort” with no df/α; mild vs high cutoffs unpinned.", "fix": "Give χ² df and α per tier (e.g. df=#markers, α=0.01)."},
-        {"doc": "Doc 03 §5.1", "sev": "major", "type": "undefined-constant", "gap": "W_k^base defaults and the cohort/goal/acute multiplier magnitudes are qualitative; values deferred to Docs 03/09/13. PureScore weighting not reproducible.", "fix": "Include the base weight vector and multiplier values/ranges."},
-        {"doc": "Doc 03 §4", "sev": "minor", "type": "missing-edge-case", "gap": "A non-critical marker with r_i≥0.5 but pillar R_k<0.60 can fall through with no rule forcing at least yellow.", "fix": "Add explicit handling for non-critical r_i≥0.5."},
-        {"doc": "Doc 04 §3", "sev": "minor", "type": "undefined-formula", "gap": "Interference uses sat(B_l) but sat() form/parameters are never given.", "fix": "Define sat()."},
-        {"doc": "Doc 02 P7", "sev": "minor", "type": "dangling-reference", "gap": "Sex-hormone row has weight .34 but bands are “see Doc 08 / —”; power mean can't include it without Doc 08.", "fix": "Note these markers are gated until Doc 08 bands load."},
-        {"doc": "Doc 05 §10", "sev": "minor", "type": "dangling-reference", "gap": "Text cites decisions “D1–D12” but the body references D13, D14, D22, D24.", "fix": "Correct the decision range."},
-        {"doc": "Doc 03 §2b", "sev": "minor", "type": "ambiguous-algorithm", "gap": "z_i = sign_adverse·(…) needs a per-marker adverse direction; two-sided markers have no single sign.", "fix": "Specify z_i for two-sided markers (e.g. distance from m_i)."}
+        {
+          "doc": "Doc 03 §1",
+          "sev": "blocker",
+          "type": "undefined-formula",
+          "gap": "Low-side risk penalty given only as “mirror of the above”; undefined for one-sided and negative-anchored markers (e.g. BMD T-score ≤ −2.5), and the saturating denominator for the low side is unspecified.",
+          "fix": "State the explicit low-side formula with a scale-safe, width-based denominator that is defined for negative anchors."
+        },
+        {
+          "doc": "Doc 03 §1",
+          "sev": "blocker",
+          "type": "internal-inconsistency",
+          "gap": "In-green “gentle gradient” r_green∈[0,0.15) toward m_i has no formula, and contradicts the piecewise branch that sets r=0 on [L,U].",
+          "fix": "Supply the in-green function and reconcile it with the green-core r=0 branch."
+        },
+        {
+          "doc": "Doc 03 §2",
+          "sev": "blocker",
+          "type": "undefined-formula",
+          "gap": "Cohort risk r_cohort=g(q_i) given only qualitatively (g(0.5)=0, rises toward tails). No functional form, slope, or two-sided handling — Stage-2 output is uncomputable.",
+          "fix": "Pin g (e.g. piecewise/logistic in percentile) with stated parameters."
+        },
+        {
+          "doc": "Doc 04 §2–3",
+          "sev": "blocker",
+          "type": "undefined-constant",
+          "gap": "Reservoir state equation depends on κ_in, inflow a/b, λ_j (only “weeks–months”), B*, B_max, B_target and the full κ_jl matrix — all deferred to Doc 13 with no values. No reservoir can advance one step.",
+          "fix": "Ship a default parameter table, or explicitly mark Doc 04 non-buildable without the Doc 13 calibration set."
+        },
+        {
+          "doc": "Doc 04 §5",
+          "sev": "blocker",
+          "type": "undefined-constant",
+          "gap": "B̃_k needs link weights u_kj (only which pillars listed, not weights); no normalization of u, and the asset term 1−B_j/B_target can go negative with no clamp.",
+          "fix": "Provide the u_kj values and per-term clamping."
+        },
+        {
+          "doc": "Doc 03 §2b/§3",
+          "sev": "major",
+          "type": "undefined-formula",
+          "gap": "band_clamp is load-bearing but never defined — its band edges on the continuous r-scale and composition with max(...) are unspecified.",
+          "fix": "Define band_clamp(r) precisely (edges + clamp behaviour)."
+        },
+        {
+          "doc": "Doc 03 §3",
+          "sev": "major",
+          "type": "undefined-constant",
+          "gap": "ŵ_i = w_i·confidence_i, but confidence_i scale/inputs are deferred to Doc 06 §2; pillar aggregation can't run without it.",
+          "fix": "Define confidence ∈ [0,1] and its inputs, or inline the Doc 06 definition."
+        },
+        {
+          "doc": "Doc 03 §3",
+          "sev": "major",
+          "type": "undefined-constant",
+          "gap": "“Low coverage caps how green a pillar may be displayed” — cap value/threshold is prose only.",
+          "fix": "Pin the coverage threshold and the display-cap formula."
+        },
+        {
+          "doc": "Doc 03 §3",
+          "sev": "major",
+          "type": "missing-edge-case",
+          "gap": "Power-mean divides by Σŵ_i; if all markers in a pillar are unobserved (or confidences 0), denominator = 0. No empty-pillar rule.",
+          "fix": "Specify behaviour when Σŵ_i = 0 (reservoir-only, or INSUFFICIENT)."
+        },
+        {
+          "doc": "Doc 02↔03",
+          "sev": "major",
+          "type": "internal-inconsistency",
+          "gap": "Doc 03 §4 assumes a machine-readable critical/escalation flag per marker, but Doc 02 marks criticality inconsistently and has no escalation∈{emergency,urgent,routine} column. The critical set is not unambiguously derivable.",
+          "fix": "Add explicit critical + escalation columns to every Doc 02 table."
+        },
+        {
+          "doc": "Doc 05 §3.1",
+          "sev": "major",
+          "type": "dangling-reference",
+          "gap": "Managed-state / confounder logic depends on drug_targets(i,Mx) and confounds(drug,marker) tables (contents, classes, per-pair c_conf) that are referenced but not provided.",
+          "fix": "Supply these tables (or cite a provided data file)."
+        },
+        {
+          "doc": "Doc 05 §4",
+          "sev": "major",
+          "type": "undefined-formula",
+          "gap": "Companion-dimension features defined only qualitatively: stability_k, meanConf_k, Tr_k (which slope estimator/window?), Vo_k (window?), Mo_k (how partitioned?), Rp_k (which distance, scaled how to 0–100?).",
+          "fix": "Give concrete estimators, windows and scalings for each."
+        },
+        {
+          "doc": "Doc 05 §4.1/§5.3",
+          "sev": "major",
+          "type": "undefined-constant",
+          "gap": "St = 100·σ(a·B̄_ALLO + b·z_auto) and the Watch-raise logic depend on coefficients a, b (undefined) and tier cut-points (unspecified).",
+          "fix": "Pin a, b and the low/elevated/high tier thresholds."
+        },
+        {
+          "doc": "Doc 05 §6",
+          "sev": "major",
+          "type": "undefined-constant",
+          "gap": "Progress formula uses PureScore_floor which is never defined; can divide by zero if PureScore_max = PureScore_floor.",
+          "fix": "Define PureScore_floor and guard the denominator."
+        },
+        {
+          "doc": "Doc 05 §5.3",
+          "sev": "major",
+          "type": "missing-acceptance-criteria",
+          "gap": "Ladder uses mild/high D_M and an Advisory D_M* that is “χ²-based per cohort” with no df/α; mild vs high cutoffs unpinned.",
+          "fix": "Give χ² df and α per tier (e.g. df=#markers, α=0.01)."
+        },
+        {
+          "doc": "Doc 03 §5.1",
+          "sev": "major",
+          "type": "undefined-constant",
+          "gap": "W_k^base defaults and the cohort/goal/acute multiplier magnitudes are qualitative; values deferred to Docs 03/09/13. PureScore weighting not reproducible.",
+          "fix": "Include the base weight vector and multiplier values/ranges."
+        },
+        {
+          "doc": "Doc 03 §4",
+          "sev": "minor",
+          "type": "missing-edge-case",
+          "gap": "A non-critical marker with r_i≥0.5 but pillar R_k<0.60 can fall through with no rule forcing at least yellow.",
+          "fix": "Add explicit handling for non-critical r_i≥0.5."
+        },
+        {
+          "doc": "Doc 04 §3",
+          "sev": "minor",
+          "type": "undefined-formula",
+          "gap": "Interference uses sat(B_l) but sat() form/parameters are never given.",
+          "fix": "Define sat()."
+        },
+        {
+          "doc": "Doc 02 P7",
+          "sev": "minor",
+          "type": "dangling-reference",
+          "gap": "Sex-hormone row has weight .34 but bands are “see Doc 08 / —”; power mean can't include it without Doc 08.",
+          "fix": "Note these markers are gated until Doc 08 bands load."
+        },
+        {
+          "doc": "Doc 05 §10",
+          "sev": "minor",
+          "type": "dangling-reference",
+          "gap": "Text cites decisions “D1–D12” but the body references D13, D14, D22, D24.",
+          "fix": "Correct the decision range.",
+          "status": "fixed"
+        },
+        {
+          "doc": "Doc 03 §2b",
+          "sev": "minor",
+          "type": "ambiguous-algorithm",
+          "gap": "z_i = sign_adverse·(…) needs a per-marker adverse direction; two-sided markers have no single sign.",
+          "fix": "Specify z_i for two-sided markers (e.g. distance from m_i)."
+        }
       ]
     },
     {
       "title": "Inputs & intake — Docs 06–07",
       "findings": [
-        {"doc": "Doc 06 §2", "sev": "blocker", "type": "undefined-constant", "gap": "q_source given as ranges (clinical 0.85–1.0, consumer 0.6–0.8, survey 0.5–0.7, literature 0.2–0.4) with no rule assigning a point value per source/device. confidence_i(t) is uncomputable.", "fix": "Define an exact q_source per source enum / device-grade."},
-        {"doc": "Doc 06 §2", "sev": "blocker", "type": "undefined-constant", "gap": "Recency decay τ_i never quantified (“glucose hours–days, HbA1c weeks–months, permanent”). The decay term is uncomputable.", "fix": "Table mapping each decay_class to a numeric τ."},
-        {"doc": "Doc 06 §2", "sev": "blocker", "type": "undefined-constant", "gap": "Per-marker staleness floor (below which a marker is “stale”) has no value/source.", "fix": "Define the floor per marker / decay_class."},
-        {"doc": "Doc 06 §4.4/§1.1", "sev": "blocker", "type": "undefined-formula", "gap": "r_i = max(r_clinical, φ·r_cohort) with φ<1 unspecified, and r_clinical/r_cohort computation deferred to Doc 03 §2 — core risk number can't be produced standalone.", "fix": "Pin φ and confirm Doc 03 §2 fully defines the band→risk mapping."},
-        {"doc": "Doc 06 §1.1", "sev": "blocker", "type": "missing-schema", "gap": "MarkerDef stores optimal/yellow/red band functions with no signature (args? sex/age/cohort params? return = interval?), and no two-band representation for two-sided markers.", "fix": "Define the band-function signature + return type and the two-sided representation."},
-        {"doc": "Doc 06 §2 / 07 §2", "sev": "major", "type": "internal-inconsistency", "gap": "Inferential/derived wearables are “excluded from band-setting” and get no q_source tier, yet Doc 07 says they feed trajectory/nudges — their non-band weighting is undefined.", "fix": "Specify weight/handling for inferential metrics in non-band contexts."},
-        {"doc": "Doc 06 §4.2", "sev": "major", "type": "unit/range-undefined", "gap": "Percentile F_{i,c} “stratified by age × sex (× condition)” has no age-band edges, no cohort-selection precedence when condition present, no fallback when no matching cohort exists.", "fix": "Define age-band edges and cohort-selection precedence + fallback."},
-        {"doc": "Doc 06 §1.1/§4.2", "sev": "major", "type": "missing-schema", "gap": "ReferenceDist as CDF | {median, p10..p90} has no interpolation rule between percentiles, no behaviour outside p10/p90, and inverse-CDF method unspecified.", "fix": "Define interpolation + tail handling and the inverse-CDF method."},
-        {"doc": "Doc 06 §5", "sev": "major", "type": "undefined-constant", "gap": "Ingestion “rejects out-of-physiological-range values” but no per-marker physiological min/max is defined.", "fix": "Add physiological bounds to MarkerDef."},
-        {"doc": "Doc 06 §5", "sev": "major", "type": "ambiguous-algorithm", "gap": "Anti-gaming plausibility checks (“implausible step counts, HR/HRV inconsistency”) have no thresholds, no consistency formula, no failure action.", "fix": "Define concrete plausibility rules + outcome."},
-        {"doc": "Doc 07 §1/§3", "sev": "major", "type": "missing-schema", "gap": "Wearable streams described qualitatively — no field schema, sampling cadence contract, rollup definitions (resting HR / TIR / sleep-regularity), or multi-device dedup/precedence. The intake layer can't be built.", "fix": "Add per-metric schema, aggregation formulas, and dedup/precedence."},
-        {"doc": "Doc 06 §1.1", "sev": "major", "type": "missing-schema", "gap": "MarkerDef fields w_i (source/range), tier enum, reservoir_links[] target, decay_class enum are referenced but never enumerated.", "fix": "Enumerate allowed values or cross-link the defining doc per field."},
-        {"doc": "Doc 07 §2", "sev": "major", "type": "ambiguous-algorithm", "gap": "Clinical-grade wearable “≈ lab weight” / “discounted” / “informational only” is qualitative; the actual numeric weight feeding the score is undefined (deferred to calibration).", "fix": "Provide provisional numeric weights or an explicit default."},
-        {"doc": "Doc 06 §2↔4.3", "sev": "minor", "type": "internal-inconsistency", "gap": "Literature fallback confidence is “low” (§4.3) vs 0.2–0.4 (§2).", "fix": "Reconcile to one defined value."},
-        {"doc": "Doc 06 §1.1", "sev": "minor", "type": "missing-schema", "gap": "Goal.goal_type, LifeEvent.type, severity scale not enumerated; Goal affects pillar weighting but mapping not present.", "fix": "Enumerate or cross-reference the defining doc."},
-        {"doc": "Doc 07 §2", "sev": "minor", "type": "missing-acceptance-criteria", "gap": "“Clinical-grade confirmation required before red/critical” — no definition of what counts as confirmation (markers, window, count).", "fix": "Define the confirmation criteria."},
-        {"doc": "Doc 06 §3.1↔4.1", "sev": "minor", "type": "internal-inconsistency", "gap": "Core tier lists PHQ-2/GAD-2 but bands cite only PHQ-9/GAD-7 — no band source for the 2-item screeners.", "fix": "Add PHQ-2/GAD-2 cut-offs or map to PHQ-9/GAD-7."}
+        {
+          "doc": "Doc 06 §2",
+          "sev": "blocker",
+          "type": "undefined-constant",
+          "gap": "q_source given as ranges (clinical 0.85–1.0, consumer 0.6–0.8, survey 0.5–0.7, literature 0.2–0.4) with no rule assigning a point value per source/device. confidence_i(t) is uncomputable.",
+          "fix": "Define an exact q_source per source enum / device-grade."
+        },
+        {
+          "doc": "Doc 06 §2",
+          "sev": "blocker",
+          "type": "undefined-constant",
+          "gap": "Recency decay τ_i never quantified (“glucose hours–days, HbA1c weeks–months, permanent”). The decay term is uncomputable.",
+          "fix": "Table mapping each decay_class to a numeric τ."
+        },
+        {
+          "doc": "Doc 06 §2",
+          "sev": "blocker",
+          "type": "undefined-constant",
+          "gap": "Per-marker staleness floor (below which a marker is “stale”) has no value/source.",
+          "fix": "Define the floor per marker / decay_class."
+        },
+        {
+          "doc": "Doc 06 §4.4/§1.1",
+          "sev": "blocker",
+          "type": "undefined-formula",
+          "gap": "r_i = max(r_clinical, φ·r_cohort) with φ<1 unspecified, and r_clinical/r_cohort computation deferred to Doc 03 §2 — core risk number can't be produced standalone.",
+          "fix": "Pin φ and confirm Doc 03 §2 fully defines the band→risk mapping."
+        },
+        {
+          "doc": "Doc 06 §1.1",
+          "sev": "blocker",
+          "type": "missing-schema",
+          "gap": "MarkerDef stores optimal/yellow/red band functions with no signature (args? sex/age/cohort params? return = interval?), and no two-band representation for two-sided markers.",
+          "fix": "Define the band-function signature + return type and the two-sided representation."
+        },
+        {
+          "doc": "Doc 06 §2 / 07 §2",
+          "sev": "major",
+          "type": "internal-inconsistency",
+          "gap": "Inferential/derived wearables are “excluded from band-setting” and get no q_source tier, yet Doc 07 says they feed trajectory/nudges — their non-band weighting is undefined.",
+          "fix": "Specify weight/handling for inferential metrics in non-band contexts."
+        },
+        {
+          "doc": "Doc 06 §4.2",
+          "sev": "major",
+          "type": "unit/range-undefined",
+          "gap": "Percentile F_{i,c} “stratified by age × sex (× condition)” has no age-band edges, no cohort-selection precedence when condition present, no fallback when no matching cohort exists.",
+          "fix": "Define age-band edges and cohort-selection precedence + fallback."
+        },
+        {
+          "doc": "Doc 06 §1.1/§4.2",
+          "sev": "major",
+          "type": "missing-schema",
+          "gap": "ReferenceDist as CDF | {median, p10..p90} has no interpolation rule between percentiles, no behaviour outside p10/p90, and inverse-CDF method unspecified.",
+          "fix": "Define interpolation + tail handling and the inverse-CDF method."
+        },
+        {
+          "doc": "Doc 06 §5",
+          "sev": "major",
+          "type": "undefined-constant",
+          "gap": "Ingestion “rejects out-of-physiological-range values” but no per-marker physiological min/max is defined.",
+          "fix": "Add physiological bounds to MarkerDef."
+        },
+        {
+          "doc": "Doc 06 §5",
+          "sev": "major",
+          "type": "ambiguous-algorithm",
+          "gap": "Anti-gaming plausibility checks (“implausible step counts, HR/HRV inconsistency”) have no thresholds, no consistency formula, no failure action.",
+          "fix": "Define concrete plausibility rules + outcome."
+        },
+        {
+          "doc": "Doc 07 §1/§3",
+          "sev": "major",
+          "type": "missing-schema",
+          "gap": "Wearable streams described qualitatively — no field schema, sampling cadence contract, rollup definitions (resting HR / TIR / sleep-regularity), or multi-device dedup/precedence. The intake layer can't be built.",
+          "fix": "Add per-metric schema, aggregation formulas, and dedup/precedence."
+        },
+        {
+          "doc": "Doc 06 §1.1",
+          "sev": "major",
+          "type": "missing-schema",
+          "gap": "MarkerDef fields w_i (source/range), tier enum, reservoir_links[] target, decay_class enum are referenced but never enumerated.",
+          "fix": "Enumerate allowed values or cross-link the defining doc per field."
+        },
+        {
+          "doc": "Doc 07 §2",
+          "sev": "major",
+          "type": "ambiguous-algorithm",
+          "gap": "Clinical-grade wearable “≈ lab weight” / “discounted” / “informational only” is qualitative; the actual numeric weight feeding the score is undefined (deferred to calibration).",
+          "fix": "Provide provisional numeric weights or an explicit default."
+        },
+        {
+          "doc": "Doc 06 §2↔4.3",
+          "sev": "minor",
+          "type": "internal-inconsistency",
+          "gap": "Literature fallback confidence is “low” (§4.3) vs 0.2–0.4 (§2).",
+          "fix": "Reconcile to one defined value."
+        },
+        {
+          "doc": "Doc 06 §1.1",
+          "sev": "minor",
+          "type": "missing-schema",
+          "gap": "Goal.goal_type, LifeEvent.type, severity scale not enumerated; Goal affects pillar weighting but mapping not present.",
+          "fix": "Enumerate or cross-reference the defining doc."
+        },
+        {
+          "doc": "Doc 07 §2",
+          "sev": "minor",
+          "type": "missing-acceptance-criteria",
+          "gap": "“Clinical-grade confirmation required before red/critical” — no definition of what counts as confirmation (markers, window, count).",
+          "fix": "Define the confirmation criteria."
+        },
+        {
+          "doc": "Doc 06 §3.1↔4.1",
+          "sev": "minor",
+          "type": "internal-inconsistency",
+          "gap": "Core tier lists PHQ-2/GAD-2 but bands cite only PHQ-9/GAD-7 — no band source for the 2-item screeners.",
+          "fix": "Add PHQ-2/GAD-2 cut-offs or map to PHQ-9/GAD-7."
+        }
       ]
     },
     {
       "title": "Personalization — Docs 08–10",
       "findings": [
-        {"doc": "Doc 10 §2", "sev": "blocker", "type": "undefined-formula", "gap": "ASCVD-PCE, SCORE2, Framingham, FINDRISC, KFRE, FRAX, PhenoAge are named with inputs/output bands but NO coefficients, intercepts, baseline survival, or formulas. No clinical score can be computed.", "fix": "Add per-score coefficient tables (race/sex-stratified PCE; S0; FRAX/PhenoAge) or cite an exact versioned reference implementation."},
-        {"doc": "Doc 10 §3.2", "sev": "blocker", "type": "undefined-formula", "gap": "Feedback “raises m_k^cohort” / “raise w_i” / r_i←max(r_i, score-derived caution) with no quantities — no band→multiplier delta, no band→caution mapping.", "fix": "Provide a band→m_k^cohort delta table and a band→caution(r_i) function."},
-        {"doc": "Doc 09 A.6", "sev": "blocker", "type": "undefined-constant", "gap": "Acute exit is θ_exit=0.25 but entry is only “B_ACU ≥ θ_enter·B_max” with no θ_enter and no B_max vs B_peak definition.", "fix": "Define θ_enter and clarify B_max/B_peak."},
-        {"doc": "Doc 08 §2.1", "sev": "major", "type": "unit/range-undefined", "gap": "Menstrual-phase bands non-contiguous/qualitative (estradiol follicular 20–150, ovulatory 150–400; progesterone “1–3 (rising)”; FSH “mid-rise”). [L_opt(phase),U_opt(phase)] can't be coded deterministically.", "fix": "Give closed numeric ranges per phase for every marker, incl. FSH ovulatory."},
-        {"doc": "Doc 08 §2.1.3", "sev": "major", "type": "undefined-formula", "gap": "Cycle-regularity feature and PCOS/FHA flags (“irregular/long cycles, ↑LH:FSH”) have no numeric thresholds (variance? ratio? anovulation count?).", "fix": "Define cut-points for cycle variance, LH:FSH, confirmation rate."},
-        {"doc": "Doc 08 §2.5", "sev": "major", "type": "ambiguous-algorithm", "gap": "STRAW+10 staging: “engine reads the trajectory” with no window/slope, and FSH “>25–40 IU/L” is a range-as-threshold. The stage classifier is unimplementable.", "fix": "Specify staging decision rules and a concrete FSH threshold."},
-        {"doc": "Doc 08 §4.1/§2.3", "sev": "major", "type": "undefined-constant", "gap": "Life-stage pillar multipliers m_k^{life-stage} listed only as “Raised (m>1)” with no values; pregnancy reweighting has no magnitudes. W_k renormalization can't be computed.", "fix": "Provide numeric m_k^{life-stage} per stage/pillar."},
-        {"doc": "Doc 08 §2.5/§4.3", "sev": "major", "type": "undefined-constant", "gap": "BON reservoir λ/inflow “modified by estrogen status; accelerated depletion postmenopause”; male “different λ” — no numeric λ deltas.", "fix": "Give per-stage/sex λ_BON multipliers."},
-        {"doc": "Doc 09 A.4", "sev": "major", "type": "missing-edge-case", "gap": "Event spikes m_k^acute “for each affected pillar, weighted by severity” but A.4 gives a single spike per tier (×1.2/1.5/2.0) — no multi-pillar severity weighting (sepsis → INF+HEM+REN+MET).", "fix": "Define the per-pillar severity weighting rule."},
-        {"doc": "Doc 09 A.2/A.5", "sev": "major", "type": "undefined-constant", "gap": "Acute reservoir B_ACU drain λ given only as “days–weeks”, inject as “small/moderate/large”; magnitude, u_{k,ACU} coupling, λ_ACU per class have no numbers — recovery clock/revert can't be computed.", "fix": "Numeric λ_ACU, inject magnitudes per class/tier, and u_{k,ACU}."},
-        {"doc": "Doc 09 A.6 R1", "sev": "major", "type": "missing-acceptance-criteria", "gap": "Confirmation/ramp windows τ_dwell (“e.g. 48–72 h”) and τ_ramp are example ranges only, not bound per class.", "fix": "Bind τ_dwell/τ_ramp per event class."},
-        {"doc": "Doc 08 §2.3.4", "sev": "minor", "type": "internal-inconsistency", "gap": "Pre-eclampsia cascade gated by gestational_age ≥ 20 wk, but §5.2 says “BP ≥160/110 alone ⇒ EMERGENCY” without the qualifier; <20-wk severe HTN unaddressed.", "fix": "State handling for severe BP before 20 wk."},
-        {"doc": "Doc 08 §2.4", "sev": "minor", "type": "undefined-constant", "gap": "EPDS cut-offs given, but lactation nutrition targets and post-partum thyroid TSH/FT4 bands carry no numbers.", "fix": "Provide lactation targets and PP TSH/FT4 bands."},
-        {"doc": "Doc 08 §1 / 10 §1", "sev": "minor", "type": "dangling-reference", "gap": "Doc 08 numbering jumps §1.1→§1.3 (no §1.2); Doc 10 cites a §1.2 that doesn't exist.", "fix": "Renumber or add §1.2."},
-        {"doc": "Doc 10 §2.3.1", "sev": "minor", "type": "missing-edge-case", "gap": "KDIGO heatmap → only “orange/red raises m_REN^cohort”; no per-cell-colour multiplier mapping.", "fix": "Map each KDIGO colour to a feedback magnitude."},
-        {"doc": "Doc 09 A.3", "sev": "minor", "type": "unit/range-undefined", "gap": "Wearable acute detection (“resting-HR step-up”, “HRV collapse”, “activity collapse ≫ personal variance”) has no numeric/statistical thresholds.", "fix": "Define thresholds (e.g. Δ vs N-day baseline in SDs)."}
+        {
+          "doc": "Doc 10 §2",
+          "sev": "blocker",
+          "type": "undefined-formula",
+          "gap": "ASCVD-PCE, SCORE2, Framingham, FINDRISC, KFRE, FRAX, PhenoAge are named with inputs/output bands but NO coefficients, intercepts, baseline survival, or formulas. No clinical score can be computed.",
+          "fix": "Add per-score coefficient tables (race/sex-stratified PCE; S0; FRAX/PhenoAge) or cite an exact versioned reference implementation."
+        },
+        {
+          "doc": "Doc 10 §3.2",
+          "sev": "blocker",
+          "type": "undefined-formula",
+          "gap": "Feedback “raises m_k^cohort” / “raise w_i” / r_i←max(r_i, score-derived caution) with no quantities — no band→multiplier delta, no band→caution mapping.",
+          "fix": "Provide a band→m_k^cohort delta table and a band→caution(r_i) function."
+        },
+        {
+          "doc": "Doc 09 A.6",
+          "sev": "blocker",
+          "type": "undefined-constant",
+          "gap": "Acute exit is θ_exit=0.25 but entry is only “B_ACU ≥ θ_enter·B_max” with no θ_enter and no B_max vs B_peak definition.",
+          "fix": "Define θ_enter and clarify B_max/B_peak."
+        },
+        {
+          "doc": "Doc 08 §2.1",
+          "sev": "major",
+          "type": "unit/range-undefined",
+          "gap": "Menstrual-phase bands non-contiguous/qualitative (estradiol follicular 20–150, ovulatory 150–400; progesterone “1–3 (rising)”; FSH “mid-rise”). [L_opt(phase),U_opt(phase)] can't be coded deterministically.",
+          "fix": "Give closed numeric ranges per phase for every marker, incl. FSH ovulatory."
+        },
+        {
+          "doc": "Doc 08 §2.1.3",
+          "sev": "major",
+          "type": "undefined-formula",
+          "gap": "Cycle-regularity feature and PCOS/FHA flags (“irregular/long cycles, ↑LH:FSH”) have no numeric thresholds (variance? ratio? anovulation count?).",
+          "fix": "Define cut-points for cycle variance, LH:FSH, confirmation rate."
+        },
+        {
+          "doc": "Doc 08 §2.5",
+          "sev": "major",
+          "type": "ambiguous-algorithm",
+          "gap": "STRAW+10 staging: “engine reads the trajectory” with no window/slope, and FSH “>25–40 IU/L” is a range-as-threshold. The stage classifier is unimplementable.",
+          "fix": "Specify staging decision rules and a concrete FSH threshold."
+        },
+        {
+          "doc": "Doc 08 §4.1/§2.3",
+          "sev": "major",
+          "type": "undefined-constant",
+          "gap": "Life-stage pillar multipliers m_k^{life-stage} listed only as “Raised (m>1)” with no values; pregnancy reweighting has no magnitudes. W_k renormalization can't be computed.",
+          "fix": "Provide numeric m_k^{life-stage} per stage/pillar."
+        },
+        {
+          "doc": "Doc 08 §2.5/§4.3",
+          "sev": "major",
+          "type": "undefined-constant",
+          "gap": "BON reservoir λ/inflow “modified by estrogen status; accelerated depletion postmenopause”; male “different λ” — no numeric λ deltas.",
+          "fix": "Give per-stage/sex λ_BON multipliers."
+        },
+        {
+          "doc": "Doc 09 A.4",
+          "sev": "major",
+          "type": "missing-edge-case",
+          "gap": "Event spikes m_k^acute “for each affected pillar, weighted by severity” but A.4 gives a single spike per tier (×1.2/1.5/2.0) — no multi-pillar severity weighting (sepsis → INF+HEM+REN+MET).",
+          "fix": "Define the per-pillar severity weighting rule."
+        },
+        {
+          "doc": "Doc 09 A.2/A.5",
+          "sev": "major",
+          "type": "undefined-constant",
+          "gap": "Acute reservoir B_ACU drain λ given only as “days–weeks”, inject as “small/moderate/large”; magnitude, u_{k,ACU} coupling, λ_ACU per class have no numbers — recovery clock/revert can't be computed.",
+          "fix": "Numeric λ_ACU, inject magnitudes per class/tier, and u_{k,ACU}."
+        },
+        {
+          "doc": "Doc 09 A.6 R1",
+          "sev": "major",
+          "type": "missing-acceptance-criteria",
+          "gap": "Confirmation/ramp windows τ_dwell (“e.g. 48–72 h”) and τ_ramp are example ranges only, not bound per class.",
+          "fix": "Bind τ_dwell/τ_ramp per event class."
+        },
+        {
+          "doc": "Doc 08 §2.3.4",
+          "sev": "minor",
+          "type": "internal-inconsistency",
+          "gap": "Pre-eclampsia cascade gated by gestational_age ≥ 20 wk, but §5.2 says “BP ≥160/110 alone ⇒ EMERGENCY” without the qualifier; <20-wk severe HTN unaddressed.",
+          "fix": "State handling for severe BP before 20 wk."
+        },
+        {
+          "doc": "Doc 08 §2.4",
+          "sev": "minor",
+          "type": "undefined-constant",
+          "gap": "EPDS cut-offs given, but lactation nutrition targets and post-partum thyroid TSH/FT4 bands carry no numbers.",
+          "fix": "Provide lactation targets and PP TSH/FT4 bands."
+        },
+        {
+          "doc": "Doc 08 §1 / 10 §1",
+          "sev": "minor",
+          "type": "dangling-reference",
+          "gap": "Doc 08 numbering jumps §1.1→§1.3 (no §1.2); Doc 10 cites a §1.2 that doesn't exist.",
+          "fix": "Renumber or add §1.2.",
+          "status": "fixed"
+        },
+        {
+          "doc": "Doc 10 §2.3.1",
+          "sev": "minor",
+          "type": "missing-edge-case",
+          "gap": "KDIGO heatmap → only “orange/red raises m_REN^cohort”; no per-cell-colour multiplier mapping.",
+          "fix": "Map each KDIGO colour to a feedback magnitude."
+        },
+        {
+          "doc": "Doc 09 A.3",
+          "sev": "minor",
+          "type": "unit/range-undefined",
+          "gap": "Wearable acute detection (“resting-HR step-up”, “HRV collapse”, “activity collapse ≫ personal variance”) has no numeric/statistical thresholds.",
+          "fix": "Define thresholds (e.g. Δ vs N-day baseline in SDs)."
+        }
       ]
     },
     {
       "title": "Acting on it — Docs 11–12",
       "findings": [
-        {"doc": "Doc 11 §3.3", "sev": "blocker", "type": "undefined-constant", "gap": "μ (diversity/redundancy penalty) is “tuned” with no value, yet it determines which 5 actions are selected (a*=argmax U_a − μ·redundancy). Selection is non-deterministic.", "fix": "Pin a default μ and its scale relative to U_a."},
-        {"doc": "Doc 11 §3.3", "sev": "blocker", "type": "ambiguous-algorithm", "gap": "redundancy(a, selected) is qualitative (“high if shares class/valve/pillar”) — no formula or weights. With μ undefined the penalty term is unimplementable.", "fix": "Define redundancy (weighted count of shared class/valve/pillar) with numeric weights."},
-        {"doc": "Doc 11 §3.2", "sev": "blocker", "type": "undefined-constant", "gap": "p̂_a=σ(θ·z) never defines the feature encoding, θ init, cohort base-rate table, or empirical-Bayes shrinkage strength. Cold-start base rate has no source.", "fix": "Specify feature encoding, prior/shrinkage params, and the cohort base-rate source."},
-        {"doc": "Doc 11 §3.1/§3.3", "sev": "blocker", "type": "undefined-prioritization", "gap": "“Constraint-aware override” reserves a slot when a pillar is “binding (large (a)·(b) gradient)” — no threshold for “large”, and no precedence among override / class-cap (≤2) / ≥1-near-zero-effort when they conflict.", "fix": "Define the gradient threshold and a strict precedence ordering of the four constraints."},
-        {"doc": "Doc 11 §2.3", "sev": "blocker", "type": "undefined-formula", "gap": "Realization curve g_a(h) (every impact quote + ranking depends on it) is “consistent with λ_j” but its functional form is never given.", "fix": "Specify the g_a(h) parametric form and its derivation from λ_j."},
-        {"doc": "Doc 11 §3.1", "sev": "major", "type": "ambiguous-algorithm", "gap": "ν_a bundles novelty bonus, care-gap/binding bonus, anti-nag decay, goal-alignment bonus into one factor with no decomposition, decay rate, or magnitudes.", "fix": "Define each ν_a component as a numeric multiplier / decay schedule."},
-        {"doc": "Doc 11 §4.4↔9.5", "sev": "major", "type": "internal-inconsistency", "gap": "Daily budget is “≤5 surfaced” but §9.5 sets “per-day push ceiling (default 2)” + one digest. Relation between 5 actions, 1 digest, 2 pushes is unspecified.", "fix": "Reconcile surfaced-count vs push-count vs digest semantics."},
-        {"doc": "Doc 11 §3.1", "sev": "major", "type": "undefined-prioritization", "gap": "Goal-alignment bonus “lifts actions that advance the goal” with no lift quantity and no goal→action matching predicate (pillar match? class match?).", "fix": "Specify the matching predicate and bonus size."},
-        {"doc": "Doc 11 §5.2↔9.2", "sev": "major", "type": "undefined-trigger", "gap": "§5.2 suppresses the tips card on any emergency/urgent red, but criticals are “confirmation-gated upstream”. Behaviour for an unconfirmed red (card shown or not, what the patient sees) is unspecified.", "fix": "Define behaviour for the unconfirmed-red state re: card suppression."},
-        {"doc": "Doc 11 §3.3", "sev": "major", "type": "missing-edge-case", "gap": "“At least one near-zero-effort action is always included” — “near-zero-effort” has no E_a threshold.", "fix": "Pin the effort threshold defining a free win."},
-        {"doc": "Doc 12 §0 ↔ 11 §1.1", "sev": "major", "type": "internal-inconsistency", "gap": "Doc 12 classes include VACCINE, SCREEN but Doc 11's class_a enum omits them; the class-cap/diversity logic operates on class_a, so undefined classes break the cap.", "fix": "Reconcile the canonical class enum across both docs."},
-        {"doc": "Doc 12 §8", "sev": "major", "type": "undefined-trigger", "gap": "G6PD-AVOID “hard safety filter” has no predicate wired to specific action IDs (which catalogue rows it blocks, e.g. high-dose vit C).", "fix": "Enumerate the action IDs the G6PD filter blocks/flags."},
-        {"doc": "Doc 11 §9.2", "sev": "major", "type": "undefined-trigger", "gap": "Critical “no ack within ack_TTL → human escalation”, but with per-channel reachability provisional, what counts as “total channel failure” for immediate escalation vs waiting for TTL is undefined.", "fix": "Define the channel-failure detection rule and its relation to ack_TTL."},
-        {"doc": "Doc 11 §3.1", "sev": "minor", "type": "undefined-constant", "gap": "α,β,η defaults given, but exponents apply to terms of different scales (ΔPureScore points vs p̂∈[0,1] vs (1−E)) with no ΔPureScore normalization, so U_a scaling is ambiguous.", "fix": "Specify whether ΔPureScore is normalized before exponentiation."},
-        {"doc": "Doc 11 §6.1", "sev": "minor", "type": "ambiguous-algorithm", "gap": "De-confounding realized Δ “using the reservoir equations as the counterfactual baseline” has no attribution/causal estimator.", "fix": "Specify the counterfactual computation."},
-        {"doc": "Doc 11 §9.3↔12", "sev": "minor", "type": "missing-edge-case", "gap": "Ramadan suppression of food/med-timing nudges vs a safety-critical glucose <70 break-fast nudge during fasting — precedence is implied, not stated.", "fix": "State explicitly that safety-critical overrides fasting-window suppression."},
-        {"doc": "Doc 11 §7", "sev": "minor", "type": "missing-acceptance-criteria", "gap": "No acceptance criteria for engine output: behaviour when <5 positive-Δ safe actions exist, or 0 actions pass safety in a non-critical state (the all-blocked case).", "fix": "Add empty/under-filled-list acceptance behaviour."},
-        {"doc": "Doc 12↔11", "sev": "minor", "type": "dangling-reference", "gap": "INF vs INFL token used inconsistently (B_INFL vs pillar INF); ENDO/HEM/HEPF/B_BON referenced but defined in Docs 02/04.", "fix": "Normalize the INF/INFL token."}
+        {
+          "doc": "Doc 11 §3.3",
+          "sev": "blocker",
+          "type": "undefined-constant",
+          "gap": "μ (diversity/redundancy penalty) is “tuned” with no value, yet it determines which 5 actions are selected (a*=argmax U_a − μ·redundancy). Selection is non-deterministic.",
+          "fix": "Pin a default μ and its scale relative to U_a."
+        },
+        {
+          "doc": "Doc 11 §3.3",
+          "sev": "blocker",
+          "type": "ambiguous-algorithm",
+          "gap": "redundancy(a, selected) is qualitative (“high if shares class/valve/pillar”) — no formula or weights. With μ undefined the penalty term is unimplementable.",
+          "fix": "Define redundancy (weighted count of shared class/valve/pillar) with numeric weights."
+        },
+        {
+          "doc": "Doc 11 §3.2",
+          "sev": "blocker",
+          "type": "undefined-constant",
+          "gap": "p̂_a=σ(θ·z) never defines the feature encoding, θ init, cohort base-rate table, or empirical-Bayes shrinkage strength. Cold-start base rate has no source.",
+          "fix": "Specify feature encoding, prior/shrinkage params, and the cohort base-rate source."
+        },
+        {
+          "doc": "Doc 11 §3.1/§3.3",
+          "sev": "blocker",
+          "type": "undefined-prioritization",
+          "gap": "“Constraint-aware override” reserves a slot when a pillar is “binding (large (a)·(b) gradient)” — no threshold for “large”, and no precedence among override / class-cap (≤2) / ≥1-near-zero-effort when they conflict.",
+          "fix": "Define the gradient threshold and a strict precedence ordering of the four constraints."
+        },
+        {
+          "doc": "Doc 11 §2.3",
+          "sev": "blocker",
+          "type": "undefined-formula",
+          "gap": "Realization curve g_a(h) (every impact quote + ranking depends on it) is “consistent with λ_j” but its functional form is never given.",
+          "fix": "Specify the g_a(h) parametric form and its derivation from λ_j."
+        },
+        {
+          "doc": "Doc 11 §3.1",
+          "sev": "major",
+          "type": "ambiguous-algorithm",
+          "gap": "ν_a bundles novelty bonus, care-gap/binding bonus, anti-nag decay, goal-alignment bonus into one factor with no decomposition, decay rate, or magnitudes.",
+          "fix": "Define each ν_a component as a numeric multiplier / decay schedule."
+        },
+        {
+          "doc": "Doc 11 §4.4↔9.5",
+          "sev": "major",
+          "type": "internal-inconsistency",
+          "gap": "Daily budget is “≤5 surfaced” but §9.5 sets “per-day push ceiling (default 2)” + one digest. Relation between 5 actions, 1 digest, 2 pushes is unspecified.",
+          "fix": "Reconcile surfaced-count vs push-count vs digest semantics."
+        },
+        {
+          "doc": "Doc 11 §3.1",
+          "sev": "major",
+          "type": "undefined-prioritization",
+          "gap": "Goal-alignment bonus “lifts actions that advance the goal” with no lift quantity and no goal→action matching predicate (pillar match? class match?).",
+          "fix": "Specify the matching predicate and bonus size."
+        },
+        {
+          "doc": "Doc 11 §5.2↔9.2",
+          "sev": "major",
+          "type": "undefined-trigger",
+          "gap": "§5.2 suppresses the tips card on any emergency/urgent red, but criticals are “confirmation-gated upstream”. Behaviour for an unconfirmed red (card shown or not, what the patient sees) is unspecified.",
+          "fix": "Define behaviour for the unconfirmed-red state re: card suppression."
+        },
+        {
+          "doc": "Doc 11 §3.3",
+          "sev": "major",
+          "type": "missing-edge-case",
+          "gap": "“At least one near-zero-effort action is always included” — “near-zero-effort” has no E_a threshold.",
+          "fix": "Pin the effort threshold defining a free win."
+        },
+        {
+          "doc": "Doc 12 §0 ↔ 11 §1.1",
+          "sev": "major",
+          "type": "internal-inconsistency",
+          "gap": "Doc 12 classes include VACCINE, SCREEN but Doc 11's class_a enum omits them; the class-cap/diversity logic operates on class_a, so undefined classes break the cap.",
+          "fix": "Reconcile the canonical class enum across both docs.",
+          "status": "fixed"
+        },
+        {
+          "doc": "Doc 12 §8",
+          "sev": "major",
+          "type": "undefined-trigger",
+          "gap": "G6PD-AVOID “hard safety filter” has no predicate wired to specific action IDs (which catalogue rows it blocks, e.g. high-dose vit C).",
+          "fix": "Enumerate the action IDs the G6PD filter blocks/flags."
+        },
+        {
+          "doc": "Doc 11 §9.2",
+          "sev": "major",
+          "type": "undefined-trigger",
+          "gap": "Critical “no ack within ack_TTL → human escalation”, but with per-channel reachability provisional, what counts as “total channel failure” for immediate escalation vs waiting for TTL is undefined.",
+          "fix": "Define the channel-failure detection rule and its relation to ack_TTL."
+        },
+        {
+          "doc": "Doc 11 §3.1",
+          "sev": "minor",
+          "type": "undefined-constant",
+          "gap": "α,β,η defaults given, but exponents apply to terms of different scales (ΔPureScore points vs p̂∈[0,1] vs (1−E)) with no ΔPureScore normalization, so U_a scaling is ambiguous.",
+          "fix": "Specify whether ΔPureScore is normalized before exponentiation."
+        },
+        {
+          "doc": "Doc 11 §6.1",
+          "sev": "minor",
+          "type": "ambiguous-algorithm",
+          "gap": "De-confounding realized Δ “using the reservoir equations as the counterfactual baseline” has no attribution/causal estimator.",
+          "fix": "Specify the counterfactual computation."
+        },
+        {
+          "doc": "Doc 11 §9.3↔12",
+          "sev": "minor",
+          "type": "missing-edge-case",
+          "gap": "Ramadan suppression of food/med-timing nudges vs a safety-critical glucose <70 break-fast nudge during fasting — precedence is implied, not stated.",
+          "fix": "State explicitly that safety-critical overrides fasting-window suppression."
+        },
+        {
+          "doc": "Doc 11 §7",
+          "sev": "minor",
+          "type": "missing-acceptance-criteria",
+          "gap": "No acceptance criteria for engine output: behaviour when <5 positive-Δ safe actions exist, or 0 actions pass safety in a non-critical state (the all-blocked case).",
+          "fix": "Add empty/under-filled-list acceptance behaviour."
+        },
+        {
+          "doc": "Doc 12↔11",
+          "sev": "minor",
+          "type": "dangling-reference",
+          "gap": "INF vs INFL token used inconsistently (B_INFL vs pillar INF); ENDO/HEM/HEPF/B_BON referenced but defined in Docs 02/04.",
+          "fix": "Normalize the INF/INFL token."
+        }
       ]
     },
     {
       "title": "Trust & govern — Docs 13–16",
       "findings": [
-        {"doc": "Doc 13 §1.2/§4.6", "sev": "blocker", "type": "undefined-constant", "gap": "n_min=200, ≥30-with-shrinkage, n_min(q)≈n_min/[q(1−q)] are labelled illustrative with no committed per-marker values. Can't decide when a cohort cell is usable vs pooled.", "fix": "Ship a versioned per-marker n_min / tail-floor table with sign-off."},
-        {"doc": "Doc 13/14 §4,6", "sev": "blocker", "type": "undefined-metric", "gap": "Every calibration/fairness tolerance is a symbol with no value (|E/O−1|≤tol, ECE≤tol, C≥target, ICC≥target, error-parity gap≤tol); Doc 14 fixes numbers only for the demo. The binding release gate can't be evaluated.", "fix": "Publish the numeric target/tol table per metric and population."},
-        {"doc": "Doc 13 §4.4/§4.6", "sev": "blocker", "type": "missing-acceptance-criteria", "gap": "Emergency sensitivity is “e.g. ≥0.99” and false-reassurance “≈0” — no binding threshold or CI requirement for the most safety-critical gate.", "fix": "Fix a binding minimum sensitivity (with CI lower-bound rule) and a literal max false-reassurance count."},
-        {"doc": "Doc 14 §5", "sev": "blocker", "type": "undefined-constant", "gap": "Advisory gate must “clear a minimum-PPV bar”; alarm budget “≤~1/patient-month (illustrative)”; deployment prevalence π undefined though PPV depends on it. The early-warning gate is uncomputable.", "fix": "Commit PPV floor, alarm budget, and a sourced prevalence per marker/population."},
-        {"doc": "Doc 16 §2.1", "sev": "blocker", "type": "internal-inconsistency", "gap": "Escalation tiers mix concrete cuts (K⁺ ≥5.6/≤3.2, SpO2<92) with non-thresholds (“hsCRP/WBC sepsis screen”, “BP ≥180/120 region”, “ALT/AST >3× ULN” with no ULN source). Sepsis-screen/“region” triggers can't be implemented.", "fix": "Give exact numeric/logic triggers (or cite Doc 02 rule IDs) for every example."},
-        {"doc": "Doc 13 §2.1", "sev": "major", "type": "undefined-data-source", "gap": "Reference dataset named only by class (“NHANES / UK-Biobank-class + disease registries”) — no versions, access, local cohort, or per-disease registry. Percentiles aren't reproducible.", "fix": "Enumerate exact datasets/versions/registries with ReferenceDist vintages."},
-        {"doc": "Doc 13 §3.1", "sev": "major", "type": "ambiguous-algorithm", "gap": "Calibration loss/horizon h, Cox vs discrete-time choice, regularization weights R_λ/R_κ/R_W, and per-reservoir λ bands are unspecified. The fit is not reproducible.", "fix": "Specify loss form, h, penalty weights/selection, and per-reservoir λ bounds."},
-        {"doc": "Doc 13 §3.3", "sev": "major", "type": "undefined-constant", "gap": "Stability gate needs max Re(eig) ≤ −ε and ρ(I+Δ·J)<1, but neither ε nor Δ (deferred to Doc 04 §7) is valued. Binding gate not evaluable.", "fix": "State ε and reference the concrete Δ value."},
-        {"doc": "Doc 13 §1.3/§2.2", "sev": "major", "type": "ambiguous-algorithm", "gap": "σ_i², τ_i², k_pers/k_coh: REML/MoM named but the cross-tree estimation procedure and ignition prior strengths have no values/recipe. Shrinkage weights can't be computed.", "fix": "Specify estimators and commit the prior-strength constants."},
-        {"doc": "Doc 14 §1", "sev": "major", "type": "missing-acceptance-criteria", "gap": "Indirect objects O1 (does low Cf predict larger error?) and O5 (variance estimate calibrated) have no monotonicity statistic or pass threshold.", "fix": "Define the test statistic and pass bound for each indirect object."},
-        {"doc": "Doc 15 §2", "sev": "major", "type": "ambiguous-algorithm", "gap": "θ_pers “gated by personal-baseline quality (volatility, coverage)” and low representativeness “suppresses θ_coh (φ→0)” give direction but no functional form/thresholds. The ignition blend isn't computable.", "fix": "Specify the gating functions and cut-points."},
-        {"doc": "Doc 16 §1.2/§1.3", "sev": "major", "type": "unverified-regulatory-claim", "gap": "FDA CDS four-criteria and MDR Rule 11 / MDCG 2019-11 framing carry a blanket “re-verify with counsel” and no citations; the classification gate can't be self-served.", "fix": "Cite the controlling statute/guidance sections; treat as an external dependency."},
-        {"doc": "Doc 15 §6", "sev": "major", "type": "missing-edge-case", "gap": "Crawler “values never auto-change”, 30-day cadence, dead-source→Confidence↓ given, but no rule for how long a seed/last_verified:null band may ship, or conflicting guideline bodies.", "fix": "Define a max-unverified-age gate and multi-body conflict resolution."},
-        {"doc": "Doc 14 §1", "sev": "minor", "type": "undefined-constant", "gap": "INSUFFICIENT “fires iff fresh-data fraction < τ_su” with no value.", "fix": "Commit τ_su."},
-        {"doc": "Doc 14 §8", "sev": "minor", "type": "internal-inconsistency", "gap": "Drift formula Σ(p−q)·ln(p/q) is symmetric PSI, but Doc 13 §4.7 lists PSI and KL as distinct tests; thresholds 0.1/0.25 given only for PSI.", "fix": "Name the exact statistic for each threshold."},
-        {"doc": "Doc 15 §4", "sev": "minor", "type": "undefined-metric", "gap": "Evidence grade (A/B/C/GRADE) “feeds ε_a/Confidence” with no mapping function.", "fix": "Give the grade→ε_a table."},
-        {"doc": "Doc 16 §3", "sev": "minor", "type": "missing-acceptance-criteria", "gap": "FMEA RPN = S×L×D is qualitative; only “any S=5 row without green mitigation blocks” is binding — RPN otherwise drives nothing testable.", "fix": "Define RPN action thresholds or state RPN is advisory-only."},
-        {"doc": "Doc 13 §4.5", "sev": "minor", "type": "ambiguous-algorithm", "gap": "OOD method left as a menu (Mahalanobis OR conformal OR isolation-forest) with no selection rule or cut-point.", "fix": "Pick the method + threshold (or a per-marker rule)."}
+        {
+          "doc": "Doc 13 §1.2/§4.6",
+          "sev": "blocker",
+          "type": "undefined-constant",
+          "gap": "n_min=200, ≥30-with-shrinkage, n_min(q)≈n_min/[q(1−q)] are labelled illustrative with no committed per-marker values. Can't decide when a cohort cell is usable vs pooled.",
+          "fix": "Ship a versioned per-marker n_min / tail-floor table with sign-off."
+        },
+        {
+          "doc": "Doc 13/14 §4,6",
+          "sev": "blocker",
+          "type": "undefined-metric",
+          "gap": "Every calibration/fairness tolerance is a symbol with no value (|E/O−1|≤tol, ECE≤tol, C≥target, ICC≥target, error-parity gap≤tol); Doc 14 fixes numbers only for the demo. The binding release gate can't be evaluated.",
+          "fix": "Publish the numeric target/tol table per metric and population."
+        },
+        {
+          "doc": "Doc 13 §4.4/§4.6",
+          "sev": "blocker",
+          "type": "missing-acceptance-criteria",
+          "gap": "Emergency sensitivity is “e.g. ≥0.99” and false-reassurance “≈0” — no binding threshold or CI requirement for the most safety-critical gate.",
+          "fix": "Fix a binding minimum sensitivity (with CI lower-bound rule) and a literal max false-reassurance count."
+        },
+        {
+          "doc": "Doc 14 §5",
+          "sev": "blocker",
+          "type": "undefined-constant",
+          "gap": "Advisory gate must “clear a minimum-PPV bar”; alarm budget “≤~1/patient-month (illustrative)”; deployment prevalence π undefined though PPV depends on it. The early-warning gate is uncomputable.",
+          "fix": "Commit PPV floor, alarm budget, and a sourced prevalence per marker/population."
+        },
+        {
+          "doc": "Doc 16 §2.1",
+          "sev": "blocker",
+          "type": "internal-inconsistency",
+          "gap": "Escalation tiers mix concrete cuts (K⁺ ≥5.6/≤3.2, SpO2<92) with non-thresholds (“hsCRP/WBC sepsis screen”, “BP ≥180/120 region”, “ALT/AST >3× ULN” with no ULN source). Sepsis-screen/“region” triggers can't be implemented.",
+          "fix": "Give exact numeric/logic triggers (or cite Doc 02 rule IDs) for every example."
+        },
+        {
+          "doc": "Doc 13 §2.1",
+          "sev": "major",
+          "type": "undefined-data-source",
+          "gap": "Reference dataset named only by class (“NHANES / UK-Biobank-class + disease registries”) — no versions, access, local cohort, or per-disease registry. Percentiles aren't reproducible.",
+          "fix": "Enumerate exact datasets/versions/registries with ReferenceDist vintages."
+        },
+        {
+          "doc": "Doc 13 §3.1",
+          "sev": "major",
+          "type": "ambiguous-algorithm",
+          "gap": "Calibration loss/horizon h, Cox vs discrete-time choice, regularization weights R_λ/R_κ/R_W, and per-reservoir λ bands are unspecified. The fit is not reproducible.",
+          "fix": "Specify loss form, h, penalty weights/selection, and per-reservoir λ bounds."
+        },
+        {
+          "doc": "Doc 13 §3.3",
+          "sev": "major",
+          "type": "undefined-constant",
+          "gap": "Stability gate needs max Re(eig) ≤ −ε and ρ(I+Δ·J)<1, but neither ε nor Δ (deferred to Doc 04 §7) is valued. Binding gate not evaluable.",
+          "fix": "State ε and reference the concrete Δ value."
+        },
+        {
+          "doc": "Doc 13 §1.3/§2.2",
+          "sev": "major",
+          "type": "ambiguous-algorithm",
+          "gap": "σ_i², τ_i², k_pers/k_coh: REML/MoM named but the cross-tree estimation procedure and ignition prior strengths have no values/recipe. Shrinkage weights can't be computed.",
+          "fix": "Specify estimators and commit the prior-strength constants."
+        },
+        {
+          "doc": "Doc 14 §1",
+          "sev": "major",
+          "type": "missing-acceptance-criteria",
+          "gap": "Indirect objects O1 (does low Cf predict larger error?) and O5 (variance estimate calibrated) have no monotonicity statistic or pass threshold.",
+          "fix": "Define the test statistic and pass bound for each indirect object."
+        },
+        {
+          "doc": "Doc 15 §2",
+          "sev": "major",
+          "type": "ambiguous-algorithm",
+          "gap": "θ_pers “gated by personal-baseline quality (volatility, coverage)” and low representativeness “suppresses θ_coh (φ→0)” give direction but no functional form/thresholds. The ignition blend isn't computable.",
+          "fix": "Specify the gating functions and cut-points."
+        },
+        {
+          "doc": "Doc 16 §1.2/§1.3",
+          "sev": "major",
+          "type": "unverified-regulatory-claim",
+          "gap": "FDA CDS four-criteria and MDR Rule 11 / MDCG 2019-11 framing carry a blanket “re-verify with counsel” and no citations; the classification gate can't be self-served.",
+          "fix": "Cite the controlling statute/guidance sections; treat as an external dependency."
+        },
+        {
+          "doc": "Doc 15 §6",
+          "sev": "major",
+          "type": "missing-edge-case",
+          "gap": "Crawler “values never auto-change”, 30-day cadence, dead-source→Confidence↓ given, but no rule for how long a seed/last_verified:null band may ship, or conflicting guideline bodies.",
+          "fix": "Define a max-unverified-age gate and multi-body conflict resolution."
+        },
+        {
+          "doc": "Doc 14 §1",
+          "sev": "minor",
+          "type": "undefined-constant",
+          "gap": "INSUFFICIENT “fires iff fresh-data fraction < τ_su” with no value.",
+          "fix": "Commit τ_su."
+        },
+        {
+          "doc": "Doc 14 §8",
+          "sev": "minor",
+          "type": "internal-inconsistency",
+          "gap": "Drift formula Σ(p−q)·ln(p/q) is symmetric PSI, but Doc 13 §4.7 lists PSI and KL as distinct tests; thresholds 0.1/0.25 given only for PSI.",
+          "fix": "Name the exact statistic for each threshold."
+        },
+        {
+          "doc": "Doc 15 §4",
+          "sev": "minor",
+          "type": "undefined-metric",
+          "gap": "Evidence grade (A/B/C/GRADE) “feeds ε_a/Confidence” with no mapping function.",
+          "fix": "Give the grade→ε_a table."
+        },
+        {
+          "doc": "Doc 16 §3",
+          "sev": "minor",
+          "type": "missing-acceptance-criteria",
+          "gap": "FMEA RPN = S×L×D is qualitative; only “any S=5 row without green mitigation blocks” is binding — RPN otherwise drives nothing testable.",
+          "fix": "Define RPN action thresholds or state RPN is advisory-only."
+        },
+        {
+          "doc": "Doc 13 §4.5",
+          "sev": "minor",
+          "type": "ambiguous-algorithm",
+          "gap": "OOD method left as a menu (Mahalanobis OR conformal OR isolation-forest) with no selection rule or cut-point.",
+          "fix": "Pick the method + threshold (or a per-marker rule)."
+        }
       ]
     },
     {
       "title": "Vision, red-team, localization & actuarial — Docs 01, 17–19",
       "findings": [
-        {"doc": "Doc 19 §2.1/2.2", "sev": "blocker", "type": "undefined-pricing-formula", "gap": "Cost model Ĉ(c)=baseline·Πμ_k·μ_res·μ_clin·TREND gives no coefficients (β_k, β_res, β_m), no dataset, no link-function default, no worked example.", "fix": "Supply fitted relativities (or the dataset + GLM spec to fit them)."},
-        {"doc": "Doc 19 §3.1", "sev": "blocker", "type": "undefined-pricing-formula", "gap": "Bühlmann K=EPV/VHM “estimated from the book (Doc 13)” but neither doc supplies values nor an estimation procedure; K is required for credibility Z.", "fix": "Provide K (or the estimation recipe + inputs)."},
-        {"doc": "Doc 17 §K / 18 §10", "sev": "blocker", "type": "unresolved-redteam-item", "gap": "“Calibration of constants (shrinkage k, reservoir κ/λ, anomaly thresholds, benefit weights) awaits real cohort data.” Every numeric constant the engine needs is explicitly unfitted.", "fix": "Source the calibration cohort; until then the engine produces unvalidated output (the systemic blocker — see callout)."},
-        {"doc": "Doc 19 §2.2/2.3", "sev": "major", "type": "undefined-constant", "gap": "μ_k clamp band [0.7,1.6] is “e.g.” and “tighter in individual-affecting contexts” — the tighter value is never specified.", "fix": "Specify the individual-affecting clamp band."},
-        {"doc": "Doc 19 §1.2/§8", "sev": "major", "type": "unverified-regulatory-claim", "gap": "HIPAA/ADA wellness incentive caps quoted as “~30%, ~50% tobacco” with “re-verify current EEOC/HHS limits before any incentive ships.”", "fix": "Confirm current caps with counsel; gate any incentive feature on it."},
-        {"doc": "Doc 18 §2", "sev": "major", "type": "undefined-constant", "gap": "QRISK3 named as the ethnicity-aware equation but no coefficients/thresholds; “consider earlier statin/screening” has no numeric trigger.", "fix": "Supply QRISK3 coefficients and the earlier-intervention cut-points."},
-        {"doc": "Doc 18 §5", "sev": "major", "type": "missing-edge-case", "gap": "Ramadan risk tiers (very-high/high/moderate/low → “fasting inadvisable”) have no mapping rule from patient state to tier (glucose <70/>300 override is concrete; IDF-DAR category logic is not).", "fix": "Define the IDF-DAR risk-category assignment logic."},
-        {"doc": "Doc 18 §2", "sev": "major", "type": "unverified-regulatory-claim", "gap": "Gulf/other-Arab assigned WHO-Asian BMI/IDF-waist cut-points while the doc flags the evidence as “emerging” — no clinical-sign-off gate attached to shipping them for that subgroup.", "fix": "Attach a clinical-sign-off gate; mark provisional."},
-        {"doc": "Doc 19 §6.3", "sev": "major", "type": "ambiguous-algorithm", "gap": "Disparate-impact testing cites four-fifths rule “plus statistical tests” and calibration-within-group, but no significance thresholds, named tests, or remediation trigger.", "fix": "Name the tests, thresholds, and the “halt and remediate” trigger values."},
-        {"doc": "Doc 17 §A,D,H,I,J", "sev": "major", "type": "unresolved-redteam-item", "gap": "Multiple residual blockers enumerated as known-open with no owner/date: “No gate satisfied yet”, “thresholds need prevalence-specific calibration”, “unit-detection specified not built”, “crawler/CI specified not built”, “coupling κ / decay λ need calibration.”", "fix": "Assign owner + date to each red-team residual; track to closure."},
-        {"doc": "Doc 19 §6.4", "sev": "major", "type": "unverified-regulatory-claim", "gap": "“File before you price / no unfiled factor prices” spans US state DOI, EU IDD/POG, Solvency II, UK FCA with no per-jurisdiction filing specifics; repeatedly defers to “verify per deployment”.", "fix": "Resolve per-jurisdiction filing requirements with licensed actuarial sign-off before a regulated launch."},
-        {"doc": "Doc 19 §2.4", "sev": "minor", "type": "ambiguous-algorithm", "gap": "Trajectory feature h(B̃)=a·B̃+b·(dB̃/dt) introduces a,b with no values and no §8 constants entry.", "fix": "Add a,b to the constants table."},
-        {"doc": "Doc 19 §5.1", "sev": "minor", "type": "undefined-constant", "gap": "Shared-savings α is “contracted; gated on quality/access” with no default and no measurement thresholds for the quality/access gates.", "fix": "Provide a default α and the gate thresholds."},
-        {"doc": "Doc 18 §9", "sev": "minor", "type": "internal-inconsistency", "gap": "“Personas southasian/ramadan_dm; ethTier() applies cut-points in band()” describes live-calculator state, but Doc 17 §B/§K2 says only a marker subset is wired live — no single source of truth for what's implemented.", "fix": "Maintain one source of truth for live coverage."},
-        {"doc": "Doc 01 §2.9/§4–5", "sev": "minor", "type": "missing-acceptance-criteria", "gap": "Principles “incentive must improve the score, never deny” and “no false-reassurance failures” are build requirements with no acceptance metric defined or cross-referenced to a concrete gate.", "fix": "Cross-reference each principle to a measurable gate (e.g. the Doc 13 false-reassurance bar)."},
-        {"doc": "Doc 19 §1.2", "sev": "minor", "type": "dangling-reference", "gap": "Risk-adjustment cross-referenced as “§1.1.2” but §1.1 is a numbered list with no §1.1.2 anchor.", "fix": "Fix the citation anchor."}
+        {
+          "doc": "Doc 19 §2.1/2.2",
+          "sev": "blocker",
+          "type": "undefined-pricing-formula",
+          "gap": "Cost model Ĉ(c)=baseline·Πμ_k·μ_res·μ_clin·TREND gives no coefficients (β_k, β_res, β_m), no dataset, no link-function default, no worked example.",
+          "fix": "Supply fitted relativities (or the dataset + GLM spec to fit them)."
+        },
+        {
+          "doc": "Doc 19 §3.1",
+          "sev": "blocker",
+          "type": "undefined-pricing-formula",
+          "gap": "Bühlmann K=EPV/VHM “estimated from the book (Doc 13)” but neither doc supplies values nor an estimation procedure; K is required for credibility Z.",
+          "fix": "Provide K (or the estimation recipe + inputs)."
+        },
+        {
+          "doc": "Doc 17 §K / 18 §10",
+          "sev": "blocker",
+          "type": "unresolved-redteam-item",
+          "gap": "“Calibration of constants (shrinkage k, reservoir κ/λ, anomaly thresholds, benefit weights) awaits real cohort data.” Every numeric constant the engine needs is explicitly unfitted.",
+          "fix": "Source the calibration cohort; until then the engine produces unvalidated output (the systemic blocker — see callout)."
+        },
+        {
+          "doc": "Doc 19 §2.2/2.3",
+          "sev": "major",
+          "type": "undefined-constant",
+          "gap": "μ_k clamp band [0.7,1.6] is “e.g.” and “tighter in individual-affecting contexts” — the tighter value is never specified.",
+          "fix": "Specify the individual-affecting clamp band."
+        },
+        {
+          "doc": "Doc 19 §1.2/§8",
+          "sev": "major",
+          "type": "unverified-regulatory-claim",
+          "gap": "HIPAA/ADA wellness incentive caps quoted as “~30%, ~50% tobacco” with “re-verify current EEOC/HHS limits before any incentive ships.”",
+          "fix": "Confirm current caps with counsel; gate any incentive feature on it."
+        },
+        {
+          "doc": "Doc 18 §2",
+          "sev": "major",
+          "type": "undefined-constant",
+          "gap": "QRISK3 named as the ethnicity-aware equation but no coefficients/thresholds; “consider earlier statin/screening” has no numeric trigger.",
+          "fix": "Supply QRISK3 coefficients and the earlier-intervention cut-points."
+        },
+        {
+          "doc": "Doc 18 §5",
+          "sev": "major",
+          "type": "missing-edge-case",
+          "gap": "Ramadan risk tiers (very-high/high/moderate/low → “fasting inadvisable”) have no mapping rule from patient state to tier (glucose <70/>300 override is concrete; IDF-DAR category logic is not).",
+          "fix": "Define the IDF-DAR risk-category assignment logic."
+        },
+        {
+          "doc": "Doc 18 §2",
+          "sev": "major",
+          "type": "unverified-regulatory-claim",
+          "gap": "Gulf/other-Arab assigned WHO-Asian BMI/IDF-waist cut-points while the doc flags the evidence as “emerging” — no clinical-sign-off gate attached to shipping them for that subgroup.",
+          "fix": "Attach a clinical-sign-off gate; mark provisional."
+        },
+        {
+          "doc": "Doc 19 §6.3",
+          "sev": "major",
+          "type": "ambiguous-algorithm",
+          "gap": "Disparate-impact testing cites four-fifths rule “plus statistical tests” and calibration-within-group, but no significance thresholds, named tests, or remediation trigger.",
+          "fix": "Name the tests, thresholds, and the “halt and remediate” trigger values."
+        },
+        {
+          "doc": "Doc 17 §A,D,H,I,J",
+          "sev": "major",
+          "type": "unresolved-redteam-item",
+          "gap": "Multiple residual blockers enumerated as known-open with no owner/date: “No gate satisfied yet”, “thresholds need prevalence-specific calibration”, “unit-detection specified not built”, “crawler/CI specified not built”, “coupling κ / decay λ need calibration.”",
+          "fix": "Assign owner + date to each red-team residual; track to closure."
+        },
+        {
+          "doc": "Doc 19 §6.4",
+          "sev": "major",
+          "type": "unverified-regulatory-claim",
+          "gap": "“File before you price / no unfiled factor prices” spans US state DOI, EU IDD/POG, Solvency II, UK FCA with no per-jurisdiction filing specifics; repeatedly defers to “verify per deployment”.",
+          "fix": "Resolve per-jurisdiction filing requirements with licensed actuarial sign-off before a regulated launch."
+        },
+        {
+          "doc": "Doc 19 §2.4",
+          "sev": "minor",
+          "type": "ambiguous-algorithm",
+          "gap": "Trajectory feature h(B̃)=a·B̃+b·(dB̃/dt) introduces a,b with no values and no §8 constants entry.",
+          "fix": "Add a,b to the constants table."
+        },
+        {
+          "doc": "Doc 19 §5.1",
+          "sev": "minor",
+          "type": "undefined-constant",
+          "gap": "Shared-savings α is “contracted; gated on quality/access” with no default and no measurement thresholds for the quality/access gates.",
+          "fix": "Provide a default α and the gate thresholds."
+        },
+        {
+          "doc": "Doc 18 §9",
+          "sev": "minor",
+          "type": "internal-inconsistency",
+          "gap": "“Personas southasian/ramadan_dm; ethTier() applies cut-points in band()” describes live-calculator state, but Doc 17 §B/§K2 says only a marker subset is wired live — no single source of truth for what's implemented.",
+          "fix": "Maintain one source of truth for live coverage."
+        },
+        {
+          "doc": "Doc 01 §2.9/§4–5",
+          "sev": "minor",
+          "type": "missing-acceptance-criteria",
+          "gap": "Principles “incentive must improve the score, never deny” and “no false-reassurance failures” are build requirements with no acceptance metric defined or cross-referenced to a concrete gate.",
+          "fix": "Cross-reference each principle to a measurable gate (e.g. the Doc 13 false-reassurance bar)."
+        },
+        {
+          "doc": "Doc 19 §1.2",
+          "sev": "minor",
+          "type": "dangling-reference",
+          "gap": "Risk-adjustment cross-referenced as “§1.1.2” but §1.1 is a numbered list with no §1.1.2 anchor.",
+          "fix": "Fix the citation anchor.",
+          "status": "fixed"
+        }
       ]
     }
   ]

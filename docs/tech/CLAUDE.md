@@ -69,3 +69,16 @@ open it and check.
 - Per-doc inline `<pre class="mermaid">` (in `C.MERMAID`) ← that doc's content.
 
 A clean run prints `Generated N pages → …` with no errors and **no `! skip` lines**.
+
+## Navigation, search & filter layer (added — keep in sync with `NAV`)
+These are all **derived from `NAV`** in `build_wiki.py`; editing `NAV` propagates them, so don't hand-maintain copies.
+- **Chapter landing pages** — `render_chapters()` generates one `chapter-<N>.html` per NAV group (Start here = `chapter-0`). Content = a curated intro + per-audience "start here" pointers from `CHAPTERS`, plus an auto page-list using one-line `PDESC` descriptions. The sidebar chapter **header links to its landing page** (the caret toggles; the title is an `<a>`). When you add a page to `NAV`, add a `PDESC` entry; when you add a chapter, add a `CHAPTERS` entry (intro + 3 audience starts). `NAV_BLURB` keys must match the live group labels.
+- **Display numbering** — `SEC_NO` (derived from NAV order) gives each page a `chapter.section` badge in the sidebar and the chapter-context strip. Files and the `Doc NN` system are **untouched** — this is presentation only.
+- **Full-text search** — `_build_search_index()` (runs in `main()` after `_inject_connects()`) writes `assets/search-index.js` (page title + h1/h2/h3 anchors + 160-char snippets). `assets/search.js` drives the top-bar dropdown and the ⌘K palette; `assets/wiki.js` owns the **facet filters** (the `.nav-filter` panel) — toggle binds to `.grp-tog`, not the header. Every generated page must keep loading `search-index.js` + `search.js` + `wiki.js` (in `page()`).
+- **Facet taxonomy** — `page_facets(fn)` tags each sidebar link with module / content-type / maturity / audience / persona / jurisdiction (`FACET_DEFS`). module/ctype/maturity are auto-derived; audience/persona/jurisdiction are curated maps — extend them when adding pages.
+
+## Gaps & review pages (Chapter 7, data-driven — `apply nothing` is the default)
+- `spec-audit.html` (`build_spec_audit` ← `data/spec-audit.json`) — build-readiness of the **specs** (can an engineer build it?). `editorial-review.html` (`build_editorial_review` ← `data/editorial-review.json`) — **cohesion/presentability** of the wiki. `production-gaps.html` — the **product/app** surface. Three distinct axes; keep their leads cross-referencing each other. Both audit JSONs support a `"status":"fixed"` flag that renders a green chip and bumps the "already fixed" count.
+
+## Consent (standalone page)
+`consent-onboarding.html` is a standalone page (own `<html>`, not regenerated). It reads `assets/consent-config.js` (`window.PURESCORE_CONSENT = {controller, version, auditEndpoint}`) at runtime so the audit record carries real values; blank fields fall back to the visible `{{TOKEN}}` placeholders. Edit the page and config directly — the build does not touch it.

@@ -39,7 +39,8 @@
           "dim": "terminology",
           "sev": "low",
           "finding": "INF (Inflammation pillar) vs INFL (Inflammatory-load reservoir) are intentionally distinct but visually near-identical and never disambiguated on the same page; likewise NUT (pillar) vs NUTR (action class).",
-          "fix": "Add a one-line footnote distinguishing INF/INFL and NUT/NUTR where they co-occur."
+          "fix": "Add a one-line footnote distinguishing INF/INFL and NUT/NUTR where they co-occur.",
+          "status": "fixed"
         }
       ]
     },
@@ -91,7 +92,8 @@
           "dim": "structure",
           "sev": "med",
           "finding": "Calculation Explorer has no lead intro — jumps from crumbs into the cockpit UI; “cockpit” / “one engine, one JSON” is dev-jargon with no plain gloss.",
-          "fix": "Add a one-line lead explaining what the explorer does and for whom."
+          "fix": "Add a one-line lead explaining what the explorer does and for whom.",
+          "status": "fixed"
         },
         {
           "page": "index.html / conventions.html",
@@ -131,14 +133,16 @@
           "dim": "formatting",
           "sev": "high",
           "finding": "The “content section × intake phase” table shows 0/0/0/0 for Demographics, Medical history, and Symptoms & PROs (only Lifestyle 354 / Adherence 41 populated), implying zero demographic/history/symptom questions — contradicts Appendix E.",
-          "fix": "Fix the data binding so each section row reflects real counts (or relabel sections to where questions actually live)."
+          "fix": "Fix the data binding so each section row reflects real counts (or relabel sections to where questions actually live).",
+          "status": "fixed"
         },
         {
           "page": "appendix-question-bank.html",
           "dim": "formatting",
           "sev": "high",
           "finding": "Intro reads “354 questions grouped by 1 content sections × 3 phases” — “1 content sections” is mis-computed and contradicts questions-hub’s “5 content sections”.",
-          "fix": "Reconcile the section-count source so both pages agree; fix singular/plural."
+          "fix": "Reconcile the section-count source so both pages agree; fix singular/plural.",
+          "status": "fixed"
         },
         {
           "page": "ch2 appendices",
@@ -244,7 +248,8 @@
           "dim": "audience",
           "sev": "high",
           "finding": "Tagged prod/clin/eng but §§2–3 are a wall of DS-grade calculus (∂R/∂R_k, Hurwitz Jacobian) with no plain-language gloss or “skip to the card” signpost.",
-          "fix": "Add a “product/clinical readers can skip to §4” note and a plain sentence under each formula."
+          "fix": "Add a “product/clinical readers can skip to §4” note and a plain sentence under each formula.",
+          "status": "fixed"
         },
         {
           "page": "purescore-sex.html",
@@ -265,21 +270,24 @@
           "dim": "cross-refs",
           "sev": "med",
           "finding": "§7 references the calculator as purescore-architecture.html, which is not in the nav (renamed to purescore-uber-map.html).",
-          "fix": "Update to the current page name."
+          "fix": "Update to the current page name.",
+          "status": "fixed"
         },
         {
           "page": "09-acute-events-and-life-stage-plans.html",
           "dim": "audience",
           "sev": "med",
           "finding": "Tagged clin/prod but body is dense engineer notation (m_k^acute, θ_enter·B^max, τ_dwell) with no plain-language gloss.",
-          "fix": "Add a 2–3 sentence “what this means” gloss near the top."
+          "fix": "Add a 2–3 sentence “what this means” gloss near the top.",
+          "status": "fixed"
         },
         {
           "page": "10-clinical-scores-integration.html",
           "dim": "acronyms",
           "sev": "med",
           "finding": "Heavy symbols (r_i, W_k, m_k^cohort, cov_k, PURE_CRIT_CAP) with no on-page legend; r_i appears in the lead before definition.",
-          "fix": "Add a one-line notation legend linked to conventions."
+          "fix": "Add a one-line notation legend linked to conventions.",
+          "status": "fixed"
         },
         {
           "page": "appendix-persona-matrix.html",
@@ -328,7 +336,8 @@
           "dim": "structure",
           "sev": "med",
           "finding": "Breadcrumb reads “Home › Questions & intake …” but both live in Chapter 4 “Acting on it” (4.3/4.4).",
-          "fix": "Fix the crumb to “Acting on it”."
+          "fix": "Fix the crumb to “Acting on it”.",
+          "status": "fixed"
         },
         {
           "page": "appendix-adherence.html / appendix-goals.html",
@@ -505,7 +514,8 @@
           "dim": "structure",
           "sev": "med",
           "finding": "Standalone EN/AR prototype has no sidebar/breadcrumb and zero links back to the wiki or Doc 16 (only names the .md path as plain text); no way to navigate back.",
-          "fix": "Add a “← Back to Tech Wiki” link and make the Doc 16 reference a real link."
+          "fix": "Add a “← Back to Tech Wiki” link and make the Doc 16 reference a real link.",
+          "status": "fixed"
         },
         {
           "page": "13 / 14",
@@ -575,7 +585,8 @@
           "dim": "structure",
           "sev": "med",
           "finding": "Doesn’t reciprocate spec-audit’s disambiguation — it never names the spec-audit sibling in its lead (only in the footer), so a reader landing here can’t tell the two gaps pages apart.",
-          "fix": "Add one sentence mirroring spec-audit’s (“A companion page, Spec build-readiness, audits the methodology spec itself”)."
+          "fix": "Add one sentence mirroring spec-audit’s (“A companion page, Spec build-readiness, audits the methodology spec itself”).",
+          "status": "fixed"
         },
         {
           "page": "production-gaps.html",
