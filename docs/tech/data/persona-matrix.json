@@ -209,7 +209,7 @@
   },
   {
    "id": "south_asian_metabolic",
-   "name": "South-Asian metabolic",
+   "name": "South-Asian metabolic (lifestyle)",
    "type": "archetype",
    "priors": {}
   },

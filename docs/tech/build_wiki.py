@@ -183,6 +183,7 @@ NAV = [
                  ("editorial-review.html", "Editorial & cohesion review"),
                  (DOCMAP["17"], SHORT["17"], "17"), ("appendix-coverage-audit.html", "Coverage audit")]),
  ("8 · System & build", [("purescore-system.html", "System at a glance"),
+                 ("purescore-calc-uber.html", "PureScore Calc Diagram"),
                  ("states.html", "Patient life-state machine"),
                  ("engagement-state-machines.html", "Engagement state machines"),
                  ("class-model.html", "Class model"),
@@ -353,6 +354,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "admin-weights.html":"Admin · Weights","admin-lifestyle.html":"Admin · Lifestyle",
           "admin-personas.html":"Admin · Personas","admin-governance.html":"Admin · Governance",
           "purescore-system.html":"System at a glance",
+          "purescore-calc-uber.html":"PureScore Calc Diagram",
           "feedback-loop.html":"Live feedback-loop demo","states.html":"Patient life-state machine",
           "class-model.html":"Class model",
           "engagement-state-machines.html":"Engagement state machines",
@@ -805,7 +807,8 @@ def main():
     built = len(ORDER)
     for fn, tab in [("feedback-loop.html", "Live feedback-loop demo"), ("states.html", "Patient state machine"),
                     ("engagement-state-machines.html", "Engagement state machines"),
-                    ("purescore-system.html", "System at a glance")]:
+                    ("purescore-system.html", "System at a glance"),
+                    ("purescore-calc-uber.html", "PureScore Calc Diagram")]:
         body = os.path.join(HERE, fn[:-5] + ".body.html")
         if os.path.exists(body):
             page(fn, tab, open(body, encoding="utf-8").read())
@@ -885,7 +888,8 @@ def _consistency_check():
 _DIAGRAMS = {"purescore-uber-map.html", "purescore-uber-map.html", "states.html", "engagement-state-machines.html",
              "class-model.html", "dossier-erd.html", "dossier-c4.html", "dossier-sequences.html",
              "class-model.html", "wearable-baselines.html", "purescore-wearable-baselines.html",
-             "consent-onboarding.html", "purescore-system.html", "reservoir-sim.html"}
+             "consent-onboarding.html", "purescore-system.html", "reservoir-sim.html",
+             "purescore-calc-uber.html"}
 _GRID_OF = {"appendix-biomarkers.html": "appendix-biomarkers.html#spreadsheet", "appendix-wearables.html": "appendix-wearables.html#spreadsheet",
             "appendix-personas.html": "appendix-personas.html#spreadsheet", "appendix-lifestyles.html": "appendix-lifestyles.html#spreadsheet",
             "appendix-adherence.html": "appendix-adherence.html#spreadsheet", "appendix-goals.html": "appendix-goals.html#spreadsheet",

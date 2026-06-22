@@ -1,9 +1,10 @@
-<div class="crumbs"><a href="index.html">Home</a> › 8 · System &amp; build › PureScore calculation — Uber-diagram</div>
-<h1>PureScore — How it is calculated (Uber-diagram)</h1>
+<div class="crumbs"><a href="index.html">Home</a> › 8 · System &amp; build › PureScore Calc Diagram</div>
+<h1>PureScore Calc Diagram</h1>
 <p class="lead">One page that holds <b>every system that touches the number</b>, five ways. Built for developers and architects to confirm <b>no step is left unturned</b> — the core pipeline, the reservoir layer, the companion meta-vector, the personalization modifiers and the safety/clinical gates. Switch <b>view</b> to change the lens; set the <b>age / sex / condition</b> filters to re-light the steps that change for that group; double-click any node to open its source page. Anchored to <a class="xref" href="05-critical-review-and-purescore-2.0.html">Doc 05</a> (companion vector) and the JSON-canonical engine.</p>
 
 <div class="callout spec"><div class="ct">How to read this</div>
-The five views share one calculation: <b>Overview</b> (all systems at once) · <b>Pipeline</b> (the exact 5-stage formula chain) · <b>Companion</b> (the 10 meta-dimensions that ride alongside) · <b>Personalization</b> (how sex/age/condition reshape ranges &amp; weights) · <b>Critical &amp; Clinical</b> (the safety cascade, confirmation gates, the 7 gated scores and the actuarial firewall). The <b>filters</b> annotate the diagram (they highlight which steps change for the selected group — they do not recompute; use the <a class="xref" href="purescore-uber-map.html">Calculation Explorer</a> to run live numbers). Symbols are kept ASCII in the diagrams; the exact formulas with γ, δ, κ, φ are in the callout under the Pipeline view.</div>
+The five views share one calculation: <b>Overview</b> (all systems at once) · <b>Pipeline</b> (the exact 5-stage formula chain) · <b>Companion</b> (the 10 meta-dimensions that ride alongside) · <b>Personalization</b> (how sex/age/condition reshape ranges &amp; weights) · <b>Critical &amp; Clinical</b> (the safety cascade, confirmation gates, the 7 gated scores and the actuarial firewall). The <b>filters</b> annotate the diagram (they highlight which steps change for the selected group — they do not recompute; use the <a class="xref" href="purescore-uber-map.html">Calculation Explorer</a> to run live numbers). Symbols are kept ASCII in the diagrams; the exact formulas with γ, δ, κ, φ are in the callout under the Pipeline view.
+<br><b>Reading order &amp; prerequisites:</b> numbered nodes (<b>1→5</b>) are the computation order — a step needs <em>all</em> its inbound arrows resolved before it can run (e.g. Pillar risk <b>3</b> needs marker risk <b>2</b> <em>and</em> the reservoir load; PureScore <b>4</b> needs every pillar). Solid arrows are required inputs; dashed arrows are modifiers/feedback. Use <b>⛶ Full screen</b> (top-right) to expand any view.</div>
 
 <div class="callout note"><div class="ct">Illustrative</div>A design model, not a shipped engine. Constants are expert-prior and must be calibrated (<a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13</a>/<a class="xref" href="14-validation-and-calibration-harness.html">Doc 14</a>); re-verify before any clinical or production use (README §5.6).</div>
 
@@ -26,6 +27,7 @@ The five views share one calculation: <b>Overview</b> (all systems at once) · <
     <button class="cu-tab" data-view="companion" type="button">Companion</button>
     <button class="cu-tab" data-view="person" type="button">Personalization</button>
     <button class="cu-tab" data-view="critical" type="button">Critical &amp; Clinical</button>
+    <button class="cu-full" id="cuFull" type="button" title="Full screen (Esc to exit)">⛶ Full screen</button>
   </div>
 
   <div class="cu-drill">Explore ↗
@@ -38,21 +40,25 @@ The five views share one calculation: <b>Overview</b> (all systems at once) · <
     <a href="reference-range-resolver.html">range resolver</a><a href="purescore-uber-map.html">Calc Explorer</a></div>
 
   <div class="cu-view" data-view="overview"><pre class="mermaid">flowchart LR
-  IN["INPUTS<br/>labs · wearables · PROs"]:::io
-  MR["MARKER RISK<br/>1 bands · 2 cohort blend · 2b personal z"]:::eng
+  IN["1 · INPUTS<br/>labs · wearables · PROs · behaviours"]:::io
+  MR["2 · MARKER RISK<br/>bands · cohort blend · personal z"]:::eng
   RES["RESERVOIRS x15<br/>MONIAC · kappa coupling"]:::res
-  PK["PILLAR RISK Rk<br/>gamma-mean + rho*B"]:::eng
-  PS["PURESCORE<br/>delta-mean · 100(1-Rtotal)"]:::ps
-  CR["CRITICAL CASCADE<br/>crit pillar to cap 40 to escalate"]:::crit
-  CV["COMPANION VECTOR<br/>10 meta-dimensions"]:::comp
+  CS["CLINICAL SCORES · gated<br/>ASCVD FINDRISC KDIGO FIB4 FRAX"]:::clin
+  PK["3 · PILLAR RISK Rk<br/>gamma-mean + rho*B"]:::eng
+  PS["4 · PURESCORE<br/>delta-mean · 100(1-Rtotal)"]:::ps
+  CR["5 · CRITICAL CASCADE<br/>crit pillar to cap 40 to escalate"]:::crit
+  CV["5 · COMPANION VECTOR<br/>10 meta-dimensions"]:::comp
   PZ["PERSONALIZATION<br/>sex · age · life-stage · condition"]:::pers
-  CS["CLINICAL SCORES<br/>gated · feedback as max"]:::clin
-  IN --> MR --> PK --> PS --> CR
+  IN --> MR
+  IN -->|markers + behaviours fill| RES
+  MR -->|markers compute| CS
+  MR --> PK
   RES -->|rho*B_tilde| PK
-  CS -.->|raise-only| PK
-  PZ -.->|reshapes ranges and weights| MR
-  PZ -.-> PK
+  CS -.->|feedback as max · raise-only| PK
+  PK --> PS --> CR
   PS --> CV
+  PZ -.->|reshapes ranges| MR
+  PZ -.->|reshapes weights| PK
   click IN "07-data-streams-and-experience.html" "Doc 07 — data streams"
   click MR "03-scoring-formula.html" "Doc 03 — scoring formula"
   click RES "reservoir-sim.html" "Reservoir simulator"
@@ -85,6 +91,7 @@ The five views share one calculation: <b>Overview</b> (all systems at once) · <
   CAP["critical cascade · cap 40"]:::crit
   RV["reservoirs B_tilde · Doc 04"]:::res
   X --> S1 --> S2 --> S2b --> W --> RK --> ST --> WK --> RT --> PS --> CAP
+  X -.->|markers + behaviours accumulate| RV
   RV -->|rho*B_tilde| RK
   click X "06-data-model-and-reference-ranges.html" "Doc 06 — data model"
   click S1 "03-scoring-formula.html" "Doc 03 §1 — clinical band"
@@ -179,17 +186,19 @@ The five views share one calculation: <b>Overview</b> (all systems at once) · <
   classDef gDM fill:#2a1606,stroke:#f0903a,color:#ffd9b0;</pre></div>
 
   <div class="cu-view" data-view="critical"><pre class="mermaid">flowchart TB
-  M["marker r_i &gt;= 0.5 AND critical"]:::crit
-  G{"confirm gate"}:::eng
-  M --> G
+  MK["markers · labs · vitals"]:::io
+  M["1 · critical marker fires<br/>r_i at red · 0.5 or more"]:::crit
+  G{"2 · confirm gate"}:::eng
+  MK --> M --> G
   G -->|implausible / device / drug-expected| WATCH["Watch + reconfirm"]:::wait
-  G -->|corroborated| ALERT["ALERT"]:::crit
-  ALERT --> CP["critical pillar · Rk to 0.60"]:::crit
-  CP --> CAP["PureScore &lt;= 40 · status CRITICAL"]:::crit
-  CAP --> ESC{"emergency tier?"}:::eng
+  G -->|corroborated| ALERT["3 · ALERT"]:::crit
+  ALERT --> CP["4 · critical pillar · Rk to 0.60"]:::crit
+  CP --> CAP["5 · PureScore capped at 40<br/>status CRITICAL"]:::crit
+  CAP --> ESC{"6 · emergency tier?"}:::eng
   ESC -->|yes| HUM["escalate to human · Doc 16"]:::crit
   ESC -->|no| MON["urgent / routine · monitor"]:::wait
   SC["CLINICAL SCORES · gated<br/>ASCVD SCORE2 FINDRISC KDIGO KFRE FIB4 FRAX PhenoAge"]:::clin
+  MK --> SC
   SC -->|feedback as max · raise-only| CP
   FW["ACTUARIAL FIREWALL<br/>wellness score never reaches pricing"]:::gov
   CAP -.->|firewalled| FW
@@ -198,6 +207,7 @@ The five views share one calculation: <b>Overview</b> (all systems at once) · <
   click HUM "16-safety-governance-and-regulatory.html" "Doc 16 — escalation"
   click SC "10-clinical-scores-integration.html" "Doc 10 — clinical scores"
   click FW "19-actuarial-pricing-and-insurance.html" "Doc 19 — actuarial firewall"
+  classDef io fill:#0c1c2b,stroke:#4aa3df,color:#cfe8ff;
   classDef crit fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;
   classDef eng fill:#141a2e,stroke:#8b97f0,color:#dfe4ff;
   classDef wait fill:#1d1a0c,stroke:#edb14a,color:#ffe6b0;
@@ -230,6 +240,13 @@ The five views share one calculation: <b>Overview</b> (all systems at once) · <
 .cu.sel-ckd .gCKD,.cu.sel-dm .gDM{opacity:1;filter:brightness(1.32) saturate(1.3)}
 /* sex/age also light their natural condition partners */
 .cu.sel-f .gMeno,.cu.sel-f .gPreg{opacity:1}
+/* full-screen (per-view; the toggle expands whichever view is active) */
+.cu-full{font:inherit;font-size:12.5px;padding:5px 10px;border-radius:8px;border:1px solid var(--line,#2a3340);background:var(--bg,#0c1320);color:inherit;cursor:pointer;margin-left:6px}
+.cu-full:hover{border-color:#2b5a86}
+.cu.full{position:fixed;inset:0;z-index:9999;margin:0;border-radius:0;overflow:auto;padding:14px 18px}
+.cu.full .cu-view{max-height:calc(100vh - 96px)}
+.cu.full .cu-view pre.mermaid svg{max-width:100%!important;width:100%;height:auto}
+.cu.full .cu-full{background:#2b5a86;border-color:#2b5a86;color:#fff;font-weight:700}
 </style>
 <script>(function(){
   var cu=document.getElementById("cu"); if(!cu) return;
@@ -251,6 +268,10 @@ The five views share one calculation: <b>Overview</b> (all systems at once) · <
   }
   [fAge,fSex,fCond].forEach(function(s){s.addEventListener("change",function(){filter(); if(cu.querySelector('.cu-tab[data-view="person"]')&&(fAge.value||fSex.value||fCond.value)){setView("person");}});});
   document.getElementById("fClear").addEventListener("click",function(){fAge.value="";fSex.value="";fCond.value="";filter();});
+  var fullBtn=document.getElementById("cuFull");
+  function setFull(on){cu.classList.toggle("full",on);fullBtn.textContent=on?"✕ Exit full screen":"⛶ Full screen";}
+  fullBtn.addEventListener("click",function(){setFull(!cu.classList.contains("full"));});
+  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&cu.classList.contains("full"))setFull(false);});
   // mermaid (startOnLoad, htmlLabels) must measure each diagram WHILE VISIBLE. Keep all views
   // visible until every diagram has a valid rendered SVG, then hide the inactive ones (a fixed
   // timer races mermaid and leaves the non-default tabs error/collapsed).
