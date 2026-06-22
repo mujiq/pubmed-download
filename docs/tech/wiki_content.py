@@ -33,7 +33,8 @@ def resolve_calc_data():
         if s not in consts: missing.append("constant %s" % s)
     if missing:
         raise ValueError("calc-graph.json references unresolved: " + "; ".join(missing))
-    g["const"] = {"delta": _const_num(consts[sym["delta"]]), "rho": _const_num(consts[sym["rho"]]),
+    g["const"] = {"delta": _const_num(consts[sym["delta"]]), "gamma": _const_num(consts[sym["gamma"]]),
+                  "rho": _const_num(consts[sym["rho"]]), "kappa_resp": _const_num(consts[sym["kappa_resp"]]),
                   "r_crit": _const_num(consts[sym["r_crit"]]), "pure_crit_cap": _const_num(consts[sym["pure_crit_cap"]]),
                   "phi": _const_num(consts[sym["phi"]]),
                   "q_impute": _const_num(consts[sym["q_impute"]]), "rp_impute": _const_num(consts[sym["rp_impute"]]),
@@ -257,6 +258,49 @@ def write_pillar_data():
         f.write(js)
     return out
 
+def write_weights_data():
+    """Emit assets/weights-data.js (window.PURESCORE_WEIGHTS) — the weighted graph for the pillar
+    weights & correlations diagram: pillar W_k + marker→pillar weights/channels, reservoir→pillar
+    feeds, and reservoir↔reservoir coupling (from calc-graph.json)."""
+    try:
+        W = dict(_load("pillar-weights.json")["weights"])
+    except Exception:
+        W = {}
+    def fw(s):
+        try:
+            return round(float(str(s).strip()), 4)
+        except Exception:
+            return 0.0
+    pillars = {}
+    for pid, name, desc, rows in PILLARS:
+        ms = []
+        for r in rows:
+            mk = r[0]; src = r[8] if len(r) > 8 else ""
+            _, chip = _CHAN_BUCKET.get(marker_channel(mk, src), ("bio", "lab"))
+            ms.append({"n": mk, "w": fw(r[7] if len(r) > 7 else 0), "ch": chip,
+                       "a": "mk-%s-%s" % (pid.lower(), _slug_metric(mk))})
+        pillars[pid] = {"name": name, "w": W.get(pid, 0), "markers": ms}
+    reservoirs = {}; coupling = []
+    try:
+        cg = _load("calc-graph.json")
+        for rk, rv in cg.get("reservoirs", {}).items():
+            reservoirs[rk] = {"label": rv.get("label", rk), "feeds": (rv.get("feeds", "") or "").upper(),
+                              "polarity": rv.get("polarity", ""), "inputs": [i[0] for i in rv.get("inputs", [])]}
+        for c in cg.get("reservoir_coupling", []):
+            t = c.get("t")
+            for s, coef in c.get("add", []):
+                coupling.append({"from": s, "to": t, "coef": coef, "kind": "add"})
+            for s, coef in c.get("subDeficit", []):
+                coupling.append({"from": s, "to": t, "coef": coef, "kind": "sub"})
+    except Exception:
+        pass
+    out = {"pillars": pillars, "reservoirs": reservoirs, "coupling": coupling}
+    js = ("/* GENERATED from pillar-weights.json + pillars.json + calc-graph.json — pillar weights & correlations diagram. */\n"
+          "window.PURESCORE_WEIGHTS=" + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n")
+    with open(os.path.join(_HERE, "assets", "weights-data.js"), "w", encoding="utf-8") as f:
+        f.write(js)
+    return out
+
 # ----------------------------------------------------------------- per-doc summaries
 SUMMARY = {
  "01":"Vision, design principles, and the institutional lessons (Babylon / Kaiser / Mayo) PureScore is engineered around.",
@@ -301,14 +345,47 @@ MERMAID = {
   PS(("PureScore")) --> CV & MET & REN & HEP
   PS --> INF & HEM & ENDO & BCM
   PS --> NUT & SLP & FIT & MCS"""),
- "03":("The scoring pipeline", """flowchart LR
-  X["raw x_i"] --> R1["1 · clinical risk<br/>r_i^clin (continuous)"]
-  R1 --> R2["2 · cohort blend<br/>max(clin, φ·cohort)"]
-  R2 --> R2b["2b · personal z<br/>κ·tanh(z_i/2)"]
-  R2b --> RK["3 · pillar risk<br/>γ-mean + reservoir"]
-  RK --> CR{"critical?"}
-  CR -->|yes| CAP["cap ≤ 40 + escalate"]
-  CR -->|no| PSc["5 · PureScore"]"""),
+ "03":("The scoring pipeline — uber-view (click any stage to jump to its section)", """flowchart TB
+  subgraph IN["Inputs · raw marker values x_i"]
+    direction LR
+    LAB["Labs<br/>clinical-grade"]:::io
+    WEAR["Wearables<br/>tiered · D22"]:::io
+    PRO["PROs / LIFE<br/>self-report"]:::io
+  end
+  IN --> S1
+  S1["<b>Stage 1 · clinical band</b><br/>r_i&#94;clin ∈ [0,1] · continuous<br/>optimum → 0.15 → 0.50 → saturating"]:::safe
+  S2["<b>Stage 2 · cohort blend</b><br/>r_i = max( r_clin , φ·r_cohort )<br/>raise-only · φ = 0.6"]:::safe
+  S2B["<b>Stage 2b · personal baseline</b><br/>+ κ·tanh(z_i/2) · band_clamp<br/>responsiveness · κ = 0.10"]:::resp
+  S3["<b>Stage 3 · pillar risk R_k</b><br/>γ-power-mean(ŵ_i , r_i) + ρ·B̃_k<br/>worst-sensitive · γ = 3"]:::worst
+  S4["<b>Stage 4 · status + critical override</b><br/>critical-marker red ⇒ R_k ← R_crit 0.60"]:::safe
+  S5["<b>Stage 5 · PureScore°</b><br/>δ-power-mean(W_k , R_k) · δ = 2<br/>W_k = base · cohort · goal · acute"]:::worst
+  S1 --> S2 --> S2B --> S3 --> S4 --> S5
+  S5 --> CR{"any pillar<br/>critical?"}:::safe
+  CR -->|yes| CAP["<b>Critical cascade</b><br/>PureScore ≤ 40 · status CRITICAL<br/>emergency ⇒ escalate · Doc 16"]:::crit
+  CR -->|no| OUT["<b>PureScore 0–100</b><br/>+ overall_status"]:::ps
+  RES[("Reservoirs B̃_k<br/>chronic burden · Doc 04")]:::reser -->|ρ_k = 0.2| S3
+  CONF["confidence_i · coverage cov_k<br/>Doc 06 §2"]:::meta -->|ŵ_i = w_i·conf| S3
+  PERS["personal z_i · EB baseline μ,σ<br/>Doc 05 §5.1"]:::meta --> S2B
+  WT["cohort · goal · acute multipliers<br/>Doc 08 / 09 / 10"]:::meta --> S5
+  S2B -.->|same z_i stream| COMP["Companion vector<br/>Trajectory · Early-warning · Modifiability…<br/>Doc 05 §4"]:::meta
+  OUT --> EXP["Explainability object<br/>binding constraint · top contributors<br/>§7 → nudges Doc 11"]:::meta
+  classDef io fill:#0c1c2b,stroke:#4aa3df,color:#cfe8ff;
+  classDef safe fill:#10202a,stroke:#4aa3df,color:#cfe8ff;
+  classDef resp fill:#241f0c,stroke:#edb14a,color:#ffe6b0;
+  classDef worst fill:#141a2e,stroke:#8b97f0,color:#dfe4ff;
+  classDef crit fill:#241016,stroke:#f0606e,color:#ffd0d6,stroke-width:2px;
+  classDef ps fill:#10241c,stroke:#3ad6a0,color:#bdf5e0,stroke-width:2px;
+  classDef reser fill:#0c2018,stroke:#2dd4bf,color:#bff5ec;
+  classDef meta fill:#1c1226,stroke:#a98bd6,color:#e6d8ff;
+  click S1 "#1-stage-1-marker-risk-from-clinical-bands" "Stage 1 — marker risk"
+  click S2 "#2-stage-2-blend-with-cohort-percentile-safety-dominant" "Stage 2 — cohort blend"
+  click S2B "#2b-stage-2b-personal-baseline-responsiveness-the-feedback-te" "Stage 2b — personal baseline"
+  click S3 "#3-stage-3-pillar-risk-worst-sensitive-aggregation-confidence" "Stage 3 — pillar risk"
+  click S4 "#4-stage-4-pillar-status-and-the-critical-override" "Stage 4 — critical override"
+  click S5 "#5-stage-5-purescore-personalized-weights-critical-cascade" "Stage 5 — PureScore"
+  click CAP "#5-3-critical-cascade-the-safety-cap" "Critical cascade"
+  click RES "04-moniac-reservoir-dynamics.html" "Doc 04 — reservoirs"
+  click COMP "05-critical-review-and-purescore-2.0.html" "Doc 05 — companion vector\""""),
  "04":("Reservoir hydraulics", """flowchart LR
   IN["inflows<br/>behaviours / values"] --> RES[("Reservoir B_j<br/>stock + memory")]
   V["valves<br/>interventions"] --> IN
@@ -703,6 +780,31 @@ def _deps_line(dep):
 def _reflink(r):
     return '<a class="mono" href="#%s">%s</a>' % (_esc(r), _esc(r)) if r else ""
 
+# Question-bank entries carry no explicit `section`/`phase`, but they DO carry semantic
+# `dimensions.axis_tags`, `category`, `cadence` and `prerequisites`. Derive the content-section
+# and intake-phase from those so the bank and the intake-overview agree (no fabricated stored field).
+def _q_section(q):
+    t = set((q.get("dimensions") or {}).get("axis_tags", []))
+    c = (q.get("category") or "").lower()
+    if t & {"pain", "cognition", "aesthetic"} or "symptom" in c or "self-percept" in c:
+        return "symptoms"
+    if t & {"diet", "activity", "sleep", "substance", "stress"} or any(
+            k in c for k in ("diet", "nutrition", "activity", "exercise", "sleep", "substance", "alcohol", "smok", "stress")):
+        return "lifestyle"
+    if t & {"condition_load", "genetic_familial", "reproductive"} or any(
+            k in c for k in ("history", "condition", "medication", "diagnos", "supplement")):
+        return "medical_history"
+    if t & {"anthropometric", "occupation", "environment", "social", "lifestage"} or any(
+            k in c for k in ("demograph", "anthropom", "socioecon", "occupation", "environment")):
+        return "demographics"
+    return "medical_history"
+
+def _q_phase(q):
+    cad = (q.get("cadence") or "").lower()
+    if cad in ("core", "once"): return "onboarding"
+    if q.get("prerequisites"): return "progressive"
+    return "ongoing"
+
 def build_question_bank():
     qb = _load("question-bank.json")
     m = qb["meta"]; qs = qb["questions"]
@@ -714,7 +816,7 @@ def build_question_bank():
                     "ongoing": "③ Ongoing tracking"}
     PHASE_RANK = {"onboarding": 0, "progressive": 1, "ongoing": 2}
     by_sec = {}
-    for q in qs: by_sec.setdefault(q.get("section", "lifestyle"), []).append(q)
+    for q in qs: by_sec.setdefault(_q_section(q), []).append(q)
     dom_codes = m["domain_codes"]                      # retained for the per-question domain badge
     n_sec = len([s for s in SECTION_ORDER if by_sec.get(s)])
     total = len(qs)
@@ -772,16 +874,16 @@ def build_question_bank():
              % ("".join(opt(p) for p in personas), "".join(opt(p) for p in pills), "".join(opt(a) for a in axes)))
     # per content-section panels, sub-grouped by intake phase, ordered along the chain
     for sec in SECTION_ORDER:
-        items = sorted(by_sec.get(sec, []), key=lambda x: (PHASE_RANK.get(x.get("phase", "ongoing"), 9), x.get("order", 999)))
+        items = sorted(by_sec.get(sec, []), key=lambda x: (PHASE_RANK.get(_q_phase(x), 9), x.get("order", 999)))
         if not items: continue
         h.append('<h2 id="sec-%s">%s <span class="small muted mono">· %d questions</span></h2>'
                  % (_esc(sec), _esc(SECTION_LABELS.get(sec, sec)), len(items)))
         cur_ph = None
         for q in items:
-            ph = q.get("phase", "ongoing")
+            ph = _q_phase(q)
             if ph != cur_ph:
                 cur_ph = ph
-                _pn = sum(1 for x in items if x.get("phase", "ongoing") == ph)
+                _pn = sum(1 for x in items if _q_phase(x) == ph)
                 h.append('<div class="section-h" style="margin:16px 0 6px;font-size:13px">%s <span class="small muted">· %d</span></div>'
                          % (_esc(PHASE_LABELS.get(ph, ph)), _pn))
             qp = sorted({k for r in q.get("responses", []) for k in (r.get("pillars") or {})})
@@ -801,7 +903,7 @@ def build_question_bank():
                      '<span id="%s"></span></h3>' % (_esc(q["ref"]), _esc(q["ref"]), _esc(q["text"]), _esc(q["id"])))
             # chip row
             chips = ['<span class="chip b-teal">P%s</span>' % q.get("priority", "?"),
-                     '<span class="chip b-gold">phase: %s</span>' % _esc(q.get("phase", "ongoing")),
+                     '<span class="chip b-gold">phase: %s</span>' % _esc(_q_phase(q)),
                      '<span class="chip b-mut mono">%s</span>' % _esc(q.get("domain", "")),
                      '<span class="chip b-mut">%s</span>' % _esc(q.get("category", "")),
                      '<span class="chip b-mut">%s</span>' % _esc(q.get("type", "")),
@@ -1230,6 +1332,7 @@ def build_purescore_dataflow():
 def build_purescore_uber():
     body = r"""<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Diagrams &amp; system maps &rsaquo; PureScore calculation explorer</div>
 <h1>PureScore Calculation Explorer <span class="small muted">&middot; cockpit &middot; one engine, one JSON</span></h1>
+<p class="lead">The live scoring engine you can poke at: edit any input and watch it flow through markers &rarr; pillars &rarr; PureScore. The <b>Cockpit</b> shows the audit tree; the <b>Flow map</b> shows the same computation as a dataflow. Every number is the real engine reading the canonical JSON &mdash; nothing here is hard-coded.</p>
 <div id="fdConfig" class="fd-config"></div>
 
 <div class="ce-tabs">
@@ -2260,7 +2363,7 @@ def _res_delta_chips(d):
 
 def build_adherence():
     d = _load("adherence.json"); m = d["meta"]; items = d["items"]
-    h = ['<div class="crumbs"><a href="index.html">Home</a> › Questions &amp; intake › Adherence</div>',
+    h = ['<div class="crumbs"><a href="index.html">Home</a> › Acting on it › Adherence</div>',
          '<h1>Appendix H — Adherence Micro Check-ins <span class="small muted">· closes F1</span></h1>',
          '<p class="lead">%s</p>' % _esc(m["idea"]), ILLUS]
     h.append('<div class="diagram"><div class="dt">How an adherence answer closes the loop</div>'
@@ -2417,7 +2520,7 @@ def build_persona_matrix():
 # =================================================================== APPENDIX J — goals (closes F3)
 def build_goals():
     d = _load("goals.json"); m = d["meta"]; goals = d["goals"]
-    h = ['<div class="crumbs"><a href="index.html">Home</a> › Questions &amp; intake › Goals</div>',
+    h = ['<div class="crumbs"><a href="index.html">Home</a> › Acting on it › Goals</div>',
          '<h1>Appendix J — User-Goals Catalogue <span class="small muted">· closes F3</span></h1>',
          '<p class="lead">%s</p>' % _esc(m["idea"]), ILLUS]
     h.append('<div class="tagrow" style="margin:6px 0"><span class="small muted">lifecycle:</span> '
@@ -3624,7 +3727,9 @@ def build_production_gaps():
          '<h1>Production readiness &mdash; gap analysis</h1>',
          '<p class="lead">What a <b>production-grade, patient-facing mobile app</b> still needs beyond this methodology + '
          'backend spec (scope excludes CI/CD &amp; deployment). <span class="chip b-red">missing</span> = no spec yet; '
-         '<span class="chip b-yellow">partial</span> = policy/partial only; <span class="chip b-green">addressed</span> = now specified. Sibling gap surfaces in this chapter: '
+         '<span class="chip b-yellow">partial</span> = policy/partial only; <span class="chip b-green">addressed</span> = now specified. '
+         'This page is the <b>product/app surface</b>; its companion <a class="xref" href="spec-audit.html">Spec build-readiness audit</a> '
+         'asks the different question of whether the <i>methodology spec itself</i> is complete enough to build from. Sibling gap surfaces in this chapter: '
          '<a class="xref" href="17-clinician-red-team-and-blind-spots.html">Clinician red-team &amp; blind-spots</a> and '
          '<a class="xref" href="appendix-coverage-audit.html">Coverage audit</a>.</p>', ILLUS,
          '<div class="callout note"><div class="ct">Two to treat as near-term</div>'

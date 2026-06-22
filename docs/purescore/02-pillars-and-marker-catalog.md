@@ -1,5 +1,7 @@
 # 02 — The 12 Pillars and the Marker Catalogue
 
+**See the weights visually:** [Pillar weights & correlations](pillar-weights.html) — one interactive diagram (weighted fan · Sankey · layered 3-tier · matrix) showing pillar weights `W_k`, marker→pillar weights, and reservoir feeds/coupling, with view-tabs and layer-toggles.
+
 > Binding conventions: `README.md §3`. Bands below are **illustrative, literature/guideline-
 > anchored values for a general adult cohort** and **must be re-verified and cohort-adjusted**
 > (age, sex, disease, medication) before production (README §5.6). Sex-specific overrides are in

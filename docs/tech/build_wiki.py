@@ -152,7 +152,8 @@ NAV = [
                  (DOCMAP["01"], SHORT["01"], "01"), ("conventions.html", "Conventions & glossary"),
                  ("decisions.html", "Decision log")]),
  ("1 · How scoring works", [("purescore-overview.html", "Overview"),
-                 (DOCMAP["02"], SHORT["02"], "02"), (DOCMAP["03"], SHORT["03"], "03"),
+                 (DOCMAP["02"], SHORT["02"], "02"), ("pillar-weights.html", "Pillar weights & correlations"),
+                 (DOCMAP["03"], SHORT["03"], "03"),
                  (DOCMAP["04"], SHORT["04"], "04"), ("reservoir-sim.html", "Reservoir simulator"),
                  (DOCMAP["05"], SHORT["05"], "05")]),
  ("2 · Inputs & intake", [(DOCMAP["06"], SHORT["06"], "06"), (DOCMAP["07"], SHORT["07"], "07"),
@@ -338,6 +339,7 @@ PDESC = {
 PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
           "production-gaps.html":"Production readiness — gaps",
           "spec-audit.html":"Spec build-readiness audit",
+          "pillar-weights.html":"Pillar weights & correlations",
           "editorial-review.html":"Editorial & cohesion review",
           "care-pathways.html":"Care pathways — condition pathways","care-roles.html":"Care team & roles",
           "prevention-engagement.html":"Prevention & engagement",
@@ -505,7 +507,8 @@ def sidebar(active):
 MERMAID_HEAD = ('<script type="module">import mermaid from '
   '"https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";'
   'mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",'
-  'flowchart:{htmlLabels:true,curve:"basis"},themeVariables:{fontSize:"14px"}});</script>')
+  'flowchart:{htmlLabels:true,curve:"basis"},themeVariables:{fontSize:"14px"}});'
+  'window.mermaid=mermaid;</script>')
 
 def fix_mermaid(html):
     def f(m):
@@ -755,6 +758,7 @@ def main():
     C.write_flag_data()   # generate assets/flags-data.js from data/clinical-flags.json (inline audit ⚠ badges)
     C.write_unit_data()   # generate assets/units-data.js from data/units.json (SI-canonical units + conversions)
     C.write_pillar_data() # generate assets/pillars-data.js (pillar-fan hover cards + click-to-section)
+    C.write_weights_data()# generate assets/weights-data.js (pillar weights & correlations diagram)
     render_index()
     render_chapters()
     for n in sorted(DOCMAP): render_doc(n)
@@ -808,6 +812,7 @@ def main():
     for fn, tab in [("feedback-loop.html", "Live feedback-loop demo"), ("states.html", "Patient state machine"),
                     ("engagement-state-machines.html", "Engagement state machines"),
                     ("purescore-system.html", "System at a glance"),
+                    ("pillar-weights.html", "Pillar weights & correlations"),
                     ("purescore-calc-uber.html", "PureScore Calc Diagram")]:
         body = os.path.join(HERE, fn[:-5] + ".body.html")
         if os.path.exists(body):
@@ -885,7 +890,7 @@ def _consistency_check():
     print("  [consistency] OK — count claims match live data" if not warn else "  [consistency] %d drift(s) above" % warn)
 
 # ----------------------------------------------------------------- "Connects to" footer (auto-derived)
-_DIAGRAMS = {"purescore-uber-map.html", "purescore-uber-map.html", "states.html", "engagement-state-machines.html",
+_DIAGRAMS = {"purescore-uber-map.html", "pillar-weights.html", "states.html", "engagement-state-machines.html",
              "class-model.html", "dossier-erd.html", "dossier-c4.html", "dossier-sequences.html",
              "class-model.html", "wearable-baselines.html", "purescore-wearable-baselines.html",
              "consent-onboarding.html", "purescore-system.html", "reservoir-sim.html",
@@ -899,7 +904,8 @@ _GRID_OF = {"appendix-biomarkers.html": "appendix-biomarkers.html#spreadsheet", 
 _CONNECTS_EXTRA = {
  "index.html": ["purescore-uber-map.html", "purescore-overview.html", DOCMAP["01"]],
  "purescore-overview.html": [DOCMAP["03"], DOCMAP["02"], "purescore-uber-map.html"],
- DOCMAP["02"]: ["appendix-biomarkers.html", "appendix-biomarkers.html#spreadsheet", DOCMAP["03"]],
+ DOCMAP["02"]: ["appendix-biomarkers.html", "pillar-weights.html", "appendix-biomarkers.html#spreadsheet", DOCMAP["03"]],
+ "pillar-weights.html": [DOCMAP["02"], DOCMAP["03"], DOCMAP["04"], "appendix-biomarkers.html", "purescore-uber-map.html"],
  DOCMAP["03"]: ["purescore-uber-map.html", DOCMAP["04"], "class-model.html"],
  DOCMAP["04"]: [DOCMAP["03"], "class-model.html", "purescore-uber-map.html"],
  DOCMAP["05"]: ["states.html", "purescore-uber-map.html", DOCMAP["03"]],
