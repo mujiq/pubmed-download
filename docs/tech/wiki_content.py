@@ -308,19 +308,52 @@ def write_weights_data():
                 if ni and (ni == nm or nm.startswith(ni) or ni.startswith(nm)):
                     out2.append(rk); break
         return out2
+    # ---- sex/age applicability: range-variations.json dims + curated supplement ----
+    try:
+        _rv = _load("range-variations.json")["markers"]
+    except Exception:
+        _rv = {}
+    rvsex, rvage, rvstage = set(), set(), {}
+    for nm2, m2 in _rv.items():
+        dims = set(v.get("dim") for v in m2.get("var", []))
+        if "sex" in dims: rvsex.add(nm2)
+        if "age_band" in dims: rvage.add(nm2)
+        lsk = [v.get("key", "") for v in m2.get("var", []) if v.get("dim") == "life_stage"]
+        if lsk:
+            sg = set()
+            for k in lsk:
+                kl = k.lower()
+                if "pregnan" in kl: sg.add("pregnancy")
+                if "menopaus" in kl: sg.add("menopause")
+            rvstage[nm2] = sorted(sg) or ["life-stage"]
+    CURATED = {
+        "Sex hormones (E2/Prog/FSH/LH/T/SHBG/AMH)": {"sex": "diff", "age": "adj", "agn": "shifts at menopause / andropause", "stage": ["menopause"]},
+        "Body fat % (DEXA)": {"sex": "diff"}, "BMD T-score (DEXA)": {"sex": "diff", "age": "gated", "agn": "screened in older adults"},
+        "Grip strength": {"sex": "diff", "age": "adj"}, "Grip strength (shared w/ BCM)": {"sex": "diff", "age": "adj"},
+        "CAC": {"age": "gated", "agn": "typically measured ≥40 y"}, "Cognitive screen (age-adj)": {"age": "gated", "agn": "older adults; age-normed"},
+        "Gait speed": {"age": "gated", "agn": "frailty / older adults"}, "Hematocrit": {"sex": "diff"}, "RDW": {"sex": "diff"},
+        "Iron saturation": {"sex": "diff"}, "Prolactin": {"sex": "diff"}, "eGFR (creatinine)": {"sex": "diff"},
+        "Free T4": {"age": "adj"}, "VO₂max (est.)": {"sex": "diff", "age": "adj"},
+    }
+    def applic(mk):
+        cur = CURATED.get(mk, {})
+        sx = cur.get("sex") or ("diff" if mk in rvsex else "all")
+        ag = cur.get("age") or ("adj" if mk in rvage else "all")
+        stg = sorted(set(rvstage.get(mk, [])) | set(cur.get("stage", [])))
+        return sx, ag, cur.get("agn", ""), stg
     pillars = {}
     for pid, name, desc, rows in PILLARS:
         ms = []
         for r in rows:
             mk = r[0]; src = r[8] if len(r) > 8 else ""
             _, chip = _CHAN_BUCKET.get(marker_channel(mk, src), ("bio", "lab"))
-            gl = GLOSS.get(mk, {})
+            gl = GLOSS.get(mk, {}); sx, ag, agn, stg = applic(mk)
             ms.append({"n": mk, "full": gl.get("full", mk), "desc": gl.get("desc", ""),
                        "w": fw(r[7] if len(r) > 7 else 0), "ch": chip,
                        "unit": r[1] if len(r) > 1 else "", "tier": r[2] if len(r) > 2 else "",
                        "g": r[4] if len(r) > 4 else "", "y": r[5] if len(r) > 5 else "", "r": r[6] if len(r) > 6 else "",
                        "src": src, "crit": bool(r[9]) if len(r) > 9 else False,
-                       "res": res_for_marker(pid, mk),
+                       "res": res_for_marker(pid, mk), "sx": sx, "ag": ag, "agn": agn, "stg": stg,
                        "a": "mk-%s-%s" % (pid.lower(), _slug_metric(mk))})
         pillars[pid] = {"name": name, "desc": desc, "w": W.get(pid, 0), "markers": ms}
     out = {"pillars": pillars, "reservoirs": reservoirs, "coupling": coupling}
@@ -397,7 +430,7 @@ MERMAID = {
   COH["Cohort percentile g(q_i) · shrinkage<br/>low representativeness ⇒ suppress φ<br/>Doc 13"]:::meta -->|r_cohort| S2
   RES[("Reservoirs B̃_k<br/>chronic burden · Doc 04")]:::reser -->|ρ_k = 0.2| S3
   CONF["confidence_i · coverage cov_k<br/>missing ⇒ impute median / drop · D33<br/>Doc 06 §2"]:::meta -->|ŵ_i = w_i·conf| S3
-  CS["Clinical scores · gated · Doc 10<br/>ASCVD · FINDRISC · KDIGO · FIB-4 · FRAX · PhenoAge"]:::pers -->|feedback max() · raise-only| S3
+  CS["Clinical scores · gated · Doc 10<br/>ASCVD · FINDRISC · KDIGO · FIB-4 · FRAX · PhenoAge"]:::pers -->|feedback as max · raise-only| S3
   PERS["personal z_i · EB baseline μ,σ<br/>Doc 05 §5.1"]:::meta --> S2B
   WT["cohort · goal · acute multipliers<br/>Doc 08 / 09 / 10"]:::pers --> S5
   S2B -.->|same z_i stream| COMP["Companion vector<br/>Confidence · Trajectory · Early-warning · Modifiability…<br/>Doc 05 §4"]:::meta

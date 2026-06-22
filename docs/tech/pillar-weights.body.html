@@ -2,14 +2,15 @@
 <h1>Pillar Weights &amp; Correlations <span class="small muted">&middot; one weighted graph, four ways</span></h1>
 <p class="lead">How the 12 pillars are weighted into PureScore (<code>W_k</code>), how markers roll up into each pillar
 (within-pillar weights), and how the MONIAC reservoirs feed and <b>cross-couple</b> the pillars. Switch the
-<b>view</b> and peel <b>layers</b> on/off. <b>Hover any item</b> for its full name, description and context.
-Data-driven from <code>pillar-weights.json</code> + <code>pillars.json</code> + <code>calc-graph.json</code> +
-<code>marker-glossary.json</code> — it cannot drift from the engine.
+<b>view</b>, peel <b>layers</b> on/off, and <b>filter by sex / age / life-stage</b> to see which markers apply.
+<b>Hover any item</b> for its full name, description and context. Data-driven from <code>pillar-weights.json</code> +
+<code>pillars.json</code> + <code>calc-graph.json</code> + <code>marker-glossary.json</code> + <code>range-variations.json</code>.
 See the <a class="xref" href="02-pillars-and-marker-catalog.html">marker catalogue (Doc 02)</a> and the
-<a class="xref" href="03-scoring-formula.html">scoring formula (Doc 03)</a>.</p>
+<a class="xref" href="08-sex-specific-models.html">sex-specific models (Doc 08)</a>.</p>
 
-<div class="callout note"><div class="ct">Illustrative</div>Weights are expert-priors pending cohort calibration (see the
-audit panel on Appendix A); re-verify before production (README §5.6).</div>
+<div class="callout note"><div class="ct">Note on weights</div>Pillar weights <code>W_k</code> are currently <b>sex-/age-invariant</b>
+in the data (conditioned weight vectors are a tracked gap, <code>gap:no-conditioned-weight-vectors</code>). So the sex/age
+controls here change <b>marker applicability &amp; reference ranges</b>, not the pillar weights. Illustrative; re-verify (README §5.6).</div>
 
 <div class="pw-bar">
   <span class="pw-lab">View</span>
@@ -23,30 +24,45 @@ audit panel on Appendix A); re-verify before production (README §5.6).</div>
   <button class="pw-chip on" data-t="heat" type="button">heat &amp; bar</button>
   <button class="pw-chip" data-t="markers" type="button">markers</button>
   <button class="pw-chip" data-t="res" type="button">reservoirs</button>
+  <button class="pw-chip" data-t="sexage" type="button">sex/age badges</button>
+</div>
+<div class="pw-filter" id="pw-filter">
+  <span class="pw-lab">Filter</span>
+  <span class="pw-seg" data-f="sex">sex <button data-v="all" class="on">all</button><button data-v="F">&#9792; female</button><button data-v="M">&#9794; male</button></span>
+  <span class="pw-seg" data-f="age">age <button data-v="all" class="on">all</button><button data-v="lt40">&lt;40</button><button data-v="mid">40&ndash;64</button><button data-v="old">65+</button></span>
+  <span class="pw-seg" data-f="stage">stage <button data-v="all" class="on">&mdash;</button><button data-v="pregnancy">pregnancy</button><button data-v="menopause">menopause</button></span>
+  <button class="pw-reset" id="pw-reset" type="button">reset</button>
+  <span class="pw-fnote" id="pw-fnote"></span>
 </div>
 <div id="pw-stage" class="pw-stage"></div>
 <div class="pw-legend" id="pw-legend"></div>
 
 <style>
-.pw-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:14px 0 8px}
+.pw-bar,.pw-filter{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pw-bar{margin:14px 0 6px}.pw-filter{margin:0 0 8px;padding:6px 8px;border:1px solid #1a2740;border-radius:9px;background:#0a1018}
 .pw-lab{font-size:11px;color:var(--dim,#8aa0b6);text-transform:uppercase;letter-spacing:.04em;margin:0 2px}
 .pw-grow{flex:1}
 .pw-tab,.pw-chip{font:inherit;font-size:12.5px;padding:5px 11px;border-radius:8px;border:1px solid var(--line,#2a3340);background:var(--bg2,#0c1320);color:inherit;cursor:pointer}
 .pw-tab.on{background:#13233e;border-color:#2b5a86;color:#cfe3ff}
 .pw-chip.on{background:#0e2a2a;border-color:#2ee6c9;color:#bff5ec}
+.pw-seg{font-size:11px;color:#8aa0b6;display:inline-flex;align-items:center;gap:3px}
+.pw-seg button{font:inherit;font-size:11.5px;padding:3px 8px;border-radius:6px;border:1px solid #243042;background:#0c1320;color:#cdd9e8;cursor:pointer}
+.pw-seg button.on{background:#241a2e;border-color:#b794f6;color:#e6d8ff}
+.pw-reset{font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #243042;background:#0c1320;color:#9bb0c5;cursor:pointer}
+.pw-fnote{font-size:11px;color:#b794f6}
 .pw-stage{border:1px solid var(--line,#243042);border-radius:12px;background:var(--bg2,#0b1119);padding:10px;overflow:auto}
 .pw-stage svg{display:block;width:100%;height:auto}
 .pw-stage [data-hk]{cursor:pointer}
 .pw-legend{font-size:11px;color:#8aa0b6;margin-top:8px;display:flex;flex-wrap:wrap;gap:12px}
 .pw-legend b{color:#cfe0f5}
 .pw-sw{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin-right:4px}
-.pw-hov{position:absolute;z-index:9999;max-width:310px;background:#0d1422;border:1px solid #2b5a86;border-radius:10px;padding:10px 12px;font-size:12px;color:#cfe0f5;box-shadow:0 14px 36px rgba(0,0,0,.6);pointer-events:none}
+.pw-hov{position:absolute;z-index:9999;max-width:312px;background:#0d1422;border:1px solid #2b5a86;border-radius:10px;padding:10px 12px;font-size:12px;color:#cfe0f5;box-shadow:0 14px 36px rgba(0,0,0,.6);pointer-events:none}
 .pw-hov .h{font-weight:700;color:#fff;font-size:12.5px}
 .pw-hov .sub{font-size:10.5px;margin:1px 0 5px;color:#7fd1c4}
 .pw-hov .d{color:#9fb3c8;margin-bottom:6px;font-size:11.5px}
 .pw-hov .kv{font-size:11px;color:#bcd;margin-top:2px}.pw-hov .kv b{color:#cfe0f5}
+.pw-hov .sa{font-size:11px;color:#cdb6e8;margin-top:3px}
 .pw-hov .bd{margin-top:4px}.pw-hov .bd span{display:inline-block;border-radius:3px;padding:0 5px;margin-right:3px;font-size:10px;color:#06121a}
-/* matrix */
 .pw-mx{width:100%;border-collapse:collapse;font-size:12px}
 .pw-mx th,.pw-mx td{padding:5px 8px;border-bottom:1px solid #16263a;text-align:left;vertical-align:middle}
 .pw-mx th{color:#8aa6c0;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em}
@@ -54,7 +70,9 @@ audit panel on Appendix A); re-verify before production (README §5.6).</div>
 .pw-mx .wbar{height:11px;border-radius:3px;min-width:2px;display:inline-block;vertical-align:middle}
 .pw-strip{display:flex;gap:2px;align-items:center;flex-wrap:wrap}
 .pw-cell{height:18px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9.5px;color:#06121a;overflow:hidden;white-space:nowrap;cursor:pointer}
+.pw-cell.dim{opacity:.28}
 .pw-cell a{color:inherit;text-decoration:none;padding:0 4px}
+.pw-cell .gl{margin-left:2px;font-size:9px}
 .pw-rv{display:inline-block;font-size:10px;color:#7fbfe6;background:#0c1c2b;border:1px solid #21384d;border-radius:5px;padding:1px 5px;margin:1px;cursor:pointer}
 </style>
 <script src="assets/weights-data.js"></script>
@@ -65,19 +83,43 @@ audit panel on Appendix A); re-verify before production (README §5.6).</div>
   var host=document.getElementById("pw-stage"); if(!host) return;
   var CH={lab:"#3ad6a0",clinical:"#7fbfe6",wearable:"#7fbfe6",inferred:"#9fb3c8",PRO:"#e6c97f",derived:"#9fb3c8"};
   var CHL={lab:"Biomarker (lab)",clinical:"Wearable (clinical)",wearable:"Wearable",inferred:"Wearable (inferred)",PRO:"Self-report / PRO",derived:"Derived index"};
+  var BADGE={sex:"#e879b9",age:"#b794f6",both:"#f0a35a",stage:"#5ad1a8"};
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
   function pct(w){return (Math.round(w*1000)/10)+"%";}
   var WMAX=Math.max.apply(null,ORDER.map(function(c){return P[c].w;}).concat([0.01]));
   function lerp(a,b,t){return Math.round(a+(b-a)*t);}
   function heat(w){var t=Math.max(0,Math.min(1,w/WMAX));return "rgb("+lerp(14,46,t)+","+lerp(42,200,t)+","+lerp(46,170,t)+")";}
   function resFor(code){var o=[];for(var k in RES){if(RES[k].feeds===code)o.push(k);}return o;}
-  // index every marker by anchor for hover lookup
   var MK={};ORDER.forEach(function(c){P[c].markers.forEach(function(m){m._p=c;MK[m.a]=m;});});
-  var st={view:"fan",t:{edges:true,heat:true,markers:false,res:false}};
+  var st={view:"fan",t:{edges:true,heat:true,markers:false,res:false,sexage:false},f:{sex:"all",age:"all",stage:"all"}};
+
+  /* sex/age applicability for the current filter/badge state */
+  function mApp(m){
+    var na = (st.f.age==="lt40" && m.ag==="gated");
+    var stageOn = st.f.stage!=="all";
+    var inStage = m.stg && m.stg.indexOf(st.f.stage)>=0;
+    var on = st.t.sexage || st.f.sex!=="all" || st.f.age!=="all" || stageOn;
+    var cls=null;
+    if(on){
+      if(stageOn && inStage) cls="stage";
+      else if(m.sx==="diff" && m.ag!=="all") cls="both";
+      else if(m.sx==="diff") cls="sex";
+      else if(m.ag!=="all") cls="age";
+    }
+    return {na:na,cls:cls};
+  }
+  function mAttr(m){var a=mApp(m),s="";if(a.na)s+=' opacity="0.22"';if(a.cls)s+=' stroke="'+BADGE[a.cls]+'" stroke-width="1.5"';return s;}
 
   /* ---------- shared rich hover ---------- */
   var hov=null;
   function hide(){if(hov){hov.remove();hov=null;}}
+  function saLine(m){var p="";
+    if(m.sx==="diff")p+="&#9893; ranges differ by sex. ";
+    if(m.ag==="gated")p+="&#9203; "+esc(m.agn||"age-gated, may not apply at all ages")+". ";
+    else if(m.ag==="adj")p+="age-adjusted ranges"+(m.agn?" ("+esc(m.agn)+")":"")+". ";
+    if(m.stg&&m.stg.length)p+="varies in: "+m.stg.map(esc).join(", ")+". ";
+    return p?'<div class="sa">'+p+'</div>':"";
+  }
   function show(target,kind,id){
     hide();var html="";
     if(kind==="m"){var m=MK[id];if(!m)return;
@@ -85,6 +127,7 @@ audit panel on Appendix A); re-verify before production (README §5.6).</div>
         (m.desc?'<div class="d">'+esc(m.desc)+'</div>':'')+
         '<div class="kv"><b>Unit</b> '+esc(m.unit||"—")+'</div>'+
         '<div class="bd"><span style="background:#3ad6a0">'+esc(m.g||"—")+'</span><span style="background:#edc14a">'+esc(m.y||"—")+'</span><span style="background:#f0606e">'+esc(m.r||"—")+'</span></div>'+
+        saLine(m)+
         (m.src?'<div class="kv"><b>Source</b> '+esc(m.src)+'</div>':'')+
         (m.res&&m.res.length?'<div class="kv"><b>Feeds reservoir</b> '+m.res.map(function(rk){return esc((RES[rk]||{}).label||rk);}).join(", ")+'</div>':'');
     } else if(kind==="r"){var rv=RES[id];if(!rv)return;
@@ -114,7 +157,7 @@ audit panel on Appendix A); re-verify before production (README §5.6).</div>
   function fan(){
     var W=980,H=560,cx=W/2,cy=58,r=30,n=ORDER.length,bw=64,gap=(W-2*40-n*bw)/(n-1),y=300;
     function bx(i){return 40+i*(bw+gap);}
-    var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="weighted pillar fan">';
+    var s='<svg viewBox="0 0 '+W+' '+H+'">';
     ORDER.forEach(function(c,i){var p=P[c],x=bx(i)+bw/2,sw=st.t.edges?(1.5+p.w*60):1.6;
       s+='<path d="M '+cx+' '+(cy+r)+' C '+cx+' '+(cy+120)+', '+x+' '+(y-90)+', '+x+' '+y+'" fill="none" stroke="#2ee6c9" stroke-opacity="0.45" stroke-width="'+sw.toFixed(1)+'"/>';});
     s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="#10242a" stroke="#2ee6c9"/><text x="'+cx+'" y="'+(cy+4)+'" text-anchor="middle" fill="#bff5ec" font-size="12" font-weight="700">PureScore</text>';
@@ -124,10 +167,9 @@ audit panel on Appendix A); re-verify before production (README §5.6).</div>
       s+='<text x="'+(x+bw/2)+'" y="'+(y+34)+'" text-anchor="middle" fill="#cfe0f5" font-size="10.5">'+pct(p.w)+'</text></g>';
       if(st.t.heat){var bwid=(p.w/WMAX)*bw;s+='<rect x="'+(x+(bw-bwid)/2)+'" y="'+(y+48)+'" width="'+bwid.toFixed(1)+'" height="5" rx="2" fill="#2ee6c9"/>';}
       if(st.t.markers){var ms=p.markers,mw=Math.max.apply(null,ms.map(function(m){return m.w||0.01;})),cw=bw/Math.max(ms.length,1),my=y+62;
-        ms.forEach(function(m,j){var h=8+(m.w/(mw||1))*22;s+='<rect'+hk("m",m.a)+' x="'+(x+j*cw+0.5).toFixed(1)+'" y="'+(my+30-h).toFixed(1)+'" width="'+(cw-1).toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+(CH[m.ch]||"#789")+'"/>';});}
+        ms.forEach(function(m,j){var h=8+(m.w/(mw||1))*22;s+='<rect'+hk("m",m.a)+mAttr(m)+' x="'+(x+j*cw+0.5).toFixed(1)+'" y="'+(my+30-h).toFixed(1)+'" width="'+(cw-1).toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+(CH[m.ch]||"#789")+'"/>';});}
       if(st.t.res){var rs=resFor(c),ry=y-60;rs.forEach(function(rk,j){var rx=x+bw/2-((rs.length-1)*30)/2+j*30;
-        s+='<g'+hk("r",rk)+'><circle cx="'+rx+'" cy="'+ry+'" r="11" fill="#0c1c2b" stroke="#7fbfe6"/>';
-        s+='<text x="'+rx+'" y="'+(ry+3)+'" text-anchor="middle" fill="#7fbfe6" font-size="8">'+esc(rk)+'</text></g>';
+        s+='<g'+hk("r",rk)+'><circle cx="'+rx+'" cy="'+ry+'" r="11" fill="#0c1c2b" stroke="#7fbfe6"/><text x="'+rx+'" y="'+(ry+3)+'" text-anchor="middle" fill="#7fbfe6" font-size="8">'+esc(rk)+'</text></g>';
         s+='<line x1="'+rx+'" y1="'+(ry+11)+'" x2="'+(x+bw/2)+'" y2="'+y+'" stroke="#7fbfe6" stroke-opacity="0.4"/>';});}
     });
     if(st.t.res){var pos={};ORDER.forEach(function(c,i){var rs=resFor(c);rs.forEach(function(rk,j){pos[rk]={x:bx(i)+bw/2-((rs.length-1)*30)/2+j*30,y:y-60};});});
@@ -135,16 +177,15 @@ audit panel on Appendix A); re-verify before production (README §5.6).</div>
     return s+'</svg>';
   }
 
-  /* ---------- sankey: markers (ribbons, no text) -> [reservoir mini-column] -> pillars -> score ---------- */
-  function ribbon(x0,y0,h0,x1,y1,h1,col,op,attr){var mx=(x0+x1)/2;
-    return '<path'+(attr||"")+' d="M '+x0+' '+y0+' C '+mx+' '+y0+', '+mx+' '+y1+', '+x1+' '+y1+' L '+x1+' '+(y1+h1)+' C '+mx+' '+(y1+h1)+', '+mx+' '+(y0+h0)+', '+x0+' '+(y0+h0)+' Z" fill="'+col+'" fill-opacity="'+op+'"/>';}
+  /* ---------- sankey ---------- */
+  function ribbon(x0,y0,h0,x1,y1,h1,col,op){var mx=(x0+x1)/2;
+    return '<path d="M '+x0+' '+y0+' C '+mx+' '+y0+', '+mx+' '+y1+', '+x1+' '+y1+' L '+x1+' '+(y1+h1)+' C '+mx+' '+(y1+h1)+', '+mx+' '+(y0+h0)+', '+x0+' '+(y0+h0)+' Z" fill="'+col+'" fill-opacity="'+op+'"/>';}
   function sankey(){
-    var W=980,H=560,top=22,bot=22,Htot=H-top-bot,gap=8;
-    var xM=70,wM=12,xR=300,wR=58,xP=560,wP=130,xS=860,wS=64;
+    var W=980,H=560,top=22,bot=22,Htot=H-top-bot,gap=8,xM=70,wM=12,xR=300,wR=58,xP=560,wP=130,xS=860,wS=64;
     var sumW=ORDER.reduce(function(a,c){return a+P[c].w;},0)||1,avail=Htot-(ORDER.length-1)*gap;
-    var py={},yy=top;ORDER.forEach(function(c){var hk2=P[c].w/sumW*avail;py[c]={y:yy,h:hk2};yy+=hk2+gap;});
+    var py={},yy=top;ORDER.forEach(function(c){var h=P[c].w/sumW*avail;py[c]={y:yy,h:h};yy+=h+gap;});
     var totH=ORDER.reduce(function(a,c){return a+py[c].h;},0);
-    var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="weighted sankey">';
+    var s='<svg viewBox="0 0 '+W+' '+H+'">';
     s+='<rect'+hk("p",ORDER[0])+' x="'+xS+'" y="'+top+'" width="'+wS+'" height="'+totH.toFixed(1)+'" rx="5" fill="#10242a" stroke="#2ee6c9"/>';
     s+='<text x="'+(xS+wS/2)+'" y="'+(top+totH/2)+'" text-anchor="middle" fill="#bff5ec" font-size="11" font-weight="700" transform="rotate(90 '+(xS+wS/2)+' '+(top+totH/2)+')">PureScore</text>';
     var sy=top;
@@ -153,21 +194,16 @@ audit panel on Appendix A); re-verify before production (README §5.6).</div>
       s+='<g'+hk("p",c)+'><rect x="'+xP+'" y="'+o.y.toFixed(1)+'" width="'+wP+'" height="'+o.h.toFixed(1)+'" rx="4" fill="'+fill+'" stroke="#2b5a86"/>';
       s+='<text x="'+(xP+8)+'" y="'+(o.y+o.h/2+4).toFixed(1)+'" fill="#fff" font-size="11" font-weight="700">'+esc(c)+' <tspan fill="#cfe0f5" font-weight="400">'+pct(p.w)+'</tspan></text></g>';
       if(!st.t.markers) return;
-      // order markers: grouped by reservoir (when res on), then direct
       var ms=p.markers.slice(),sm=ms.reduce(function(a,m){return a+(m.w||0.01);},0)||1;
       if(st.t.res){ms.sort(function(a,b){var ra=(a.res&&a.res[0])||"~",rb=(b.res&&b.res[0])||"~";return ra<rb?-1:ra>rb?1:0;});}
-      var groups={};if(st.t.res){ms.forEach(function(m){var rk=(m.res&&m.res[0])||null;if(rk){(groups[rk]=groups[rk]||{y:null,h:0,my:null}).h+=(m.w||0.01)/sm*o.h;}});}
+      var groups={};if(st.t.res){ms.forEach(function(m){var rk=(m.res&&m.res[0])||null;if(rk){(groups[rk]=groups[rk]||{y:null,h:0}).h+=(m.w||0.01)/sm*o.h;}});}
       var myy=o.y;
       ms.forEach(function(m){var mh=(m.w||0.01)/sm*o.h,col=CH[m.ch]||"#789";
-        s+='<rect'+hk("m",m.a)+' x="'+(xM-wM)+'" y="'+myy.toFixed(1)+'" width="'+wM+'" height="'+Math.max(mh-0.6,1.4).toFixed(1)+'" rx="2" fill="'+col+'"/>';
+        s+='<rect'+hk("m",m.a)+mAttr(m)+' x="'+(xM-wM)+'" y="'+myy.toFixed(1)+'" width="'+wM+'" height="'+Math.max(mh-0.6,1.4).toFixed(1)+'" rx="2" fill="'+col+'"/>';
         var rk=st.t.res&&m.res&&m.res[0];
-        if(rk){if(groups[rk].y===null)groups[rk].y=myy;groups[rk].my=(groups[rk].my||0); // reservoir node spans group
-          s+=ribbon(xM,myy,mh,xR,myy,mh,col,0.18); // marker -> reservoir (approx straight; refined below)
-        } else {
-          s+=ribbon(xM,myy,mh,xP,myy,mh,col,0.16); // marker -> pillar direct
-        }
+        if(rk){if(groups[rk].y===null)groups[rk].y=myy;s+=ribbon(xM,myy,mh,xR,myy,mh,col,mApp(m).na?0.05:0.18);}
+        else s+=ribbon(xM,myy,mh,xP,myy,mh,col,mApp(m).na?0.05:0.16);
         myy+=mh;});
-      // reservoir nodes + reservoir->pillar ribbons (group spans)
       if(st.t.res){for(var rk2 in groups){var gr=groups[rk2];if(gr.y===null)continue;
         s+='<g'+hk("r",rk2)+'><rect x="'+xR+'" y="'+gr.y.toFixed(1)+'" width="'+wR+'" height="'+Math.max(gr.h-0.6,2).toFixed(1)+'" rx="3" fill="#0c1c2b" stroke="#7fbfe6"/>';
         s+='<text x="'+(xR+wR/2)+'" y="'+(gr.y+Math.min(gr.h/2+3,14)).toFixed(1)+'" text-anchor="middle" fill="#7fbfe6" font-size="8.5">'+esc(rk2)+'</text></g>';
@@ -176,11 +212,11 @@ audit panel on Appendix A); re-verify before production (README §5.6).</div>
     return s+'</svg>';
   }
 
-  /* ---------- layered 3-tier ---------- */
+  /* ---------- layered ---------- */
   function layer(){
     var W=980,H=600,top=30,Htot=H-60,xMk=80,xR=330,xP=620,xS=860,n=ORDER.length,step=Htot/n;
     var py={};ORDER.forEach(function(c,i){py[c]=top+step*i+step/2;});
-    var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="layered weighted graph">';
+    var s='<svg viewBox="0 0 '+W+' '+H+'">';
     s+='<text x="'+xMk+'" y="18" fill="#8aa6c0" font-size="10">MARKERS</text><text x="'+xR+'" y="18" fill="#8aa6c0" font-size="10">RESERVOIRS</text><text x="'+xP+'" y="18" fill="#8aa6c0" font-size="10">PILLARS</text><text x="'+xS+'" y="18" fill="#8aa6c0" font-size="10">SCORE</text>';
     var sy=top+Htot/2;s+='<circle cx="'+(xS+10)+'" cy="'+sy+'" r="30" fill="#10242a" stroke="#2ee6c9"/><text x="'+(xS+10)+'" y="'+(sy+4)+'" text-anchor="middle" fill="#bff5ec" font-size="10" font-weight="700">Pure</text>';
     var rpos={};
@@ -188,9 +224,9 @@ audit panel on Appendix A); re-verify before production (README §5.6).</div>
       s+='<line x1="'+xR+'" y1="'+ry+'" x2="'+xP+'" y2="'+py[c]+'" stroke="#7fbfe6" stroke-opacity="0.35"/>';
       s+='<g'+hk("r",rk)+'><rect x="'+(xR-26)+'" y="'+(ry-7)+'" width="52" height="14" rx="4" fill="#0c1c2b" stroke="#7fbfe6"/><text x="'+xR+'" y="'+(ry+3)+'" text-anchor="middle" fill="#7fbfe6" font-size="8">'+esc(rk)+'</text></g>';});});
       COUP.forEach(function(e){var a=rpos[e.from],b=rpos[e.to];if(a&&b)s+='<path d="M '+a.x+' '+a.y+' C '+(a.x-50)+' '+a.y+', '+(b.x-50)+' '+b.y+', '+b.x+' '+b.y+'" fill="none" stroke="#e0a05a" stroke-opacity="0.5" stroke-dasharray="4 3"/>';});}
-    if(st.t.markers){ORDER.forEach(function(c){var ms=P[c].markers;ms.forEach(function(m,j){var my=py[c]+(j-(ms.length-1)/2)*9;
-      s+='<line x1="'+(xMk+4)+'" y1="'+my+'" x2="'+xP+'" y2="'+py[c]+'" stroke="'+(CH[m.ch]||"#789")+'" stroke-opacity="0.22"/>';
-      s+='<circle'+hk("m",m.a)+' cx="'+xMk+'" cy="'+my+'" r="3.4" fill="'+(CH[m.ch]||"#789")+'"/>';});});}
+    if(st.t.markers){ORDER.forEach(function(c){var ms=P[c].markers;ms.forEach(function(m,j){var my=py[c]+(j-(ms.length-1)/2)*9,a=mApp(m);
+      s+='<line x1="'+(xMk+4)+'" y1="'+my+'" x2="'+xP+'" y2="'+py[c]+'" stroke="'+(CH[m.ch]||"#789")+'" stroke-opacity="'+(a.na?0.06:0.22)+'"/>';
+      s+='<circle'+hk("m",m.a)+mAttr(m)+' cx="'+xMk+'" cy="'+my+'" r="3.6" fill="'+(CH[m.ch]||"#789")+'"/>';});});}
     ORDER.forEach(function(c){var p=P[c],fill=st.t.heat?heat(p.w):"#13233e",sw=st.t.edges?(1.5+p.w*55):1.6;
       s+='<line x1="'+(xP+46)+'" y1="'+py[c]+'" x2="'+(xS-20)+'" y2="'+sy+'" stroke="#2ee6c9" stroke-opacity="0.4" stroke-width="'+sw.toFixed(1)+'"/>';
       s+='<g'+hk("p",c)+'><rect x="'+(xP-46)+'" y="'+(py[c]-13)+'" width="92" height="26" rx="6" fill="'+fill+'" stroke="#2b5a86"/>';
@@ -198,14 +234,16 @@ audit panel on Appendix A); re-verify before production (README §5.6).</div>
     return s+'</svg>';
   }
 
-  /* ---------- matrix / heatmap ---------- */
+  /* ---------- matrix ---------- */
   function matrix(){
     var maxMW=Math.max.apply(null,ORDER.map(function(c){return Math.max.apply(null,P[c].markers.map(function(m){return m.w||0;}).concat([0.01]));}));
     var h='<table class="pw-mx"><thead><tr><th>Pillar</th><th>W_k</th><th>Markers (cell width &amp; colour = weight / channel — hover for detail)</th>'+(st.t.res?'<th>Reservoirs</th>':'')+'</tr></thead><tbody>';
     ORDER.forEach(function(c){var p=P[c];
       var wbar=st.t.heat?('<span class="wbar" style="width:'+(p.w/WMAX*120).toFixed(0)+'px;background:'+heat(p.w)+'"></span> '):'';
-      var strip='<div class="pw-strip">'+p.markers.map(function(m){var w=Math.max((m.w/maxMW)*120,26);
-        return '<span class="pw-cell"'+hk("m",m.a)+' style="width:'+w.toFixed(0)+'px;background:'+(CH[m.ch]||"#789")+(st.t.heat?'':'66')+'"><a href="appendix-biomarkers.html#'+encodeURIComponent(m.a)+'">'+esc(m.n.slice(0,14))+'</a></span>';}).join('')+'</div>';
+      var strip='<div class="pw-strip">'+p.markers.map(function(m){var w=Math.max((m.w/maxMW)*120,26),a=mApp(m);
+        var gl=a.cls?'<span class="gl" style="color:'+BADGE[a.cls]+'">'+(a.cls==="age"?"&#9203;":a.cls==="stage"?"&#9210;":"&#9893;")+'</span>':'';
+        var ring=a.cls?';box-shadow:0 0 0 1.5px '+BADGE[a.cls]:'';
+        return '<span class="pw-cell'+(a.na?' dim':'')+'"'+hk("m",m.a)+' style="width:'+w.toFixed(0)+'px;background:'+(CH[m.ch]||"#789")+(st.t.heat?'':'66')+ring+'"><a href="appendix-biomarkers.html#'+encodeURIComponent(m.a)+'">'+esc(m.n.slice(0,14))+'</a>'+gl+'</span>';}).join('')+'</div>';
       var rv=st.t.res?('<td>'+resFor(c).map(function(rk){return '<span class="pw-rv"'+hk("r",rk)+'>'+esc(rk)+'</span>';}).join('')+'</td>'):'';
       h+='<tr><td class="pc"'+hk("p",c)+'>'+esc(c)+' <span class="small muted">'+esc(p.name)+'</span></td><td>'+wbar+'<b>'+pct(p.w)+'</b></td><td>'+strip+'</td>'+rv+'</tr>';});
     if(st.t.res&&COUP.length){h+='<tr><td class="pc">coupling</td><td></td><td colspan="2" class="small muted">'+COUP.map(function(e){return esc(e.from)+'&rarr;'+esc(e.to)+' <b>'+e.coef+'</b>'+(e.kind==='sub'?' (−)':'');}).join(' &middot; ')+'</td></tr>';}
@@ -213,15 +251,27 @@ audit panel on Appendix A); re-verify before production (README §5.6).</div>
   }
 
   function legend(){
+    var on=st.t.sexage||st.f.sex!=="all"||st.f.age!=="all"||st.f.stage!=="all";
     var l=document.getElementById("pw-legend");
     l.innerHTML='<span><span class="pw-sw" style="background:#2ee6c9"></span><b>thicker / brighter = higher weight</b></span>'+
       [["lab","Biomarker (lab)"],["wearable","Wearable"],["PRO","Self-report / PRO"],["derived","Derived"]].map(function(x){return '<span><span class="pw-sw" style="background:'+CH[x[0]]+'"></span>'+x[1]+'</span>';}).join('')+
-      (st.t.res?'<span><span class="pw-sw" style="background:#7fbfe6"></span>reservoir</span><span><span class="pw-sw" style="background:#e0a05a"></span>reservoir↔reservoir coupling</span>':'')+
-      '<span class="small muted">hover any item for its full name &amp; description</span>';
+      (st.t.res?'<span><span class="pw-sw" style="background:#7fbfe6"></span>reservoir</span><span><span class="pw-sw" style="background:#e0a05a"></span>coupling</span>':'')+
+      (on?'<span><span class="pw-sw" style="background:'+BADGE.sex+'"></span>&#9893; sex-differing range</span><span><span class="pw-sw" style="background:'+BADGE.age+'"></span>&#9203; age-gated/adjusted</span><span><span class="pw-sw" style="background:'+BADGE.stage+'"></span>life-stage</span><span class="small muted">dimmed = not applicable to the selected cohort</span>':'<span class="small muted">hover any item for its full name &amp; description</span>');
   }
-  function render(){hide();host.innerHTML=st.view==="fan"?fan():st.view==="sankey"?sankey():st.view==="layer"?layer():matrix();legend();}
+  function fnote(){
+    var n=document.getElementById("pw-fnote");
+    if(st.f.sex==="all"&&st.f.age==="all"&&st.f.stage==="all"){n.textContent="";return;}
+    var dim=0,tot=0;ORDER.forEach(function(c){P[c].markers.forEach(function(m){tot++;if(mApp(m).na)dim++;});});
+    n.textContent=(dim?dim+" markers dimmed (not applicable) · ":"")+"showing applicability for this cohort";
+  }
+  function render(){hide();host.innerHTML=st.view==="fan"?fan():st.view==="sankey"?sankey():st.view==="layer"?layer():matrix();legend();fnote();}
   [].forEach.call(document.querySelectorAll(".pw-tab"),function(b){b.onclick=function(){st.view=b.getAttribute("data-view");[].forEach.call(document.querySelectorAll(".pw-tab"),function(x){x.classList.toggle("on",x===b);});render();};});
   [].forEach.call(document.querySelectorAll(".pw-chip"),function(b){b.onclick=function(){var k=b.getAttribute("data-t");st.t[k]=!st.t[k];b.classList.toggle("on",st.t[k]);render();};});
+  [].forEach.call(document.querySelectorAll(".pw-seg"),function(seg){var fac=seg.getAttribute("data-f");
+    [].forEach.call(seg.querySelectorAll("button"),function(b){b.onclick=function(){st.f[fac]=b.getAttribute("data-v");
+      [].forEach.call(seg.querySelectorAll("button"),function(x){x.classList.toggle("on",x===b);});render();};});});
+  document.getElementById("pw-reset").onclick=function(){st.f={sex:"all",age:"all",stage:"all"};
+    [].forEach.call(document.querySelectorAll(".pw-seg button"),function(x){x.classList.toggle("on",x.getAttribute("data-v")==="all");});render();};
   render();
 })();
 </script>
