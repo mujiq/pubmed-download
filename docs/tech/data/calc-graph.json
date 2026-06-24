@@ -511,8 +511,8 @@
    "basis": "apoB/LDL/SBP atherogenic load; anchors expert-prior, not risk-tiered (calibrate)",
    "calibration_status": "expert-prior",
    "input_units": {
-    "apob": "g/L",
-    "ldl": "mmol/L",
+    "apob": "mg/dL",
+    "ldl": "mg/dL",
     "sbp": "mmHg"
    }
   },
@@ -557,8 +557,8 @@
    "basis": "glycaemic burden; bad raised off treatment-target saturation (proposed)",
    "calibration_status": "expert-prior",
    "input_units": {
-    "hba1c": "mmol/mol",
-    "glu": "mmol/L",
+    "hba1c": "%",
+    "glu": "mg/dL",
     "waist": "cm"
    }
   },
@@ -760,7 +760,7 @@
    "calibration_status": "expert-prior",
    "input_units": {
     "egfr": "mL/min/1.73m²",
-    "uacr": "mg/mmol"
+    "uacr": "mg/g"
    }
   },
   "micr": {
@@ -782,8 +782,8 @@
    "basis": "micronutrient; vitD anchors re-based to IOM (proposed)",
    "calibration_status": "expert-prior",
    "input_units": {
-    "vitd": "nmol/L",
-    "b12": "pmol/L"
+    "vitd": "ng/mL",
+    "b12": "pg/mL"
    }
   },
   "oxd": {
@@ -805,7 +805,7 @@
    "basis": "oxygen-carrying; Hb sex/pregnancy-blind — gating pending (expert-prior)",
    "calibration_status": "expert-prior",
    "input_units": {
-    "hb": "g/L",
+    "hb": "g/dL",
     "spo2": "%"
    }
   },
@@ -823,7 +823,7 @@
    "basis": "iron stores (expert-prior)",
    "calibration_status": "expert-prior",
    "input_units": {
-    "ferr": "µg/L"
+    "ferr": "ng/mL"
    }
   }
  },

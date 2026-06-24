@@ -849,6 +849,7 @@ def main():
     _care_guard()
     _baseline_guard()
     _degradation_guard()
+    _unit_guard()
 
 def _engine_guard():
     """HARD guard (per D32): data/*.json is canonical for the scoring engine. Fail the build if
@@ -1084,6 +1085,41 @@ def _baseline_guard():
             print("     -", b)
         raise SystemExit("! build failed: baseline-guard — see wearable-metrics / baseline-dq-rules")
     print("  [baseline-guard] OK — every metric has source/unit/formula + full DQ category coverage")
+
+
+def _unit_guard():
+    """Unit canonicalization integrity (dual-store SI/conventional): HARD-fail if a calc-graph marker
+    threshold disagrees with units.json th_conv, if a dual marker's th_si is inconsistent with lin·th_conv,
+    or if a reservoir input_units label disagrees with the marker's own unit (the 100x mis-scale trap)."""
+    cg = C._load("calc-graph.json"); U = C._load("units.json").get("markers", {})
+    mk = cg.get("markers", {}); bad = []
+    nums = lambda t: [x for x in (t or []) if isinstance(x, (int, float))]
+    for mid, m in mk.items():
+        th = m.get("th")
+        um = U.get(mid)
+        if th and um and um.get("th_conv"):
+            if nums(th) != nums(um["th_conv"]):
+                bad.append("%s: calc-graph th %s != units.th_conv %s" % (mid, nums(th), nums(um["th_conv"])))
+    for mid, um in U.items():
+        if um.get("dual") and um.get("lin") and um.get("th_conv") and um.get("th_si"):
+            a, b = um["lin"]
+            want = [round(a * x + b, 2) for x in nums(um["th_conv"])]
+            if any(abs(w - g) > 0.6 for w, g in zip(want, nums(um["th_si"]))):
+                bad.append("%s: th_si %s != lin*th_conv %s" % (mid, nums(um["th_si"]), want))
+    munit = {mid: m.get("unit") for mid, m in mk.items()}
+    res = cg.get("reservoirs", {})
+    ritems = res.items() if isinstance(res, dict) else [(r.get("id", i), r) for i, r in enumerate(res)]
+    for rid, r in ritems:
+        for m, unit in (r.get("input_units") or {}).items():
+            if munit.get(m) and unit != munit[m]:
+                bad.append("reservoir %s: input_units[%s]=%r != marker.unit %r" % (rid, m, unit, munit[m]))
+    print("[unit-guard] %d markers cross-checked (calc-graph th == units.th_conv), %d reservoirs" % (len(mk), len(list(ritems))))
+    if bad:
+        print("  ! FAIL:")
+        for b in bad[:14]:
+            print("     -", b)
+        raise SystemExit("! build failed: unit-guard — calc-graph / units.json / reservoir units disagree")
+    print("  [unit-guard] OK — thresholds agree across files, th_si consistent, reservoir units match markers")
 
 
 def _degradation_guard():
