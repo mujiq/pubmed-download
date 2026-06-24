@@ -156,6 +156,7 @@ NAV = [
                  (DOCMAP["03"], SHORT["03"], "03"), ("progressive-data.html", "Progressive data & degradation"),
                  ("cohort-governance.html", "Cohort fallback governance"),
                  ("degradation-integrity.html", "Cohort fallback integrity & safety"),
+                 ("degradation-operations.html", "Cohort fallback lifecycle & ops"),
                  (DOCMAP["04"], SHORT["04"], "04"), ("reservoir-sim.html", "Reservoir simulator"),
                  (DOCMAP["05"], SHORT["05"], "05")]),
  ("2 · Inputs & intake", [(DOCMAP["06"], SHORT["06"], "06"), (DOCMAP["07"], SHORT["07"], "07"),
@@ -279,6 +280,7 @@ PDESC = {
  "progressive-data.html": "Missing/stale/invalid inputs fall back to cohort statistics — lower accuracy, wider forecast, nudges to fill the gap.",
  "cohort-governance.html": "Governance for cohort fallback — k-anonymity, conditional imputation, equity, provenance, backfill and UAE-locale safeguards.",
  "degradation-integrity.html": "Anti-gaming, data authenticity, cohort-collapse, degraded-mode safety and regulatory safeguards for cohort fallback.",
+ "degradation-operations.html": "Lifecycle, legal (retention/erasure/FHIR), jurisdiction (expat/minors), reliability and imputer ML-ops for cohort fallback.",
  "wearable-baseline-pipeline.html": "Terra/HealthKit/vendor data unified into one robust personal baseline, with exhaustive data-quality and estimator-hazard rules.",
  "purescore-uber-map.html": "Run the full scoring pipeline live — audit tree, dataflow map and editable leaves.",
  "01-vision-principles-and-lessons.html": "What PureScore is, the principles it holds to, and lessons that shaped it.",
@@ -350,6 +352,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "progressive-data.html":"Progressive data & graceful degradation",
           "cohort-governance.html":"Cohort fallback — governance & safeguards",
           "degradation-integrity.html":"Cohort fallback — integrity & safety",
+          "degradation-operations.html":"Cohort fallback — lifecycle & operations",
           "editorial-review.html":"Editorial & cohesion review",
           "consolidation-plan.html":"Consolidation plan",
           "care-pathways.html":"Care pathways — condition pathways","care-roles.html":"Care team & roles",
@@ -807,6 +810,7 @@ def main():
                       ("progressive-data.html", "build_progressive_data"),
                       ("cohort-governance.html", "build_cohort_governance"),
                       ("degradation-integrity.html", "build_degradation_integrity"),
+                      ("degradation-operations.html", "build_degradation_operations"),
                       ("purescore-sex.html", "build_purescore_sex"),
                       ("dossier-sequences.html", "build_sequences"),
                       ("dossier-erd.html", "build_erd"), ("dossier-c4.html", "build_c4"),
@@ -1130,7 +1134,16 @@ def _degradation_guard():
     for need in ("incentive", "integrity", "safety", "care_regulatory"):
         if need not in isecs:
             bad.append("degradation-integrity: missing section '%s'" % need)
-    locked = locked + ilocked
+    # round-4 lifecycle & operations: 3 locked decisions (erasure held as TODO) + section coverage
+    O = C._load("degradation-operations.json")
+    olocked = [d for d in O.get("decisions", []) if d.get("decision")]
+    if len(olocked) < 3:
+        bad.append("degradation-operations: < 3 locked decisions (have %d)" % len(olocked))
+    osecs = {s.get("id") for s in O.get("sections", [])}
+    for need in ("lifecycle", "identity", "interop", "reliability", "ml_ops", "delivery"):
+        if need not in osecs:
+            bad.append("degradation-operations: missing section '%s'" % need)
+    locked = locked + ilocked + olocked
     print("[degradation-guard] %d input types · %d completeness nudges · %d nudge classes · %d locked governance decisions"
           % (len(its), len(nudges), len(classes), len(locked)))
     if bad:

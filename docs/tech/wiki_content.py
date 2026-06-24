@@ -4536,7 +4536,7 @@ def _render_governance(fname, crumb, h1, lead_html, locked_label, connects):
         h.append('<h2 id="%s">%s</h2>' % (_esc(sec.get("id", "")), _esc(sec.get("title", ""))))
         h.append('<div class="tablewrap"><table><tbody>')
         for r in sec.get("rows", []):
-            badge = ' <span class="chip b-green">locked</span>' if r.get("decision") else ""
+            badge = ' <span class="chip b-green">locked</span>' if r.get("decision") else (' <span class="chip b-yellow">TODO</span>' if r.get("todo") else "")
             h.append('<tr><td style="white-space:nowrap"><b>%s</b>%s</td><td class="small">%s</td></tr>' % (_esc(r.get("k", "")), badge, _esc(r.get("v", ""))))
         h.append('</tbody></table></div>')
     h.append(connects)
@@ -4570,6 +4570,20 @@ def build_degradation_integrity():
                 '<a class="xref" href="care-pathways.html">Care pathways</a> · '
                 '<a class="xref" href="consent-onboarding.html">Consent &amp; onboarding</a>.</p>')
     return "Cohort fallback — integrity &amp; safety", _render_governance("degradation-integrity.json", "Cohort fallback — integrity &amp; safety", h1, lead, "Locked decisions (round 3)", connects)
+
+def build_degradation_operations():
+    """Cohort-fallback lifecycle & operations (round 4). From data/degradation-operations.json."""
+    h1 = '<h1>Cohort Fallback — Lifecycle &amp; Operations <span class="small muted">&middot; round 4: legal, jurisdiction, interop, reliability</span></h1>'
+    lead = ('<p class="lead">Taking the <a class="xref" href="progressive-data.html">degradation</a> trilogy from spec to operable: '
+            'the <b>data-lifecycle &amp; legal</b> (retention, deletion propagation, FHIR interop), <b>identity &amp; jurisdiction</b> '
+            '(expat cohort reference, minors), <b>reliability</b> (SLOs, the fallback-of-the-fallback, policy-as-code release '
+            'governance) and <b>imputer ML-ops</b> safeguards. The data-erasure mechanism is held as an open <span class="chip b-yellow">TODO</span>. '
+            'Single source: <code>data/degradation-operations.json</code>.</p>')
+    connects = ('<p class="small muted">Connects to: <a class="xref" href="degradation-integrity.html">Integrity &amp; safety</a> · '
+                '<a class="xref" href="cohort-governance.html">Cohort governance</a> · '
+                '<a class="xref" href="consent-onboarding.html">Consent &amp; onboarding</a> · '
+                '<a class="xref" href="16-safety-governance-and-regulatory.html">Doc 16 safety &amp; governance</a>.</p>')
+    return "Cohort fallback — lifecycle &amp; operations", _render_governance("degradation-operations.json", "Cohort fallback — lifecycle &amp; operations", h1, lead, "Locked decisions (round 4)", connects)
 
 # =================================================================== WEARABLE CORROBORATION (closes F4)
 def _wear_corr_counts():
