@@ -4191,7 +4191,7 @@ def build_baseline_pipeline():
         except Exception:
             return {}
     M = L("wearable-metrics.json"); SRC = L("baseline-sources.json")
-    FM = L("baseline-formulas.json"); DQ = L("baseline-dq-rules.json")
+    FM = L("baseline-formulas.json"); DQ = L("baseline-dq-rules.json"); MO = L("baseline-math-ops.json")
     metrics = M.get("metrics", {}); rules = DQ.get("rules", [])
     flow = ('flowchart LR\n'
             '  T["Terra"] & HK["Apple HealthKit"] & HC["Health Connect"] & VC["Vendor clouds"] --> IN["Ingest<br/>(idempotent)"]\n'
@@ -4292,8 +4292,25 @@ def build_baseline_pipeline():
                      % (_esc(r.get("name", "")), _esc(r.get("applies", "")), _esc(r.get("detect", "")),
                         _esc(r.get("action", "")), _esc(r.get("effect", "")), _esc(r.get("conf", "")), sevc.get(r.get("sev"), _esc(r.get("sev", "")))))
         h.append('</tbody></table></div>')
-    # 5 · UI connection
-    h.append('<h2 id="ui">5 &middot; How the mobile UI connects to the baselines</h2>')
+    # 5 · Estimator & operational hazards
+    mcats = MO.get("_meta", {}).get("categories", {})
+    morules = MO.get("rules", [])
+    h.append('<h2 id="mathops">5 &middot; Estimator &amp; operational hazards <span class="small muted">&middot; %d &mdash; even with perfect data</span></h2>' % len(morules))
+    h.append('<p class="small muted">Distinct from data-quality: ways the robust+adaptive <em>statistic</em> and the <em>runtime</em> that serves it can mislead even when every input is clean.</p>')
+    h.append('<div class="callout spec"><div class="ct">Two safety guardrails (highest stakes)</div><ul class="small">')
+    for r in morules:
+        if r.get("cat") == "safety":
+            h.append('<li><b>%s</b> &mdash; %s <span class="muted">→ %s</span></li>' % (_esc(r.get("name", "")), _esc(r.get("detect", "")), _esc(r.get("action", ""))))
+    h.append('</ul></div>')
+    h.append('<div class="tablewrap"><table><thead><tr><th>Hazard</th><th>Class</th><th>Detect</th><th>Mitigation &rarr; effect</th><th>Sev</th></tr></thead><tbody>')
+    for r in morules:
+        h.append('<tr><td><b>%s</b></td><td class="small muted">%s</td><td class="small">%s</td>'
+                 '<td class="small">%s <span class="muted">→ %s</span></td><td>%s</td></tr>'
+                 % (_esc(r.get("name", "")), _esc(mcats.get(r.get("cat"), r.get("cat", ""))), _esc(r.get("detect", "")),
+                    _esc(r.get("action", "")), _esc(r.get("effect", "")), sevc.get(r.get("sev"), _esc(r.get("sev", "")))))
+    h.append('</tbody></table></div>')
+    # 6 · UI connection
+    h.append('<h2 id="ui">6 &middot; How the mobile UI connects to the baselines</h2>')
     h.append('<p class="small">The <a class="xref" href="baseline-mob-viz.html">baseline mobile prototype</a> renders the baseline '
              'output triple <code>{center μ, spread σ_robust, confidence, drift}</code> five ways:</p>')
     ui = [("Baseline Band", "one metric vs its personal μ ± k·σ_robust band over time", "{μ, σ_robust}"),
@@ -4306,7 +4323,7 @@ def build_baseline_pipeline():
         h.append('<tr><td><b>%s</b></td><td class="small">%s</td><td class="small mono">%s</td></tr>' % (_esc(nm), _esc(sh), _esc(fr)))
     h.append('</tbody></table></div>')
     # 6 · Gaps
-    h.append('<h2 id="gaps">6 &middot; Identified gaps</h2>')
+    h.append('<h2 id="gaps">7 &middot; Identified gaps</h2>')
     gaps = ["No live Terra/HealthKit/vendor schema is pinned here — the source paths are illustrative and must be reconciled against current API versions before production.",
             "The robust+adaptive formula params (windows, half-lives, winsor %) are expert-priors, not yet calibrated against labelled data (Doc 14).",
             "Conditioned baselines (per-device, per-context) multiply state — a device/context registry + storage model is specified but not built.",
