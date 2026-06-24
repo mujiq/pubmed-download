@@ -1224,6 +1224,58 @@
      "when": "ls_older"
     }
    ]
+  },
+  {
+   "id": "g6pd",
+   "label": "G6PD safety gate",
+   "area": "gate",
+   "question": "G6PD status?",
+   "attr": "g6pd",
+   "doc": "16",
+   "formula": "G6PD deficiency (X-linked; high consanguinity-driven prevalence in Gulf/South-Asian/African populations) flags OXIDATIVE-DRUG safety — avoid dapsone, primaquine, rasburicase, nitrofurantoin, sulfonamides, methylene blue, and fava beans. Does not move marker bands; raises a hard medication-safety flag (D16). Consanguinity raises the prior and newborn-screening relevance.",
+   "branches": [
+    {
+     "id": "normal",
+     "label": "normal / not deficient",
+     "when": "g6pd_normal"
+    },
+    {
+     "id": "deficient",
+     "label": "G6PD-deficient — oxidative-drug avoidance flag",
+     "when": "g6pd_deficient"
+    },
+    {
+     "id": "unknown",
+     "label": "unknown — screen if Gulf/South-Asian/African ancestry or before an at-risk drug",
+     "when": "g6pd_unknown"
+    }
+   ]
+  },
+  {
+   "id": "hbpath",
+   "label": "Hemoglobinopathy gate",
+   "area": "gate",
+   "question": "hemoglobinopathy?",
+   "attr": "hbpath",
+   "doc": "16",
+   "formula": "Thalassemia trait/disease or HbS/HbC (prevalent in South-Asian, Gulf, Mediterranean, African ancestry; consanguinity-amplified) ROUTES interpretation: HbA1c is unreliable → fall back to fructosamine or CGM; a low Hb/MCV is read as a hemoglobinopathy (trait) before iron deficiency (check ferritin + Hb electrophoresis). Routing/interpretation gate, not a band shift (D16).",
+   "branches": [
+    {
+     "id": "none",
+     "label": "no hemoglobinopathy → standard interpretation",
+     "when": "hbpath_none"
+    },
+    {
+     "id": "present",
+     "label": "trait/disease → HbA1c→fructosamine/CGM; Hb/MCV read as trait first",
+     "when": "hbpath_present"
+    },
+    {
+     "id": "unknown",
+     "label": "unknown — screen if at-risk ancestry / microcytosis",
+     "when": "hbpath_unknown"
+    }
+   ]
   }
  ],
  "roots": {
