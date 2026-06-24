@@ -591,7 +591,7 @@ def page(fn, tab_title, body):
 <input id="search" type="search" placeholder="Filter pages…  ( / )"></div>
 <div class="shell">%s<main class="main">%s%s%s<footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · """
 """illustrative design, re-verify before production (<a class="xref" href="conventions.html">Conventions</a> §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
-<script src="assets/search-index.js"></script><script src="assets/search.js"></script><script src="assets/wiki.js"></script><script src="assets/pillars-data.js"></script><script src="assets/pillar-map.js"></script><script src="assets/diagram-zoom.js"></script></body></html>""") % (
+<script src="assets/search-index.js"></script><script src="assets/search.js"></script><script src="assets/wiki.js"></script><script src="assets/pillars-data.js"></script><script src="assets/pillar-map.js"></script><script src="assets/diagram-zoom.js"></script><script src="assets/page-meta.js"></script><script src="assets/acronyms.js"></script><script src="assets/hover.js"></script></body></html>""") % (
         esc(tab_title), MERMAID_HEAD, sidebar(fn), _chapter_strip(fn), body, prevnext(fn))
     with open(os.path.join(HERE, fn), "w", encoding="utf-8") as f:
         f.write(fix_mermaid(html))
@@ -849,6 +849,7 @@ def main():
     print("Generated %d pages → %s" % (built, HERE))
     _inject_connects()
     _build_search_index()
+    _write_hover_data()
     _consistency_check()
     _engine_guard()
     _flag_guard()
@@ -1032,6 +1033,18 @@ def _plain(html):
     for k, v in _ENT.items(): t = t.replace(k, v)
     t = re.sub(r"&#\d+;", " ", t)
     return re.sub(r"\s+", " ", t).strip()
+
+def _write_hover_data():
+    """Emit assets/acronyms.js + assets/page-meta.js for the wiki-wide hover tooltips (assets/hover.js)."""
+    import json as _json
+    ac = C._load("acronyms.json").get("acronyms", {})
+    open(os.path.join(HERE, "assets", "acronyms.js"), "w", encoding="utf-8").write(
+        "window.PURESCORE_ACRONYMS=" + _json.dumps(ac, ensure_ascii=False) + ";")
+    meta = {fn: {"title": title, "desc": PDESC.get(fn, "")} for fn, title in PTITLE.items()}
+    open(os.path.join(HERE, "assets", "page-meta.js"), "w", encoding="utf-8").write(
+        "window.PURESCORE_PAGEMETA=" + _json.dumps(meta, ensure_ascii=False) + ";")
+    print("  [hover] %d acronyms · %d page-meta → assets/acronyms.js + page-meta.js" % (len(ac), len(meta)))
+
 
 def _build_search_index():
     recs = []
