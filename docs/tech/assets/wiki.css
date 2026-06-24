@@ -344,3 +344,47 @@ footer.wf{color:var(--dim);font-size:12px;border-top:1px solid var(--line);margi
   max-width:340px; white-space:normal; text-align:left;
   box-shadow:0 8px 26px rgba(0,0,0,.55); opacity:1 !important; pointer-events:none; z-index:10000;
 }
+
+/* ---- diagram fullscreen / zoom-pan (assets/diagram-zoom.js) ---- */
+.dgm-host{cursor:zoom-in}
+.dgm-host .dt,.dgm-host a,.dgm-host text{cursor:auto}
+.dgm-zoom-btn{
+  position:absolute; top:8px; right:8px; z-index:4;
+  width:30px; height:30px; padding:0; border-radius:7px;
+  border:1px solid #2b5a86; background:rgba(12,23,38,.82); color:#cfe0f5;
+  font-size:15px; line-height:1; cursor:pointer; opacity:.5;
+  display:flex; align-items:center; justify-content:center;
+  transition:opacity .15s, background .15s;
+}
+.dgm-host:hover .dgm-zoom-btn{opacity:1}
+.dgm-zoom-btn:hover{background:#15324f; opacity:1}
+.dgm-overlay{
+  position:fixed; inset:0; z-index:9999; display:none;
+  flex-direction:column; background:rgba(5,9,16,.94);
+  -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
+}
+.dgm-overlay.on{display:flex}
+.dgm-bar{
+  display:flex; align-items:center; gap:8px; padding:8px 12px;
+  background:#0b1320; border-bottom:1px solid #1d2c44; color:#cfe0f5;
+  font:13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+.dgm-cap{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:58vw}
+.dgm-sp{flex:1}
+.dgm-b{
+  min-width:34px; height:30px; padding:0 10px; border-radius:6px;
+  border:1px solid #2b5a86; background:#0c1726; color:#cfe0f5;
+  font-size:13px; cursor:pointer;
+}
+.dgm-b:hover{background:#15324f}
+.dgm-x{border-color:#5a2b34; background:#1a0e12}
+.dgm-x:hover{background:#3a1620}
+.dgm-stage{
+  flex:1; overflow:hidden; display:flex; align-items:center; justify-content:center;
+  touch-action:none; cursor:grab;
+}
+.dgm-stage:active{cursor:grabbing}
+/* pan via translate on the wrapper; zoom changes the SVG's intrinsic width so the vector
+   re-rasterises crisply (no bitmap scale() blur). */
+.dgm-pan{will-change:transform}
+.dgm-pan>svg{display:block; background:#0b1320; border-radius:8px; max-width:none}

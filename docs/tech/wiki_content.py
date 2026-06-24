@@ -608,7 +608,7 @@ def build_biomarkers():
          '<span class="tier C">C</span> Core <span class="tier P">P</span> Peripheral '
          '<span class="tier X">X</span> Comprehensive &nbsp; · &nbsp; <span class="chip b-mut">2s</span> two-sided '
          '(low <i>and</i> high adverse)</div>',
-         '<div class="callout note"><div class="ct">Marker pipeline</div><a class="xref" href="appendix-wearables.html">ingest &amp; trust-tier (Appendix B)</a> &rarr; <b>bands (you are here)</b> &rarr; <a class="xref" href="purescore-wearable-baselines.html">personal baseline (Baselines · Wearables)</a> &middot; scoring math <a class="xref" href="03-scoring-formula.html">Doc 03</a>.</div>']
+         '<div class="callout note"><div class="ct">Marker pipeline</div><a class="xref" href="appendix-wearables.html">ingest &amp; trust-tier (Appendix B)</a> &rarr; <b>bands (you are here)</b> &rarr; <a class="xref" href="wearable-baseline-pipeline.html">personal baseline (Wearable baselines)</a> &middot; scoring math <a class="xref" href="03-scoring-formula.html">Doc 03</a>.</div>']
     h.append('<div id="cfFlags"></div>')
     h.append(
         '<div class="rv-switch"><span class="rv-lab">Range variations</span>'
@@ -721,7 +721,7 @@ def build_wearables():
          'anomaly may raise <b>Watch/Advisory</b> but <b>cannot drive a red/critical without a clinical-grade '
          'confirmation</b> (CGM / validated cuff / single-lead ECG, or a lab). '
          '(<a class="xref" href="05-critical-review-and-purescore-2.0.html">Doc 05</a> §3.4)</div>',
-         '<div class="callout note"><div class="ct">Marker pipeline</div>ingest &amp; <b>trust-tier (you are here)</b> &rarr; <a class="xref" href="appendix-biomarkers.html">bands (Appendix A · Markers)</a> &rarr; <a class="xref" href="purescore-wearable-baselines.html">personal baseline (Baselines · Wearables)</a> &middot; aggregated via <b>Terra</b> (below).</div>',
+         '<div class="callout note"><div class="ct">Marker pipeline</div>ingest &amp; <b>trust-tier (you are here)</b> &rarr; <a class="xref" href="appendix-biomarkers.html">bands (Appendix A · Markers)</a> &rarr; <a class="xref" href="wearable-baseline-pipeline.html">personal baseline (Wearable baselines)</a> &middot; aggregated via <b>Terra</b> (below).</div>',
          '<div class="tablewrap"><table><thead><tr><th>Metric</th><th>Layer</th><th>Trust tier</th>'
          '<th>q_source</th><th>Pillars</th><th>Devices</th><th>Role</th></tr></thead><tbody>']
     tcls = {"clinical-grade":"b-green","consumer-validated":"b-acc","inferential":"b-yellow"}
@@ -3582,7 +3582,7 @@ def build_purescore_overview():
     h.append('<p class="small muted">Totals: %d markers across the catalogue, %d wearable signals, %d LIFE questions '
              '&mdash; all weighted into pillars &amp; reservoirs. Constants (φ, κ_resp, γ, δ, ρ_k, R_crit, cap) and '
              'per-marker weights live in <a class="xref" href="admin-weights.html">Weights &amp; constants</a>; '
-             'per-metric baselines in <a class="xref" href="purescore-wearable-baselines.html">Wearable baselines</a>.</p>'
+             'per-metric baselines in <a class="xref" href="wearable-baseline-pipeline.html">Wearable baselines</a>.</p>'
              % (sum(len(r) for _a, _b, _c, r in PILLARS), len(WEARABLES), nq))
     return "PureScore · Overview", "".join(h)
 
@@ -3603,51 +3603,6 @@ _WB_BASELINE = {
  "Sleep stages (REM/deep/light)": ("proportion vs age-norm (informational)", "age-normal", "nightly"),
  "Respiratory rate": ("deviation from personal nightly baseline", "12–20 /min", "nightly"),
 }
-
-def build_wearable_baselines():
-    tcls = {"clinical-grade": "b-green", "consumer-validated": "b-acc", "inferential": "b-yellow"}
-    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Questions &amp; intake &rsaquo; Baselines (Wearables)</div>',
-         '<h1>Baselines (Wearables)</h1>',
-         '<p class="lead">Each wearable metric is scored against a <b>personal baseline</b> (empirical-Bayes μ/σ that '
-         'shrinks from the cohort prior toward the patient as data accrues &mdash; '
-         '<a class="xref" href="05-critical-review-and-purescore-2.0.html">Doc 05 §5.1</a>), not a fixed cut-point. '
-         'The personal z-score it produces drives Stage 2b of the <a class="xref" href="03-scoring-formula.html">'
-         'score</a>, the Trajectory arrow and the Early-warning ladder. Trust tier (D22) caps how far a signal can '
-         'move a band.</p>', ILLUS,
-         '<div class="tablewrap"><table><thead><tr><th>Metric</th><th>Trust tier</th><th>Baseline method</th>'
-         '<th>Expected range</th><th>Cadence</th><th>Pillars</th></tr></thead><tbody>']
-    for (m, layer, tier, q, pil, dev) in WEARABLES:
-        meth, rng, cad = _WB_BASELINE.get(m, ("personal EB μ/σ", "personal band", "daily"))
-        h.append('<tr><td><b>%s</b></td><td><span class="chip %s">%s</span></td><td class="small">%s</td>'
-                 '<td class="small mono">%s</td><td class="small muted">%s</td><td class="small">%s</td></tr>'
-                 % (_esc(m), tcls.get(tier, "b-mut"), _esc(tier), _esc(meth), _esc(rng), _esc(cad), _esc(pil)))
-    h.append('</tbody></table></div>')
-    h.append('<div class="callout note"><div class="ct">How a baseline is built</div>'
-             '<code>μ_i = (n/(n+k))·x̄_personal + (k/(n+k))·μ_cohort</code>; <code>z = (x−μ)/σ</code>. Cold-start '
-             'leans on the cohort prior; sensitivity grows with <code>n</code>. Consumer/inferential tiers are '
-             'informational-only and never set a red/critical without clinical-grade confirmation (D22).</div>')
-    h.append('<div class="callout note"><div class="ct">Marker pipeline</div>'
-             '<a class="xref" href="appendix-wearables.html">ingest &amp; trust-tier (Appendix B)</a> &rarr; '
-             '<a class="xref" href="appendix-biomarkers.html">bands (Appendix A · Markers)</a> &rarr; '
-             '<b>personal baseline (you are here)</b> &middot; mobile prototype: '
-             '<a class="xref" href="wearable-baselines.html">Wearable baselines (mobile)</a>.</div>')
-    h.append('<h2 id="ui-connect">How the UI connects to the baselines</h2>')
-    h.append('<p class="small">A baseline is a triple <code>{centre μ, robust spread σ, confidence, drift}</code>. The '
-             '<a class="xref" href="baseline-mob-viz.html">mobile baseline UI</a> renders that triple five ways &mdash; '
-             'each screen reads directly off the baseline model:</p>')
-    h.append('<div class="tablewrap"><table><thead><tr><th>Screen</th><th>Reads</th><th>Baseline quantity</th></tr></thead><tbody>'
-             '<tr><td><b>Baseline Band</b></td><td class="small">one metric vs its personal μ ± k·σ band over time</td><td class="small mono">{μ, σ}</td></tr>'
-             '<tr><td><b>Deviation Scan</b></td><td class="small">today\'s personal z per metric (morning scan)</td><td class="small mono">z = (x−μ)/σ</td></tr>'
-             '<tr><td><b>Body Radar</b></td><td class="small">polar composite — outward = better-than-baseline</td><td class="small mono">z → pillars</td></tr>'
-             '<tr><td><b>Baseline Drift</b></td><td class="small">how the centre itself moves week-over-week</td><td class="small mono">drift of μ</td></tr>'
-             '<tr><td><b>Confidence &amp; Trust</b></td><td class="small">band widens over data gaps (absence = uncertainty)</td><td class="small mono">q_source·exp(−Δt/τ)</td></tr>'
-             '</tbody></table></div>')
-    h.append('<div class="callout spec"><div class="ct">Where the baseline comes from</div>'
-             'The μ/σ above are computed by the <a class="xref" href="wearable-baseline-pipeline.html">Wearable baseline pipeline</a> '
-             '&mdash; which unifies <b>Terra · HealthKit · Health Connect · vendor clouds</b>, transforms every source to a '
-             'canonical unit, applies the robust+adaptive formula, and runs the data-quality rules that keep a bad sample, a '
-             'time-zone glitch, a dead battery or an upstream schema change from corrupting the band.</div>')
-    return "Baselines (Wearables)", "".join(h)
 
 def _sex_gated(sex):
     try: qs = _load("question-bank.json")["questions"]
@@ -4194,18 +4149,28 @@ def build_baseline_pipeline():
     FM = L("baseline-formulas.json"); DQ = L("baseline-dq-rules.json"); MO = L("baseline-math-ops.json")
     metrics = M.get("metrics", {}); rules = DQ.get("rules", [])
     flow = ('flowchart LR\n'
-            '  T["Terra"] & HK["Apple HealthKit"] & HC["Health Connect"] & VC["Vendor clouds"] --> IN["Ingest<br/>(idempotent)"]\n'
+            '  subgraph SRC["Sources · trust-tiered (D22)"]\n'
+            '    direction TB\n'
+            '    T["Terra"]\n    HK["Apple HealthKit"]\n    HC["Health Connect"]\n    VC["Vendor clouds<br/>Oura·Whoop·Garmin·Fitbit·Dexcom"]\n'
+            '  end\n'
+            '  SRC --> IN["Ingest<br/>idempotent · dedup"]\n'
             '  IN --> VAL{"Validate<br/>type · unit · plausibility"}\n'
             '  VAL -->|reject| Q[("Quarantine + log")]\n'
-            '  VAL -->|pass| MG["Unify / merge<br/>(trust · resolution · recency)"]\n'
-            '  MG --> CAN["Canonical units<br/>(SI)"]\n'
-            '  CAN --> BL["Baseline<br/>(robust median/MAD + EWMA)"]\n'
-            '  BL --> Z["Personal z<br/>(Doc 03 §2b)"]\n'
+            '  VAL -->|pass| MG["Unify / merge<br/>trust ▸ resolution ▸ recency"]\n'
+            '  MG --> CAN["Canonical units (SI)<br/>transform traps"]\n'
+            '  CAN --> DQ{"Data-quality gate<br/>8 rule categories"}\n'
+            '  DQ -->|winsorize · widen σ · drop| CAN\n'
+            '  DQ -->|clean| BL["Robust baseline<br/>median/MAD + EWMA"]\n'
+            '  COH[("Cohort prior μ_cohort")] -.->|empirical-Bayes shrink| BL\n'
+            '  BL --> Z["Personal z<br/>Doc 03 §2b · κ_resp"]\n'
             '  Z --> UI["Mobile baseline UI"]\n'
-            '  RAW[("Immutable raw store")] -.->|recompute| BL\n'
-            '  classDef k fill:#0c1726,stroke:#2b5a86,color:#cfe0f5; class IN,VAL,MG,CAN,BL,Z k')
-    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Inputs &amp; intake &rsaquo; Wearable baseline pipeline</div>',
-         '<h1>Wearable Baseline Pipeline <span class="small muted">&middot; Terra · HealthKit · device clouds &rarr; one fool-proof baseline</span></h1>',
+            '  Z --> SC["PureScore Stage 2b"]\n'
+            '  RAW[("Immutable raw store")] -.->|recompute · re-baseline| BL\n'
+            '  classDef k fill:#0c1726,stroke:#2b5a86,color:#cfe0f5;\n'
+            '  classDef g fill:#10241c,stroke:#3ad6a0,color:#bdf5e0;\n'
+            '  class IN,VAL,MG,CAN,DQ,BL,Z k\n  class UI,SC g')
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Inputs &amp; intake &rsaquo; Wearable baselines</div>',
+         '<h1>Wearable Baselines <span class="small muted">&middot; Terra · HealthKit · device clouds &rarr; one fool-proof personal baseline</span></h1>',
          '<p class="lead">How raw wearable data from <b>Terra</b>, <b>Apple HealthKit</b>, <b>Google Health Connect</b> and '
          '<b>vendor cloud APIs</b> (Oura · Whoop · Garmin · Fitbit · Withings · Dexcom · Libre) is ingested, validated, '
          '<b>unified</b>, transformed to <b>canonical units</b>, and turned into a <b>robust personal baseline</b> that '
@@ -4215,6 +4180,118 @@ def build_baseline_pipeline():
          '<code>data/wearable-metrics.json · baseline-sources.json · baseline-formulas.json · baseline-dq-rules.json</code>.</p>', ILLUS,
          '<div class="diagram"><div class="dt">Pipeline &mdash; ingest &rarr; validate &rarr; unify &rarr; canonicalise &rarr; baseline &rarr; z &rarr; UI</div>'
          '<pre class="mermaid">%s</pre></div>' % flow]
+
+    # ---- diagram assets (3 hand-built SVGs + 3 mermaid) used across the sections below ----
+    svg_anatomy = (
+        '<svg viewBox="0 0 680 300" width="100%" style="max-width:680px;background:#0b1320;border:1px solid #1d2c44;border-radius:8px" font-family="system-ui,sans-serif">'
+        '<defs><marker id="bah" markerWidth="9" markerHeight="9" refX="4" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 Z" fill="#3ad6a0"/></marker></defs>'
+        '<path d="M60,150 L300,138 L500,128 L624,92 L624,200 L500,182 L300,184 L60,196 Z" fill="#173a55" fill-opacity="0.5" stroke="#2b6f9e" stroke-width="1"/>'
+        '<path d="M60,173 L300,161 L500,155 L624,146" fill="none" stroke="#4aa3df" stroke-width="2"/>'
+        '<g fill="#9cc7f0"><circle cx="110" cy="166" r="3"/><circle cx="160" cy="150" r="3"/><circle cx="210" cy="178" r="3"/><circle cx="260" cy="158" r="3"/><circle cx="320" cy="170" r="3"/><circle cx="380" cy="150" r="3"/><circle cx="440" cy="168" r="3"/><circle cx="478" cy="152" r="3"/></g>'
+        '<line x1="500" y1="44" x2="500" y2="246" stroke="#edb14a" stroke-width="1" stroke-dasharray="4 3"/>'
+        '<line x1="500" y1="155" x2="500" y2="124" stroke="#3ad6a0" stroke-width="2" marker-end="url(#bah)"/>'
+        '<circle cx="500" cy="116" r="4.5" fill="#3ad6a0" stroke="#0b1320"/>'
+        '<text x="64" y="28" fill="#cfe0f5" font-size="13" font-weight="600">value over time</text>'
+        '<text x="506" y="40" fill="#edb14a" font-size="11">today</text>'
+        '<text x="512" y="118" fill="#3ad6a0" font-size="11">z = (x &#8722; μ)/σ</text>'
+        '<text x="556" y="140" fill="#7fb2e6" font-size="11">drift of μ ↗</text>'
+        '<text x="556" y="84" fill="#9cc7f0" font-size="10">band widens =</text><text x="556" y="96" fill="#9cc7f0" font-size="10">less confidence</text>'
+        '<g font-size="11"><rect x="64" y="270" width="22" height="10" fill="none" stroke="#4aa3df" stroke-width="2"/><text x="92" y="279" fill="#cfe0f5">μ centre</text>'
+        '<rect x="168" y="270" width="22" height="10" fill="#173a55" stroke="#2b6f9e"/><text x="196" y="279" fill="#cfe0f5">μ ± k·σ (robust spread)</text>'
+        '<circle cx="392" cy="275" r="4" fill="#3ad6a0"/><text x="402" y="279" fill="#cfe0f5">today → personal z</text></g>'
+        '</svg>')
+    svg_coldstart = (
+        '<svg viewBox="0 0 680 280" width="100%" style="max-width:680px;background:#0b1320;border:1px solid #1d2c44;border-radius:8px" font-family="system-ui,sans-serif">'
+        '<line x1="60" y1="50" x2="60" y2="230" stroke="#33486a" stroke-width="1"/><line x1="60" y1="230" x2="624" y2="230" stroke="#33486a" stroke-width="1"/>'
+        '<path d="M60,230 L147,140 L247,107 L433,84 L624,74" fill="none" stroke="#3ad6a0" stroke-width="2.5"/>'
+        '<path d="M60,50 L147,140 L247,173 L433,196 L624,206" fill="none" stroke="#8aa0bd" stroke-width="2" stroke-dasharray="5 4"/>'
+        '<line x1="147" y1="50" x2="147" y2="230" stroke="#edb14a" stroke-width="1" stroke-dasharray="3 3"/>'
+        '<circle cx="147" cy="140" r="4" fill="#edb14a"/>'
+        '<text x="64" y="28" fill="#cfe0f5" font-size="13" font-weight="600">weight on each prior as data accrues</text>'
+        '<text x="151" y="64" fill="#edb14a" font-size="11">n = k → 50 / 50</text>'
+        '<text x="150" y="108" fill="#8aa0bd" font-size="11">cold-start: cohort prior dominates</text>'
+        '<text x="360" y="120" fill="#3ad6a0" font-size="11">mature: personal baseline dominates</text>'
+        '<g fill="#6f86a6" font-size="10"><text x="56" y="244">0</text><text x="140" y="244">14</text><text x="240" y="244">30</text><text x="426" y="244">60</text><text x="612" y="244">90</text><text x="300" y="262">days of personal data (n)</text></g>'
+        '<g font-size="11"><line x1="64" y1="20" x2="86" y2="20" stroke="#3ad6a0" stroke-width="2.5"/><text x="92" y="24" fill="#cfe0f5">personal = n/(n+k)</text>'
+        '<line x1="240" y1="20" x2="262" y2="20" stroke="#8aa0bd" stroke-width="2" stroke-dasharray="5 4"/><text x="268" y="24" fill="#cfe0f5">cohort = k/(n+k)</text></g>'
+        '</svg>')
+    svg_robust = (
+        '<svg viewBox="0 0 680 260" width="100%" style="max-width:680px;background:#0b1320;border:1px solid #1d2c44;border-radius:8px" font-family="system-ui,sans-serif">'
+        '<rect x="60" y="98" width="564" height="72" fill="#3a2410" fill-opacity="0.35" stroke="#edb14a" stroke-width="1" stroke-dasharray="5 4"/>'
+        '<rect x="60" y="138" width="564" height="24" fill="#10241c" stroke="#3ad6a0" stroke-width="1"/>'
+        '<line x1="60" y1="134" x2="624" y2="134" stroke="#edb14a" stroke-width="2"/>'
+        '<line x1="60" y1="150" x2="624" y2="150" stroke="#3ad6a0" stroke-width="2"/>'
+        '<g fill="#9cc7f0"><circle cx="100" cy="152" r="3"/><circle cx="150" cy="148" r="3"/><circle cx="200" cy="151" r="3"/><circle cx="250" cy="149" r="3"/><circle cx="300" cy="150" r="3"/><circle cx="400" cy="150" r="3"/><circle cx="450" cy="151" r="3"/><circle cx="500" cy="148" r="3"/><circle cx="560" cy="150" r="3"/></g>'
+        '<circle cx="350" cy="66" r="5" fill="#f0606e" stroke="#0b1320"/><text x="330" y="56" fill="#f0606e" font-size="11">outlier day</text>'
+        '<text x="64" y="26" fill="#cfe0f5" font-size="13" font-weight="600">one bad reading: robust band holds, naive band lurches</text>'
+        '<text x="630" y="132" fill="#edb14a" font-size="10" text-anchor="end"></text>'
+        '<g font-size="11"><line x1="64" y1="232" x2="86" y2="232" stroke="#3ad6a0" stroke-width="2"/><text x="92" y="236" fill="#cfe0f5">median + MAD — holds</text>'
+        '<line x1="300" y1="232" x2="322" y2="232" stroke="#edb14a" stroke-width="2"/><text x="328" y="236" fill="#cfe0f5">mean ± SD — lurches up &amp; widens</text></g>'
+        '</svg>')
+    merge_tree = ('flowchart TB\n'
+        '  M["Same metric, many sources<br/>(resting HR: Oura + Apple Watch + phone)"] --> A{"Trust tier differs?<br/>(D22)"}\n'
+        '  A -->|yes| TR["Take higher trust tier<br/>(clinical &gt; consumer &gt; inferential)"]\n'
+        '  A -->|equal| B{"Resolution differs?<br/>(continuous vs spot)"}\n'
+        '  B -->|yes| RS["Prefer higher-resolution stream"]\n'
+        '  B -->|equal| C{"Recency differs?"}\n'
+        '  C -->|yes| RC["Prefer the most recent"]\n'
+        '  C -->|same window| CF["Conflict rule:<br/>reconcile (median) · flag disagreement · widen σ"]\n'
+        '  classDef k fill:#0c1726,stroke:#2b5a86,color:#cfe0f5;\n'
+        '  classDef w fill:#3a2410,stroke:#edb14a,color:#ffe6b0;\n'
+        '  class M,TR,RS,RC k\n'
+        '  class CF w')
+    dq_funnel = ('flowchart TB\n'
+        '  S["Incoming sample"] --> G1{"Time / time-zone"}\n'
+        '  G1 --> G2{"Gaps / missing"} --> G3{"Duplication / overlap"} --> G4{"Value anomalies"}\n'
+        '  G4 --> G5{"Units / definitions"} --> G6{"Device / sensor"} --> G7{"Upstream / schema"} --> G8{"Structure / coherence"}\n'
+        '  G8 -->|all pass| OK["Clean → into baseline"]\n'
+        '  G1 & G3 & G5 & G7 -.->|fail| ACT["quarantine · winsorize · widen confidence · drop"]\n'
+        '  G2 & G4 & G6 & G8 -.->|fail| ACT\n'
+        '  classDef k fill:#0c1726,stroke:#2b5a86,color:#cfe0f5;\n'
+        '  classDef r fill:#241016,stroke:#f0606e,color:#ffd0d6;\n'
+        '  class S,OK k\n'
+        '  class ACT r')
+    lifecycle = ('stateDiagram-v2\n'
+        '  [*] --> ColdStart\n'
+        '  ColdStart --> Maturing : data accrues (n↑)\n'
+        '  Maturing --> Stable : n ≥ n_min, low volatility\n'
+        '  Stable --> Drifting : sustained trend in μ\n'
+        '  Drifting --> Rebaseline : change-point detected\n'
+        '  Rebaseline --> Maturing : new-regime baseline\n'
+        '  Stable --> Insufficient : data gap / staleness\n'
+        '  Insufficient --> Maturing : data resumes\n'
+        '  ColdStart : cohort prior dominates, wide band\n'
+        '  Stable : personal μ/σ, tight band\n'
+        '  Rebaseline : reset window (illness, training block, device change)')
+
+    # 0 · Metrics at a glance (folded from the retired Baselines (Wearables) page)
+    tcls = {"clinical-grade": "b-green", "consumer-validated": "b-acc", "inferential": "b-yellow"}
+    h.append('<h2 id="glance">0 &middot; Metrics at a glance</h2>')
+    h.append('<p class="small muted">Every wearable metric is scored against a <b>personal baseline</b> (empirical-Bayes μ/σ that '
+             'shrinks from the cohort prior toward the patient as data accrues), not a fixed cut-point. Trust tier (D22) caps how far a '
+             'signal can move a band; consumer/inferential tiers are informational-only and never set a red/critical without '
+             'clinical-grade confirmation. Tier values are canonical in <a class="xref" href="appendix-wearables.html">Wearables (Appendix B)</a>.</p>')
+    h.append('<div class="tablewrap"><table><thead><tr><th>Metric</th><th>Trust tier</th><th>Baseline method</th>'
+             '<th>Expected range</th><th>Cadence</th><th>Pillars</th></tr></thead><tbody>')
+    for (m, layer, tier, q, pil, dev) in WEARABLES:
+        meth, rng, cad = _WB_BASELINE.get(m, ("personal EB μ/σ", "personal band", "daily"))
+        h.append('<tr><td><b>%s</b></td><td><span class="chip %s">%s</span></td><td class="small">%s</td>'
+                 '<td class="small mono">%s</td><td class="small muted">%s</td><td class="small">%s</td></tr>'
+                 % (_esc(m), tcls.get(tier, "b-mut"), _esc(tier), _esc(meth), _esc(rng), _esc(cad), _esc(pil)))
+    h.append('</tbody></table></div>')
+    # What a baseline is — anatomy + EB shrinkage
+    h.append('<h2 id="anatomy">What a baseline is</h2>')
+    h.append('<p class="small">A baseline is the output triple <code>{centre μ, robust spread σ, confidence, drift}</code>. '
+             'Today\'s reading becomes a <b>personal z-score</b> against that triple &mdash; the quantity Stage 2b of the score, the '
+             'Trajectory arrow and the Early-warning ladder all read.</p>')
+    h.append('<div class="diagram"><div class="dt">Anatomy of a personal baseline</div>%s</div>' % svg_anatomy)
+    h.append('<div class="callout note"><div class="ct">How a baseline is built (empirical-Bayes)</div>'
+             '<code>μ_i = (n/(n+k))·x̄_personal + (k/(n+k))·μ_cohort</code> &middot; '
+             '<code>z = (x − μ)/σ_robust</code>. Cold-start leans on the cohort prior; sensitivity grows with <code>n</code>. '
+             'This shrinkage is the same model as Doc 03 §2b (<a class="xref" href="03-scoring-formula.html">scoring formula</a>) '
+             'and Doc 05 §5.1.</div>')
+    h.append('<div class="diagram"><div class="dt">Cold-start &rarr; maturity &mdash; the baseline shifts from cohort prior to personal as n grows</div>%s</div>' % svg_coldstart)
+
     # 1 · Sources & unification
     h.append('<h2 id="sources">1 &middot; Sources &amp; unification</h2>')
     h.append('<div class="tablewrap"><table><thead><tr><th>Source</th><th>Ingest</th><th>Trust</th><th>Quirks that bite baselines</th></tr></thead><tbody>')
@@ -4229,6 +4306,8 @@ def build_baseline_pipeline():
     rob = SRC.get("robustness", {})
     h.append('<div class="callout spec"><div class="ct">Robustness contract &mdash; absorbing upstream change</div>'
              '<ul class="small">%s</ul></div>' % "".join("<li>%s</li>" % _esc(x) for x in rob.get("rules", [])))
+    h.append('<div class="diagram"><div class="dt">Merge order &mdash; one metric arriving from several sources</div>'
+             '<pre class="mermaid">%s</pre></div>' % merge_tree)
     # 2 · Canonical units + metric registry
     h.append('<h2 id="metrics">2 &middot; Canonical metrics registry</h2>')
     h.append('<p class="small muted">Every metric transformed to its canonical unit before any baseline math; SI stored internally. '
@@ -4272,6 +4351,7 @@ def build_baseline_pipeline():
     h.append('</tbody></table></div>')
     dg = FM.get("defaults_by_group", {})
     h.append('<p class="small"><b>Default per group:</b> ' + " &middot; ".join("<b>%s</b> %s" % (_esc(g), _esc(v)) for g, v in dg.items()) + "</p>")
+    h.append('<div class="diagram"><div class="dt">Why robust &mdash; median/MAD resists an outlier that mean &plusmn; SD absorbs</div>%s</div>' % svg_robust)
     # 4 · Data-quality rules
     cats = {"time": "Time &amp; time-zone", "gap": "Gaps &amp; missing", "duplication": "Duplication &amp; overlap",
             "value": "Value anomalies", "unit": "Units &amp; definitions", "device": "Device &amp; sensor",
@@ -4279,6 +4359,8 @@ def build_baseline_pipeline():
     h.append('<h2 id="dq">4 &middot; Data-quality rules <span class="small muted">&middot; %d rules, %d categories &mdash; the fool-proof layer</span></h2>' % (len(rules), len(cats)))
     h.append('<p class="small muted">Default stance: <b>%s</b>. Each rule: detect &rarr; action &rarr; effect-on-baseline &rarr; confidence impact. '
              'The build guard fails if any metric is left uncovered.</p>' % _esc(DQ.get("_meta", {}).get("default_stance", "")))
+    h.append('<div class="diagram"><div class="dt">Data-quality gate &mdash; every sample runs the 8 categories before it can touch the baseline</div>'
+             '<pre class="mermaid">%s</pre></div>' % dq_funnel)
     sevc = {"high": '<span class="chip b-red">high</span>', "med": '<span class="chip b-yellow">med</span>', "low": '<span class="chip b-mut">low</span>'}
     for ck, cl in cats.items():
         crules = [r for r in rules if r.get("cat") == ck]
@@ -4292,10 +4374,17 @@ def build_baseline_pipeline():
                      % (_esc(r.get("name", "")), _esc(r.get("applies", "")), _esc(r.get("detect", "")),
                         _esc(r.get("action", "")), _esc(r.get("effect", "")), _esc(r.get("conf", "")), sevc.get(r.get("sev"), _esc(r.get("sev", "")))))
         h.append('</tbody></table></div>')
-    # 5 · Estimator & operational hazards
+    # 4.5 · Baseline lifecycle (operational states)
+    h.append('<h2 id="lifecycle">5 &middot; Baseline lifecycle</h2>')
+    h.append('<p class="small muted">A baseline is not static: it is born on the cohort prior, matures as personal data accrues, '
+             'stabilises, and is <b>re-based</b> when a change-point (illness, a training block, a device swap) shifts the regime. '
+             'Re-baselining is the mechanism the engine does not yet implement (see gaps).</p>')
+    h.append('<div class="diagram"><div class="dt">Baseline lifecycle &mdash; cold-start &rarr; maturing &rarr; stable &rarr; drift &rarr; re-baseline</div>'
+             '<pre class="mermaid">%s</pre></div>' % lifecycle)
+    # 6 · Estimator & operational hazards
     mcats = MO.get("_meta", {}).get("categories", {})
     morules = MO.get("rules", [])
-    h.append('<h2 id="mathops">5 &middot; Estimator &amp; operational hazards <span class="small muted">&middot; %d &mdash; even with perfect data</span></h2>' % len(morules))
+    h.append('<h2 id="mathops">6 &middot; Estimator &amp; operational hazards <span class="small muted">&middot; %d &mdash; even with perfect data</span></h2>' % len(morules))
     h.append('<p class="small muted">Distinct from data-quality: ways the robust+adaptive <em>statistic</em> and the <em>runtime</em> that serves it can mislead even when every input is clean.</p>')
     h.append('<div class="callout spec"><div class="ct">Two safety guardrails (highest stakes)</div><ul class="small">')
     for r in morules:
@@ -4309,8 +4398,8 @@ def build_baseline_pipeline():
                  % (_esc(r.get("name", "")), _esc(mcats.get(r.get("cat"), r.get("cat", ""))), _esc(r.get("detect", "")),
                     _esc(r.get("action", "")), _esc(r.get("effect", "")), sevc.get(r.get("sev"), _esc(r.get("sev", "")))))
     h.append('</tbody></table></div>')
-    # 6 · UI connection
-    h.append('<h2 id="ui">6 &middot; How the mobile UI connects to the baselines</h2>')
+    # 7 · UI connection
+    h.append('<h2 id="ui">7 &middot; How the mobile UI connects to the baselines</h2>')
     h.append('<p class="small">The <a class="xref" href="baseline-mob-viz.html">baseline mobile prototype</a> renders the baseline '
              'output triple <code>{center μ, spread σ_robust, confidence, drift}</code> five ways:</p>')
     ui = [("Baseline Band", "one metric vs its personal μ ± k·σ_robust band over time", "{μ, σ_robust}"),
@@ -4322,8 +4411,8 @@ def build_baseline_pipeline():
     for nm, sh, fr in ui:
         h.append('<tr><td><b>%s</b></td><td class="small">%s</td><td class="small mono">%s</td></tr>' % (_esc(nm), _esc(sh), _esc(fr)))
     h.append('</tbody></table></div>')
-    # 6 · Gaps
-    h.append('<h2 id="gaps">7 &middot; Identified gaps</h2>')
+    # 8 · Gaps
+    h.append('<h2 id="gaps">8 &middot; Identified gaps</h2>')
     gaps = ["No live Terra/HealthKit/vendor schema is pinned here — the source paths are illustrative and must be reconciled against current API versions before production.",
             "The robust+adaptive formula params (windows, half-lives, winsor %) are expert-priors, not yet calibrated against labelled data (Doc 14).",
             "Conditioned baselines (per-device, per-context) multiply state — a device/context registry + storage model is specified but not built.",
@@ -4331,12 +4420,12 @@ def build_baseline_pipeline():
             "Cross-metric coherence checks need the full physiological constraint set encoded as executable assertions.",
             "The personal-baseline math currently lives as Doc 03 §2b (κ_resp, 30-day) — this pipeline proposes the robust/adaptive upgrade and a re-baselining (change-point) mechanism that the engine does not yet implement."]
     h.append('<ul class="small">%s</ul>' % "".join("<li>%s</li>" % _esc(g) for g in gaps))
-    h.append('<p class="small muted">Connects to: <a class="xref" href="purescore-wearable-baselines.html">Wearable baselines</a> · '
+    h.append('<p class="small muted">Connects to: <a class="xref" href="03-scoring-formula.html">Doc 03 §2b (personal z)</a> · '
              '<a class="xref" href="appendix-wearables.html">Wearables (trust tiers)</a> · '
              '<a class="xref" href="appendix-wearable-corroboration.html">Wearable corroboration</a> · '
              '<a class="xref" href="06-data-model-and-reference-ranges.html">Doc 06 data model</a> · '
              '<a class="xref" href="baseline-mob-viz.html">Baseline mobile UI</a>.</p>')
-    return "Wearable baseline pipeline", "".join(h)
+    return "Wearable baselines", "".join(h)
 
 # =================================================================== PROGRESSIVE DATA & GRACEFUL DEGRADATION
 def build_progressive_data():
@@ -4430,24 +4519,16 @@ def build_progressive_data():
              '<a class="xref" href="11-daily-nudge-engine.html">Nudge engine</a>.</p>')
     return "Progressive data &amp; graceful degradation", "".join(h)
 
-# =================================================================== COHORT-FALLBACK GOVERNANCE (round 2)
-def build_cohort_governance():
-    """Cohort-fallback governance & safeguards (round 2): construction (k-anon, back-off, drift, OOD),
-    conditional imputation & imputability, equity (clinical-reference scoring), longitudinal stability,
-    integration & provenance, and UAE locale. Server-rendered from data/cohort-governance.json."""
+# =================================================================== COHORT-FALLBACK GOVERNANCE (rounds 2-3)
+def _render_governance(fname, crumb, h1, lead_html, locked_label, connects):
     try:
-        G = _load("cohort-governance.json")
+        G = _load(fname)
     except Exception:
         G = {}
     decisions = G.get("decisions", []); sections = G.get("sections", [])
-    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; How scoring works &rsaquo; Cohort fallback — governance &amp; safeguards</div>',
-         '<h1>Cohort Fallback — Governance &amp; Safeguards <span class="small muted">&middot; round 2: make degradation safe &amp; correct</span></h1>',
-         '<p class="lead">The <a class="xref" href="progressive-data.html">graceful-degradation model</a> substitutes cohort '
-         'statistics for missing data. This page is the governance around that: how the cohort is <b>built</b> (k-anonymity, '
-         'back-off, drift, out-of-distribution), how missing values are <b>imputed</b> (conditional, not marginal), the '
-         '<b>equity</b>, <b>longitudinal-stability</b>, <b>integration/provenance</b> and <b>UAE-locale</b> safeguards. '
-         'Single source: <code>data/cohort-governance.json</code>.</p>', ILLUS,
-         '<div class="callout spec"><div class="ct">Locked decisions (round 2)</div><div class="tablewrap"><table><tbody>']
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; How scoring works &rsaquo; %s</div>' % crumb,
+         h1, lead_html, ILLUS,
+         '<div class="callout spec"><div class="ct">%s</div><div class="tablewrap"><table><tbody>' % locked_label]
     for d in decisions:
         h.append('<tr><td><b>%s</b> <span class="chip b-green">locked</span></td><td class="small">%s</td></tr>' % (_esc(d.get("k", "")), _esc(d.get("v", ""))))
     h.append('</tbody></table></div></div>')
@@ -4458,12 +4539,37 @@ def build_cohort_governance():
             badge = ' <span class="chip b-green">locked</span>' if r.get("decision") else ""
             h.append('<tr><td style="white-space:nowrap"><b>%s</b>%s</td><td class="small">%s</td></tr>' % (_esc(r.get("k", "")), badge, _esc(r.get("v", ""))))
         h.append('</tbody></table></div>')
-    h.append('<p class="small muted">Connects to: <a class="xref" href="progressive-data.html">Progressive data &amp; degradation</a> · '
-             '<a class="xref" href="06-data-model-and-reference-ranges.html">Doc 06 data model</a> · '
-             '<a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13 cohort percentiles</a> · '
-             '<a class="xref" href="wearable-baseline-pipeline.html">Baseline pipeline</a> · '
-             '<a class="xref" href="consent-onboarding.html">Consent &amp; onboarding</a>.</p>')
-    return "Cohort fallback — governance &amp; safeguards", "".join(h)
+    h.append(connects)
+    return "".join(h)
+
+def build_cohort_governance():
+    """Cohort-fallback governance & safeguards (round 2). From data/cohort-governance.json."""
+    h1 = '<h1>Cohort Fallback — Governance &amp; Safeguards <span class="small muted">&middot; round 2: make degradation safe &amp; correct</span></h1>'
+    lead = ('<p class="lead">The <a class="xref" href="progressive-data.html">graceful-degradation model</a> substitutes cohort '
+            'statistics for missing data. This page is the governance around that: how the cohort is <b>built</b> (k-anonymity, '
+            'back-off, drift, out-of-distribution), how missing values are <b>imputed</b> (conditional, not marginal), the '
+            '<b>equity</b>, <b>longitudinal-stability</b>, <b>integration/provenance</b> and <b>UAE-locale</b> safeguards. '
+            'Single source: <code>data/cohort-governance.json</code>.</p>')
+    connects = ('<p class="small muted">Connects to: <a class="xref" href="progressive-data.html">Progressive data &amp; degradation</a> · '
+                '<a class="xref" href="degradation-integrity.html">Integrity &amp; safety</a> · '
+                '<a class="xref" href="06-data-model-and-reference-ranges.html">Doc 06 data model</a> · '
+                '<a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13 cohort percentiles</a> · '
+                '<a class="xref" href="consent-onboarding.html">Consent &amp; onboarding</a>.</p>')
+    return "Cohort fallback — governance &amp; safeguards", _render_governance("cohort-governance.json", "Cohort fallback — governance &amp; safeguards", h1, lead, "Locked decisions (round 2)", connects)
+
+def build_degradation_integrity():
+    """Cohort-fallback integrity & safety (round 3). From data/degradation-integrity.json."""
+    h1 = '<h1>Cohort Fallback — Integrity &amp; Safety <span class="small muted">&middot; round 3: anti-gaming, authenticity, degraded-mode safety</span></h1>'
+    lead = ('<p class="lead">The final layer over <a class="xref" href="progressive-data.html">graceful degradation</a> and '
+            '<a class="xref" href="cohort-governance.html">cohort governance</a>: stopping the model being <b>gamed</b> or creating a '
+            '<b>perverse incentive</b> not to measure, keeping data <b>authentic</b> and the cohort from <b>collapsing</b> on its own '
+            'output, keeping users <b>safe while degraded</b>, and meeting <b>care-pathway &amp; regulatory</b> duties. '
+            'Single source: <code>data/degradation-integrity.json</code>.</p>')
+    connects = ('<p class="small muted">Connects to: <a class="xref" href="progressive-data.html">Progressive data</a> · '
+                '<a class="xref" href="cohort-governance.html">Cohort governance</a> · '
+                '<a class="xref" href="care-pathways.html">Care pathways</a> · '
+                '<a class="xref" href="consent-onboarding.html">Consent &amp; onboarding</a>.</p>')
+    return "Cohort fallback — integrity &amp; safety", _render_governance("degradation-integrity.json", "Cohort fallback — integrity &amp; safety", h1, lead, "Locked decisions (round 3)", connects)
 
 # =================================================================== WEARABLE CORROBORATION (closes F4)
 def _wear_corr_counts():

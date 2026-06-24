@@ -155,13 +155,13 @@ NAV = [
                  (DOCMAP["02"], SHORT["02"], "02"), ("pillar-weights.html", "Pillar weights & correlations"),
                  (DOCMAP["03"], SHORT["03"], "03"), ("progressive-data.html", "Progressive data & degradation"),
                  ("cohort-governance.html", "Cohort fallback governance"),
+                 ("degradation-integrity.html", "Cohort fallback integrity & safety"),
                  (DOCMAP["04"], SHORT["04"], "04"), ("reservoir-sim.html", "Reservoir simulator"),
                  (DOCMAP["05"], SHORT["05"], "05")]),
  ("2 · Inputs & intake", [(DOCMAP["06"], SHORT["06"], "06"), (DOCMAP["07"], SHORT["07"], "07"),
                  ("appendix-biomarkers.html", "Markers (all channels)"), ("reference-range-resolver.html", "Reference-range resolver"),
                  ("appendix-wearables.html", "Wearables"),
-                 ("purescore-wearable-baselines.html", "Wearable baselines"),
-                 ("wearable-baseline-pipeline.html", "Baseline pipeline (Terra/HealthKit)"),
+                 ("wearable-baseline-pipeline.html", "Wearable baselines"),
                  ("baseline-mob-viz.html", "Baseline mobile UI"),
                  ("questions-hub.html", "Intake — overview"), ("appendix-onboarding.html", "Onboarding & first-run"),
                  ("appendix-questions.html", "Screeners & PROs"), ("appendix-question-bank.html", "Question bank"),
@@ -278,6 +278,7 @@ PDESC = {
  "index.html": "The wiki home and role-based entry points.",
  "progressive-data.html": "Missing/stale/invalid inputs fall back to cohort statistics — lower accuracy, wider forecast, nudges to fill the gap.",
  "cohort-governance.html": "Governance for cohort fallback — k-anonymity, conditional imputation, equity, provenance, backfill and UAE-locale safeguards.",
+ "degradation-integrity.html": "Anti-gaming, data authenticity, cohort-collapse, degraded-mode safety and regulatory safeguards for cohort fallback.",
  "wearable-baseline-pipeline.html": "Terra/HealthKit/vendor data unified into one robust personal baseline, with exhaustive data-quality and estimator-hazard rules.",
  "purescore-uber-map.html": "Run the full scoring pipeline live — audit tree, dataflow map and editable leaves.",
  "01-vision-principles-and-lessons.html": "What PureScore is, the principles it holds to, and lessons that shaped it.",
@@ -294,7 +295,6 @@ PDESC = {
  "appendix-biomarkers.html": "The full marker catalogue across every channel, sortable.",
  "reference-range-resolver.html": "How a raw value resolves to a band given age, sex and cohort.",
  "appendix-wearables.html": "Every wearable-derived metric and how it is used.",
- "purescore-wearable-baselines.html": "Personal-baseline logic for wearable signals.",
  "questions-hub.html": "An overview of the question intake and how it is structured.",
  "appendix-onboarding.html": "The onboarding and first-run question flow.",
  "appendix-questions.html": "Validated screeners and patient-reported outcomes.",
@@ -349,6 +349,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "pillar-weights.html":"Pillar weights & correlations",
           "progressive-data.html":"Progressive data & graceful degradation",
           "cohort-governance.html":"Cohort fallback — governance & safeguards",
+          "degradation-integrity.html":"Cohort fallback — integrity & safety",
           "editorial-review.html":"Editorial & cohesion review",
           "consolidation-plan.html":"Consolidation plan",
           "care-pathways.html":"Care pathways — condition pathways","care-roles.html":"Care team & roles",
@@ -374,8 +375,8 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "wearable-baselines.html":"Wearable Baselines",
           "reservoir-sim.html":"Reservoir simulator",
           "consent-onboarding.html":"Consent & onboarding",
-          "purescore-overview.html":"PureScore · Overview","purescore-wearable-baselines.html":"Baselines (Wearables)",
-          "wearable-baseline-pipeline.html":"Wearable baseline pipeline","baseline-mob-viz.html":"Baseline mobile UI",
+          "purescore-overview.html":"PureScore · Overview",
+          "wearable-baseline-pipeline.html":"Wearable baselines","baseline-mob-viz.html":"Baseline mobile UI",
           "purescore-sex.html":"PureScore by sex",
           "dossier-sequences.html":"Sequences",
           "dossier-erd.html":"Data model (ERD)","dossier-c4.html":"C4 architecture",
@@ -582,7 +583,7 @@ def page(fn, tab_title, body):
 <input id="search" type="search" placeholder="Filter pages…  ( / )"></div>
 <div class="shell">%s<main class="main">%s%s%s<footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · """
 """illustrative design, re-verify before production (<a class="xref" href="conventions.html">Conventions</a> §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
-<script src="assets/search-index.js"></script><script src="assets/search.js"></script><script src="assets/wiki.js"></script><script src="assets/pillars-data.js"></script><script src="assets/pillar-map.js"></script></body></html>""") % (
+<script src="assets/search-index.js"></script><script src="assets/search.js"></script><script src="assets/wiki.js"></script><script src="assets/pillars-data.js"></script><script src="assets/pillar-map.js"></script><script src="assets/diagram-zoom.js"></script></body></html>""") % (
         esc(tab_title), MERMAID_HEAD, sidebar(fn), _chapter_strip(fn), body, prevnext(fn))
     with open(os.path.join(HERE, fn), "w", encoding="utf-8") as f:
         f.write(fix_mermaid(html))
@@ -802,10 +803,10 @@ def main():
                       ("prevention-engagement.html", "build_prevention"),
                       ("purescore-uber-map.html", "build_purescore_uber"),
                       ("purescore-overview.html", "build_purescore_overview"),
-                      ("purescore-wearable-baselines.html", "build_wearable_baselines"),
                       ("wearable-baseline-pipeline.html", "build_baseline_pipeline"),
                       ("progressive-data.html", "build_progressive_data"),
                       ("cohort-governance.html", "build_cohort_governance"),
+                      ("degradation-integrity.html", "build_degradation_integrity"),
                       ("purescore-sex.html", "build_purescore_sex"),
                       ("dossier-sequences.html", "build_sequences"),
                       ("dossier-erd.html", "build_erd"), ("dossier-c4.html", "build_c4"),
@@ -910,7 +911,7 @@ def _consistency_check():
 # ----------------------------------------------------------------- "Connects to" footer (auto-derived)
 _DIAGRAMS = {"purescore-uber-map.html", "pillar-weights.html", "states.html", "engagement-state-machines.html", "baseline-mob-viz.html",
              "class-model.html", "dossier-erd.html", "dossier-c4.html", "dossier-sequences.html",
-             "class-model.html", "wearable-baselines.html", "purescore-wearable-baselines.html",
+             "class-model.html", "wearable-baselines.html",
              "consent-onboarding.html", "purescore-system.html", "reservoir-sim.html",
              "purescore-calc-uber.html"}
 _GRID_OF = {"appendix-biomarkers.html": "appendix-biomarkers.html#spreadsheet", "appendix-wearables.html": "appendix-wearables.html#spreadsheet",
@@ -1120,6 +1121,16 @@ def _degradation_guard():
     for need in ("cohort", "imputation", "equity", "longitudinal", "integration", "delivery"):
         if need not in have_secs:
             bad.append("cohort-governance: missing section '%s'" % need)
+    # round-3 integrity & safety: locked decisions + section coverage
+    I = C._load("degradation-integrity.json")
+    ilocked = [d for d in I.get("decisions", []) if d.get("decision")]
+    if len(ilocked) < 4:
+        bad.append("degradation-integrity: < 4 locked decisions (have %d)" % len(ilocked))
+    isecs = {s.get("id") for s in I.get("sections", [])}
+    for need in ("incentive", "integrity", "safety", "care_regulatory"):
+        if need not in isecs:
+            bad.append("degradation-integrity: missing section '%s'" % need)
+    locked = locked + ilocked
     print("[degradation-guard] %d input types · %d completeness nudges · %d nudge classes · %d locked governance decisions"
           % (len(its), len(nudges), len(classes), len(locked)))
     if bad:
