@@ -28,6 +28,24 @@
   function markerR(th, v, opt) {
     return contRisk(v, opt, th[0], th[1], th[2] === "hi" ? 1 : -1);
   }
+  // Context-aware band selection: the active [y,r,dir] for marker m given the profile context (sex),
+  // falling back to the base th when no variation applies. Pure + deterministic (Stage 1 band switch, D27).
+  function bandFor(m, mm, ctx, d) {
+    var bv = d.band_variations && d.band_variations[m];
+    if (bv && ctx && ctx.sex && bv["sex:" + ctx.sex]) return bv["sex:" + ctx.sex].th;
+    return mm.th;
+  }
+  // Cohort-specific imputation median: most-specific usable cell (age|sex|ls → sex), else the marker default.
+  function cohortMedian(m, mm, ctx, d) {
+    var cm = d.cohort_medians && d.cohort_medians[m];
+    if (cm && ctx && ctx.sex) {
+      var keys = [];
+      if (ctx.age && ctx.ls) keys.push(ctx.age + "|" + ctx.sex + "|" + ctx.ls);
+      keys.push(ctx.sex);
+      for (var i = 0; i < keys.length; i++) if (cm[keys[i]] != null) return cm[keys[i]];
+    }
+    return mm.default;
+  }
   // Zone labels are read OFF the continuous curve (Doc 03 §1 / Conventions §3.5): r<0.15 green,
   // <0.50 yellow, ≥0.50 red. Pillar status uses its own cuts (Doc 03 §4): R<0.30 / <0.60 / ≥0.60.
   function markerZone(rv) { return rv >= 0.50 ? "red" : (rv >= 0.15 ? "yellow" : "green"); }
@@ -69,18 +87,20 @@
 
   // Per-marker evaluation under a data state (present | stale | missing). Returns the active
   // pipeline branches + the effective risk r, weight w, and confidence (D33 fallback rules).
-  function markerEval(m, V, st, d) {
+  function markerEval(m, V, st, d, ctx) {
     var mm = d.markers[m], C = d.const, ep = d.engine_params;
     var state = (st && st[m]) || "present";
     var q = (ep.q_source[mm.source] != null ? ep.q_source[mm.source] : 0.8);
-    var rclin = markerR(mm.th, V[m], mm.default);
-    var cohort = mm.default;                       // illustrative age×sex cohort median (D33)
-    var rcohort = markerR(mm.th, cohort, mm.default);
+    var th = bandFor(m, mm, ctx, d);               // context (sex) band, falls back to base th
+    var rclin = markerR(th, V[m], mm.default);
+    var rclinBase = markerR(mm.th, V[m], mm.default);   // base-band risk for the critical hard-fire (never relaxed by context)
+    var cohort = cohortMedian(m, mm, ctx, d);      // cohort-specific median (D33), falls back to marker default
+    var rcohort = markerR(th, cohort, mm.default);
     var rsafe = Math.max(rclin, C.phi * rcohort);  // Stage 2 — cohort may only RAISE concern (Doc 03 §2)
-    var o = { state: state, rclin: rclin, rcohort: rcohort, cohort: cohort,
+    var o = { state: state, rclin: rclin, rclinBase: rclinBase, rcohort: rcohort, cohort: cohort,
               imputable: !!mm.imputable, source: mm.source };
     if (state === "stale") {
-      o.conf = q * Math.exp(-ep.stale_dt_days / ep.tau_days);
+      o.conf = Math.max(ep.conf_floor || 0, q * Math.exp(-ep.stale_dt_days / ep.tau_days));
       o.r = rsafe * o.conf + 0.10 * (1 - o.conf);  // blend toward neutral as confidence decays
       o.w = 1; o.included = true; o.confBranch = "stale"; o.imputed = false; o.usedVal = V[m];
     } else if (state === "missing") {
@@ -115,6 +135,7 @@
     var d = D(), C = d.const, V = vector(mk), o = opts || {}, st = o.st || {};
     var managed = o.managed || {}, confound = o.confound || {};   // from medications (D3)
     var pz = o.pz || {};                                          // optional personal z per marker (Stage 2b)
+    var ctxs = gateState(o), ctx = { sex: o.sex || null, age: ctxs.age, ls: o.lifestage || "general" };  // band/cohort context
     var gamma = C.gamma || 3, kappa = (C.kappa_resp != null ? C.kappa_resp : 0.10);
     var RV = {}; for (var mm in V) RV[mm] = (st[mm] === "missing") ? d.markers[mm].default : V[mm];
     var RES = reservoirs(RV), L = RES.coupled;
@@ -122,10 +143,11 @@
     for (var pid in d.pillars) {
       var P = d.pillars[pid], wsum = 0, rsum = 0, cr = false, mdet = {}, pconf = 0, pcov = 0, n = P.markers.length;
       P.markers.forEach(function (m) {
-        var ev = markerEval(m, V, st, d), isCrit = P.critical.indexOf(m) >= 0;
+        var ev = markerEval(m, V, st, d, ctx), isCrit = P.critical.indexOf(m) >= 0;
         if (managed[m]) { ev.conf *= 0.9; ev.managed = true; }       // controlled: shown but tagged (D3)
         if (confound[m]) { ev.conf *= 0.7; ev.confounded = true; }   // drug confounds the reading (D3)
-        var critRed = isCrit && ev.state === "present" && ev.rclin >= 0.50;   // only fresh data hard-fires
+        if (ev.state === "present" || ev.state === "stale") ev.conf = Math.max(d.engine_params.conf_floor || 0, ev.conf);  // confidence floor
+        var critRed = isCrit && ev.state === "present" && ev.rclinBase >= 0.50;   // crit fires off the BASE band (never relaxed by context)
         // Stage 2b — personal-baseline responsiveness, band-clamped, never on a critical marker.
         var zi = (pz[m] != null ? pz[m] : 0);
         var doPers = ev.included && ev.state === "present" && !isCrit;

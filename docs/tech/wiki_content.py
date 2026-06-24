@@ -19,6 +19,67 @@ def _const_num(s):
     m = re.search(r"-?\d+(?:\.\d+)?", str(s))
     return float(m.group(0)) if m else None
 
+_RV_ID_ALIAS = {"Ferritin (iron stores)": "ferr", "eGFR (creatinine)": "egfr", "VO₂max (est.)": "vo2",
+                "ALMI / lean mass index": "almi", "BMD T-score (DEXA)": "tscore", "Vitamin D (25-OH)": "vitd"}
+def _rv_cut(s):
+    """First directional numeric cut out of a range-variation green string ('≥50','<55','>40' → 50/55/40)."""
+    m = re.search(r"[<≤≥>]\s*([0-9]+(?:\.[0-9]+)?)", str(s))
+    return float(m.group(1)) if m else None
+
+def _band_variations(g):
+    """SEX-specific band overrides → {marker: {'sex:male'|'sex:female': {'th':[y,r,dir]}}}, derived from
+    range-variations sex bands by gap-preservation off the base th. Engine selects these when ctx.sex is set;
+    falls back to the base th otherwise. Safe subset (sex only); condition/medication re-banding is a fast-follow."""
+    try:
+        rv = _load("range-variations.json")["markers"]
+    except Exception:
+        return {}
+    lab2id = {m.get("label"): mid for mid, m in g["markers"].items()}
+    out = {}
+    for lab, m in rv.items():
+        mid = lab2id.get(lab) or _RV_ID_ALIAS.get(lab)
+        if not mid or mid not in g["markers"]:
+            continue
+        base = g["markers"][mid].get("th")
+        if not base or len(base) < 3 or not isinstance(base[0], (int, float)):
+            continue
+        by, br, d = base[0], base[1], base[2]
+        for v in m.get("var", []):
+            if v.get("dim") != "sex":
+                continue
+            cut = _rv_cut(v.get("g", ""))
+            if cut is None:
+                continue
+            rcut = cut + (br - by) if d == "hi" else cut - (by - br)
+            # validity: preserve the base direction (hi: r>y, lo: r<y); else skip (fall back to base)
+            if (d == "hi" and rcut <= cut) or (d == "lo" and rcut >= cut):
+                continue
+            key = "sex:" + ("female" if str(v.get("key", "")).lower().startswith("f") else "male")
+            out.setdefault(mid, {})[key] = {"th": [cut, round(rcut, 3), d]}
+    return out
+
+def _cohort_medians(g):
+    """Engine-keyed cohort medians from the cohort-percentiles dataset (p50), aggregated over ethnicity
+    (n-weighted) into the engine's age×sex×life-stage context, honouring the k-anon floor (n>=20).
+    Keys: 'age|sex|ls', 'sex', '' (global). The engine backs off most-specific→sex; no sex → marker default."""
+    try:
+        cp = _load("cohort-percentiles.json")["rows"]
+    except Exception:
+        return {}
+    AGEMAP = {"18-39": "young", "40-64": "mid", "65-79": "older", "80+": "older"}  # adult bands only
+    from collections import defaultdict
+    acc = defaultdict(lambda: defaultdict(lambda: [0.0, 0]))   # marker -> key -> [sum(p50*n), sum(n)]
+    for r in cp:
+        if r.get("n", 0) < 20:
+            continue
+        ea = AGEMAP.get(r.get("age_band"))
+        if not ea:
+            continue
+        mid, p50, n, sex, ls = r["marker"], r["p50"], r["n"], r["sex"], r["life_stage"]
+        for key in (ea + "|" + sex + "|" + ls, sex, ""):
+            a = acc[mid][key]; a[0] += p50 * n; a[1] += n
+    return {mid: {k: round(v[0] / v[1], 3) for k, v in keys.items() if v[1] > 0} for mid, keys in acc.items()}
+
 def resolve_calc_data():
     g = _load("calc-graph.json")
     weights = {k: v for k, v in _load("pillar-weights.json")["weights"]}
@@ -41,6 +102,8 @@ def resolve_calc_data():
                   "cov_green_floor": _const_num(consts[sym["cov_green_floor"]])}
     g["_constants_raw"] = _load("constants.json")["constants"]
     g["_weights_raw"] = _load("pillar-weights.json")["weights"]
+    g["band_variations"] = _band_variations(g)              # ctx-aware band selection (sex)
+    g["cohort_medians"] = _cohort_medians(g)                # cohort-specific imputation medians
     _attach_panels(g)
     return g
 
