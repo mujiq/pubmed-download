@@ -9,7 +9,16 @@
    "ethnicity",
    "condition",
    "medication"
-  ]
+  ],
+  "ethnicity_values": {
+   "emirati_gulf_arab": "Emirati & Gulf Arab",
+   "south_asian": "South Asian (Indian/Pakistani/Bangladeshi/Sri Lankan/Nepali)",
+   "other_arab": "Other Arab (Levantine/Egyptian/Sudanese/Maghrebi)",
+   "filipino_se_asian": "Filipino & Southeast Asian",
+   "african": "Sub-Saharan African",
+   "iranian": "Iranian/Persian",
+   "western": "Western/European"
+  }
  },
  "markers": {
   "Systolic BP": {
@@ -86,6 +95,12 @@
      "g": "<70 (primary prev); <55 if ASCVD",
      "delta": "very-high-risk goal",
      "cite": "ESC/EAS 2019"
+    },
+    {
+     "dim": "ethnicity",
+     "key": "South Asian",
+     "delta": "South Asian ancestry is an ASCVD risk-enhancing factor — lower treatment threshold",
+     "cite": "ESC/EAS 2019"
     }
    ]
   },
@@ -116,6 +131,12 @@
      "key": "E78.01 FH",
      "g": "<65",
      "delta": "very-high-risk goal",
+     "cite": "ESC/EAS 2019"
+    },
+    {
+     "dim": "ethnicity",
+     "key": "South Asian",
+     "delta": "ASCVD risk-enhancer — treat at a lower threshold; consider earlier lipid-lowering",
      "cite": "ESC/EAS 2019"
     }
    ]
@@ -181,6 +202,18 @@
      "g": "treated target <7.0",
      "delta": "MANAGED",
      "cite": "ADA"
+    },
+    {
+     "dim": "ethnicity",
+     "key": "African ancestry",
+     "delta": "HbA1c ~0.2–0.4% higher for the same mean glucose (glycation differences) — corroborate with fasting glucose/CGM",
+     "cite": "ADA SoC 2024"
+    },
+    {
+     "dim": "ethnicity",
+     "key": "Hemoglobinopathy (thalassemia/HbS — South Asian/Gulf/African)",
+     "delta": "HbA1c UNRELIABLE — route to fructosamine or CGM (see hemoglobinopathy gate)",
+     "cite": "ADA SoC 2024"
     }
    ]
   },
@@ -211,6 +244,13 @@
      "key": "race-free CKD-EPI 2021",
      "g": "—",
      "delta": "race coefficient removed",
+     "cite": "KDIGO 2024"
+    },
+    {
+     "dim": "ethnicity",
+     "key": "All ancestries",
+     "g": "race-free CKD-EPI 2021 (no Black-race coefficient)",
+     "delta": "race-free equation used for all ancestries",
      "cite": "KDIGO 2024"
     }
    ]
@@ -354,6 +394,12 @@
      "g": "—",
      "delta": "interpret with MCV (microcytosis); trait Hb mildly ↓; do not over-treat as iron deficiency",
      "cite": "WHO"
+    },
+    {
+     "dim": "ethnicity",
+     "key": "South Asian / Gulf / Mediterranean (thalassemia-trait prevalent)",
+     "delta": "low Hb/MCV may be thalassemia trait, not iron deficiency — check ferritin + Hb electrophoresis before iron",
+     "cite": "WHO"
     }
    ]
   },
@@ -391,6 +437,12 @@
      "key": "D56.9 thalassaemia / overload",
      "g": "—",
      "delta": "ferritin may be high (iron overload) despite microcytic anaemia",
+     "cite": "WHO"
+    },
+    {
+     "dim": "ethnicity",
+     "key": "South Asian vegetarian (high IDA prevalence)",
+     "delta": "raise scrutiny of low-normal ferritin; <30 µg/L symptomatic deficiency",
      "cite": "WHO"
     }
    ]
@@ -512,6 +564,22 @@
      "g": "<90 M / <80 F",
      "delta": "lower ethnicity-specific cut",
      "cite": "WHO (ethnicity-adj)"
+    },
+    {
+     "dim": "ethnicity",
+     "key": "South Asian / SE Asian / Filipino",
+     "g": "<90 (men) / <80 (women)",
+     "y": "90–100 / 80–88",
+     "r": "≥100 / ≥88",
+     "delta": "IDF Asian cut-points — cardiometabolic risk at lower waist than Europid",
+     "cite": "IDF 2006"
+    },
+    {
+     "dim": "ethnicity",
+     "key": "Emirati / Gulf Arab / other Arab / Western",
+     "g": "<94 (men) / <80 (women)",
+     "delta": "Europid IDF cut-points",
+     "cite": "IDF 2006"
     }
    ]
   },
@@ -560,6 +628,39 @@
      "g": "—",
      "delta": "steroid-induced ↑ glucose expected",
      "cite": "ADA"
+    }
+   ]
+  },
+  "Vitamin D (25-OH)": {
+   "base": {
+    "g": "≥20 ng/mL (≥50 nmol/L)",
+    "y": "12–20 (30–50)",
+    "r": "<12 (<30)",
+    "cite": "IOM 2011"
+   },
+   "var": [
+    {
+     "dim": "ethnicity",
+     "key": "South Asian / African / darker skin",
+     "delta": "higher deficiency risk (melanin reduces cutaneous synthesis) — same lab cut-points, raised screening priority"
+    },
+    {
+     "dim": "life_stage",
+     "key": "Pregnancy",
+     "g": "maintain ≥20–30 ng/mL",
+     "delta": "supplement to sufficiency",
+     "cite": "NICE NG133"
+    },
+    {
+     "dim": "life_stage",
+     "key": "≥65 / frail",
+     "delta": "higher supplementation target (falls/bone)",
+     "cite": "IOM 2011"
+    },
+    {
+     "dim": "condition",
+     "key": "Modest dress / low sun exposure",
+     "delta": "near-universal UAE risk factor — proactive screen & supplement"
     }
    ]
   }

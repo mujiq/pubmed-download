@@ -3,45 +3,154 @@
   "note": "Cohort-fallback LIFECYCLE & OPERATIONS (round 4) — the data-lifecycle/legal, identity/jurisdiction, interoperability and reliability/ML-ops safeguards that take the model from spec to operable. Three locked decisions (below); the data-erasure mechanism is HELD as an open TODO. Builds on the progressive-data / cohort-governance / degradation-integrity trilogy. Illustrative; re-verify (README §5.6)."
  },
  "decisions": [
-  {"k": "Cohort reference — opt-in ancestry, clinical default", "v": "Ethnicity is NEVER inferred (special-category data). The default reference is a transparent UAE-resident / clinical-standard cohort; a user may self-declare an ancestry reference to use, recorded in provenance and toggleable.", "decision": true},
-  {"k": "Policy-as-code — full release governance", "v": "Every degradation/safety registry (λ, k-anon threshold, the invariants) is versioned + content-hashed; changes go shadow-eval (old vs new on live traffic, diff score deltas + invariant-violation counts) → percentage canary → auto-rollback on an invariant-violation / score-delta SLO breach; two-person review with a 'safety-invariant change' label; immutable policy-change audit log.", "decision": true},
-  {"k": "Minors — in scope, full handling", "v": "Age-banded pediatric cohorts (or an explicit 'no pediatric cohort' label where none exists), verified guardian consent with audit, and an age-of-majority workflow that forces re-consent, hands ownership to the now-adult, and revokes guardian access.", "decision": true}
+  {
+   "k": "Cohort reference — opt-in ancestry, clinical default",
+   "v": "Ethnicity is NEVER inferred (special-category data). The default reference is a transparent UAE-resident / clinical-standard cohort; a user may self-declare an ancestry reference to use, recorded in provenance and toggleable. Selectable references: Emirati/Gulf Arab · South Asian · other Arab · Filipino/SE-Asian · Sub-Saharan African · Iranian · Western (default = UAE-resident/clinical-standard).",
+   "decision": true
+  },
+  {
+   "k": "Policy-as-code — full release governance",
+   "v": "Every degradation/safety registry (λ, k-anon threshold, the invariants) is versioned + content-hashed; changes go shadow-eval (old vs new on live traffic, diff score deltas + invariant-violation counts) → percentage canary → auto-rollback on an invariant-violation / score-delta SLO breach; two-person review with a 'safety-invariant change' label; immutable policy-change audit log.",
+   "decision": true
+  },
+  {
+   "k": "Minors — in scope, full handling",
+   "v": "Age-banded pediatric cohorts (or an explicit 'no pediatric cohort' label where none exists), verified guardian consent with audit, and an age-of-majority workflow that forces re-consent, hands ownership to the now-adult, and revokes guardian access.",
+   "decision": true
+  }
  ],
  "sections": [
-  {"id": "lifecycle", "title": "1 · Data lifecycle & legal", "rows": [
-   {"k": "Right-to-erasure mechanism", "v": "HELD — open decision. Candidate: per-user crypto-shredding + a hash-preserving tombstone so the immutable ledger still verifies, vs hard delete vs retain-audit-only. To reconcile PDPL/GDPR erasure with the immutable provenance ledger. REVISIT before any production handling of deletion.", "todo": true},
-   {"k": "Deletion propagation to cohort", "v": "A deleted user's real measurements are baked into cohort medians; erasure schedules a deferred, k-anonymous rebuild of the affected cohort cells; superseded versions are frozen-and-quarantined (not servable) under legal-hold, with a deletion-propagation receipt."},
-   {"k": "Derived-artifact erasure", "v": "An erasure manifest enumerates every derived artifact keyed to the user (personal baselines, reservoir state, score history, forecast cones, ledger entries) so deletion cascades across all of them, with a completion certificate."},
-   {"k": "Retention matrix per data class", "v": "Differentiated, automated TTLs: raw device signals rolling N-months; provenance/audit records kept under SaMD obligation but pseudonymised after account closure; cohort versions aged-out on schedule — balancing storage-limitation against medical-device audit duties."},
-   {"k": "Backups & DR reach", "v": "A documented backup-retention ceiling + a suppression list so a restored backup re-applies pending erasures before reactivation; crypto-shredding makes backups unreadable without rewriting immutable snapshots."},
-   {"k": "Literature-fallback lineage", "v": "When no cohort exists and a literature value is used, the provenance ledger carries a structured citation (source, version/year, population, licence/usage terms), surfaced in the estimate explanation and versioned so stale references are flagged."}
-  ]},
-  {"id": "identity", "title": "2 · Identity & jurisdiction", "rows": [
-   {"k": "Cohort reference (ancestry)", "v": "DECISION — never infer ethnicity; default to a transparent UAE-resident/clinical reference; user may self-declare an ancestry reference, recorded in provenance and toggleable.", "decision": true},
-   {"k": "Residency on travel / relocation", "v": "Residency changes are detected via explicit user attestation (not geolocation alone); data-residency is pinned to the controlling jurisdiction with a documented transfer mechanism; any cohort-reference change is annotated in the timeline as an administrative (non-clinical) discontinuity."},
-   {"k": "Minors / guardian / majority", "v": "DECISION — age-banded pediatric cohorts (or out-of-scope label), verified guardian consent with audit, and a majority-transition workflow (re-consent, ownership handover, guardian-access revocation).", "decision": true}
-  ]},
-  {"id": "interop", "title": "3 · Interoperability & secondary use", "rows": [
-   {"k": "FHIR estimate-flag survival", "v": "A degraded/cohort-filled value maps to FHIR Observation.status (not 'final'), DataAbsentReason / derivation extensions and a Provenance resource; the system refuses to emit a degraded value as a plain final Observation, so the estimate flag survives the EHR boundary."},
-   {"k": "Research / secondary-use exclusion", "v": "Every score is tagged with its degradation level; imputed values are default-excluded (or weighted/flagged) from research/analytics extracts, which require a separate lawful basis — so imputation bias doesn't contaminate population analytics."},
-   {"k": "Age-progression cohort transition", "v": "Reference parameters are blended across age-band boundaries (or a continuous-age reference is used); band transitions are annotated as administrative and trend-continuity is verified in tests, so a user doesn't see a phantom score step on a birthday."}
-  ]},
-  {"id": "reliability", "title": "4 · Reliability & observability", "rows": [
-   {"k": "SLOs & observability", "v": "Golden-signal SLIs: degraded-score ratio, per-metric cohort-fill rate, p50/p95 reported Accuracy, an invariant-violation counter (target 0 → hard page), and rolling forecast-cone coverage; a degradation dashboard + burn-rate alerts."},
-   {"k": "Forecast-cone calibration monitor", "v": "A continuous backtest joins finalized real values against the cone/Accuracy claimed at scoring time (PIT histograms / empirical coverage per metric & cohort), alerts on miscalibration, and feeds recalibration back into the Accuracy formula — an over-narrow cone is a safety bug, not a UX nicety."},
-   {"k": "Cohort-service circuit breaker (fallback-of-the-fallback)", "v": "A circuit breaker around cohort lookups with a per-cohort signed last-known-good cache (staleness-bounded); if both live and cached are unavailable the deterministic safe terminal state SUPPRESSES the score ('temporarily unavailable') and NEVER fabricates a median — tested with fault injection."},
-   {"k": "Pinned-version WORM & integrity", "v": "Pinned cohort snapshots are content-addressed and WORM-retained for the full audit window; hash-verified on read; autophagy/GC is blocked for any version still referenced by a retained score; dangling references alarm."},
-   {"k": "Invariant property tests", "v": "Property-based / metamorphic tests inject synthetic missing-then-present data across the value space and assert the invariants end-to-end ('imputing a high-stakes value never raises the score', 'a real-critical always breaks the freeze'), plus a held-out backtest and a golden-score regression suite in CI + pre-rollout shadow — the build guards check structure, these check behaviour."},
-   {"k": "Cost & latency budgets", "v": "Defined precompute-vs-on-demand split (hot cache of medians + conditional-model artifacts), per-tenant/global cost ceilings with budget alarms, recompute-storm rate-limiting, and an explicit p99 latency budget for cohort-lookup + impute with a deterministic cheaper fallback on timeout (emitted as a tracked event)."}
-  ]},
-  {"id": "ml_ops", "title": "5 · Imputer ML-ops & policy", "rows": [
-   {"k": "Imputer model card & fairness", "v": "The conditional/multivariate imputer carries a model card (training population, features, subgroup performance), a subgroup error/coverage parity eval as a release gate, and a drift-triggered retraining cadence."},
-   {"k": "Imputation explainability", "v": "A plain-language imputation lineage ('we estimated your LDL from your ApoB and HbA1c') is surfaced in the UI and the audit ledger, so an inferred value can be understood and contested."},
-   {"k": "Policy-as-code governance", "v": "DECISION — registries versioned + content-hashed; shadow → canary → auto-rollback on invariant-violation/score-delta SLO breach; two-person 'safety-invariant change' review; immutable policy-change audit log.", "decision": true}
-  ]},
-  {"id": "delivery", "title": "6 · Accessibility & notifications", "rows": [
-   {"k": "Accessibility of uncertainty", "v": "Non-visual equivalents for 'estimated vs measured', cone width and Accuracy%: aria-labels ('estimated value, accuracy 72%, likely range A–B'), non-colour encoding (icon/pattern + label), an accessible textual cone description, and a11y regression tests — a low-vision user must never act on a cohort median as if measured."},
-   {"k": "Degrade/recovery notification governance", "v": "Degrade-entered and recovery notices route through the same governance as nudges: a priority tier below real-critical, quiet-hours respect (unless safety-critical), debounce/hysteresis to prevent 3am flapping, and a bounded budget in the nudge auction with explicit precedence."}
-  ]}
+  {
+   "id": "lifecycle",
+   "title": "1 · Data lifecycle & legal",
+   "rows": [
+    {
+     "k": "Right-to-erasure mechanism",
+     "v": "HELD — open decision. Candidate: per-user crypto-shredding + a hash-preserving tombstone so the immutable ledger still verifies, vs hard delete vs retain-audit-only. To reconcile PDPL/GDPR erasure with the immutable provenance ledger. REVISIT before any production handling of deletion.",
+     "todo": true
+    },
+    {
+     "k": "Deletion propagation to cohort",
+     "v": "A deleted user's real measurements are baked into cohort medians; erasure schedules a deferred, k-anonymous rebuild of the affected cohort cells; superseded versions are frozen-and-quarantined (not servable) under legal-hold, with a deletion-propagation receipt."
+    },
+    {
+     "k": "Derived-artifact erasure",
+     "v": "An erasure manifest enumerates every derived artifact keyed to the user (personal baselines, reservoir state, score history, forecast cones, ledger entries) so deletion cascades across all of them, with a completion certificate."
+    },
+    {
+     "k": "Retention matrix per data class",
+     "v": "Differentiated, automated TTLs: raw device signals rolling N-months; provenance/audit records kept under SaMD obligation but pseudonymised after account closure; cohort versions aged-out on schedule — balancing storage-limitation against medical-device audit duties."
+    },
+    {
+     "k": "Backups & DR reach",
+     "v": "A documented backup-retention ceiling + a suppression list so a restored backup re-applies pending erasures before reactivation; crypto-shredding makes backups unreadable without rewriting immutable snapshots."
+    },
+    {
+     "k": "Literature-fallback lineage",
+     "v": "When no cohort exists and a literature value is used, the provenance ledger carries a structured citation (source, version/year, population, licence/usage terms), surfaced in the estimate explanation and versioned so stale references are flagged."
+    }
+   ]
+  },
+  {
+   "id": "identity",
+   "title": "2 · Identity & jurisdiction",
+   "rows": [
+    {
+     "k": "Cohort reference (ancestry)",
+     "v": "DECISION — never infer ethnicity; default to a transparent UAE-resident/clinical reference; user may self-declare an ancestry reference, recorded in provenance and toggleable. Selectable references: Emirati/Gulf Arab · South Asian · other Arab · Filipino/SE-Asian · Sub-Saharan African · Iranian · Western (default = UAE-resident/clinical-standard).",
+     "decision": true
+    },
+    {
+     "k": "Residency on travel / relocation",
+     "v": "Residency changes are detected via explicit user attestation (not geolocation alone); data-residency is pinned to the controlling jurisdiction with a documented transfer mechanism; any cohort-reference change is annotated in the timeline as an administrative (non-clinical) discontinuity."
+    },
+    {
+     "k": "Minors / guardian / majority",
+     "v": "DECISION — age-banded pediatric cohorts (or out-of-scope label), verified guardian consent with audit, and a majority-transition workflow (re-consent, ownership handover, guardian-access revocation).",
+     "decision": true
+    }
+   ]
+  },
+  {
+   "id": "interop",
+   "title": "3 · Interoperability & secondary use",
+   "rows": [
+    {
+     "k": "FHIR estimate-flag survival",
+     "v": "A degraded/cohort-filled value maps to FHIR Observation.status (not 'final'), DataAbsentReason / derivation extensions and a Provenance resource; the system refuses to emit a degraded value as a plain final Observation, so the estimate flag survives the EHR boundary."
+    },
+    {
+     "k": "Research / secondary-use exclusion",
+     "v": "Every score is tagged with its degradation level; imputed values are default-excluded (or weighted/flagged) from research/analytics extracts, which require a separate lawful basis — so imputation bias doesn't contaminate population analytics."
+    },
+    {
+     "k": "Age-progression cohort transition",
+     "v": "Reference parameters are blended across age-band boundaries (or a continuous-age reference is used); band transitions are annotated as administrative and trend-continuity is verified in tests, so a user doesn't see a phantom score step on a birthday."
+    }
+   ]
+  },
+  {
+   "id": "reliability",
+   "title": "4 · Reliability & observability",
+   "rows": [
+    {
+     "k": "SLOs & observability",
+     "v": "Golden-signal SLIs: degraded-score ratio, per-metric cohort-fill rate, p50/p95 reported Accuracy, an invariant-violation counter (target 0 → hard page), and rolling forecast-cone coverage; a degradation dashboard + burn-rate alerts."
+    },
+    {
+     "k": "Forecast-cone calibration monitor",
+     "v": "A continuous backtest joins finalized real values against the cone/Accuracy claimed at scoring time (PIT histograms / empirical coverage per metric & cohort), alerts on miscalibration, and feeds recalibration back into the Accuracy formula — an over-narrow cone is a safety bug, not a UX nicety."
+    },
+    {
+     "k": "Cohort-service circuit breaker (fallback-of-the-fallback)",
+     "v": "A circuit breaker around cohort lookups with a per-cohort signed last-known-good cache (staleness-bounded); if both live and cached are unavailable the deterministic safe terminal state SUPPRESSES the score ('temporarily unavailable') and NEVER fabricates a median — tested with fault injection."
+    },
+    {
+     "k": "Pinned-version WORM & integrity",
+     "v": "Pinned cohort snapshots are content-addressed and WORM-retained for the full audit window; hash-verified on read; autophagy/GC is blocked for any version still referenced by a retained score; dangling references alarm."
+    },
+    {
+     "k": "Invariant property tests",
+     "v": "Property-based / metamorphic tests inject synthetic missing-then-present data across the value space and assert the invariants end-to-end ('imputing a high-stakes value never raises the score', 'a real-critical always breaks the freeze'), plus a held-out backtest and a golden-score regression suite in CI + pre-rollout shadow — the build guards check structure, these check behaviour."
+    },
+    {
+     "k": "Cost & latency budgets",
+     "v": "Defined precompute-vs-on-demand split (hot cache of medians + conditional-model artifacts), per-tenant/global cost ceilings with budget alarms, recompute-storm rate-limiting, and an explicit p99 latency budget for cohort-lookup + impute with a deterministic cheaper fallback on timeout (emitted as a tracked event)."
+    }
+   ]
+  },
+  {
+   "id": "ml_ops",
+   "title": "5 · Imputer ML-ops & policy",
+   "rows": [
+    {
+     "k": "Imputer model card & fairness",
+     "v": "The conditional/multivariate imputer carries a model card (training population, features, subgroup performance), a subgroup error/coverage parity eval as a release gate, and a drift-triggered retraining cadence."
+    },
+    {
+     "k": "Imputation explainability",
+     "v": "A plain-language imputation lineage ('we estimated your LDL from your ApoB and HbA1c') is surfaced in the UI and the audit ledger, so an inferred value can be understood and contested."
+    },
+    {
+     "k": "Policy-as-code governance",
+     "v": "DECISION — registries versioned + content-hashed; shadow → canary → auto-rollback on invariant-violation/score-delta SLO breach; two-person 'safety-invariant change' review; immutable policy-change audit log.",
+     "decision": true
+    }
+   ]
+  },
+  {
+   "id": "delivery",
+   "title": "6 · Accessibility & notifications",
+   "rows": [
+    {
+     "k": "Accessibility of uncertainty",
+     "v": "Non-visual equivalents for 'estimated vs measured', cone width and Accuracy%: aria-labels ('estimated value, accuracy 72%, likely range A–B'), non-colour encoding (icon/pattern + label), an accessible textual cone description, and a11y regression tests — a low-vision user must never act on a cohort median as if measured."
+    },
+    {
+     "k": "Degrade/recovery notification governance",
+     "v": "Degrade-entered and recovery notices route through the same governance as nudges: a priority tier below real-critical, quiet-hours respect (unless safety-critical), debounce/hysteresis to prevent 3am flapping, and a bounded budget in the nudge auction with explicit precedence."
+    }
+   ]
+  }
  ]
 }

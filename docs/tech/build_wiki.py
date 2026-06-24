@@ -850,6 +850,7 @@ def main():
     _baseline_guard()
     _degradation_guard()
     _unit_guard()
+    _coverage_guard()
 
 def _engine_guard():
     """HARD guard (per D32): data/*.json is canonical for the scoring engine. Fail the build if
@@ -1085,6 +1086,31 @@ def _baseline_guard():
             print("     -", b)
         raise SystemExit("! build failed: baseline-guard — see wearable-metrics / baseline-dq-rules")
     print("  [baseline-guard] OK — every metric has source/unit/formula + full DQ category coverage")
+
+
+def _coverage_guard():
+    """UAE population-coverage integrity: HARD-fail if the canonical ethnicity value-set shrinks below the
+    7 UAE strata, if too few markers carry an ethnicity variation, or if the self-declare ancestry
+    reference list isn't wired into the cohort-reference decision."""
+    rv = C._load("range-variations.json")
+    ev = rv.get("_meta", {}).get("ethnicity_values", {})
+    neth = sum(1 for m in rv.get("markers", {}).values() for v in (m.get("var") or []) if v.get("dim") == "ethnicity")
+    op = C._load("degradation-operations.json")
+    anc_wired = any("Selectable references" in d.get("v", "") for d in op.get("decisions", []))
+    bad = []
+    if len(ev) < 7:
+        bad.append("ethnicity_values has %d strata (need ≥7 UAE groups)" % len(ev))
+    if neth < 6:
+        bad.append("only %d markers carry an ethnicity variation (need ≥6)" % neth)
+    if not anc_wired:
+        bad.append("ancestry self-declare reference list not wired into the cohort-reference decision")
+    print("[coverage-guard] %d ethnicity strata · %d ethnicity marker-variations · ancestry list wired=%s" % (len(ev), neth, anc_wired))
+    if bad:
+        print("  ! FAIL:")
+        for b in bad:
+            print("     -", b)
+        raise SystemExit("! build failed: coverage-guard — UAE population coverage regressed")
+    print("  [coverage-guard] OK — UAE ethnicity strata + marker variations + ancestry list present")
 
 
 def _unit_guard():
