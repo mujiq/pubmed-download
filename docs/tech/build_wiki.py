@@ -278,6 +278,11 @@ CHAPTERS = {
 
 # One-line page descriptions for the chapter landing lists (fall back to the NAV label when absent).
 PDESC = {
+ "pillar-weights.html": "Interactive pillar weights & correlations — fan, Sankey, layer and matrix views of how markers roll up.",
+ "purescore-calc-uber.html": "Developer/architect view of how PureScore is computed across all systems (5 toggle views).",
+ "baseline-mob-viz.html": "Mobile prototype — five ways to see your wearable baseline (band, deviation, radar, drift, confidence).",
+ "editorial-review.html": "Cohesion & presentability audit of the wiki itself (data-driven review register).",
+ "consolidation-plan.html": "The plan for consolidating and de-duplicating wiki content.",
  "index.html": "The wiki home and role-based entry points.",
  "progressive-data.html": "Missing/stale/invalid inputs fall back to cohort statistics — lower accuracy, wider forecast, nudges to fill the gap.",
  "cohort-governance.html": "Governance for cohort fallback — k-anonymity, conditional imputation, equity, provenance, backfill and UAE-locale safeguards.",
@@ -385,7 +390,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "clinical-validation.html":"Clinical validation & sign-off",
           "cohort-percentiles.html":"Cohort percentiles dataset",
           "purescore-overview.html":"PureScore · Overview",
-          "wearable-baseline-pipeline.html":"Wearable baselines","baseline-mob-viz.html":"Baseline mobile UI",
+          "wearable-baseline-pipeline.html":"Wearable baseline pipeline","baseline-mob-viz.html":"Baseline mobile UI",
           "purescore-sex.html":"PureScore by sex",
           "dossier-sequences.html":"Sequences",
           "dossier-erd.html":"Data model (ERD)","dossier-c4.html":"C4 architecture",

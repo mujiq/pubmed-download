@@ -4233,7 +4233,7 @@ def build_baseline_pipeline():
             '  classDef g fill:#10241c,stroke:#3ad6a0,color:#bdf5e0;\n'
             '  class IN,VAL,MG,CAN,DQ,BL,Z k\n  class UI,SC g')
     h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Inputs &amp; intake &rsaquo; Wearable baselines</div>',
-         '<h1>Wearable Baselines <span class="small muted">&middot; Terra · HealthKit · device clouds &rarr; one fool-proof personal baseline</span></h1>',
+         '<h1>Wearable Baseline Pipeline <span class="small muted">&middot; Terra · HealthKit · device clouds &rarr; one fool-proof personal baseline</span></h1>',
          '<p class="lead">How raw wearable data from <b>Terra</b>, <b>Apple HealthKit</b>, <b>Google Health Connect</b> and '
          '<b>vendor cloud APIs</b> (Oura · Whoop · Garmin · Fitbit · Withings · Dexcom · Libre) is ingested, validated, '
          '<b>unified</b>, transformed to <b>canonical units</b>, and turned into a <b>robust personal baseline</b> that '
@@ -4342,8 +4342,8 @@ def build_baseline_pipeline():
                  '<td class="small mono">%s</td><td class="small muted">%s</td><td class="small">%s</td></tr>'
                  % (_esc(m), tcls.get(tier, "b-mut"), _esc(tier), _esc(meth), _esc(rng), _esc(cad), _esc(pil)))
     h.append('</tbody></table></div>')
-    # What a baseline is — anatomy + EB shrinkage
-    h.append('<h2 id="anatomy">What a baseline is</h2>')
+    # What a baseline is — anatomy + EB shrinkage (sub-heading within section 0)
+    h.append('<h3 id="anatomy">What a baseline is</h3>')
     h.append('<p class="small">A baseline is the output triple <code>{centre μ, robust spread σ, confidence, drift}</code>. '
              'Today\'s reading becomes a <b>personal z-score</b> against that triple &mdash; the quantity Stage 2b of the score, the '
              'Trajectory arrow and the Early-warning ladder all read.</p>')
