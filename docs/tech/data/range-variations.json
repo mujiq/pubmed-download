@@ -642,7 +642,8 @@
     {
      "dim": "ethnicity",
      "key": "South Asian / African / darker skin",
-     "delta": "higher deficiency risk (melanin reduces cutaneous synthesis) — same lab cut-points, raised screening priority"
+     "delta": "higher deficiency risk (melanin reduces cutaneous synthesis) — same lab cut-points, raised screening priority",
+     "cite": "IOM 2011"
     },
     {
      "dim": "life_stage",
@@ -660,7 +661,8 @@
     {
      "dim": "condition",
      "key": "Modest dress / low sun exposure",
-     "delta": "near-universal UAE risk factor — proactive screen & supplement"
+     "delta": "near-universal UAE risk factor — proactive screen & supplement",
+     "cite": "IOM 2011"
     }
    ]
   }

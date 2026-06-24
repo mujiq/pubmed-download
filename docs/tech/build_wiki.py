@@ -1168,11 +1168,17 @@ def _unit_guard():
             if nums(th) != nums(um["th_conv"]):
                 bad.append("%s: calc-graph th %s != units.th_conv %s" % (mid, nums(th), nums(um["th_conv"])))
     for mid, um in U.items():
-        if um.get("dual") and um.get("lin") and um.get("th_conv") and um.get("th_si"):
+        if not um.get("th_si"):
+            continue
+        if um.get("dual") and um.get("lin") and um.get("th_conv"):
             a, b = um["lin"]
             want = [round(a * x + b, 2) for x in nums(um["th_conv"])]
             if any(abs(w - g) > 0.6 for w, g in zip(want, nums(um["th_si"]))):
                 bad.append("%s: th_si %s != lin*th_conv %s" % (mid, nums(um["th_si"]), want))
+        elif not um.get("dual") and um.get("th_conv"):
+            # non-dual marker: th_si must mirror th_conv (no real conversion), else it's a mislabelled band
+            if nums(um["th_si"]) != nums(um["th_conv"]):
+                bad.append("%s: non-dual th_si %s != th_conv %s (mislabelled conversion)" % (mid, nums(um["th_si"]), nums(um["th_conv"])))
     munit = {mid: m.get("unit") for mid, m in mk.items()}
     res = cg.get("reservoirs", {})
     ritems = res.items() if isinstance(res, dict) else [(r.get("id", i), r) for i, r in enumerate(res)]
