@@ -680,6 +680,9 @@ def render_index():
   D3 --> D7["11 Nudge engine"]
   D12 --> D13["14 Validation"]
   D1 --> D18["07 Data streams"] --> D7
+  D1 --> DQ["Data quality &amp; degradation<br/>cohort fallback · baselines · accuracy"]
+  D18 --> DQ
+  DQ --> D3
   D7 --> D16["12 Actions"]
   D7 --> DLV["Notify · firewall<br/>channels · quiet hours · escalate"]
   DLV --> D11["16 Safety"]
