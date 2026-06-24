@@ -180,6 +180,7 @@ NAV = [
                  ("prevention-engagement.html", "Prevention & engagement")]),
  ("6 · Trust & govern", [(DOCMAP["13"], SHORT["13"], "13"), (DOCMAP["14"], SHORT["14"], "14"),
                  ("clinical-validation.html", "Clinical validation & sign-off"),
+                 ("cohort-percentiles.html", "Cohort percentiles dataset"),
                  (DOCMAP["15"], SHORT["15"], "15"), (DOCMAP["16"], SHORT["16"], "16"),
                  ("consent-onboarding.html", "Consent & onboarding"),
                  (DOCMAP["18"], SHORT["18"], "18"),
@@ -325,6 +326,7 @@ PDESC = {
  "16-safety-governance-and-regulatory.html": "Safety escalation, governance and regulatory posture.",
  "consent-onboarding.html": "Jurisdiction-aware patient consent and the audit record.",
  "clinical-validation.html": "Clinician sign-off register for the engine's sex-specific calculations and critical markers/thresholds (print/CSV).",
+ "cohort-percentiles.html": "The ClickHouse cohort×marker percentile matrix that feeds the engine's cohort-median imputation (illustrative sample).",
  "18-uae-localization.html": "UAE/Gulf clinical localization and Ramadan handling.",
  "19-actuarial-pricing-and-insurance.html": "Actuarial pricing, credibility and fairness testing.",
  "production-gaps.html": "What a production-grade patient app still needs (product surface).",
@@ -381,6 +383,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "reservoir-sim.html":"Reservoir simulator",
           "consent-onboarding.html":"Consent & onboarding",
           "clinical-validation.html":"Clinical validation & sign-off",
+          "cohort-percentiles.html":"Cohort percentiles dataset",
           "purescore-overview.html":"PureScore · Overview",
           "wearable-baseline-pipeline.html":"Wearable baselines","baseline-mob-viz.html":"Baseline mobile UI",
           "purescore-sex.html":"PureScore by sex",
@@ -817,6 +820,7 @@ def main():
                       ("degradation-integrity.html", "build_degradation_integrity"),
                       ("degradation-operations.html", "build_degradation_operations"),
                       ("clinical-validation.html", "build_clinical_validation"),
+                      ("cohort-percentiles.html", "build_cohort_percentiles"),
                       ("purescore-sex.html", "build_purescore_sex"),
                       ("dossier-sequences.html", "build_sequences"),
                       ("dossier-erd.html", "build_erd"), ("dossier-c4.html", "build_c4"),
@@ -859,6 +863,7 @@ def main():
     _unit_guard()
     _coverage_guard()
     _clinical_validation_guard()
+    _cohort_guard()
 
 def _engine_guard():
     """HARD guard (per D32): data/*.json is canonical for the scoring engine. Fail the build if
@@ -1142,6 +1147,37 @@ def _clinical_validation_guard():
         print("  [clinical-validation-guard] OK (register well-formed) — %d critical marker(s) await sign-off (production blocker until validated)" % pend)
     else:
         print("  [clinical-validation-guard] OK — all critical markers clinically validated")
+
+
+def _cohort_guard():
+    """Cohort-percentiles dataset integrity: HARD-fail unless the matrix covers every calc-graph marker, all
+    7 ethnicity strata, the percentiles are monotone (p5≤p25≤p50≤p75≤p95), and the ClickHouse schema exists."""
+    CP = C._load("cohort-percentiles.json"); cg = C._load("calc-graph.json")
+    rows = CP.get("rows", []); meta = CP.get("_meta", {})
+    mk = set(cg.get("markers", {})); bad = []
+    if not rows:
+        bad.append("no rows in cohort-percentiles.json (run data/_gen_cohort_percentiles.py)")
+    covered = {r.get("marker") for r in rows}
+    miss = mk - covered
+    if miss:
+        bad.append("markers missing from cohort matrix: %s" % ", ".join(sorted(miss)))
+    eth = set(meta.get("dimensions", {}).get("ethnicity", []))
+    if len(eth) < 7:
+        bad.append("cohort matrix has %d ethnicity strata (need 7)" % len(eth))
+    nonmono = sum(1 for r in rows if not (r.get("p5", 0) <= r.get("p25", 0) <= r.get("p50", 0) <= r.get("p75", 0) <= r.get("p95", 0)))
+    if nonmono:
+        bad.append("%d rows have non-monotone percentiles (p5≤p25≤p50≤p75≤p95 violated)" % nonmono)
+    if not os.path.exists(os.path.join(HERE, "data", "cohort-percentiles.schema.sql")):
+        bad.append("ClickHouse schema cohort-percentiles.schema.sql missing")
+    nlow = sum(1 for r in rows if r.get("n", 0) < 20)
+    print("[cohort-guard] %d rows · %d markers covered · %d ethnicity strata · %d k-anon-suppressed (n<20)" % (len(rows), len(covered), len(eth), nlow))
+    if bad:
+        print("  ! FAIL:")
+        for b in bad[:14]:
+            print("     -", b)
+        raise SystemExit("! build failed: cohort-guard — see cohort-percentiles.json / .schema.sql")
+    print("  [cohort-guard] OK — cohort matrix covers all markers × strata, percentiles monotone, schema present")
+
 
 
 def _coverage_guard():

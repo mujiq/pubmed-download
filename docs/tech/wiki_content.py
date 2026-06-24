@@ -4689,6 +4689,76 @@ def build_clinical_validation():
              '<a class="xref" href="16-safety-governance-and-regulatory.html">Doc 16 safety &amp; governance</a>.</p>')
     return "Clinical validation &amp; sign-off", "".join(h)
 
+# =================================================================== COHORT PERCENTILES DATASET
+def build_cohort_percentiles():
+    """Cohort-percentiles dataset — the ClickHouse-backed cohort×marker percentile matrix that feeds the
+    engine's cohort-median imputation. Server-rendered from data/cohort-percentiles.json (generated) +
+    data/cohort-percentiles.schema.sql."""
+    def L(n):
+        try:
+            return _load(n)
+        except Exception:
+            return {}
+    CP = L("cohort-percentiles.json"); meta = CP.get("_meta", {}); rows = CP.get("rows", [])
+    cg = L("calc-graph.json"); mklabel = {mid: m.get("label", mid) for mid, m in cg.get("markers", {}).items()}
+    dims = meta.get("dimensions", {})
+    try:
+        sql = open(os.path.join(_HERE, "data", "cohort-percentiles.schema.sql"), encoding="utf-8").read()
+    except Exception:
+        sql = ""
+    nlow = sum(1 for r in rows if r.get("n", 0) < 20)
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Trust &amp; govern &rsaquo; Cohort percentiles dataset</div>',
+         '<h1>Cohort Percentiles Dataset <span class="small muted">&middot; ClickHouse cohort&times;marker matrix &rarr; cohort medians</span></h1>',
+         '<p class="lead">The reference distribution the engine substitutes when a marker is missing. Each row is one '
+         '<b>cohort cell</b> (age-band &times; sex &times; life-stage &times; <b>ethnicity</b>) &times; <b>marker</b> &rarr; '
+         '<code>p5 · p25 · p50 · p75 · p95 · n</code>. The engine reads <b>p50</b> as the cohort median for '
+         '<a class="xref" href="progressive-data.html">graceful-degradation imputation</a> and the spread for the '
+         'percentile-CDF risk and <a class="xref" href="cohort-governance.html">k-anonymity / back-off / OOD</a> gating. '
+         'Stored in <b>ClickHouse</b>; sample data loaded from a generated JSON file. Sources: '
+         '<code>data/cohort-percentiles.json · cohort-percentiles.schema.sql · _gen_cohort_percentiles.py</code>.</p>', ILLUS,
+         '<div class="callout spec"><div class="ct">Matrix</div><p class="small"><b>%d rows</b> = %d cohort cells &times; %d markers · cohort_version <code>%s</code> · '
+         '<b>%d cells below the k-anon floor (n&lt;20)</b> → not servable, force back-off/OOD. <b>Illustrative</b> — generated from marker anchors + documented demographic shift rules; re-derive from NHANES/UK-Biobank-class + local UAE cohorts before production.</p></div>'
+         % (len(rows), len(rows) // max(len(cg.get("markers", {})), 1), len(cg.get("markers", {})), _esc(meta.get("cohort_version", "")), nlow)]
+    # 1 · dimensions
+    h.append('<h2 id="dims">1 &middot; Cohort dimensions</h2><div class="tablewrap"><table><tbody>')
+    for k, v in dims.items():
+        h.append('<tr><td><b>%s</b></td><td class="small">%s</td></tr>' % (_esc(k), _esc(" · ".join(map(str, v)))))
+    h.append('</tbody></table></div>')
+    # 2 · sample slice — a few markers across ethnicity (40-64, male, general)
+    h.append('<h2 id="sample">2 &middot; Sample slice <span class="small muted">&middot; p50 by ethnicity (age 40-64, male)</span></h2>')
+    show = ["hba1c", "apob", "vitd", "sbp", "egfr"]
+    by = {}
+    for r in rows:
+        if r["age_band"] == "40-64" and r["sex"] == "male" and r["life_stage"] == "general" and r["marker"] in show:
+            by.setdefault(r["marker"], {})[r["ethnicity"]] = r
+    eths = dims.get("ethnicity", [])
+    h.append('<div class="tablewrap"><table><thead><tr><th>Marker</th>' + "".join('<th class="small">%s</th>' % _esc(e.replace("_", " ")) for e in eths) + '<th>unit</th></tr></thead><tbody>')
+    for mid in show:
+        cells = by.get(mid, {})
+        unit = next((c.get("unit", "") for c in cells.values()), "")
+        tds = "".join('<td class="small mono">%s</td>' % (cells.get(e, {}).get("p50", "—")) for e in eths)
+        h.append('<tr><td><b>%s</b></td>%s<td class="small muted">%s</td></tr>' % (_esc(mklabel.get(mid, mid)), tds, _esc(unit)))
+    h.append('</tbody></table></div><p class="small muted">p50 (cohort median) only — each cell also carries p5/p25/p75/p95 + n. Variation is illustrative (e.g. higher HbA1c in Gulf-Arab/South-Asian cells, lower vit-D across the expat strata).</p>')
+    # 3 · ClickHouse schema
+    h.append('<h2 id="schema">3 &middot; ClickHouse schema</h2>')
+    h.append('<p class="small">The fact table + a k-anonymous view + the hierarchical-back-off lookup the engine runs (most-specific usable cell wins, k-anon floor enforced):</p>')
+    if sql:
+        h.append('<pre class="code"><code>%s</code></pre>' % _esc(sql.strip()))
+    # 4 · how the engine consumes it
+    h.append('<h2 id="engine">4 &middot; How the engine consumes it</h2>'
+             '<ul class="small">'
+             '<li><b>Cohort median:</b> for a missing marker, look up <code>p50</code> for the user\'s most-specific <em>usable</em> (n&ge;20) cohort cell, backing off age&times;sex&times;life&times;eth → age&times;sex&times;eth → age&times;sex → sex → global.</li>'
+             '<li><b>Percentile risk:</b> a present value maps to its cohort percentile via the p5..p95 ladder (the basis for <code>r_cohort</code>).</li>'
+             '<li><b>k-anon / OOD:</b> cells with n&lt;20 are suppressed (the <code>_usable</code> view); a user matching no usable cell is flagged out-of-distribution.</li>'
+             '<li><b>Versioned &amp; reproducible:</b> every score pins the <code>cohort_version</code>; a drift monitor (PSI/KL) compares versions to catch autophagy/shrinkage.</li>'
+             '<li><b>Wiring (Package 3):</b> the build emits the usable p50 lookup into <code>calc-data.js</code> so the illustrative engine\'s <code>cohortMedian()</code> can resolve it; production reads ClickHouse directly.</li>'
+             '</ul>')
+    h.append('<p class="small muted">Connects to: <a class="xref" href="progressive-data.html">Progressive data &amp; degradation</a> · '
+             '<a class="xref" href="cohort-governance.html">Cohort governance</a> · '
+             '<a class="xref" href="clinical-validation.html">Clinical validation</a> · '
+             '<a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13 cohort percentiles</a>.</p>')
+    return "Cohort percentiles dataset", "".join(h)
+
 # =================================================================== WEARABLE CORROBORATION (closes F4)
 def _wear_corr_counts():
     """Per-metric count of question-bank questions whose wearable corroborations resolve to it."""
