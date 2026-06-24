@@ -154,6 +154,7 @@ NAV = [
  ("1 · How scoring works", [("purescore-overview.html", "Overview"),
                  (DOCMAP["02"], SHORT["02"], "02"), ("pillar-weights.html", "Pillar weights & correlations"),
                  (DOCMAP["03"], SHORT["03"], "03"), ("progressive-data.html", "Progressive data & degradation"),
+                 ("cohort-governance.html", "Cohort fallback governance"),
                  (DOCMAP["04"], SHORT["04"], "04"), ("reservoir-sim.html", "Reservoir simulator"),
                  (DOCMAP["05"], SHORT["05"], "05")]),
  ("2 · Inputs & intake", [(DOCMAP["06"], SHORT["06"], "06"), (DOCMAP["07"], SHORT["07"], "07"),
@@ -276,6 +277,7 @@ CHAPTERS = {
 PDESC = {
  "index.html": "The wiki home and role-based entry points.",
  "progressive-data.html": "Missing/stale/invalid inputs fall back to cohort statistics — lower accuracy, wider forecast, nudges to fill the gap.",
+ "cohort-governance.html": "Governance for cohort fallback — k-anonymity, conditional imputation, equity, provenance, backfill and UAE-locale safeguards.",
  "wearable-baseline-pipeline.html": "Terra/HealthKit/vendor data unified into one robust personal baseline, with exhaustive data-quality and estimator-hazard rules.",
  "purescore-uber-map.html": "Run the full scoring pipeline live — audit tree, dataflow map and editable leaves.",
  "01-vision-principles-and-lessons.html": "What PureScore is, the principles it holds to, and lessons that shaped it.",
@@ -346,6 +348,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "spec-audit.html":"Spec build-readiness audit",
           "pillar-weights.html":"Pillar weights & correlations",
           "progressive-data.html":"Progressive data & graceful degradation",
+          "cohort-governance.html":"Cohort fallback — governance & safeguards",
           "editorial-review.html":"Editorial & cohesion review",
           "consolidation-plan.html":"Consolidation plan",
           "care-pathways.html":"Care pathways — condition pathways","care-roles.html":"Care team & roles",
@@ -802,6 +805,7 @@ def main():
                       ("purescore-wearable-baselines.html", "build_wearable_baselines"),
                       ("wearable-baseline-pipeline.html", "build_baseline_pipeline"),
                       ("progressive-data.html", "build_progressive_data"),
+                      ("cohort-governance.html", "build_cohort_governance"),
                       ("purescore-sex.html", "build_purescore_sex"),
                       ("dossier-sequences.html", "build_sequences"),
                       ("dossier-erd.html", "build_erd"), ("dossier-c4.html", "build_c4"),
@@ -1107,14 +1111,23 @@ def _degradation_guard():
         for f in ("trigger", "cta", "raises"):
             if not n.get(f):
                 bad.append("nudge %s: missing %s" % (n.get("id"), f))
-    print("[degradation-guard] %d input types · %d completeness nudges · %d nudge classes"
-          % (len(its), len(nudges), len(classes)))
+    # round-2 governance: locked decisions + section coverage
+    G = C._load("cohort-governance.json")
+    locked = [d for d in G.get("decisions", []) if d.get("decision")]
+    if len(locked) < 4:
+        bad.append("cohort-governance: < 4 locked decisions (have %d)" % len(locked))
+    have_secs = {s.get("id") for s in G.get("sections", [])}
+    for need in ("cohort", "imputation", "equity", "longitudinal", "integration", "delivery"):
+        if need not in have_secs:
+            bad.append("cohort-governance: missing section '%s'" % need)
+    print("[degradation-guard] %d input types · %d completeness nudges · %d nudge classes · %d locked governance decisions"
+          % (len(its), len(nudges), len(classes), len(locked)))
     if bad:
         print("  ! FAIL:")
         for b in bad[:14]:
             print("     -", b)
-        raise SystemExit("! build failed: degradation-guard — see degradation-model / data-completeness-nudges")
-    print("  [degradation-guard] OK — safety invariant set, every input type degrades to cohort + nudge")
+        raise SystemExit("! build failed: degradation-guard — see degradation-model / data-completeness-nudges / cohort-governance")
+    print("  [degradation-guard] OK — safety invariant set, every input type degrades to cohort + nudge, governance locked")
 
 
 def _care_guard():

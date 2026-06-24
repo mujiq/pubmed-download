@@ -4430,6 +4430,41 @@ def build_progressive_data():
              '<a class="xref" href="11-daily-nudge-engine.html">Nudge engine</a>.</p>')
     return "Progressive data &amp; graceful degradation", "".join(h)
 
+# =================================================================== COHORT-FALLBACK GOVERNANCE (round 2)
+def build_cohort_governance():
+    """Cohort-fallback governance & safeguards (round 2): construction (k-anon, back-off, drift, OOD),
+    conditional imputation & imputability, equity (clinical-reference scoring), longitudinal stability,
+    integration & provenance, and UAE locale. Server-rendered from data/cohort-governance.json."""
+    try:
+        G = _load("cohort-governance.json")
+    except Exception:
+        G = {}
+    decisions = G.get("decisions", []); sections = G.get("sections", [])
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; How scoring works &rsaquo; Cohort fallback — governance &amp; safeguards</div>',
+         '<h1>Cohort Fallback — Governance &amp; Safeguards <span class="small muted">&middot; round 2: make degradation safe &amp; correct</span></h1>',
+         '<p class="lead">The <a class="xref" href="progressive-data.html">graceful-degradation model</a> substitutes cohort '
+         'statistics for missing data. This page is the governance around that: how the cohort is <b>built</b> (k-anonymity, '
+         'back-off, drift, out-of-distribution), how missing values are <b>imputed</b> (conditional, not marginal), the '
+         '<b>equity</b>, <b>longitudinal-stability</b>, <b>integration/provenance</b> and <b>UAE-locale</b> safeguards. '
+         'Single source: <code>data/cohort-governance.json</code>.</p>', ILLUS,
+         '<div class="callout spec"><div class="ct">Locked decisions (round 2)</div><div class="tablewrap"><table><tbody>']
+    for d in decisions:
+        h.append('<tr><td><b>%s</b> <span class="chip b-green">locked</span></td><td class="small">%s</td></tr>' % (_esc(d.get("k", "")), _esc(d.get("v", ""))))
+    h.append('</tbody></table></div></div>')
+    for sec in sections:
+        h.append('<h2 id="%s">%s</h2>' % (_esc(sec.get("id", "")), _esc(sec.get("title", ""))))
+        h.append('<div class="tablewrap"><table><tbody>')
+        for r in sec.get("rows", []):
+            badge = ' <span class="chip b-green">locked</span>' if r.get("decision") else ""
+            h.append('<tr><td style="white-space:nowrap"><b>%s</b>%s</td><td class="small">%s</td></tr>' % (_esc(r.get("k", "")), badge, _esc(r.get("v", ""))))
+        h.append('</tbody></table></div>')
+    h.append('<p class="small muted">Connects to: <a class="xref" href="progressive-data.html">Progressive data &amp; degradation</a> · '
+             '<a class="xref" href="06-data-model-and-reference-ranges.html">Doc 06 data model</a> · '
+             '<a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13 cohort percentiles</a> · '
+             '<a class="xref" href="wearable-baseline-pipeline.html">Baseline pipeline</a> · '
+             '<a class="xref" href="consent-onboarding.html">Consent &amp; onboarding</a>.</p>')
+    return "Cohort fallback — governance &amp; safeguards", "".join(h)
+
 # =================================================================== WEARABLE CORROBORATION (closes F4)
 def _wear_corr_counts():
     """Per-metric count of question-bank questions whose wearable corroborations resolve to it."""

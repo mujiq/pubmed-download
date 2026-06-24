@@ -1,0 +1,164 @@
+{
+ "_meta": {
+  "note": "Cohort-fallback GOVERNANCE & SAFEGUARDS (round 2) — the construction, equity, privacy, longitudinal, integration and locale rules that make the round-1 cohort-substitution model safe and correct. Builds on progressive-data.html / degradation-model.json. Four locked decisions (below) are load-bearing invariants the guard enforces. Illustrative; re-verify (README §5.6)."
+ },
+ "decisions": [
+  {
+   "k": "Equity — clinical-reference scoring",
+   "v": "When a demographic cohort median falls OUTSIDE the healthy clinical range, the filled marker is scored against the clinical/guideline target, not the demographic median — a cohort estimate can never read as reassurance for a high-risk group.",
+   "decision": true
+  },
+  {
+   "k": "Privacy — cohort-fill everyone",
+   "v": "The cohort is built from anonymous, aggregated, k-anonymous statistics requiring no per-user consent; all users may be cohort-filled, disclosed in the privacy notice. Consent-to-contribute is separated from use-of-aggregate.",
+   "decision": true
+  },
+  {
+   "k": "Backfill — provisional → finalized",
+   "v": "Cohort-filled days are PROVISIONAL; when real data backfills, the day is recomputed and FINALIZED, the original kept in an immutable ledger, and the user/clinician sees 'revised on <date>'. Hard alerts fire only on finalized/real data.",
+   "decision": true
+  },
+  {
+   "k": "Floor — population-estimate-only state",
+   "v": "Below a real-data floor the system stops presenting a personal numeric score and switches to 'insufficient personal data — population estimate only', freezing trend/alerts until real data returns.",
+   "decision": true
+  }
+ ],
+ "sections": [
+  {
+   "id": "cohort",
+   "title": "1 · Cohort construction",
+   "rows": [
+    {
+     "k": "Basis",
+     "v": "Anonymous aggregate statistics (decision: cohort-fill everyone); no identifiable per-user data in the substituted value."
+    },
+    {
+     "k": "Minimum cell size",
+     "v": "k ≥ 20 effective members before an age×sex×life-stage cell is usable; smaller cells are suppressed (statistical noise + re-identification risk)."
+    },
+    {
+     "k": "Hierarchical back-off",
+     "v": "When the exact cell is empty/under-powered, back off age×sex×life-stage → age×sex → sex → global, with shrinkage; tag the granularity actually used and penalise Accuracy more for coarser levels."
+    },
+    {
+     "k": "Versioning & drift",
+     "v": "Every cohort distribution is versioned (hash, build date, source N); each score pins the version used; periodic rebuilds; a PSI/KL drift monitor flags stale cohorts vs incoming real data."
+    },
+    {
+     "k": "OOD detection",
+     "v": "A Mahalanobis typicality distance to the nearest cell (on observed markers) flags out-of-distribution users; above threshold the system withholds cohort-fill, floors Accuracy, and shows 'reference population may not represent you'."
+    },
+    {
+     "k": "Small-cell exposure",
+     "v": "Any cohort-derived metric surfaced in the companion vector (Cohort-fill %, Accuracy) is quantised/suppressed when the underlying cell is below the k floor — transparency must not become a re-identification side-channel."
+    }
+   ]
+  },
+  {
+   "id": "imputation",
+   "title": "2 · Conditional imputation & imputability",
+   "rows": [
+    {
+     "k": "Conditional, not marginal",
+     "v": "Imputed value = E[missing | observed markers, demographics] from the cohort covariance — never the bare marginal median when the user has correlated markers (don't impute a normal LDL while their measured ApoB/HbA1c say dyslipidemic). Divergence from observed correlates is capped; uncertainty widened."
+    },
+    {
+     "k": "Joint coherence",
+     "v": "Correlated markers are imputed jointly; a cross-marker plausibility check damps pillars whose fills are mutually inconsistent; a cap limits how many filled markers may jointly drive one pillar."
+    },
+    {
+     "k": "Imputability classes",
+     "v": "Each input is tagged cohort-fillable / conditional-only / never-fill. Never-fill = discrete clinical events, specific mutations, goals, and eligibility GATES — these drop to Sufficiency reduction + a nudge, never a substituted value."
+    },
+    {
+     "k": "Regression-to-mean guard",
+     "v": "Fills are regularised toward the user's OWN observed extremity, never the population mean; a filled marker can only WIDEN a pillar's band — it can never reduce the risk level below what real measurements alone support."
+    }
+   ]
+  },
+  {
+   "id": "equity",
+   "title": "3 · Equity safeguards",
+   "rows": [
+    {
+     "k": "Clinical reference for unhealthy cohorts",
+     "v": "DECISION — when the demographic median sits outside the healthy clinical range, score the fill against the clinical/guideline target, so cohort-fill never normalises population pathology as health for already-disadvantaged groups.",
+     "decision": true
+    },
+    {
+     "k": "Disparate-accuracy audit",
+     "v": "Per-group distributions of fill %, Accuracy, calibration error and CTA burden are tracked against fairness thresholds; breaches alert and feed back into back-off and OOD policy."
+    }
+   ]
+  },
+  {
+   "id": "longitudinal",
+   "title": "4 · Longitudinal & stability",
+   "rows": [
+    {
+     "k": "Aging-vs-worsening attribution",
+     "v": "Δscore is decomposed into Δ(real signal) + Δ(cohort-regression); the user sees 'X of the Y-point move is because data is N days old, not a health change', with the cohort-pull shown separately on the trend."
+    },
+    {
+     "k": "Hysteresis",
+     "v": "Once real, the last real value is held with a slow decay toward cohort over the staleness window; a new fill-state must persist N consecutive days before the displayed score reflects it — no day-to-day jitter from intermittent sync."
+    },
+    {
+     "k": "Population-estimate-only floor",
+     "v": "DECISION — below a real-data fraction floor the personal numeric score is withdrawn for an explicit 'population estimate only' state; trend/alerts freeze until real data returns.",
+     "decision": true
+    },
+    {
+     "k": "Recovery framing",
+     "v": "On resync the upward jump is attributed to data freshness ('the previous value was a population estimate'), animating the cohort→personal transition — not read as a health change."
+    }
+   ]
+  },
+  {
+   "id": "integration",
+   "title": "5 · System integration & provenance",
+   "rows": [
+    {
+     "k": "Gates are never imputed",
+     "v": "Eligibility GATES (pregnancy, mobility, smoking — they unlock/suppress whole branches) are never cohort-filled; a missing gate freezes its downstream branch as 'eligibility-pending', excluded from the score with its own nudge. Only LEAF inputs regress to cohort."
+    },
+    {
+     "k": "Reservoir uncertainty propagation",
+     "v": "A per-reservoir real-fraction is carried through the 15-reservoir coupling matrix; a derived reservoir's Accuracy is a function of its inputs' weighted real-fraction, and couplings driven by cohort-only inputs are damped so cohort values can't move a derived reservoir across a threshold (no uncertainty laundering)."
+    },
+    {
+     "k": "Backfill provisional → finalized",
+     "v": "DECISION — cohort-filled days are provisional; backfill recomputes and finalizes, keeping the original in an immutable ledger ('revised on <date>'); hard alerts fire only on finalized/real data.",
+     "decision": true
+    },
+    {
+     "k": "Provenance ledger",
+     "v": "An append-only per-input ledger (value, source, real|cohort, cohort-version, timestamp, last-real-at) backs a 'What's real?' panel and is exportable for audit/residency review."
+    },
+    {
+     "k": "Clinician overlay",
+     "v": "The clinician view badges every value real / cohort-estimated / stale-N-days inline and requires an explicit 'acknowledge estimated inputs' before any cohort-influenced value can be used in an order/decision — logged, to bound medico-legal exposure."
+    }
+   ]
+  },
+  {
+   "id": "delivery",
+   "title": "6 · Delivery & locale (UAE)",
+   "rows": [
+    {
+     "k": "Unified nudge auction",
+     "v": "Data-completeness CTAs and behaviour-change nudges share ONE daily auction scored on expected clinical value; completeness nudges are capped per week, suppressed when a health-action nudge is pending, and never fired for an input below a ΔAccuracy leverage threshold — no fatigue, no crowding-out of clinical nudges."
+    },
+    {
+     "k": "Ramadan / fasting-aware",
+     "v": "Fasting-window cohort strata + suppression of baseline-deviation alarms during declared fasting; a user fasting flag; nudge timing shifted out of fasting/prayer/iftar windows — so fasting isn't misread as decline."
+    },
+    {
+     "k": "Arabic / RTL & residency",
+     "v": "All provenance, Accuracy and forecast-cone explanations are Arabic/RTL-mirrored with correct bidi numeric handling; cohort strata are computed and stored in-region (UAE data residency), documented in the provenance ledger."
+    }
+   ]
+  }
+ ]
+}
