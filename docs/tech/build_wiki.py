@@ -179,6 +179,7 @@ NAV = [
                  ("care-roles.html", "Care team & roles"),
                  ("prevention-engagement.html", "Prevention & engagement")]),
  ("6 · Trust & govern", [(DOCMAP["13"], SHORT["13"], "13"), (DOCMAP["14"], SHORT["14"], "14"),
+                 ("clinical-validation.html", "Clinical validation & sign-off"),
                  (DOCMAP["15"], SHORT["15"], "15"), (DOCMAP["16"], SHORT["16"], "16"),
                  ("consent-onboarding.html", "Consent & onboarding"),
                  (DOCMAP["18"], SHORT["18"], "18"),
@@ -323,6 +324,7 @@ PDESC = {
  "15-evidence-registry-and-provenance.html": "The evidence registry and provenance behind every band.",
  "16-safety-governance-and-regulatory.html": "Safety escalation, governance and regulatory posture.",
  "consent-onboarding.html": "Jurisdiction-aware patient consent and the audit record.",
+ "clinical-validation.html": "Clinician sign-off register for the engine's sex-specific calculations and critical markers/thresholds (print/CSV).",
  "18-uae-localization.html": "UAE/Gulf clinical localization and Ramadan handling.",
  "19-actuarial-pricing-and-insurance.html": "Actuarial pricing, credibility and fairness testing.",
  "production-gaps.html": "What a production-grade patient app still needs (product surface).",
@@ -378,6 +380,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "wearable-baselines.html":"Wearable Baselines",
           "reservoir-sim.html":"Reservoir simulator",
           "consent-onboarding.html":"Consent & onboarding",
+          "clinical-validation.html":"Clinical validation & sign-off",
           "purescore-overview.html":"PureScore · Overview",
           "wearable-baseline-pipeline.html":"Wearable baselines","baseline-mob-viz.html":"Baseline mobile UI",
           "purescore-sex.html":"PureScore by sex",
@@ -811,6 +814,7 @@ def main():
                       ("cohort-governance.html", "build_cohort_governance"),
                       ("degradation-integrity.html", "build_degradation_integrity"),
                       ("degradation-operations.html", "build_degradation_operations"),
+                      ("clinical-validation.html", "build_clinical_validation"),
                       ("purescore-sex.html", "build_purescore_sex"),
                       ("dossier-sequences.html", "build_sequences"),
                       ("dossier-erd.html", "build_erd"), ("dossier-c4.html", "build_c4"),
@@ -851,6 +855,7 @@ def main():
     _degradation_guard()
     _unit_guard()
     _coverage_guard()
+    _clinical_validation_guard()
 
 def _engine_guard():
     """HARD guard (per D32): data/*.json is canonical for the scoring engine. Fail the build if
@@ -1086,6 +1091,42 @@ def _baseline_guard():
             print("     -", b)
         raise SystemExit("! build failed: baseline-guard — see wearable-metrics / baseline-dq-rules")
     print("  [baseline-guard] OK — every metric has source/unit/formula + full DQ category coverage")
+
+
+def _clinical_validation_guard():
+    """Clinical-validation register integrity: HARD-fail if a register entry references an unknown marker,
+    a status is not pending/validated/disputed, or any CRITICAL marker (from the pillars) is missing from the
+    register. Reports validation progress and surfaces un-validated critical markers as a production blocker
+    (informational — clinician sign-off is an external process, so it does not block the build)."""
+    REG = C._load("clinical-validation.json"); cg = C._load("calc-graph.json")
+    mk = cg.get("markers", {}); regm = REG.get("markers", {})
+    pills = cg.get("pillars", {})
+    pitems = pills.items() if isinstance(pills, dict) else [(p.get("id", i), p) for i, p in enumerate(pills)]
+    crit = set()
+    for pid, p in pitems:
+        crit.update(p.get("critical") or [])
+    ok_status = {"pending", "validated", "disputed"}
+    bad = []
+    for mid, r in regm.items():
+        if mid not in mk:
+            bad.append("register marker %r not in calc-graph" % mid)
+        if r.get("status") not in ok_status:
+            bad.append("marker %s: invalid status %r" % (mid, r.get("status")))
+    missing = [m for m in crit if m not in regm]
+    if missing:
+        bad.append("critical markers missing from register: %s" % ", ".join(sorted(missing)))
+    val_crit = sum(1 for m in crit if regm.get(m, {}).get("status") == "validated")
+    print("[clinical-validation-guard] %d markers in register · %d/%d critical validated" % (len(regm), val_crit, len(crit)))
+    if bad:
+        print("  ! FAIL:")
+        for b in bad[:14]:
+            print("     -", b)
+        raise SystemExit("! build failed: clinical-validation-guard — register malformed")
+    pend = len(crit) - val_crit
+    if pend:
+        print("  [clinical-validation-guard] OK (register well-formed) — %d critical marker(s) await sign-off (production blocker until validated)" % pend)
+    else:
+        print("  [clinical-validation-guard] OK — all critical markers clinically validated")
 
 
 def _coverage_guard():

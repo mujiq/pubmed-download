@@ -4585,6 +4585,110 @@ def build_degradation_operations():
                 '<a class="xref" href="16-safety-governance-and-regulatory.html">Doc 16 safety &amp; governance</a>.</p>')
     return "Cohort fallback — lifecycle &amp; operations", _render_governance("degradation-operations.json", "Cohort fallback — lifecycle &amp; operations", h1, lead, "Locked decisions (round 4)", connects)
 
+# =================================================================== CLINICAL VALIDATION & SIGN-OFF
+def build_clinical_validation():
+    """Clinician sign-off register for the engine's SEX-SPECIFIC calculations and CRITICAL markers/thresholds.
+    Data-driven: bands/thresholds render live from calc-graph + range-variations; per-marker validation status
+    from data/clinical-validation.json. Print / CSV export for offline advisory-board review."""
+    def L(n):
+        try:
+            return _load(n)
+        except Exception:
+            return {}
+    REG = L("clinical-validation.json"); cg = L("calc-graph.json"); rv = L("range-variations.json")
+    mk = cg.get("markers", {}); regm = REG.get("markers", {}); meta = REG.get("_meta", {})
+    spec = meta.get("specialty", {})
+    stchip = {"validated": '<span class="chip b-green">validated</span>', "disputed": '<span class="chip b-red">disputed</span>', "pending": '<span class="chip b-yellow">pending</span>'}
+    from collections import Counter
+    sc = Counter(v.get("status", "pending") for v in regm.values())
+    # band string from th
+    def band(th):
+        if not th or len(th) < 3:
+            return "&mdash;"
+        a, b, d = th[0], th[1], th[2]
+        if d == "hi":
+            return 'green &lt;%s &middot; yellow %s–%s &middot; <b>red ≥%s</b>' % (a, a, b, b)
+        return 'green ≥%s &middot; yellow %s–%s &middot; <b>red &lt;%s</b>' % (a, b, a, b)
+    # range-variations label lookup for sex bands
+    rvm = rv.get("markers", {})
+    lab2rv = {}
+    for lab in rvm:
+        lab2rv[lab] = lab
+    SEXMAP = {"hdl": "HDL-C", "alt": "ALT", "hb": "Hemoglobin", "ferr": "Ferritin (iron stores)", "almi": "ALMI / lean mass index", "vo2": "VO₂max (est.)", "waist": "Waist circumference", "rhr": "Resting HR"}
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Trust &amp; govern &rsaquo; Clinical validation &amp; sign-off</div>',
+         '<h1>Clinical Validation &amp; Sign-off <span class="small muted">&middot; clinicians validate sex-specific calcs &amp; critical thresholds</span></h1>',
+         '<p class="lead">A clinician-facing register to <b>validate the engine\'s clinical decisions</b>: the '
+         '<b>sex-specific calculations</b> (male vs female bands) and the <b>critical markers &amp; thresholds</b> that floor a '
+         'pillar to critical and fire alerts. Every value below renders <b>live from the canonical data</b> '
+         '(<code>calc-graph.json</code> + <code>range-variations.json</code>) &mdash; you are validating exactly what the engine '
+         'runs. Set each marker\'s status, then <b>print</b> or <b>export CSV</b> for an advisory-board review. '
+         'Source: <code>data/clinical-validation.json</code>.</p>', ILLUS,
+         '<div class="cv-bar"><b>%d markers</b> &middot; <span class="chip b-green">%d validated</span> '
+         '<span class="chip b-yellow">%d pending</span> <span class="chip b-red">%d disputed</span> '
+         '<button class="pw-skchip" onclick="cvCsv()" type="button">Export CSV</button> '
+         '<button class="pw-skchip" onclick="window.print()" type="button">Print</button></div>'
+         % (len(regm), sc.get("validated", 0), sc.get("pending", 0), sc.get("disputed", 0)),
+         '<div class="callout note"><div class="ct">How to use</div><p class="small">%s</p></div>' % _esc(meta.get("how", ""))]
+    # 1 · Critical markers
+    h.append('<h2 id="critical">1 &middot; Critical markers &amp; thresholds <span class="small muted">&middot; floor the pillar to critical</span></h2>')
+    h.append('<p class="small muted">A <b>fresh</b> value past the red cut-point floors its pillar to critical (R_crit) and can fire an Early-warning alert. Cohort-imputed values can never trigger this (safety invariant).</p>')
+    h.append('<div class="tablewrap"><table id="cv-crit"><thead><tr><th>Marker</th><th>Pillar</th><th>Specialty</th><th>Band (green &middot; yellow &middot; red)</th><th>Unit</th><th>Status</th></tr></thead><tbody>')
+    for mid, r in sorted(regm.items(), key=lambda kv: (kv[1].get("pillar", ""), kv[0])):
+        if not r.get("critical"):
+            continue
+        m = mk.get(mid, {}); pil = r.get("pillar", "")
+        h.append('<tr><td><b>%s</b> <span class="small muted mono">%s</span></td><td>%s</td><td class="small">%s</td><td class="small">%s</td><td class="small mono">%s</td><td>%s</td></tr>'
+                 % (_esc(m.get("label", mid)), _esc(mid), _esc(pil.upper()), _esc(spec.get(pil, "")), band(m.get("th")), _esc(m.get("unit", "")), stchip.get(r.get("status"), "")))
+    h.append('</tbody></table></div>')
+    # 2 · Sex-specific
+    h.append('<h2 id="sex">2 &middot; Sex-specific calculations <span class="small muted">&middot; male vs female bands</span></h2>')
+    h.append('<div class="tablewrap"><table id="cv-sex"><thead><tr><th>Marker</th><th>Male band</th><th>Female band</th><th>&Delta; / note</th><th>Cite</th><th>Status</th></tr></thead><tbody>')
+    for mid, r in sorted(regm.items()):
+        if not r.get("sex_specific"):
+            continue
+        m = mk.get(mid, {}); rvlab = SEXMAP.get(mid)
+        male = female = ""; delta = cite = "—"
+        def cellof(v):
+            return " &middot; ".join(filter(None, [("g " + v["g"]) if v.get("g") else "", ("y " + v["y"]) if v.get("y") else "", ("r " + v["r"]) if v.get("r") else ""]))
+        basecell = ""
+        if rvlab and rvlab in rvm:
+            basecell = cellof(rvm[rvlab].get("base", {}))
+            for v in rvm[rvlab].get("var", []):
+                if v.get("dim") != "sex":
+                    continue
+                if str(v.get("key", "")).lower().startswith("m"):
+                    male = cellof(v) or male
+                elif str(v.get("key", "")).lower().startswith("f"):
+                    female = cellof(v) or female
+                if v.get("delta"):
+                    delta = v["delta"]
+                if v.get("cite"):
+                    cite = v["cite"]
+        male = male or basecell or "—"
+        female = female or basecell or "—"
+        h.append('<tr><td><b>%s</b></td><td class="small">%s</td><td class="small">%s</td><td class="small muted">%s</td><td class="small">%s</td><td>%s</td></tr>'
+                 % (_esc(m.get("label", mid)), male, female, _esc(delta), _esc(cite), stchip.get(r.get("status"), "")))
+    h.append('</tbody></table></div>')
+    # 3 · Sign-off register
+    h.append('<h2 id="signoff">3 &middot; Per-marker sign-off register</h2>')
+    h.append('<p class="small muted">Each marker is signed off individually by the relevant specialty. Fill reviewer / role / date / comment offline; we record verdicts in <code>clinical-validation.json</code>.</p>')
+    h.append('<div class="tablewrap"><table id="cv-reg"><thead><tr><th>Marker</th><th>Pillar</th><th>Type</th><th>Status</th><th>Reviewer</th><th>Role</th><th>Date</th><th>Comment</th></tr></thead><tbody>')
+    for mid, r in sorted(regm.items(), key=lambda kv: (kv[1].get("pillar", ""), kv[0])):
+        typ = " · ".join(filter(None, ["critical" if r.get("critical") else "", "sex" if r.get("sex_specific") else ""]))
+        h.append('<tr><td><b>%s</b></td><td>%s</td><td class="small muted">%s</td><td>%s</td><td class="small">%s</td><td class="small">%s</td><td class="small mono">%s</td><td class="small">%s</td></tr>'
+                 % (_esc(r.get("label", mid)), _esc(r.get("pillar", "").upper()), _esc(typ), stchip.get(r.get("status"), ""), _esc(r.get("reviewer", "") or "&mdash;"), _esc(r.get("role", "") or "&mdash;"), _esc(r.get("date", "") or "&mdash;"), _esc(r.get("comment", "") or "")))
+    h.append('</tbody></table></div>')
+    h.append('<script>function cvCsv(){var rows=[["section","marker","col1","col2","col3","status"]];'
+             'document.querySelectorAll("#cv-crit tbody tr,#cv-sex tbody tr,#cv-reg tbody tr").forEach(function(tr){'
+             'var c=[].map.call(tr.children,function(td){return \'"\'+(td.innerText||"").replace(/"/g,\'""\').replace(/\\s+/g," ").trim()+\'"\';});rows.push(c);});'
+             'var csv=rows.map(function(r){return r.join(",");}).join("\\n");var a=document.createElement("a");'
+             'a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="clinical-validation.csv";a.click();}</script>')
+    h.append('<p class="small muted">Connects to: <a class="xref" href="purescore-sex.html">Sex model (male/female score)</a> · '
+             '<a class="xref" href="reference-range-resolver.html">Reference-range resolver</a> · '
+             '<a class="xref" href="appendix-biomarkers.html">Markers (Appendix A)</a> · '
+             '<a class="xref" href="16-safety-governance-and-regulatory.html">Doc 16 safety &amp; governance</a>.</p>')
+    return "Clinical validation &amp; sign-off", "".join(h)
+
 # =================================================================== WEARABLE CORROBORATION (closes F4)
 def _wear_corr_counts():
     """Per-metric count of question-bank questions whose wearable corroborations resolve to it."""

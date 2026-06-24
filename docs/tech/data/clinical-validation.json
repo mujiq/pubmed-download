@@ -1,0 +1,291 @@
+{
+ "_meta": {
+  "note": "Clinical validation & sign-off register. Clinicians validate the engine's SEX-SPECIFIC calculations (male vs female bands) and CRITICAL markers/thresholds against current guidelines. Status per marker; the guard tracks un-validated critical markers as a production blocker. Bands/thresholds render live from calc-graph + range-variations (data-driven).",
+  "statuses": [
+   "pending",
+   "validated",
+   "disputed"
+  ],
+  "specialty": {
+   "cv": "Cardiology",
+   "met": "Endocrinology",
+   "ren": "Nephrology",
+   "hep": "Hepatology / Gastroenterology",
+   "inf": "Immunology / General medicine",
+   "hem": "Haematology",
+   "bcm": "Endocrinology / Geriatrics (bone & muscle)",
+   "slp": "Sleep medicine",
+   "mcs": "Psychiatry / Psychology",
+   "fit": "Sports & exercise medicine",
+   "nut": "Clinical nutrition",
+   "hsk": "Dermatology"
+  },
+  "how": "Review each marker's bands (male vs female; critical thresholds) against current guidelines; set status validated/disputed with reviewer, role, date and comment. Print or export CSV for offline advisory-board review."
+ },
+ "markers": {
+  "almi": {
+   "label": "ALMI",
+   "pillar": "bcm",
+   "critical": true,
+   "sex_specific": true,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "alt": {
+   "label": "ALT",
+   "pillar": "hep",
+   "critical": true,
+   "sex_specific": true,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "apob": {
+   "label": "ApoB",
+   "pillar": "cv",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "crp": {
+   "label": "hsCRP",
+   "pillar": "inf",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "egfr": {
+   "label": "eGFR",
+   "pillar": "ren",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "ferr": {
+   "label": "Ferritin",
+   "pillar": "hem",
+   "critical": false,
+   "sex_specific": true,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "fib4": {
+   "label": "FIB-4",
+   "pillar": "hep",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "glu": {
+   "label": "Fasting glucose",
+   "pillar": "met",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "hb": {
+   "label": "Hemoglobin",
+   "pillar": "hem",
+   "critical": true,
+   "sex_specific": true,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "hba1c": {
+   "label": "HbA1c",
+   "pillar": "met",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "hdl": {
+   "label": "HDL-C",
+   "pillar": "cv",
+   "critical": false,
+   "sex_specific": true,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "k": {
+   "label": "Potassium (K+)",
+   "pillar": "ren",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "ldl": {
+   "label": "LDL-C",
+   "pillar": "cv",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "osa": {
+   "label": "OSA (AHI)",
+   "pillar": "slp",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "phq": {
+   "label": "PHQ-9",
+   "pillar": "mcs",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "plt": {
+   "label": "Platelets",
+   "pillar": "hem",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "rhr": {
+   "label": "Resting HR",
+   "pillar": "cv",
+   "critical": false,
+   "sex_specific": true,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "sbp": {
+   "label": "Systolic BP",
+   "pillar": "cv",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "spo2": {
+   "label": "SpO₂",
+   "pillar": "hem",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "tg": {
+   "label": "Triglycerides",
+   "pillar": "met",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "tscore": {
+   "label": "BMD T-score",
+   "pillar": "bcm",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "uacr": {
+   "label": "UACR",
+   "pillar": "ren",
+   "critical": true,
+   "sex_specific": false,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "vo2": {
+   "label": "VO₂max",
+   "pillar": "fit",
+   "critical": false,
+   "sex_specific": true,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  },
+  "waist": {
+   "label": "Waist circumference",
+   "pillar": "met",
+   "critical": false,
+   "sex_specific": true,
+   "status": "pending",
+   "reviewer": "",
+   "role": "",
+   "date": "",
+   "comment": ""
+  }
+ }
+}
