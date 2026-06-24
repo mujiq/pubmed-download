@@ -2715,11 +2715,12 @@ _BM_AREAS = [
  ("questions",  "Question Bank",            "#0891b2", "#22d3ee"),
  ("persona",    "Personas & Lifestyles",    "#be185d", "#f9a8d4"),
  ("care",       "Care Pathways & Delivery", "#0f766e", "#5eead4"),
+ ("dataquality","Data Quality & Degradation","#7c3aed", "#c4b5fd"),
  ("infra",      "Tooling / Calc / UI",      "#475569", "#cbd5e1"),
 ]
 _BM_AREA_NODE = {"core":"Core","intake":"DataStreams","markers":"Markers","scoring":"ScoringEngine",
  "context":"Context","reservoir":"Reservoirs","sexacute":"SexAcute","nudge":"Nudges",
- "governance":"Governance","questions":"Questions","persona":"Personas","care":"CarePathways","infra":"Tooling"}
+ "governance":"Governance","questions":"Questions","persona":"Personas","care":"CarePathways","dataquality":"CohortFallback","infra":"Tooling"}
 
 # (name, area, stereotype, [bare members])
 _BM_CLASSES = [
@@ -2796,8 +2797,17 @@ _BM_CLASSES = [
  ("IEATStage","care","«Care»",["identify","engage","assess","transform"]),
  ("PreventionScore","care","«Care»",["components","riskStatus"]),
  ("CareKPI","care","«Care»",["clinical","engagement","preventive","executive"]),
+ ("CohortFallback","dataquality","«Degradation»",["accuracy","forecastBand","cohortFillPct","safetyInvariant"]),
+ ("DegradationModel","dataquality","«Degradation»",["state","dataStates","gracefulDegrade"]),
+ ("CohortPercentiles","dataquality","«Dataset»",["ageBand","sex","lifeStage","ethnicity","p50","n","kAnon"]),
+ ("WearableBaseline","dataquality","«Baseline»",["centre","spread","confidence","drift"]),
+ ("DataCompletenessNudge","dataquality","«Nudge»",["klass","trigger","cta","deltaAccuracy"]),
 ]
 _BM_RELATIONS = [
+ ("PureScore","..>","CohortFallback","degrades"),("CohortFallback","-->","CohortPercentiles","p50 median"),
+ ("CohortFallback","-->","DegradationModel",""),("WearableBaseline","-->","CohortPercentiles","cold-start prior"),
+ ("WearableMetric","-->","WearableBaseline",""),("Marker","..>","CohortFallback","missing→cohort"),
+ ("DegradationModel","-->","DataCompletenessNudge",""),("CohortStat","..>","CohortPercentiles",""),
  ("Patient","*--","InputStream",""),("Patient","*--","PureScore",""),("Patient","*--","ReservoirSystem",""),
  ("Patient","-->","Persona",""),("Patient","-->","CarePlan",""),("Patient","-->","PatientState",""),
  ("Patient","o--","Measurement",""),
