@@ -4338,6 +4338,98 @@ def build_baseline_pipeline():
              '<a class="xref" href="baseline-mob-viz.html">Baseline mobile UI</a>.</p>')
     return "Wearable baseline pipeline", "".join(h)
 
+# =================================================================== PROGRESSIVE DATA & GRACEFUL DEGRADATION
+def build_progressive_data():
+    """Progressive data collection & graceful degradation — when any input is missing/stale/decayed/invalid,
+    substitute a cohort statistic, lower Accuracy, widen the forecast, expose it in the companion vector, and
+    nudge to fill the gap. Server-rendered from data/degradation-model.json + data/data-completeness-nudges.json."""
+    def L(n):
+        try:
+            return _load(n)
+        except Exception:
+            return {}
+    DM = L("degradation-model.json"); NU = L("data-completeness-nudges.json")
+    meta = DM.get("_meta", {})
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; How scoring works &rsaquo; Progressive data &amp; graceful degradation</div>',
+         '<h1>Progressive Data &amp; Graceful Degradation <span class="small muted">&middot; missing &rarr; cohort &rarr; lower accuracy &rarr; nudge</span></h1>',
+         '<p class="lead">PureScore never blocks on missing data. When any input &mdash; a lab, a wearable metric, a clinical reading, '
+         'a lifestyle answer, a personal baseline, or a goal &mdash; is <b>missing, stale, decayed or invalid</b>, the system '
+         'substitutes a <b>cohort statistic</b> (age&times;sex&times;life-stage median/mean, D33) so the score stays continuous, '
+         '<b>lowers the reported Accuracy</b>, <b>widens the forecast</b>, <b>flags the substitution in the companion vector</b>, '
+         'and <b>nudges the user over time</b> to fill the gap. Single sources: '
+         '<code>data/degradation-model.json &middot; data-completeness-nudges.json</code>.</p>', ILLUS,
+         '<div class="callout spec"><div class="ct">Safety invariant (load-bearing)</div><p class="small">%s</p></div>' % _esc(meta.get("safety_invariant", ""))]
+    # 1 · Data states
+    h.append('<h2 id="states">1 &middot; Data states</h2><div class="tablewrap"><table><thead><tr><th>State</th><th>Meaning &amp; effect</th></tr></thead><tbody>')
+    for k, v in DM.get("data_states", {}).items():
+        h.append('<tr><td><b>%s</b></td><td class="small">%s</td></tr>' % (_esc(k), _esc(v)))
+    h.append('</tbody></table></div>')
+    # 2 · Per input-type fallback
+    h.append('<h2 id="inputs">2 &middot; Cohort fallback by input type</h2>')
+    h.append('<p class="small muted">Every input type degrades gracefully to a cohort statistic. <span class="chip b-red">gap</span> = not yet wired in the engine today.</p>')
+    h.append('<div class="tablewrap"><table><thead><tr><th>Input type</th><th>Cohort fallback</th><th>Confidence</th><th>Effect</th><th>Nudge</th><th>Today</th></tr></thead><tbody>')
+    for k, t in DM.get("input_types", {}).items():
+        today = t.get("today", "")
+        badge = '<span class="chip b-green">live</span>' if today.startswith("IMPLEMENTED") else '<span class="chip b-red">gap</span>'
+        h.append('<tr><td><b>%s</b><br><span class="small muted">%s</span></td><td class="small">%s</td><td class="small mono">%s</td>'
+                 '<td class="small">acc&darr; · %s</td><td class="small mono">%s</td><td class="small">%s %s</td></tr>'
+                 % (_esc(t.get("label", k)), _esc(t.get("channel", "")), _esc(t.get("fallback", "")), _esc(t.get("confidence", "")),
+                    _esc(t.get("forecast_effect", "")), _esc(t.get("nudge", "")), badge, _esc(today)))
+    h.append('</tbody></table></div>')
+    h.append('<div class="callout note"><div class="ct">Why some inputs were dropped before</div><p class="small">Clinical &amp; wearable markers were '
+             'previously <em>dropped</em> when missing (never fabricate a blood pressure). Under the universal-but-safe model they now '
+             'cohort-fill for <em>scoring continuity</em> at very low confidence &mdash; but the safety invariant keeps a cohort value from '
+             'ever triggering a red/critical pillar or a clinical alert, so the conservatism is preserved where it matters.</p></div>')
+    # 3 · Accuracy + forecast
+    am = DM.get("accuracy_model", {}); fm = DM.get("forecast_model", {})
+    h.append('<h2 id="accuracy">3 &middot; Accuracy &amp; the widening forecast</h2>')
+    h.append('<div class="callout spec"><div class="ct">Reported Accuracy</div><p class="small mono">%s</p><p class="small">%s</p><p class="small muted">%s</p></div>'
+             % (_esc(am.get("def", "")), _esc(am.get("terms", "")), _esc(am.get("distinct_from", ""))))
+    h.append('<div class="callout spec"><div class="ct">Forecast cone</div><p class="small mono">%s</p><p class="small">%s</p><p class="small muted">%s</p></div>'
+             % (_esc(fm.get("def", "")), _esc(fm.get("behaviour", "")), _esc(fm.get("withhold", ""))))
+    # 4 · Companion extension
+    ce = DM.get("companion_extension", {})
+    h.append('<h2 id="companion">4 &middot; Companion-vector extension</h2><p class="small">%s</p>' % _esc(ce.get("note", "")))
+    h.append('<div class="tablewrap"><table><thead><tr><th>New dimension</th><th>Definition</th><th>Shows the user</th></tr></thead><tbody>')
+    for d in ce.get("dims", []):
+        h.append('<tr><td><b>%s</b></td><td class="small">%s</td><td class="small muted">%s</td></tr>' % (_esc(d.get("name", "")), _esc(d.get("def", "")), _esc(d.get("shows", ""))))
+    h.append('</tbody></table></div>')
+    # 5 · Invalid handling
+    ih = DM.get("invalid_handling", {})
+    h.append('<h2 id="invalid">5 &middot; Invalid-value handling</h2>')
+    h.append('<p class="small"><b>Detect:</b> %s<br><b>Action:</b> %s</p><p class="small muted"><b>Gap:</b> %s</p>'
+             % (_esc(ih.get("detect", "")), _esc(ih.get("action", "")), _esc(ih.get("gap", ""))))
+    # 6 · Data-completeness nudge loop
+    cls = NU.get("classes", {}); nudges = NU.get("nudges", []); esc = NU.get("escalation", {})
+    h.append('<h2 id="nudges">6 &middot; Data-completeness nudge loop <span class="small muted">&middot; %d CTAs</span></h2>' % len(nudges))
+    h.append('<p class="small">%s</p>' % _esc(NU.get("_meta", {}).get("ranking", "")))
+    h.append('<p class="small muted">Classes: ' + " &middot; ".join("<b>%s</b> %s" % (_esc(k), _esc(v)) for k, v in cls.items()) + "</p>")
+    h.append('<div class="tablewrap"><table><thead><tr><th>CTA</th><th>Class</th><th>Fires when</th><th>Raises</th><th>Effort</th></tr></thead><tbody>')
+    for n in nudges:
+        h.append('<tr><td><b>%s</b><br><span class="small muted">%s</span></td><td>%s</td><td class="small">%s</td><td class="small">%s</td><td class="small mono">%s</td></tr>'
+                 % (_esc(n.get("id", "")), _esc(n.get("cta", "")), _esc(n.get("class", "")), _esc(n.get("trigger", "")), _esc(n.get("raises", "")), _esc(n.get("effort", ""))))
+    h.append('</tbody></table></div>')
+    h.append('<div class="callout note"><div class="ct">Escalation &amp; continuity</div><p class="small">%s</p><p class="small muted">%s</p></div>'
+             % (_esc(esc.get("model", "")), _esc(esc.get("continuity", ""))))
+    us = NU.get("user_surface", {})
+    if us:
+        h.append('<div class="callout spec"><div class="ct">User-facing &ldquo;Data Health&rdquo; surface</div><ul class="small">%s</ul></div>'
+                 % "".join("<li>%s</li>" % _esc(x) for x in us.get("shows", [])))
+    # 7 · Gaps
+    h.append('<h2 id="gaps">7 &middot; Remaining gaps (loop)</h2><ul class="small">'
+             '<li>Engine wiring: extend <code>assets/engine.js</code> imputation to wearable/clinical/PRO channels with per-channel <code>q_impute</code>, plus the invalid-value plausibility gate (today only labs impute; engine has no invalid state).</li>'
+             '<li>Companion vector: add Cohort-fill %, Accuracy and Forecast-band as live dims in Doc 05 §4 / the calc-explorer, not just this spec.</li>'
+             '<li>Per-marker volatility-aware &tau; (recency half-life) so staleness decays at the right rate per metric.</li>'
+             '<li>The &ldquo;Data Health&rdquo; user surface + the data-completeness nudge class are specified here but not yet built into the mobile prototype or the nudge engine catalogue (adherence.json).</li>'
+             '<li>&Delta;Accuracy-per-effort ranking needs a real information-gain estimate, not the effort heuristic used here.</li></ul>')
+    h.append('<p class="small muted">Connects to: <a class="xref" href="06-data-model-and-reference-ranges.html">Doc 06 data model (imputation)</a> · '
+             '<a class="xref" href="05-critical-review-and-purescore-2.0.html">Doc 05 §4 companion vector</a> · '
+             '<a class="xref" href="wearable-baseline-pipeline.html">Baseline pipeline (cold-start)</a> · '
+             '<a class="xref" href="appendix-onboarding.html">Progressive profiling</a> · '
+             '<a class="xref" href="appendix-coverage-audit.html">Coverage audit</a> · '
+             '<a class="xref" href="11-daily-nudge-engine.html">Nudge engine</a>.</p>')
+    return "Progressive data &amp; graceful degradation", "".join(h)
+
 # =================================================================== WEARABLE CORROBORATION (closes F4)
 def _wear_corr_counts():
     """Per-metric count of question-bank questions whose wearable corroborations resolve to it."""

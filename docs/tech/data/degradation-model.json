@@ -1,0 +1,88 @@
+{
+ "_meta": {
+  "note": "Progressive data collection & graceful degradation — the unified model for what happens when an input is MISSING, STALE, DECAYED, or INVALID across every input type (lab / wearable / clinical markers, PRO & lifestyle questions, wearable baselines, user goals). When real data is absent the system substitutes a COHORT statistic (age×sex×life-stage median/mean, D33) so scoring stays continuous, lowers Accuracy, widens the forecast, exposes the substitution in the companion vector, and nudges the user to fill the gap. Illustrative; engine wiring (extend assets/engine.js imputation to all channels + invalid gate) is the implementation step. Re-verify (README §5.6).",
+  "safety_invariant": "A COHORT-SUBSTITUTED value is informational-only. It MAY lower a score and widen uncertainty, but it can NEVER (a) raise Confidence or Accuracy, (b) trigger a red/critical pillar floor (R_crit), or (c) fire a clinical Early-warning Advisory/Alert. Only a REAL, in-date, VALID measurement can do those. This extends D22 (trust tiers) and preserves the critical-marker gate, which already requires state=present with a real value.",
+  "design": "cohort-fill for CONTINUITY, never for confidence · accuracy & forecast degrade monotonically with missingness/staleness/cohort-fill · every gap raises a data-completeness nudge (data-completeness-nudges.json)."
+ },
+ "data_states": {
+  "present": "real, in-date, valid measurement — full weight & confidence (q_source).",
+  "stale": "real but older than the metric's fresh-within SLA — confidence decays q_source·exp(−Δt/τ); value blends toward neutral as it ages.",
+  "decayed": "stale beyond stale_dt_days — effectively non-informative; treated as missing for the centre but kept for provenance.",
+  "invalid": "fails the plausibility gate (out-of-physiological-range / implausible) — REJECTED to quarantine, then treated as missing (cohort-substituted), never allowed to saturate the risk function.",
+  "missing": "no usable value — cohort statistic substituted at low confidence (per input type below)."
+ },
+ "input_types": {
+  "lab_marker": {
+   "label": "Lab biomarker (ApoB, HbA1c, eGFR…)", "channel": "lab",
+   "fallback": "age×sex×life-stage cohort median F⁻¹(0.5) (D33); source flag = literature_fallback",
+   "confidence": "q_impute ≈ 0.30", "weight": "scaled by confidence (Rp_impute ≈ 0.70)",
+   "accuracy_effect": "counts toward cohort-fill fraction → lowers Accuracy", "forecast_effect": "widens the cone",
+   "nudge": "MEAS-<lab> (order/repeat the test)", "today": "IMPLEMENTED (imputable markers)",
+   "safety": "informational; can't trigger critical (gate requires a present real value)"
+  },
+  "wearable_marker": {
+   "label": "Wearable metric (RHR, HRV, SpO₂, steps…)", "channel": "wearable",
+   "fallback": "personal baseline prior if one exists (baseline pipeline cold_start), else age×sex cohort median + device-tier prior",
+   "confidence": "q_impute_wearable ≈ 0.20 (lower — high personal variance)", "weight": "scaled by confidence",
+   "accuracy_effect": "lowers Accuracy", "forecast_effect": "widens the cone",
+   "nudge": "DEVICE-WEARABLE (connect / wear the device)", "today": "GAP — currently DROPPED when missing",
+   "safety": "consumer/inferential tier (D22) can't set red/critical anyway; cohort-fill stays informational"
+  },
+  "clinical_marker": {
+   "label": "Clinical device value (home BP, waist, CGM TIR, ODI)", "channel": "clinical",
+   "fallback": "age×sex×life-stage cohort median; source = literature_fallback; shown as 'estimated — please measure'",
+   "confidence": "q_impute_clinical ≈ 0.15 (lowest — we really want the real reading)", "weight": "scaled by confidence",
+   "accuracy_effect": "lowers Accuracy most", "forecast_effect": "widens the cone",
+   "nudge": "MEAS-HOMEBP / DEVICE-CGM (take/connect the reading)", "today": "GAP — currently DROPPED when missing",
+   "safety": "a cohort-filled clinical value NEVER triggers red/critical/alert — only a real measurement can flag hypertension/apnea etc."
+  },
+  "pro_question": {
+   "label": "PRO / lifestyle question (PHQ, GAD, ISI, AUDIT-C, diet, IPAQ)", "channel": "pro",
+   "fallback": "cohort modal/median response for age×sex×life-stage (+ persona prior) when unanswered",
+   "confidence": "q_impute_pro ≈ 0.25", "weight": "scaled by confidence",
+   "accuracy_effect": "lowers Accuracy", "forecast_effect": "widens the cone",
+   "nudge": "INTAKE-<pillar> (answer N high-yield questions)", "today": "GAP — no cohort default for unanswered questions (coverage-audit F11)",
+   "safety": "a cohort-default PRO can't fire a mental-health Advisory/Alert (requires a real answer)"
+  },
+  "wearable_baseline": {
+   "label": "Personal wearable baseline (μ/σ per metric)", "channel": "wearable",
+   "fallback": "age×sex×life-stage cohort prior μ/σ (D33); 'provisional' until n_effective ≥ min-history; shrinks to personal as data accrues",
+   "confidence": "scales with n_effective (cold_start low → rises)", "weight": "n/(n+k) shrinkage",
+   "accuracy_effect": "provisional baseline lowers Accuracy", "forecast_effect": "wider band until personalised",
+   "nudge": "DEVICE-WEARABLE (wear consistently to personalise)", "today": "IMPLEMENTED in baseline pipeline (cold_start)",
+   "safety": "a provisional baseline can't fire a deviation Alert until enough personal history (boiling-frog/cold-start guards)"
+  },
+  "user_goal": {
+   "label": "User goal (per pillar)", "channel": "goal",
+   "fallback": "persona/archetype default goal seeded at onboarding (goals.json applicability), marked 'suggested'",
+   "confidence": "n/a (suggestion, not a measurement)", "weight": "does not move the score",
+   "accuracy_effect": "none (goals don't feed the score)", "forecast_effect": "none",
+   "nudge": "GOAL-SET (confirm / personalise your goal)", "today": "GAP — defaults implicit via applicability, no explicit seed step",
+   "safety": "a defaulted goal is a suggestion, never a commitment or a clinical target"
+  }
+ },
+ "accuracy_model": {
+  "def": "Accuracy A_k = Confidence_k · Sufficiency_k · (1 − λ·cohortFillFraction_k), bounded [0,1], reported as a %.",
+  "terms": "Confidence = source quality × freshness (q·exp(−Δt/τ)); Sufficiency = fresh-patient-data fraction; cohortFillFraction = share of the pillar's weight currently met by cohort substitution; λ ≈ 0.5 (expert-prior).",
+  "distinct_from": "Confidence = is present data trustworthy? Sufficiency = is data present? Accuracy = the combined, cohort-penalised headline the user sees ('reported with lower accuracy').",
+  "report": "Accuracy shown beside the score and per pillar; drops as data goes missing/stale or is cohort-filled."
+ },
+ "forecast_model": {
+  "def": "Trajectory forecast widens with uncertainty: point days-to-threshold T̂ from the robust slope; half-width H = k · (σ_t / A) · √(horizon), where σ_t = pillar Volatility (companion #8) and A = Accuracy. Shown as a CONE, not a line.",
+  "behaviour": "high accuracy → tight cone (T̂ ± 3d); low accuracy / high volatility / heavy cohort-fill → wide cone (T̂ ± 15d) or 'forecast withheld' when A < a floor.",
+  "withhold": "below an accuracy floor the forecast is shown as a range only or suppressed with 'need more data', never a confident point."
+ },
+ "invalid_handling": {
+  "detect": "per-marker plausibility gate (min/max from wearable-metrics.json / range-variations) — e.g. HR>220, SpO₂<70, negative durations",
+  "action": "REJECT → quarantine-with-context → treat the marker as missing → cohort-substitute + flag; never let an implausible value saturate the continuous risk function",
+  "gap": "the scoring engine has no INVALID state today (only missing/stale) — invalid values currently saturate; this model adds the gate"
+ },
+ "companion_extension": {
+  "note": "Three additions so the companion vector exposes degradation (extends the 10 meta-dims, Doc 05 §4):",
+  "dims": [
+   {"id": "CohortFill", "name": "Cohort-fill %", "def": "share of the score/pillar currently met by cohort substitution vs real patient data; 0% = fully personal, 100% = fully cohort", "shows": "'42% of this score is cohort-estimated'"},
+   {"id": "Accuracy", "name": "Accuracy", "def": "A_k = Cf·Su·(1−λ·CohortFill) — the cohort-penalised headline accuracy", "shows": "'Accuracy 58%'"},
+   {"id": "ForecastBand", "name": "Forecast band", "def": "half-width of the days-to-threshold cone = k·(Volatility/Accuracy)·√horizon", "shows": "'~21±12 days to yellow' or 'forecast needs more data'"}
+  ]
+ }
+}

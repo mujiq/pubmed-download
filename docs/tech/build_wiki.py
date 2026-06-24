@@ -153,7 +153,7 @@ NAV = [
                  ("decisions.html", "Decision log")]),
  ("1 · How scoring works", [("purescore-overview.html", "Overview"),
                  (DOCMAP["02"], SHORT["02"], "02"), ("pillar-weights.html", "Pillar weights & correlations"),
-                 (DOCMAP["03"], SHORT["03"], "03"),
+                 (DOCMAP["03"], SHORT["03"], "03"), ("progressive-data.html", "Progressive data & degradation"),
                  (DOCMAP["04"], SHORT["04"], "04"), ("reservoir-sim.html", "Reservoir simulator"),
                  (DOCMAP["05"], SHORT["05"], "05")]),
  ("2 · Inputs & intake", [(DOCMAP["06"], SHORT["06"], "06"), (DOCMAP["07"], SHORT["07"], "07"),
@@ -275,6 +275,8 @@ CHAPTERS = {
 # One-line page descriptions for the chapter landing lists (fall back to the NAV label when absent).
 PDESC = {
  "index.html": "The wiki home and role-based entry points.",
+ "progressive-data.html": "Missing/stale/invalid inputs fall back to cohort statistics — lower accuracy, wider forecast, nudges to fill the gap.",
+ "wearable-baseline-pipeline.html": "Terra/HealthKit/vendor data unified into one robust personal baseline, with exhaustive data-quality and estimator-hazard rules.",
  "purescore-uber-map.html": "Run the full scoring pipeline live — audit tree, dataflow map and editable leaves.",
  "01-vision-principles-and-lessons.html": "What PureScore is, the principles it holds to, and lessons that shaped it.",
  "conventions.html": "Notation, glossary and the conventions every other page assumes.",
@@ -343,6 +345,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "production-gaps.html":"Production readiness — gaps",
           "spec-audit.html":"Spec build-readiness audit",
           "pillar-weights.html":"Pillar weights & correlations",
+          "progressive-data.html":"Progressive data & graceful degradation",
           "editorial-review.html":"Editorial & cohesion review",
           "consolidation-plan.html":"Consolidation plan",
           "care-pathways.html":"Care pathways — condition pathways","care-roles.html":"Care team & roles",
@@ -798,6 +801,7 @@ def main():
                       ("purescore-overview.html", "build_purescore_overview"),
                       ("purescore-wearable-baselines.html", "build_wearable_baselines"),
                       ("wearable-baseline-pipeline.html", "build_baseline_pipeline"),
+                      ("progressive-data.html", "build_progressive_data"),
                       ("purescore-sex.html", "build_purescore_sex"),
                       ("dossier-sequences.html", "build_sequences"),
                       ("dossier-erd.html", "build_erd"), ("dossier-c4.html", "build_c4"),
@@ -835,6 +839,7 @@ def main():
     _flag_guard()
     _care_guard()
     _baseline_guard()
+    _degradation_guard()
 
 def _engine_guard():
     """HARD guard (per D32): data/*.json is canonical for the scoring engine. Fail the build if
@@ -1070,6 +1075,46 @@ def _baseline_guard():
             print("     -", b)
         raise SystemExit("! build failed: baseline-guard — see wearable-metrics / baseline-dq-rules")
     print("  [baseline-guard] OK — every metric has source/unit/formula + full DQ category coverage")
+
+
+def _degradation_guard():
+    """Progressive-data / graceful-degradation completeness: HARD-fail unless the safety invariant is
+    present, every input type has a cohort fallback + confidence + forecast effect + nudge, the accuracy &
+    forecast models and companion extension exist, and every data-completeness nudge has a valid class."""
+    DM = C._load("degradation-model.json"); NU = C._load("data-completeness-nudges.json")
+    bad = []
+    if not DM.get("_meta", {}).get("safety_invariant"):
+        bad.append("missing safety_invariant")
+    its = DM.get("input_types", {})
+    if not its:
+        bad.append("no input_types")
+    for k, t in its.items():
+        for f in ("fallback", "confidence", "forecast_effect", "nudge"):
+            if not t.get(f):
+                bad.append("input %s: missing %s" % (k, f))
+    for f in ("accuracy_model", "forecast_model"):
+        if not DM.get(f):
+            bad.append("missing %s" % f)
+    if not DM.get("companion_extension", {}).get("dims"):
+        bad.append("companion_extension has no dims")
+    classes = set(NU.get("classes", {}))
+    nudges = NU.get("nudges", [])
+    if not nudges:
+        bad.append("no data-completeness nudges")
+    for n in nudges:
+        if n.get("class") not in classes:
+            bad.append("nudge %s: class %r not in %s" % (n.get("id"), n.get("class"), sorted(classes)))
+        for f in ("trigger", "cta", "raises"):
+            if not n.get(f):
+                bad.append("nudge %s: missing %s" % (n.get("id"), f))
+    print("[degradation-guard] %d input types · %d completeness nudges · %d nudge classes"
+          % (len(its), len(nudges), len(classes)))
+    if bad:
+        print("  ! FAIL:")
+        for b in bad[:14]:
+            print("     -", b)
+        raise SystemExit("! build failed: degradation-guard — see degradation-model / data-completeness-nudges")
+    print("  [degradation-guard] OK — safety invariant set, every input type degrades to cohort + nudge")
 
 
 def _care_guard():
