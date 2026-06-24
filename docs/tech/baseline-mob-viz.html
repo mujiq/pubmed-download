@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Baseline · Mobile Visualizations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+:root{
+  --bg:#070a0f;
+  --bg2:#0a0e15;
+  --surface:#10151e;
+  --surface2:#161d28;
+  --elev:#1b2430;
+  --line:rgba(255,255,255,.07);
+  --line2:rgba(255,255,255,.12);
+  --txt:#e8eef5;
+  --txt2:#94a3b4;
+  --txt3:#5d6b7c;
+  --accent:#2ee6c9;
+  --accent-dim:rgba(46,230,201,.14);
+  --good:#3ad6a0;
+  --nominal:#49c6d8;
+  --warn:#edb14a;
+  --bad:#f0606e;
+  --violet:#8f9bff;
+  --shadow:0 24px 60px -20px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:
+    radial-gradient(900px 600px at 18% -5%, rgba(46,230,201,.07), transparent 60%),
+    radial-gradient(800px 700px at 100% 10%, rgba(143,155,255,.06), transparent 55%),
+    var(--bg);
+  color:var(--txt);
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:54px;
+  padding:40px 28px;
+  -webkit-font-smoothing:antialiased;
+}
+.tnum{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ===== Desktop info rail ===== */
+.rail{width:330px;max-width:330px;flex-shrink:0}
+.rail .kicker{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.rail h1{font-size:30px;line-height:1.12;margin:14px 0 10px;font-weight:800;letter-spacing:-.02em}
+.rail .lede{color:var(--txt2);font-size:13.5px;line-height:1.6;margin-bottom:26px}
+.rail .lede b{color:var(--txt)}
+.rail-item{
+  display:flex;gap:13px;padding:13px 14px;border-radius:14px;cursor:pointer;
+  border:1px solid transparent;transition:.18s;align-items:flex-start;
+}
+.rail-item:hover{background:var(--surface)}
+.rail-item.on{background:var(--surface);border-color:var(--line2);box-shadow:inset 0 0 0 1px rgba(46,230,201,.12)}
+.rail-num{
+  width:26px;height:26px;border-radius:8px;flex-shrink:0;display:grid;place-items:center;
+  font-size:12px;font-weight:700;background:var(--elev);color:var(--txt2);margin-top:1px;
+}
+.rail-item.on .rail-num{background:var(--accent);color:#04130f}
+.rail-tt{font-size:14px;font-weight:650;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.rail-dd{font-size:12px;color:var(--txt3);line-height:1.5;margin-top:3px}
+.star{font-size:9.5px;font-weight:800;letter-spacing:.06em;color:var(--accent);background:var(--accent-dim);
+  padding:2px 6px;border-radius:6px;text-transform:uppercase}
+.rail-foot{margin-top:24px;font-size:11.5px;color:var(--txt3);line-height:1.6;border-top:1px solid var(--line);padding-top:16px}
+
+/* ===== Phone ===== */
+.device{
+  width:392px;height:min(846px,94vh);flex-shrink:0;position:relative;
+  background:linear-gradient(180deg,#1a1f29,#0b0e14);
+  border-radius:54px;padding:13px;
+  box-shadow:var(--shadow),0 0 0 2px #2a313d,0 0 0 11px #0c0f15,0 0 0 12px #1f2632;
+}
+.screen{
+  position:relative;width:100%;height:100%;background:var(--bg2);
+  border-radius:42px;overflow:hidden;display:flex;flex-direction:column;
+}
+.notch{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:118px;height:32px;
+  background:#000;border-radius:18px;z-index:40}
+.statusbar{height:50px;flex-shrink:0;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 26px 7px;font-size:13.5px;font-weight:650;z-index:30}
+.statusbar .icons{display:flex;gap:6px;align-items:center}
+.statusbar svg{display:block}
+
+/* app header */
+.appbar{padding:6px 20px 12px;flex-shrink:0}
+.appbar .row{display:flex;justify-content:space-between;align-items:flex-start}
+.appbar .hello{font-size:12px;color:var(--txt2);font-weight:500}
+.appbar .title{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-top:1px}
+.avatar{width:38px;height:38px;border-radius:50%;background:
+  conic-gradient(from 140deg,#2ee6c9,#8f9bff,#2ee6c9);padding:2px;flex-shrink:0}
+.avatar div{width:100%;height:100%;border-radius:50%;background:var(--surface);display:grid;place-items:center;
+  font-size:13px;font-weight:700;color:var(--txt)}
+.cov-pill{display:inline-flex;align-items:center;gap:6px;margin-top:11px;padding:5px 11px;border-radius:20px;
+  background:var(--surface);border:1px solid var(--line);font-size:11.5px;color:var(--txt2);font-weight:550}
+.cov-dot{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good)}
+
+/* scroll body */
+.body{flex:1;overflow-y:auto;overflow-x:hidden;padding:2px 16px 18px;scrollbar-width:none}
+.body::-webkit-scrollbar{display:none}
+.view{display:none}
+.view.on{display:block;animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.vhead{margin:6px 2px 14px}
+.vhead h2{font-size:17px;font-weight:750;letter-spacing:-.01em;margin:0;display:flex;align-items:center;gap:8px}
+.vhead p{font-size:12px;color:var(--txt2);line-height:1.5;margin:5px 0 0}
+
+/* segmented control */
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;color:var(--txt2);font:inherit;font-size:12px;font-weight:600;
+  padding:6px 13px;border-radius:8px;cursor:pointer;transition:.15s;font-variant-numeric:tabular-nums}
+.seg button.on{background:var(--elev);color:var(--txt);box-shadow:0 1px 2px rgba(0,0,0,.3)}
+
+.chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin:0 -2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;border:1px solid var(--line);background:var(--surface);color:var(--txt2);
+  font:inherit;font-size:12px;font-weight:600;padding:6px 13px;border-radius:20px;cursor:pointer;transition:.15s}
+.chip.on{background:var(--accent-dim);border-color:rgba(46,230,201,.4);color:var(--accent)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
+.card.flush{padding:14px 10px 8px}
+
+/* hero metric block */
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:2px 2px 14px}
+.hero .big{font-size:46px;font-weight:800;letter-spacing:-.03em;line-height:.95}
+.hero .unit{font-size:15px;font-weight:600;color:var(--txt2);margin-left:5px}
+.hero .sub{font-size:12px;color:var(--txt3);margin-top:6px;font-weight:500}
+.devchip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:11px;font-size:12px;font-weight:700;
+  font-variant-numeric:tabular-nums}
+
+/* strip rows */
+.strip-summary{display:flex;gap:9px;margin-bottom:14px}
+.ss-cell{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 13px}
+.ss-cell .n{font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.ss-cell .l{font-size:10.5px;color:var(--txt3);margin-top:5px;font-weight:600;letter-spacing:.02em;text-transform:uppercase}
+.grouplbl{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--txt3);
+  margin:18px 4px 9px}
+.srow{display:flex;align-items:center;gap:11px;padding:9px 2px}
+.srow+.srow{border-top:1px solid var(--line)}
+.srow .nm{width:80px;flex-shrink:0;font-size:12.5px;font-weight:600}
+.srow .nm small{display:block;color:var(--txt3);font-size:10px;font-weight:500;margin-top:1px}
+.track{flex:1;position:relative;height:26px}
+.track .axis{position:absolute;top:50%;left:0;right:0;height:1px;background:var(--line2);transform:translateY(-50%)}
+.track .band{position:absolute;top:50%;height:13px;transform:translateY(-50%);
+  background:rgba(255,255,255,.045);border-left:1px dashed var(--line2);border-right:1px dashed var(--line2);border-radius:3px}
+.track .mid{position:absolute;top:50%;width:2px;height:18px;transform:translate(-50%,-50%);background:var(--txt3);border-radius:2px}
+.track .bar{position:absolute;top:50%;height:3px;transform:translateY(-50%);border-radius:3px;opacity:.55}
+.track .dot{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;transform:translate(-50%,-50%);
+  border:2px solid var(--bg2);box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+.srow .val{width:64px;flex-shrink:0;text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.srow .val small{display:block;font-size:10.5px;font-weight:600;margin-top:1px}
+
+/* drift grid */
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.dcard{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:12px 12px 8px}
+.dcard .top{display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+.dcard .mn{font-size:12px;font-weight:650}
+.dcard .tr{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.dcard .cv{font-size:18px;font-weight:800;letter-spacing:-.02em;margin-top:7px}
+.dcard .cv span{font-size:11px;color:var(--txt3);font-weight:600;margin-left:3px}
+
+.legend{display:flex;flex-wrap:wrap;gap:13px;margin:4px 4px 0;font-size:11px;color:var(--txt2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lg-sw{width:14px;height:9px;border-radius:3px}
+.note{font-size:11.5px;color:var(--txt3);line-height:1.55;margin:10px 4px 2px;display:flex;gap:8px}
+.note svg{flex-shrink:0;margin-top:1px}
+
+/* tab bar */
+.tabs{flex-shrink:0;display:flex;background:rgba(8,11,16,.86);backdrop-filter:blur(20px);
+  border-top:1px solid var(--line);padding:9px 8px calc(9px + env(safe-area-inset-bottom));z-index:30}
+.tab{flex:1;border:0;background:transparent;cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;gap:4px;padding:5px 2px;color:var(--txt3);transition:.15s;position:relative}
+.tab.on{color:var(--accent)}
+.tab svg{width:22px;height:22px}
+.tab span{font-size:9.5px;font-weight:600;letter-spacing:.01em}
+.tab .reco{position:absolute;top:1px;right:calc(50% - 17px);width:5px;height:5px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 6px var(--accent)}
+
+svg text{font-family:'Inter',sans-serif}
+.axislbl{fill:var(--txt3);font-size:10px;font-weight:500}
+.disclaimer{font-size:10px;color:var(--txt3);text-align:center;margin:14px 8px 2px;line-height:1.5}
+
+@media (max-width:940px){.rail{display:none}}
+@media (max-width:480px){
+  body{padding:0}
+  .device{width:100vw;height:100vh;height:100dvh;border-radius:0;padding:0;box-shadow:none}
+  .screen{border-radius:0}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ DESKTOP INFO RAIL ============ -->
+<aside class="rail">
+  <div class="kicker">Wearable Baseline · Concept</div>
+  <h1>Five ways to see your&nbsp;baseline.</h1>
+  <p class="lede">Your <b>baseline</b> is your personal normal — learned per metric, per body. These five condensed mobile views each answer a different question: <b>how far off am I, across what, trending where, and how sure are we?</b></p>
+  <div id="rail-items"></div>
+  <div class="rail-foot">★ = recommended top 3 · Tap any entry or the phone's tab bar to switch. Sample data is synthetic and for design only.</div>
+</aside>
+
+<!-- ============ PHONE ============ -->
+<div class="device">
+  <div class="screen">
+    <div class="notch"></div>
+    <!-- status bar -->
+    <div class="statusbar">
+      <span class="tnum">9:41</span>
+      <span class="icons">
+        <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="6" width="3" height="5" rx="1" fill="currentColor"/><rect x="4.5" y="4" width="3" height="7" rx="1" fill="currentColor"/><rect x="9" y="2" width="3" height="9" rx="1" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg>
+        <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><path d="M8 2.2C10 2.2 11.8 3 13.1 4.3L8 9.5 2.9 4.3C4.2 3 6 2.2 8 2.2Z" fill="currentColor" opacity=".4"/><path d="M8 5.2C8.9 5.2 9.7 5.6 10.3 6.2L8 9.5 5.7 6.2C6.3 5.6 7.1 5.2 8 5.2Z" fill="currentColor"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="0.5" width="21" height="11" rx="3" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="16.5" height="8" rx="1.5" fill="currentColor"/><rect x="23" y="3.5" width="1.6" height="5" rx="1" fill="currentColor" opacity=".5"/></svg>
+      </span>
+    </div>
+
+    <!-- app bar -->
+    <div class="appbar">
+      <div class="row">
+        <div>
+          <div class="hello">Wed · Jun 18 · Morning</div>
+          <div class="title">Baseline</div>
+        </div>
+        <div class="avatar"><div>MQ</div></div>
+      </div>
+      <div class="cov-pill"><span class="cov-dot"></span>Synced 14m ago · <span id="globcov" style="color:var(--txt)">&nbsp;91%</span>&nbsp;14-day coverage</div>
+    </div>
+
+    <!-- scrollable views -->
+    <div class="body" id="body">
+      <div class="view" id="v-band"></div>
+      <div class="view" id="v-strip"></div>
+      <div class="view" id="v-radar"></div>
+      <div class="view" id="v-drift"></div>
+      <div class="view" id="v-uncert"></div>
+      <div class="disclaimer">Personalized baselines · deterministic core. Wellness use only — not a medical device.</div>
+    </div>
+
+    <!-- tab bar -->
+    <div class="tabs" id="tabs"></div>
+  </div>
+</div>
+
+<script>
+/* =================================================================
+   DATA MODEL — synthetic, seeded, deterministic
+   ================================================================= */
+const N = 180; // days of history
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+
+const META = [
+  {key:'hrv',     name:'HRV',         unit:'ms',     base:64,  sd:8,   better:'high', cat:'Recovery'},
+  {key:'rhr',     name:'Resting HR',  unit:'bpm',    base:54,  sd:3,   better:'low',  cat:'Recovery'},
+  {key:'resp',    name:'Respiratory', unit:'br/min', base:14.6,sd:0.8, better:'low',  cat:'Recovery', dec:1},
+  {key:'temp',    name:'Skin Temp',   unit:'°C',     base:0,   sd:0.22,better:'mid',  cat:'Recovery', dec:2, signed:true},
+  {key:'sleep',   name:'Sleep',       unit:'h',      base:7.4, sd:0.7, better:'high', cat:'Sleep',    dec:1},
+  {key:'eff',     name:'Sleep Eff.',  unit:'%',      base:89,  sd:3.5, better:'high', cat:'Sleep'},
+  {key:'deep',    name:'Deep Sleep',  unit:'min',    base:74,  sd:14,  better:'high', cat:'Sleep'},
+  {key:'steps',   name:'Steps',       unit:'',       base:8600,sd:2400,better:'high', cat:'Activity'},
+  {key:'vo2',     name:'VO₂max',      unit:'',       base:47,  sd:1.4, better:'high', cat:'Activity', dec:1},
+  {key:'strain',  name:'Strain',      unit:'',       base:11.5,sd:3,   better:'mid',  cat:'Activity', dec:1},
+  {key:'spo2',    name:'SpO₂',        unit:'%',      base:96.6,sd:1.0, better:'high', cat:'Vitals'},
+  {key:'glucose', name:'Glucose',     unit:'mg/dL',  base:92,  sd:8,   better:'mid',  cat:'Vitals'},
+  {key:'stress',  name:'Stress',      unit:'',       base:38,  sd:12,  better:'low',  cat:'Vitals'},
+];
+const M = {}; META.forEach((m,i)=>{m.dec=m.dec??0; m.idx=i; M[m.key]=m;});
+
+function gen(m, seed){
+  const rng = mulberry32(seed);
+  const gauss=()=>{let u=0,v=0;while(!u)u=rng();while(!v)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};
+  const slope=(rng()-0.42)*m.sd*0.010;          // gentle long trend
+  const phase=rng()*6.28;
+  const series=[]; let drift=0;
+  for(let i=0;i<N;i++){
+    drift+=slope;
+    const weekly=Math.sin(i/7*6.283+phase)*m.sd*0.16;
+    series.push(m.base+drift+weekly+gauss()*m.sd*0.66);
+  }
+  // coverage map (data completeness) — mostly present, a couple gaps
+  const cov=[]; for(let i=0;i<N;i++) cov.push(rng()>0.085);
+  const gapStart=N-19+Math.floor(rng()*6); for(let i=0;i<3;i++) cov[gapStart+i]=false;
+  return {series, cov};
+}
+META.forEach((m,i)=>{const g=gen(m,1000+i*97); m.series=g.series; m.cov=g.cov; m.today=g.series[N-1];});
+
+/* ---- helpers ---- */
+const C={good:'#3ad6a0',nominal:'#49c6d8',warn:'#edb14a',bad:'#f0606e',accent:'#2ee6c9',violet:'#8f9bff',txt3:'#5d6b7c',line2:'rgba(255,255,255,.12)'};
+function z(m,v){return (v-m.base)/m.sd;}
+function goodness(m,v){const zz=z(m,v); if(m.better==='high')return zz; if(m.better==='low')return -zz; return -Math.abs(zz);}
+function gColor(m,v){const s=goodness(m,v); if(s>=0.5)return C.good; if(s>=-0.5)return C.nominal; if(s>=-1.3)return C.warn; return C.bad;}
+function gLabel(m,v){const s=goodness(m,v); if(s>=0.5)return 'Above baseline'; if(s>=-0.5)return 'Within baseline'; if(s>=-1.3)return 'Below baseline'; return 'Well below baseline';}
+function fmt(m,v){ if(m.key==='steps')return Math.round(v).toLocaleString(); const s=v.toFixed(m.dec); return (m.signed&&v>0?'+':'')+s; }
+function sigma(m,v){const zz=z(m,v); return (zz>=0?'+':'')+zz.toFixed(1)+'σ';}
+function fmtDelta(m,v){const d=v-m.base; const s=(d>=0?'+':'')+(m.key==='steps'?Math.round(d).toLocaleString():d.toFixed(m.dec)); return s+(m.unit?' '+m.unit:'');}
+
+/* =================================================================
+   STATE + ROUTER
+   ================================================================= */
+const VIEWS=[
+  {key:'band',  el:'v-band',  label:'Band',   reco:true,  title:'Baseline Band',      sub:'A single metric tracked against your personal ±1σ normal range.',
+    desc:'One metric vs its personal ±1σ band over time — the clearest read on “how far off am I right now.”'},
+  {key:'strip', el:'v-strip', label:'Scan',   reco:true,  title:'Deviation Scan',     sub:'Every metric as a z-score gauge — your whole body, one glance.',
+    desc:'All metrics as deviation gauges in a dense list — the daily morning scan, maximum info per pixel.'},
+  {key:'radar', el:'v-radar', label:'Radar',  reco:true,  title:'Body Radar',         sub:'Composite shape of today vs baseline. Outward = better than normal.',
+    desc:'A polar composite where outward means better-than-baseline — instant whole-body shape & readiness score.'},
+  {key:'drift', el:'v-drift', label:'Drift',  reco:false, title:'Baseline Drift',     sub:'How the baseline itself is shifting — adaptation, not noise.',
+    desc:'Tracks how the baseline itself moves week over week — is your normal improving or eroding?'},
+  {key:'uncert',el:'v-uncert',label:'Trust',  reco:false, title:'Confidence & Trust', sub:'Your baseline widens when data is sparse. We never assert what we can’t see.',
+    desc:'Confidence-aware band that widens over data gaps — honors “absence = widened uncertainty.”'},
+];
+const ICONS={
+  band:'<path d="M3 15c3 0 3-7 6-7s3 7 6 7 3-4 6-4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M3 18c3 0 3-7 6-7s3 7 6 7 3-4 6-4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" opacity=".4"/>',
+  strip:'<g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h11"/><path d="M4 12h16"/><path d="M4 17h8"/></g><circle cx="15" cy="7" r="1.6" fill="currentColor"/><circle cx="20" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="17" r="1.6" fill="currentColor"/>',
+  radar:'<polygon points="12,3 20,8 17,18 7,18 4,8" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".4"/><polygon points="12,7 16,10 14,15 9,14 8,10" fill="currentColor" fill-opacity=".18" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+  drift:'<path d="M3 16l5-4 4 3 8-9" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 6h4v4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+  uncert:'<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 8v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15" r="1" fill="currentColor"/>',
+};
+const state={view:'strip', band:{metric:'hrv',range:30}, drift:{range:90}, uncert:{metric:'temp'}};
+
+function setView(k){
+  state.view=k;
+  VIEWS.forEach(v=>{
+    document.getElementById(v.el).classList.toggle('on',v.key===k);
+    document.querySelector('#tab-'+v.key).classList.toggle('on',v.key===k);
+    const r=document.querySelector('#rail-'+v.key); if(r)r.classList.toggle('on',v.key===k);
+  });
+  RENDER[k]();
+}
+
+/* build tab bar + rail */
+(function(){
+  const tb=document.getElementById('tabs');
+  tb.innerHTML=VIEWS.map(v=>`<button class="tab" id="tab-${v.key}" onclick="setView('${v.key}')">
+    ${v.reco?'<span class="reco"></span>':''}
+    <svg viewBox="0 0 24 24" fill="none">${ICONS[v.key]}</svg><span>${v.label}</span></button>`).join('');
+  const ri=document.getElementById('rail-items');
+  ri.innerHTML=VIEWS.map((v,i)=>`<div class="rail-item" id="rail-${v.key}" onclick="setView('${v.key}')">
+    <div class="rail-num">${i+1}</div>
+    <div><div class="rail-tt">${v.title}${v.reco?'<span class="star">★ Top 3</span>':''}</div>
+    <div class="rail-dd">${v.desc}</div></div></div>`).join('');
+})();
+
+/* shared builders */
+function vhead(v){return `<div class="vhead"><h2>${v.title}${v.reco?' <span class="star">★</span>':''}</h2><p>${v.sub}</p></div>`;}
+function W(el){return Math.max(260, el.clientWidth);}
+
+/* =================================================================
+   VIEW 1 — BASELINE BAND RIBBON
+   ================================================================= */
+function renderBand(){
+  const root=document.getElementById('v-band'); const v=VIEWS[0];
+  const m=M[state.band.metric], R=state.band.range;
+  const data=m.series.slice(N-R).map((val,i)=>({i,val}));
+  const tv=m.today, col=gColor(m,tv);
+  root.innerHTML = vhead(v)
+   + `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="seg" id="band-range">
+          ${[7,30,90].map(r=>`<button class="${r===R?'on':''}" data-r="${r}">${r}D</button>`).join('')}
+        </div>
+        <div class="devchip" style="background:${col}22;color:${col}">${sigma(m,tv)}</div>
+      </div>`
+   + `<div class="hero"><div>
+        <span class="big tnum">${fmt(m,tv)}</span><span class="unit">${m.unit}</span>
+        <div class="sub">${gLabel(m,tv)} · normal ${fmt(m,m.base-m.sd)}–${fmt(m,m.base+m.sd)} ${m.unit}</div>
+      </div></div>`
+   + `<div class="card flush"><div id="band-chart"></div></div>`
+   + `<div class="chips" id="band-metrics">
+        ${META.filter(x=>['hrv','rhr','sleep','deep','steps','glucose','stress','spo2'].includes(x.key))
+          .map(x=>`<button class="chip ${x.key===m.key?'on':''}" data-k="${x.key}">${x.name}</button>`).join('')}
+      </div>`
+   + `<div class="legend"><span><span class="lg-sw" style="background:${C.accent}88"></span>Your reading</span>
+        <span><span class="lg-sw" style="background:rgba(255,255,255,.10)"></span>Baseline ±1σ</span>
+        <span><span class="lg-sw" style="background:${col}"></span>Outside normal</span></div>`;
+
+  root.querySelectorAll('#band-range button').forEach(b=>b.onclick=()=>{state.band.range=+b.dataset.r;renderBand();});
+  root.querySelectorAll('#band-metrics .chip').forEach(b=>b.onclick=()=>{state.band.metric=b.dataset.k;renderBand();});
+
+  // chart
+  const host=document.getElementById('band-chart');
+  const w=W(host), h=200, mg={t:14,r:14,b:22,l:34};
+  const iw=w-mg.l-mg.r, ih=h-mg.t-mg.b;
+  const x=d3.scaleLinear().domain([0,R-1]).range([0,iw]);
+  const lo=Math.min(m.base-2.2*m.sd, d3.min(data,d=>d.val)), hi=Math.max(m.base+2.2*m.sd, d3.max(data,d=>d.val));
+  const y=d3.scaleLinear().domain([lo,hi]).nice().range([ih,0]);
+  const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+  const g=svg.append('g').attr('transform',`translate(${mg.l},${mg.t})`);
+  const defs=svg.append('defs');
+  const grad=defs.append('linearGradient').attr('id','bandg').attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',1);
+  grad.append('stop').attr('offset','0%').attr('stop-color',C.accent).attr('stop-opacity',.28);
+  grad.append('stop').attr('offset','100%').attr('stop-color',C.accent).attr('stop-opacity',0);
+
+  // grid
+  y.ticks(4).forEach(t=>{
+    g.append('line').attr('x1',0).attr('x2',iw).attr('y1',y(t)).attr('y2',y(t)).attr('stroke','rgba(255,255,255,.05)');
+    g.append('text').attr('x',-8).attr('y',y(t)).attr('dy','.32em').attr('text-anchor','end').attr('class','axislbl').text(m.key==='steps'?Math.round(t/1000)+'k':t.toFixed(m.dec>0?m.dec:0));
+  });
+  // baseline bands ±1σ and ±0.5σ
+  g.append('rect').attr('x',0).attr('y',y(m.base+m.sd)).attr('width',iw).attr('height',y(m.base-m.sd)-y(m.base+m.sd)).attr('fill','rgba(255,255,255,.05)').attr('rx',2);
+  g.append('rect').attr('x',0).attr('y',y(m.base+0.5*m.sd)).attr('width',iw).attr('height',y(m.base-0.5*m.sd)-y(m.base+0.5*m.sd)).attr('fill','rgba(255,255,255,.05)');
+  g.append('line').attr('x1',0).attr('x2',iw).attr('y1',y(m.base)).attr('y2',y(m.base)).attr('stroke',C.txt3).attr('stroke-dasharray','4 4').attr('stroke-width',1);
+  g.append('text').attr('x',iw).attr('y',y(m.base)-5).attr('text-anchor','end').attr('class','axislbl').attr('fill',C.txt3).text('baseline');
+
+  const area=d3.area().x(d=>x(d.i)).y0(ih).y1(d=>y(d.val)).curve(d3.curveMonotoneX);
+  const line=d3.line().x(d=>x(d.i)).y(d=>y(d.val)).curve(d3.curveMonotoneX);
+  g.append('path').datum(data).attr('d',area).attr('fill','url(#bandg)');
+  g.append('path').datum(data).attr('d',line).attr('fill','none').attr('stroke',C.accent).attr('stroke-width',2.2).attr('stroke-linejoin','round');
+
+  // out-of-band points
+  data.forEach(d=>{ if(Math.abs(z(m,d.val))>1){ g.append('circle').attr('cx',x(d.i)).attr('cy',y(d.val)).attr('r',2.4).attr('fill',gColor(m,d.val)); }});
+  // today
+  const last=data[data.length-1];
+  g.append('circle').attr('cx',x(last.i)).attr('cy',y(last.val)).attr('r',9).attr('fill',col).attr('opacity',.18);
+  g.append('circle').attr('cx',x(last.i)).attr('cy',y(last.val)).attr('r',4.5).attr('fill',col).attr('stroke','#0a0e15').attr('stroke-width',2);
+  // x labels
+  [0,Math.floor((R-1)/2),R-1].forEach(i=>{
+    g.append('text').attr('x',x(i)).attr('y',ih+16).attr('text-anchor',i===0?'start':i===R-1?'end':'middle').attr('class','axislbl').text(i===R-1?'today':'-'+(R-1-i)+'d');
+  });
+}
+
+/* =================================================================
+   VIEW 2 — DEVIATION SCAN (z-score strip)
+   ================================================================= */
+function renderStrip(){
+  const root=document.getElementById('v-strip'); const v=VIEWS[1];
+  let inb=0,above=0,below=0;
+  META.forEach(m=>{const s=goodness(m,m.today); if(s>=0.5)above++; else if(s>=-0.5)inb++; else below++;});
+  const zx=zz=>((Math.max(-2.5,Math.min(2.5,zz))+2.5)/5*100);
+  const cats=['Recovery','Sleep','Activity','Vitals'];
+  let rows='';
+  cats.forEach(cat=>{
+    rows+=`<div class="grouplbl">${cat}</div>`;
+    META.filter(m=>m.cat===cat).forEach(m=>{
+      const zz=z(m,m.today), pos=zx(zz), col=gColor(m,m.today);
+      const left=Math.min(50,pos), wbar=Math.abs(pos-50);
+      rows+=`<div class="srow">
+        <div class="nm">${m.name}<small>±1σ ${fmt(m,m.base-m.sd)}–${fmt(m,m.base+m.sd)}</small></div>
+        <div class="track">
+          <div class="axis"></div>
+          <div class="band" style="left:${zx(-1)}%;width:${zx(1)-zx(-1)}%"></div>
+          <div class="bar" style="left:${left}%;width:${wbar}%;background:${col}"></div>
+          <div class="mid"></div>
+          <div class="dot" style="left:${pos}%;background:${col}"></div>
+        </div>
+        <div class="val">${fmt(m,m.today)}<small style="color:${col}">${sigma(m,m.today)}</small></div>
+      </div>`;
+    });
+  });
+  root.innerHTML = vhead(v)
+   + `<div class="strip-summary">
+        <div class="ss-cell"><div class="n" style="color:${C.good}">${above}</div><div class="l">Above norm</div></div>
+        <div class="ss-cell"><div class="n" style="color:${C.nominal}">${inb}</div><div class="l">In baseline</div></div>
+        <div class="ss-cell"><div class="n" style="color:${below?C.warn:C.txt3}">${below}</div><div class="l">Below norm</div></div>
+      </div>`
+   + `<div class="card" style="padding:6px 16px">${rows}</div>`
+   + `<div class="legend"><span><span class="lg-sw" style="background:rgba(255,255,255,.10)"></span>±1σ normal</span>
+        <span><span class="lg-sw" style="width:2px;background:${C.txt3}"></span>baseline</span>
+        <span>← below&nbsp;&nbsp;·&nbsp;&nbsp;above →</span></div>`;
+}
+
+/* =================================================================
+   VIEW 3 — BODY RADAR
+   ================================================================= */
+function renderRadar(){
+  const root=document.getElementById('v-radar'); const v=VIEWS[2];
+  const keys=['hrv','rhr','resp','sleep','deep','steps','vo2','spo2','stress'];
+  const items=keys.map(k=>{const m=M[k]; const s=Math.max(-2,Math.min(2,goodness(m,m.today))); return {m,s};});
+  const score=Math.round(Math.max(0,Math.min(100, 50 + d3.mean(items,d=>d.s)*22)));
+  const scol = score>=66?C.good : score>=45?C.nominal : C.warn;
+
+  root.innerHTML = vhead(v)
+   + `<div class="card flush" style="padding-bottom:4px"><div id="radar-chart" style="display:flex;justify-content:center"></div></div>`
+   + `<div class="legend" style="justify-content:center;margin-top:-2px">
+        <span><span class="lg-sw" style="background:${C.accent}55"></span>Today</span>
+        <span><span class="lg-sw" style="background:rgba(255,255,255,.14)"></span>Baseline ring</span>
+        <span>outward = better</span></div>`
+   + `<div class="note"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="${C.txt3}" stroke-width="1.6"/><path d="M12 8v4" stroke="${C.txt3}" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15.5" r="1" fill="${C.txt3}"/></svg>
+        Each spoke is direction-corrected so reaching outside the dashed baseline ring is always a good sign — high HRV and low resting-HR both push outward.</div>`;
+
+  const host=document.getElementById('radar-chart');
+  const w=Math.min(W(host),330), h=w; const cx=w/2, cy=h/2+4, R=w/2-46;
+  const rs=d3.scaleLinear().domain([-2,2]).range([R*0.16,R]);
+  const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+  const ang=i=>(-Math.PI/2)+i/items.length*2*Math.PI;
+  const pt=(i,r)=>[cx+Math.cos(ang(i))*r, cy+Math.sin(ang(i))*r];
+
+  // rings
+  [-2,-1,0,1,2].forEach(t=>{
+    const r=rs(t), pts=items.map((_,i)=>pt(i,r).join(',')).join(' ');
+    svg.append('polygon').attr('points',pts).attr('fill','none')
+      .attr('stroke',t===0?'rgba(255,255,255,.32)':'rgba(255,255,255,.07)')
+      .attr('stroke-width',t===0?1.4:1).attr('stroke-dasharray',t===0?'4 4':'none');
+  });
+  // spokes + labels
+  items.forEach((it,i)=>{
+    const [ex,ey]=pt(i,R);
+    svg.append('line').attr('x1',cx).attr('y1',cy).attr('x2',ex).attr('y2',ey).attr('stroke','rgba(255,255,255,.06)');
+    const [lx,ly]=pt(i,R+19);
+    svg.append('text').attr('x',lx).attr('y',ly).attr('dy','.32em')
+      .attr('text-anchor',Math.abs(lx-cx)<8?'middle':lx>cx?'start':'end')
+      .attr('fill',C.txt3).attr('font-size',9.5).attr('font-weight',600).text(it.m.name);
+  });
+  // today polygon
+  const defs=svg.append('defs');
+  const rg=defs.append('radialGradient').attr('id','radg');
+  rg.append('stop').attr('offset','0%').attr('stop-color',C.accent).attr('stop-opacity',.05);
+  rg.append('stop').attr('offset','100%').attr('stop-color',C.accent).attr('stop-opacity',.35);
+  const poly=items.map((it,i)=>pt(i,rs(it.s)).join(',')).join(' ');
+  svg.append('polygon').attr('points',poly).attr('fill','url(#radg)').attr('stroke',C.accent).attr('stroke-width',2).attr('stroke-linejoin','round');
+  items.forEach((it,i)=>{const [px,py]=pt(i,rs(it.s));
+    svg.append('circle').attr('cx',px).attr('cy',py).attr('r',3.4).attr('fill',gColor(it.m,it.m.today)).attr('stroke','#0a0e15').attr('stroke-width',1.5);});
+  // center score
+  svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',R*0.16+6).attr('fill','#0a0e15').attr('opacity',.7);
+  svg.append('text').attr('x',cx).attr('y',cy-4).attr('text-anchor','middle').attr('fill',scol).attr('font-size',30).attr('font-weight',800).attr('letter-spacing','-1').text(score);
+  svg.append('text').attr('x',cx).attr('y',cy+13).attr('text-anchor','middle').attr('fill',C.txt3).attr('font-size',9).attr('font-weight',600).attr('letter-spacing','1.5').text('READINESS');
+}
+
+/* =================================================================
+   VIEW 4 — BASELINE DRIFT (small multiples)
+   ================================================================= */
+function rolling(series,win){const out=[];for(let i=0;i<series.length;i++){const s=Math.max(0,i-win+1);const seg=series.slice(s,i+1);out.push({i,mean:d3.mean(seg),sd:d3.deviation(seg)||0});}return out;}
+function renderDrift(){
+  const root=document.getElementById('v-drift'); const v=VIEWS[3];
+  const R=state.drift.range;
+  root.innerHTML = vhead(v)
+   + `<div style="margin-bottom:14px"><div class="seg" id="drift-range">
+        ${[30,90,180].map(r=>`<button class="${r===R?'on':''}" data-r="${r}">${r===180?'6M':r+'D'}</button>`).join('')}
+      </div></div>`
+   + `<div class="dgrid" id="drift-grid"></div>`
+   + `<div class="note"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 16l5-4 4 3 8-9" stroke="${C.txt3}" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        The line is your <b style="color:var(--txt2)">rolling baseline</b> (21-day trailing). The band is its variability. This is adaptation, not today's reading — a rising recovery baseline means your normal is getting better.</div>`;
+  root.querySelectorAll('#drift-range button').forEach(b=>b.onclick=()=>{state.drift.range=+b.dataset.r;renderDrift();});
+
+  const grid=document.getElementById('drift-grid');
+  const keys=['hrv','rhr','vo2','sleep','deep','glucose'];
+  keys.forEach(k=>{
+    const m=M[k];
+    const roll=rolling(m.series,21).slice(N-R);
+    const first=roll[0].mean, last=roll[roll.length-1].mean;
+    const pct=(last-first)/Math.abs(first)*100;
+    const improving=(m.better==='high'&&pct>0)||(m.better==='low'&&pct<0)||(m.better==='mid'&&Math.abs(pct)<3);
+    const flat=Math.abs(pct)<2.5;
+    const tcol=flat?C.txt3:improving?C.good:C.warn;
+    const arrow=flat?'→':(pct>0?'↑':'↓');
+    const card=document.createElement('div'); card.className='dcard';
+    card.innerHTML=`<div class="top"><div class="mn">${m.name}</div>
+        <div class="tr" style="color:${tcol}">${arrow}&nbsp;${pct>0?'+':''}${pct.toFixed(1)}%</div></div>
+        <div id="spk-${k}" style="margin:8px 0 2px"></div>
+        <div class="cv tnum">${fmt(m,last)}<span>${m.unit||'avg'}</span></div>`;
+    grid.appendChild(card);
+    // sparkline
+    const host=card.querySelector('#spk-'+k);
+    const w=W(host), h=42;
+    const x=d3.scaleLinear().domain([0,roll.length-1]).range([2,w-2]);
+    const lo=d3.min(roll,d=>d.mean-d.sd*0.6), hi=d3.max(roll,d=>d.mean+d.sd*0.6);
+    const y=d3.scaleLinear().domain([lo,hi]).range([h-4,4]);
+    const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+    const area=d3.area().x((d,i)=>x(i)).y0(d=>y(d.mean-d.sd*0.5)).y1(d=>y(d.mean+d.sd*0.5)).curve(d3.curveBasis);
+    const line=d3.line().x((d,i)=>x(i)).y(d=>y(d.mean)).curve(d3.curveBasis);
+    svg.append('path').datum(roll).attr('d',area).attr('fill',tcol).attr('opacity',.13);
+    svg.append('path').datum(roll).attr('d',line).attr('fill','none').attr('stroke',tcol).attr('stroke-width',1.8);
+    const lp=roll[roll.length-1];
+    svg.append('circle').attr('cx',x(roll.length-1)).attr('cy',y(lp.mean)).attr('r',2.8).attr('fill',tcol).attr('stroke','#0a0e15').attr('stroke-width',1.5);
+  });
+}
+
+/* =================================================================
+   VIEW 5 — CONFIDENCE & TRUST (uncertainty-aware baseline)
+   ================================================================= */
+function renderUncert(){
+  const root=document.getElementById('v-uncert'); const v=VIEWS[4];
+  const m=M[state.uncert.metric];
+  const win=30, cov=m.cov.slice(N-win);
+  const coverage=Math.round(d3.mean(cov)*100);
+  const gaps=(()=>{let g=0,run=false;cov.forEach(c=>{if(!c&&!run){g++;run=true;}if(c)run=false;});return g;})();
+  const tv=m.today, col=gColor(m,tv);
+  const confWidth=m.sd*(0.28+(1-coverage/100)*1.5); // uncertainty half-width grows as coverage drops
+
+  root.innerHTML = vhead(v)
+   + `<div class="chips" id="unc-metrics" style="margin-bottom:14px">
+        ${['temp','hrv','spo2','glucose','rhr','sleep'].map(k=>`<button class="chip ${k===m.key?'on':''}" data-k="${k}">${M[k].name}</button>`).join('')}
+      </div>`
+   + `<div class="hero"><div>
+        <span class="big tnum">${fmt(m,tv)}</span><span class="unit">${m.unit}</span>
+        <div class="sub">today ± ${confWidth.toFixed(m.dec||1)} ${m.unit} confidence interval</div>
+      </div>
+      <div class="devchip" style="background:${col}22;color:${col}">${sigma(m,tv)}</div></div>`
+   + `<div class="card flush"><div style="padding:0 6px 6px;font-size:10.5px;font-weight:700;letter-spacing:.1em;color:${C.txt3};text-transform:uppercase">Today vs baseline ±1σ</div><div id="unc-gauge"></div></div>`
+   + `<div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:650">Data completeness</div>
+          <div class="tnum" style="font-size:13px;font-weight:800;color:${coverage>=85?C.good:coverage>=65?C.warn:C.bad}">${coverage}%</div>
+        </div>
+        <div style="height:8px;border-radius:6px;background:rgba(255,255,255,.07);overflow:hidden">
+          <div style="height:100%;width:${coverage}%;border-radius:6px;background:linear-gradient(90deg,${C.accent},${C.violet})"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:9px;font-size:11px;color:${C.txt3}">
+          <span>${gaps} gap${gaps!==1?'s':''} · last 30d</span><span>narrower band = more data</span>
+        </div>
+      </div>`
+   + `<div class="card flush"><div style="padding:0 6px 4px;font-size:10.5px;font-weight:700;letter-spacing:.1em;color:${C.txt3};text-transform:uppercase">Baseline widens over gaps →</div><div id="unc-ts"></div></div>`
+   + `<div class="note"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z" fill="none" stroke="${C.accent}" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        When your device stops reporting, the band <b style="color:var(--txt2)">widens instead of guessing</b>. Absence of data is treated as uncertainty — never as a healthy reading. <i>(Locked invariant.)</i></div>`;
+  root.querySelectorAll('#unc-metrics .chip').forEach(b=>b.onclick=()=>{state.uncert.metric=b.dataset.k;renderUncert();});
+
+  /* gauge */
+  (()=>{
+    const host=document.getElementById('unc-gauge'); const w=W(host),h=64;
+    const lo=m.base-2.6*m.sd, hi=m.base+2.6*m.sd;
+    const x=d3.scaleLinear().domain([lo,hi]).range([14,w-14]);
+    const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+    const cy=30;
+    svg.append('line').attr('x1',14).attr('x2',w-14).attr('y1',cy).attr('y2',cy).attr('stroke','rgba(255,255,255,.10)').attr('stroke-width',2);
+    // ±1σ band
+    svg.append('rect').attr('x',x(m.base-m.sd)).attr('y',cy-9).attr('width',x(m.base+m.sd)-x(m.base-m.sd)).attr('height',18).attr('rx',5).attr('fill','rgba(255,255,255,.07)');
+    svg.append('line').attr('x1',x(m.base)).attr('x2',x(m.base)).attr('y1',cy-12).attr('y2',cy+12).attr('stroke',C.txt3).attr('stroke-dasharray','3 3');
+    svg.append('text').attr('x',x(m.base)).attr('y',cy+26).attr('text-anchor','middle').attr('class','axislbl').text('baseline');
+    // uncertainty whisker
+    svg.append('rect').attr('x',x(tv-confWidth)).attr('y',cy-3).attr('width',x(tv+confWidth)-x(tv-confWidth)).attr('height',6).attr('rx',3).attr('fill',col).attr('opacity',.28);
+    // today marker
+    svg.append('line').attr('x1',x(tv)).attr('x2',x(tv)).attr('y1',cy-13).attr('y2',cy+13).attr('stroke',col).attr('stroke-width',2.4).attr('stroke-linecap','round');
+    svg.append('circle').attr('cx',x(tv)).attr('cy',cy).attr('r',5).attr('fill',col).attr('stroke','#0a0e15').attr('stroke-width',2);
+    svg.append('text').attr('x',x(tv)).attr('y',cy-18).attr('text-anchor','middle').attr('fill',col).attr('font-size',10).attr('font-weight',700).text('today');
+  })();
+
+  /* widening time-series */
+  (()=>{
+    const host=document.getElementById('unc-ts'); const w=W(host),h=120,mg={t:10,r:8,b:8,l:8};
+    const iw=w-mg.l-mg.r, ih=h-mg.t-mg.b, win=30;
+    const ser=m.series.slice(N-win), cov=m.cov.slice(N-win);
+    // local coverage (trailing 5)
+    const localCov=cov.map((_,i)=>{const s=Math.max(0,i-4);return d3.mean(cov.slice(s,i+1));});
+    const band=localCov.map(c=>m.sd*(0.5+(1-c)*1.7));
+    const x=d3.scaleLinear().domain([0,win-1]).range([0,iw]);
+    const lo=d3.min(ser,(d,i)=>d-band[i])-m.sd*0.3, hi=d3.max(ser,(d,i)=>d+band[i])+m.sd*0.3;
+    const y=d3.scaleLinear().domain([lo,hi]).range([ih,0]);
+    const svg=d3.select(host).append('svg').attr('width',w).attr('height',h);
+    const g=svg.append('g').attr('transform',`translate(${mg.l},${mg.t})`);
+    const defs=svg.append('defs');
+    const grd=defs.append('linearGradient').attr('id','uncg').attr('x1',0).attr('x2',0).attr('y1',0).attr('y2',1);
+    grd.append('stop').attr('offset','0%').attr('stop-color',C.violet).attr('stop-opacity',.30);
+    grd.append('stop').attr('offset','100%').attr('stop-color',C.accent).attr('stop-opacity',.22);
+    const data=ser.map((val,i)=>({i,val,b:band[i],present:cov[i]}));
+    const area=d3.area().x(d=>x(d.i)).y0(d=>y(d.val-d.b)).y1(d=>y(d.val+d.b)).curve(d3.curveBasis);
+    g.append('path').datum(data).attr('d',area).attr('fill','url(#uncg)');
+    // present-line with breaks over gaps
+    const line=d3.line().defined(d=>d.present).x(d=>x(d.i)).y(d=>y(d.val)).curve(d3.curveMonotoneX);
+    g.append('path').datum(data).attr('d',line).attr('fill','none').attr('stroke',C.accent).attr('stroke-width',2).attr('stroke-linejoin','round');
+    // gap shading + hollow markers
+    data.forEach(d=>{
+      if(!d.present){ g.append('rect').attr('x',x(d.i)-iw/win/2).attr('y',0).attr('width',iw/win).attr('height',ih).attr('fill','rgba(240,96,110,.07)'); }
+      else { g.append('circle').attr('cx',x(d.i)).attr('cy',y(d.val)).attr('r',1.6).attr('fill',C.accent).attr('opacity',.5); }
+    });
+    g.append('text').attr('x',0).attr('y',ih+1).attr('class','axislbl').text('-30d');
+    g.append('text').attr('x',iw).attr('y',ih+1).attr('text-anchor','end').attr('class','axislbl').text('today');
+  })();
+}
+
+/* render dispatch */
+const RENDER={band:renderBand,strip:renderStrip,radar:renderRadar,drift:renderDrift,uncert:renderUncert};
+
+/* global coverage pill */
+document.getElementById('globcov').innerHTML='&nbsp;'+Math.round(d3.mean(META,m=>d3.mean(m.cov.slice(N-14)))*100)+'%';
+
+/* boot */
+setView(state.view);
+let rt; window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>RENDER[state.view](),150);});
+</script>
+</body>
+</html>

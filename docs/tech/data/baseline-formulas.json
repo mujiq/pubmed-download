@@ -1,0 +1,33 @@
+{
+ "_meta": {
+  "note": "Baseline FORMULA catalogue + the canonical default per metric group. The baseline of a metric is a {center, spread, recency} triple that drives the personal z-score (Doc 03 §2b, κ_resp) and the mobile baseline UI. Canonical default is robust + adaptive: a rolling median/MAD for outlier resistance blended with an EWMA for responsiveness, time-of-day/context-conditioned where it matters. Alternatives are catalogued so any metric can be overridden with justification. Illustrative; re-verify (README §5.6).",
+  "output_model": "Each computed baseline = {center μ, spread σ_robust (1.4826·MAD), n_effective, last_updated, confidence, drift_slope}. Personal z = (x − μ)/σ_robust; the UI 'band' = μ ± k·σ_robust; 'deviation scan' = today's z per metric; 'drift' = center over time.",
+  "minimums": "A baseline is only emitted when n_effective ≥ the metric's min-history (cold-start gate); below that it falls back to the age×sex×life-stage cohort prior (D33) and is flagged 'provisional'."
+ },
+ "families": {
+  "rolling_mean": {"name": "Rolling mean / SD", "def": "μ = mean(window), σ = sd(window) over a fixed N-day window.", "params": {"window_days": 14}, "use": "well-behaved, low-outlier metrics; baseline only.", "robust": "low — one bad day shifts μ and inflates σ."},
+  "rolling_median_mad": {"name": "Rolling median + MAD", "def": "μ = median(window), σ = 1.4826·MAD(window).", "params": {"window_days": 14}, "use": "default centre/spread — resists spikes (illness, travel, bad reads).", "robust": "high — ~50% breakdown point."},
+  "ewma": {"name": "Exponentially-weighted moving average", "def": "μ_t = α·x_t + (1−α)·μ_{t−1}, α from a half-life.", "params": {"half_life_days": 7}, "use": "responsiveness layer — adapts to genuine physiological shifts (training, recovery).", "robust": "medium — bounded by clamping x_t to a plausible band first."},
+  "robust_ewma_blend": {"name": "Robust + adaptive (DEFAULT)", "def": "centre = blend(rolling_median, ewma_of_winsorized); spread = 1.4826·MAD; updates only with validated, de-duplicated, plausibility-passed samples.", "params": {"median_window_days": 28, "ewma_half_life_days": 7, "winsor_pct": 5}, "use": "the canonical baseline for most consumer metrics.", "robust": "high + responsive."},
+  "trimmed_mean": {"name": "Trimmed / winsorized mean", "def": "drop or cap the top/bottom p% before averaging.", "params": {"trim_pct": 10}, "use": "alternative to median when a smoother centre is wanted.", "robust": "medium-high."},
+  "log_transform": {"name": "Log-domain baseline", "def": "compute centre/spread on log(x) for right-skewed metrics (HRV, glucose), back-transform for display.", "params": {}, "use": "HRV RMSSD, CGM — skew correction.", "robust": "high (with robust centre)."},
+  "seasonal_timeofday": {"name": "Time-of-day / context conditioning", "def": "separate baselines by context (sleep vs wake HR; weekday vs weekend steps) to avoid mixing regimes.", "params": {"contexts": ["sleep", "wake"]}, "use": "HR, HRV, activity — context matters.", "robust": "high — removes a major confounder."},
+  "windowed_sum": {"name": "Windowed sum (rate metrics)", "def": "sum over a rolling period (7-day MVPA); baseline = robust centre of the rolling sums.", "params": {"window_days": 7}, "use": "frequency/rate metrics.", "robust": "medium — partial-window guard required."},
+  "windowed_index": {"name": "Windowed index", "def": "an algorithmic index needing a minimum history (e.g. SRI over 14-30 nights).", "params": {"min_nights": 14}, "use": "Sleep Regularity Index.", "robust": "n/a (definitional)."},
+  "slow_ewma": {"name": "Slow EWMA (sparse metrics)", "def": "long half-life EWMA for sparsely-updated metrics (VO₂max).", "params": {"half_life_days": 30}, "use": "VO₂max, sparse estimates.", "robust": "medium."},
+  "composite_z": {"name": "Composite z", "def": "combine sub-metric z-scores (overnight HR dip + HRV rise) into one recovery z.", "params": {}, "use": "nighttime recovery.", "robust": "inherits components'."},
+  "ewma_deviation": {"name": "Deviation EWMA", "def": "metric already a deviation-from-baseline (skin temp); EWMA-smooth the deviation.", "params": {"half_life_days": 3}, "use": "skin-temp deviation.", "robust": "medium."}
+ },
+ "defaults_by_group": {
+  "individual": "robust_median_mad + log_transform if skewed; context-conditioned if regime-dependent (BP morning vs evening).",
+  "aggregated": "robust_ewma_blend (default).",
+  "derived": "robust_ewma_blend on the derived series; per-device when the algorithm diverges (sleep stages, recovery scores).",
+  "frequency": "windowed_sum with a partial-window guard, then robust centre of the windowed totals."
+ },
+ "formula_refs": {
+  "robust_rolling": "robust_ewma_blend", "robust_rolling_log": "robust_ewma_blend + log_transform",
+  "ewma_deviation": "ewma_deviation", "robust_rolling_per_device": "robust_ewma_blend per-device-series",
+  "windowed_index": "windowed_index", "composite_z": "composite_z", "slow_ewma": "slow_ewma",
+  "windowed_sum": "windowed_sum", "windowed_pct": "windowed_sum (of in-range %)", "robust_rolling_paired": "robust_ewma_blend on paired (sys,dia)"
+ }
+}

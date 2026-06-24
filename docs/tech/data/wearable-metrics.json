@@ -1,0 +1,800 @@
+{
+ "_meta": {
+  "note": "Canonical wearable-metric registry — the spine of the baseline pipeline. Per metric: group (individual/aggregated/derived/frequency), canonical unit + SI, sampling frequency, raw→day aggregation, plausibility gate, trust tier, the source mapping (Terra resource/field, Apple HealthKit type, Google Health Connect record, device-cloud field) with each source's native unit + transform to canonical, the baseline-formula id (see baseline-formulas.json), and the DQ rule classes that apply (see baseline-dq-rules.json). Illustrative; re-verify against live Terra/HealthKit/vendor schemas before production (README §5.6).",
+  "groups": {
+   "individual": "a single instantaneous reading (spot value)",
+   "aggregated": "a summary over a period reduced from raw samples (mean/sum)",
+   "derived": "computed from an algorithm or other metrics",
+   "frequency": "a count or rate per unit time"
+  },
+  "canonicalization": "All sources transformed to the canonical unit before any baseline math. SI stored internally; conventional shown in UI (see units.json policy).",
+  "merge_policy": "trust-tier → within-tier higher native resolution → freshest non-stale sample; overlapping intervals de-duplicated; conflicts logged (see baseline-sources.json)."
+ },
+ "metrics": {
+  "resting_hr": {
+   "label": "Resting heart rate",
+   "pillar": "CV",
+   "group": "aggregated",
+   "canon": "bpm",
+   "si": "bpm",
+   "freq": "1 value/day (computed from overnight/sedentary samples)",
+   "agg": "min/trimmed-mean of overnight HR samples",
+   "plaus": {
+    "min": 25,
+    "max": 220,
+    "zero": "missing"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "daily.heart_rate_data.summary.resting_hr_bpm",
+     "unit": "bpm",
+     "xform": "identity"
+    },
+    "healthkit": {
+     "type": "HKQuantityTypeIdentifierRestingHeartRate",
+     "unit": "count/min",
+     "xform": "identity"
+    },
+    "healthconnect": {
+     "record": "RestingHeartRateRecord",
+     "unit": "bpm",
+     "xform": "identity"
+    },
+    "devicecloud": {
+     "oura": "daily_readiness.contributors.resting_heart_rate / sleep.lowest_heart_rate",
+     "whoop": "recovery.resting_heart_rate",
+     "garmin": "dailies.restingHeartRateInBeatsPerMinute",
+     "fitbit": "activities-heart.value.restingHeartRate",
+     "unit": "bpm"
+    }
+   },
+   "formula": "robust_rolling",
+   "dq": [
+    "gap",
+    "battery",
+    "stale",
+    "outlier",
+    "zero_vs_missing",
+    "device_switch",
+    "multi_source_overlap",
+    "cold_start"
+   ]
+  },
+  "hrv_rmssd": {
+   "label": "Heart-rate variability (RMSSD)",
+   "pillar": "CV",
+   "group": "derived",
+   "canon": "ms",
+   "si": "ms",
+   "freq": "1 value/night (overnight) or 5-min epochs",
+   "agg": "median of overnight RMSSD epochs",
+   "plaus": {
+    "min": 1,
+    "max": 300,
+    "zero": "missing"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "daily.heart_rate_data.summary.avg_hrv_rmssd",
+     "unit": "ms",
+     "xform": "identity"
+    },
+    "healthkit": {
+     "type": "HKQuantityTypeIdentifierHeartRateVariabilitySDNN",
+     "unit": "ms",
+     "xform": "rmssd_from_sdnn_NOT_DIRECT",
+     "trap": "Apple reports SDNN, not RMSSD — they are different HRV metrics and not interconvertible. Store as a distinct SDNN series; do NOT pool with RMSSD without an explicit, validated mapping."
+    },
+    "healthconnect": {
+     "record": "HeartRateVariabilityRmssdRecord",
+     "unit": "ms",
+     "xform": "identity"
+    },
+    "devicecloud": {
+     "oura": "sleep.rmssd / daily_readiness hrv_balance",
+     "whoop": "recovery.hrv_rmssd_milli (ms)",
+     "garmin": "hrv summary",
+     "unit": "ms"
+    }
+   },
+   "formula": "robust_rolling_log",
+   "dq": [
+    "metric_definition_mismatch",
+    "gap",
+    "battery",
+    "stale",
+    "outlier",
+    "log_skew",
+    "multi_source_overlap",
+    "cold_start",
+    "device_switch"
+   ]
+  },
+  "spo2": {
+   "label": "Peripheral oxygen saturation (SpO₂)",
+   "pillar": "HEM",
+   "group": "individual",
+   "canon": "%",
+   "si": "%",
+   "freq": "spot or overnight continuous",
+   "agg": "median (spot) / min-nadir (overnight)",
+   "plaus": {
+    "min": 70,
+    "max": 100,
+    "zero": "implausible_drop"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "daily.oxygen_data.saturation_samples[].percentage",
+     "unit": "%",
+     "xform": "identity"
+    },
+    "healthkit": {
+     "type": "HKQuantityTypeIdentifierOxygenSaturation",
+     "unit": "fraction 0–1",
+     "xform": "x100",
+     "trap": "Apple stores a FRACTION (0.97), not a percent — multiply by 100."
+    },
+    "healthconnect": {
+     "record": "OxygenSaturationRecord",
+     "unit": "%",
+     "xform": "identity"
+    },
+    "devicecloud": {
+     "oura": "spo2.spo2_percentage.average",
+     "garmin": "pulseOx",
+     "unit": "%"
+    }
+   },
+   "formula": "robust_rolling",
+   "dq": [
+    "unit_drift",
+    "outlier",
+    "zero_vs_missing",
+    "motion_artifact",
+    "gap",
+    "stale",
+    "multi_source_overlap"
+   ]
+  },
+  "skin_temp_dev": {
+   "label": "Skin / wrist temperature deviation",
+   "pillar": "INF",
+   "group": "derived",
+   "canon": "°C deviation",
+   "si": "°C",
+   "freq": "1 value/night",
+   "agg": "nightly mean deviation vs personal baseline",
+   "plaus": {
+    "min": -5,
+    "max": 5,
+    "zero": "valid_baseline"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "daily.temperature_data.body_temperature_samples / temperature_deviation",
+     "unit": "°C or °C-dev",
+     "xform": "abs_to_dev_if_absolute"
+    },
+    "healthkit": {
+     "type": "HKQuantityTypeIdentifierAppleSleepingWristTemperature",
+     "unit": "°C (absolute)",
+     "xform": "subtract_personal_baseline",
+     "trap": "Apple gives ABSOLUTE wrist temperature; Oura gives a DEVIATION. Convert absolute→deviation against the same personal baseline before pooling."
+    },
+    "devicecloud": {
+     "oura": "daily_readiness.temperature_deviation (°C)",
+     "whoop": "skin temp",
+     "unit": "°C-dev"
+    }
+   },
+   "formula": "ewma_deviation",
+   "dq": [
+    "absolute_vs_deviation_mismatch",
+    "fahrenheit_celsius",
+    "gap",
+    "battery",
+    "outlier",
+    "cold_start",
+    "device_switch"
+   ]
+  },
+  "sleep_duration": {
+   "label": "Total sleep time",
+   "pillar": "SLP",
+   "group": "aggregated",
+   "canon": "h",
+   "si": "s",
+   "freq": "1 session/night (may split naps)",
+   "agg": "sum of asleep stages per sleep day (noon→noon window)",
+   "plaus": {
+    "min": 0,
+    "max": 16,
+    "zero": "no_sleep_recorded"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "sleep.sleep_durations_data.asleep.duration_asleep_state_seconds",
+     "unit": "s",
+     "xform": "div3600_to_hours"
+    },
+    "healthkit": {
+     "type": "HKCategoryTypeIdentifierSleepAnalysis (asleep intervals)",
+     "unit": "interval s",
+     "xform": "sum_asleep_intervals/3600",
+     "trap": "iOS sums overlapping/duplicate sleep samples from multiple apps — must merge intervals first."
+    },
+    "healthconnect": {
+     "record": "SleepSessionRecord (+ stages)",
+     "unit": "interval",
+     "xform": "sum/3600"
+    },
+    "devicecloud": {
+     "oura": "sleep.total_sleep_duration (s)",
+     "whoop": "sleep.total_in_bed_time minus awake",
+     "fitbit": "sleep.minutesAsleep",
+     "unit": "mixed"
+    }
+   },
+   "formula": "robust_rolling",
+   "dq": [
+    "timezone_dst",
+    "sleep_day_window",
+    "interval_overlap",
+    "nap_split",
+    "gap",
+    "zero_vs_missing",
+    "multi_source_overlap",
+    "device_switch"
+   ]
+  },
+  "sleep_efficiency": {
+   "label": "Sleep efficiency",
+   "pillar": "SLP",
+   "group": "derived",
+   "canon": "%",
+   "si": "%",
+   "freq": "1/night",
+   "agg": "asleep / time-in-bed × 100",
+   "plaus": {
+    "min": 0,
+    "max": 100,
+    "zero": "implausible"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "sleep.sleep_durations_data efficiency",
+     "unit": "%",
+     "xform": "identity"
+    },
+    "healthkit": {
+     "type": "derived (asleep/inBed)",
+     "unit": "%",
+     "xform": "compute"
+    },
+    "devicecloud": {
+     "oura": "sleep.efficiency",
+     "unit": "%"
+    }
+   },
+   "formula": "robust_rolling",
+   "dq": [
+    "divide_by_zero",
+    "interval_overlap",
+    "gap",
+    "outlier",
+    "definition_mismatch"
+   ]
+  },
+  "sleep_regularity": {
+   "label": "Sleep Regularity Index",
+   "pillar": "SLP",
+   "group": "derived",
+   "canon": "SRI (0–100)",
+   "si": "index",
+   "freq": "rolling (needs ≥14 nights)",
+   "agg": "Phillips 2017 SRI over a 14-30 night window",
+   "plaus": {
+    "min": 0,
+    "max": 100,
+    "zero": "maximally_irregular"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "derived from sleep onset/offset timestamps",
+     "unit": "epochs",
+     "xform": "compute_sri"
+    },
+    "healthkit": {
+     "type": "derived from sleep intervals",
+     "unit": "ts",
+     "xform": "compute_sri"
+    }
+   },
+   "formula": "windowed_index",
+   "dq": [
+    "timezone_dst",
+    "insufficient_history",
+    "gap",
+    "sleep_day_window",
+    "cold_start"
+   ]
+  },
+  "deep_rem_pct": {
+   "label": "Deep + REM proportion",
+   "pillar": "SLP",
+   "group": "derived",
+   "canon": "%",
+   "si": "%",
+   "freq": "1/night",
+   "agg": "(deep+REM)/total-sleep × 100",
+   "plaus": {
+    "min": 0,
+    "max": 100,
+    "zero": "no_staging"
+   },
+   "trust": "wearable-inferential",
+   "sources": {
+    "terra": {
+     "path": "sleep stages (light/deep/rem seconds)",
+     "unit": "s",
+     "xform": "compute_pct"
+    },
+    "healthkit": {
+     "type": "HKCategoryValueSleepAnalysis deep/REM (iOS16+)",
+     "unit": "interval",
+     "xform": "compute_pct",
+     "trap": "staging algorithms differ wildly by vendor — do NOT pool absolute stage %; baseline per-device."
+    },
+    "devicecloud": {
+     "oura": "sleep.deep_sleep_duration + rem_sleep_duration",
+     "unit": "s"
+    }
+   },
+   "formula": "robust_rolling_per_device",
+   "dq": [
+    "vendor_algorithm_divergence",
+    "missing_staging",
+    "gap",
+    "device_switch",
+    "cold_start"
+   ]
+  },
+  "overnight_spo2_odi": {
+   "label": "Overnight SpO₂ / ODI (apnea)",
+   "pillar": "SLP",
+   "group": "frequency",
+   "canon": "events/h",
+   "si": "events/h",
+   "freq": "per sleep session",
+   "agg": "desaturation events ≥3% per hour of sleep",
+   "plaus": {
+    "min": 0,
+    "max": 120,
+    "zero": "valid_normal"
+   },
+   "trust": "wearable-clinical",
+   "sources": {
+    "terra": {
+     "path": "HSAT / oxygen overnight",
+     "unit": "events/h",
+     "xform": "identity"
+    },
+    "healthkit": {
+     "type": "derived overnight SpO₂",
+     "unit": "%-series",
+     "xform": "compute_odi"
+    },
+    "devicecloud": {
+     "withings": "sleep apnea events",
+     "unit": "events/h"
+    }
+   },
+   "formula": "robust_rolling",
+   "dq": [
+    "motion_artifact",
+    "missing_overnight",
+    "definition_mismatch",
+    "gap",
+    "clinical_grade_gate"
+   ]
+  },
+  "night_hr_hrv_recovery": {
+   "label": "Nighttime HR / HRV recovery",
+   "pillar": "SLP",
+   "group": "derived",
+   "canon": "z (composite)",
+   "si": "z",
+   "freq": "1/night",
+   "agg": "overnight resting-HR dip + HRV rise vs personal baseline",
+   "plaus": {
+    "min": -6,
+    "max": 6,
+    "zero": "at_baseline"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "overnight HR + HRV series",
+     "unit": "bpm+ms",
+     "xform": "z_vs_baseline"
+    },
+    "devicecloud": {
+     "oura": "readiness recovery index",
+     "whoop": "recovery score",
+     "unit": "score",
+     "trap": "proprietary recovery scores are NOT comparable across vendors — recompute from raw HR/HRV, do not pool scores."
+    }
+   },
+   "formula": "composite_z",
+   "dq": [
+    "proprietary_score_incomparable",
+    "gap",
+    "battery",
+    "cold_start",
+    "device_switch"
+   ]
+  },
+  "vo2max_est": {
+   "label": "VO₂max (estimated)",
+   "pillar": "FIT",
+   "group": "derived",
+   "canon": "mL/kg/min",
+   "si": "mL/kg/min",
+   "freq": "updated on qualifying activities (sparse)",
+   "agg": "latest device estimate; slow EWMA",
+   "plaus": {
+    "min": 10,
+    "max": 90,
+    "zero": "missing"
+   },
+   "trust": "wearable-inferential",
+   "sources": {
+    "terra": {
+     "path": "activity / fitness summary vo2max",
+     "unit": "mL/kg/min",
+     "xform": "identity"
+    },
+    "healthkit": {
+     "type": "HKQuantityTypeIdentifierVO2Max",
+     "unit": "mL/(kg·min)",
+     "xform": "identity"
+    },
+    "devicecloud": {
+     "garmin": "vo2Max",
+     "fitbit": "cardio fitness score",
+     "unit": "mL/kg/min",
+     "trap": "Fitbit reports a range/score, not a point estimate — normalise before pooling."
+    }
+   },
+   "formula": "slow_ewma",
+   "dq": [
+    "sparse_updates",
+    "vendor_algorithm_divergence",
+    "stale",
+    "cold_start",
+    "device_switch",
+    "range_vs_point"
+   ]
+  },
+  "steps": {
+   "label": "Steps per day",
+   "pillar": "FIT",
+   "group": "frequency",
+   "canon": "steps/day",
+   "si": "count/day",
+   "freq": "continuous count (1-min bins)",
+   "agg": "sum per local calendar day across DE-DUPLICATED sources",
+   "plaus": {
+    "min": 0,
+    "max": 100000,
+    "zero": "valid_zero_day"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "daily.distance_data.steps",
+     "unit": "count",
+     "xform": "identity"
+    },
+    "healthkit": {
+     "type": "HKQuantityTypeIdentifierStepCount",
+     "unit": "count",
+     "xform": "identity",
+     "trap": "iPhone + Watch BOTH record steps — HealthKit may double-count if you sum sources; prefer one device or HealthKit's de-duplicated total."
+    },
+    "healthconnect": {
+     "record": "StepsRecord",
+     "unit": "count",
+     "xform": "identity"
+    },
+    "devicecloud": {
+     "oura": "daily_activity.steps",
+     "garmin": "dailies.steps",
+     "fitbit": "activities-steps",
+     "unit": "count"
+    }
+   },
+   "formula": "robust_rolling",
+   "dq": [
+    "multi_source_overlap",
+    "double_count",
+    "timezone_dst",
+    "partial_day",
+    "battery",
+    "zero_vs_missing",
+    "counter_reset",
+    "backfill"
+   ]
+  },
+  "mvpa": {
+   "label": "Moderate-to-vigorous physical activity",
+   "pillar": "FIT",
+   "group": "frequency",
+   "canon": "min/week",
+   "si": "s/week",
+   "freq": "per-minute intensity",
+   "agg": "sum of MVPA minutes over a rolling 7-day window",
+   "plaus": {
+    "min": 0,
+    "max": 5000,
+    "zero": "valid_zero"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "daily active durations (moderate+vigorous s)",
+     "unit": "s",
+     "xform": "div60_weekly_sum"
+    },
+    "healthkit": {
+     "type": "HKQuantityTypeIdentifierAppleExerciseTime",
+     "unit": "min",
+     "xform": "weekly_sum",
+     "trap": "Apple exercise-time threshold ≠ MET-based MVPA — definition drift."
+    },
+    "devicecloud": {
+     "garmin": "intensityMinutes",
+     "fitbit": "active zone minutes",
+     "unit": "min",
+     "trap": "AZM weights vigorous ×2 — not raw minutes."
+    }
+   },
+   "formula": "windowed_sum",
+   "dq": [
+    "definition_mismatch",
+    "weighting_mismatch",
+    "partial_window",
+    "timezone_dst",
+    "gap",
+    "double_count"
+   ]
+  },
+  "sedentary": {
+   "label": "Sedentary time",
+   "pillar": "FIT",
+   "group": "frequency",
+   "canon": "h/day",
+   "si": "s/day",
+   "freq": "per-minute",
+   "agg": "sum of sedentary minutes per local day (excluding sleep)",
+   "plaus": {
+    "min": 0,
+    "max": 24,
+    "zero": "implausible"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "daily sedentary durations s",
+     "unit": "s",
+     "xform": "div3600"
+    },
+    "healthkit": {
+     "type": "derived (non-wear + non-active)",
+     "unit": "s",
+     "xform": "compute",
+     "trap": "non-wear vs truly-sedentary is ambiguous — must gate on wear-time."
+    }
+   },
+   "formula": "robust_rolling",
+   "dq": [
+    "nonwear_vs_sedentary",
+    "wear_time_gate",
+    "timezone_dst",
+    "gap",
+    "battery"
+   ]
+  },
+  "hr_recovery": {
+   "label": "Heart-rate recovery (post-exercise)",
+   "pillar": "FIT",
+   "group": "derived",
+   "canon": "bpm (1-min drop)",
+   "si": "bpm",
+   "freq": "per qualifying workout",
+   "agg": "HR drop in 60 s after peak; median over recent workouts",
+   "plaus": {
+    "min": 0,
+    "max": 80,
+    "zero": "poor_recovery"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "activity workout HR series",
+     "unit": "bpm",
+     "xform": "compute_drop"
+    },
+    "healthkit": {
+     "type": "HKQuantityTypeIdentifierHeartRateRecoveryOneMinute",
+     "unit": "count/min",
+     "xform": "identity"
+    },
+    "devicecloud": {
+     "garmin": "workout recovery",
+     "unit": "bpm"
+    }
+   },
+   "formula": "robust_rolling",
+   "dq": [
+    "sparse_updates",
+    "workout_detection_miss",
+    "gap",
+    "outlier",
+    "cold_start"
+   ]
+  },
+  "gait_speed": {
+   "label": "Walking / gait speed",
+   "pillar": "BCM",
+   "group": "aggregated",
+   "canon": "m/s",
+   "si": "m/s",
+   "freq": "per qualifying walk",
+   "agg": "median walking speed over rolling window",
+   "plaus": {
+    "min": 0.1,
+    "max": 3.0,
+    "zero": "missing"
+   },
+   "trust": "wearable-consumer",
+   "sources": {
+    "terra": {
+     "path": "activity walking metrics",
+     "unit": "m/s",
+     "xform": "identity"
+    },
+    "healthkit": {
+     "type": "HKQuantityTypeIdentifierWalkingSpeed",
+     "unit": "m/s",
+     "xform": "identity",
+     "us_unit": "may arrive as mi/hr in US locale — convert"
+    }
+   },
+   "formula": "robust_rolling",
+   "dq": [
+    "unit_locale_mph",
+    "sparse_updates",
+    "outlier",
+    "gap"
+   ]
+  },
+  "cgm_tir": {
+   "label": "CGM time-in-range",
+   "pillar": "MET",
+   "group": "frequency",
+   "canon": "%",
+   "si": "%",
+   "freq": "continuous (5-min CGM)",
+   "agg": "% of CGM readings in 70–180 mg/dL per day",
+   "plaus": {
+    "min": 0,
+    "max": 100,
+    "zero": "all_out_of_range"
+   },
+   "trust": "wearable-clinical",
+   "sources": {
+    "terra": {
+     "path": "glucose_data.blood_glucose_samples[]",
+     "unit": "mg/dL or mmol/L",
+     "xform": "unit_normalise_then_TIR",
+     "trap": "CGM may report mg/dL (US) or mmol/L (EU/Gulf) — normalise via units.json before computing TIR."
+    },
+    "devicecloud": {
+     "dexcom": "egv",
+     "libre": "glucose",
+     "unit": "mg/dL|mmol/L"
+    }
+   },
+   "formula": "windowed_pct",
+   "dq": [
+    "glucose_unit_mgdl_mmol",
+    "sensor_warmup",
+    "calibration_gap",
+    "gap",
+    "clinical_grade_gate"
+   ]
+  },
+  "cgm_variability": {
+   "label": "CGM glycemic variability",
+   "pillar": "MET",
+   "group": "derived",
+   "canon": "CV%",
+   "si": "%",
+   "freq": "continuous",
+   "agg": "SD/mean × 100 of daily CGM",
+   "plaus": {
+    "min": 0,
+    "max": 100,
+    "zero": "flat_implausible"
+   },
+   "trust": "wearable-clinical",
+   "sources": {
+    "terra": {
+     "path": "glucose_data samples",
+     "unit": "mg/dL|mmol/L",
+     "xform": "unit_normalise_then_CV"
+    }
+   },
+   "formula": "robust_rolling",
+   "dq": [
+    "glucose_unit_mgdl_mmol",
+    "sensor_warmup",
+    "gap",
+    "outlier",
+    "clinical_grade_gate"
+   ]
+  },
+  "bp": {
+   "label": "Blood pressure (home cuff)",
+   "pillar": "CV",
+   "group": "individual",
+   "canon": "mmHg",
+   "si": "mmHg",
+   "freq": "per measurement (sparse)",
+   "agg": "morning-average over rolling window (sys & dia paired)",
+   "plaus": {
+    "min": 40,
+    "max": 260,
+    "zero": "implausible"
+   },
+   "trust": "wearable-clinical",
+   "sources": {
+    "terra": {
+     "path": "body.blood_pressure_data.blood_pressure_samples[]",
+     "unit": "mmHg",
+     "xform": "identity"
+    },
+    "healthkit": {
+     "type": "HKCorrelationTypeIdentifierBloodPressure (sys+dia)",
+     "unit": "mmHg",
+     "xform": "pair_sys_dia",
+     "trap": "systolic and diastolic are SEPARATE samples correlated by timestamp — must pair, never average independently."
+    },
+    "devicecloud": {
+     "withings": "bp",
+     "omron": "bp",
+     "unit": "mmHg"
+    }
+   },
+   "formula": "robust_rolling_paired",
+   "dq": [
+    "sys_dia_pairing",
+    "single_reading_bias",
+    "white_coat",
+    "cuff_position",
+    "sparse_updates",
+    "outlier",
+    "gap"
+   ]
+  }
+ }
+}

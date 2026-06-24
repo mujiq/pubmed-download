@@ -1,0 +1,48 @@
+{
+ "_meta": {
+  "note": "Wearable data SOURCES and the unification/merge policy. Each source has an ingestion mode, schema-stability posture, unit convention, trust tier (D22), and known quirks. The merge policy resolves the same metric arriving from several sources into one canonical series. The robustness section is the contract that lets the pipeline absorb upstream changes from Terra / HealthKit / vendor clouds without corrupting baselines. Illustrative; re-verify (README §5.6)."
+ },
+ "sources": {
+  "terra": {
+   "label": "Terra (aggregator API)", "trust": "varies by underlying device", "ingest": "webhook (push, near-real-time) + snapshot/backfill (pull)",
+   "units": "documented per resource; mixed SI/imperial by provider", "schema": "versioned; additive fields common; provider gaps when device disconnected",
+   "role": "primary unifier — already normalises many providers, but DOES pass through provider-specific units, sampling, and algorithm differences", "quirks": ["webhook can deliver out-of-order / late (re-sync) payloads", "a single user may have multiple connected providers → duplicate metrics", "deauth / token-expiry silently stops the feed (looks like a gap)"]
+  },
+  "healthkit": {
+   "label": "Apple HealthKit (on-device, iOS)", "trust": "device-dependent (Watch ECG/SpO₂ higher; phone steps lower)", "ingest": "on-device query / observer; app must be foregrounded or have background delivery; data leaves device only via our app",
+   "units": "HKUnit per type; SpO₂ as FRACTION, HRV as SDNN, temp ABSOLUTE", "schema": "stable type identifiers; new types per iOS release; locale-dependent units (mph/mi in US)",
+   "quirks": ["multiple source apps write the same type → overlap/duplication", "user can revoke per-type permission at any time → partial gaps", "deleted samples leave holes; HKDeletedObject must be honoured", "time zone stored per sample (HKMetadataKeyTimeZone) — not always present"]
+  },
+  "healthconnect": {
+   "label": "Google Health Connect (Android)", "trust": "device-dependent", "ingest": "on-device read with permission; change-tokens for incremental sync",
+   "units": "typed records (SI-leaning)", "schema": "record types versioned; data-origin (package) per record",
+   "quirks": ["multiple writer apps → priority/dedup needed", "permission revocation = gap", "aggregation buckets differ from raw"]
+  },
+  "device_clouds": {
+   "label": "Vendor cloud APIs (Oura, Whoop, Garmin, Fitbit, Withings, Polar, Dexcom, Libre)", "trust": "device-dependent", "ingest": "OAuth + webhook or polling per vendor",
+   "units": "vendor-specific (Fitbit AZM, Whoop strain, Oura readiness) — many are PROPRIETARY composite scores", "schema": "per-vendor versioning; breaking changes happen",
+   "quirks": ["proprietary scores (readiness/recovery/strain) are NOT comparable across vendors — recompute from raw where possible", "rate limits / backfill windows differ", "vendor sleep-staging algorithms diverge materially", "Fitbit reports VO₂max as a range/score, not a point"]
+  }
+ },
+ "merge_policy": {
+  "order": ["1. TRUST TIER — clinical-grade (CGM, cuff, ECG, HSAT) > consumer-validated (Watch/Oura/Whoop) > inferential (sleep stages, VO₂max est.)",
+            "2. NATIVE RESOLUTION — within a tier, prefer the higher native sampling rate / finer granularity",
+            "3. RECENCY — prefer the freshest non-stale sample; older confirmations raise confidence, conflicts lower it",
+            "4. DE-DUPLICATE — collapse overlapping time intervals (steps, sleep) to a single source per interval before aggregating",
+            "5. NEVER POOL non-comparable definitions (SDNN≠RMSSD, absolute≠deviation, vendor scores) — keep separate series, choose one canonical"],
+  "conflict": "When two trusted sources disagree beyond a metric-specific tolerance, take the higher-trust source, FLAG the conflict, and lower Confidence; never silently average across incompatible definitions.",
+  "single_source_per_interval": "For additive/count metrics (steps, active minutes, sleep intervals) pick ONE source per time interval to avoid double-counting; for point metrics (resting HR, VO₂max) pick one source per day."
+ },
+ "robustness": {
+  "contract": "The ingest layer must absorb upstream change WITHOUT corrupting baselines. Guarantees:",
+  "rules": [
+   "SCHEMA TOLERANCE — unknown/new fields are ignored, never fatal; missing expected fields degrade gracefully to 'absent', not error.",
+   "VERSION PINNING — record the source schema version with every sample; a version change triggers a re-validation pass, not silent ingestion.",
+   "VALIDATION GATE — every inbound sample passes type/unit/plausibility validation (see baseline-dq-rules.json) BEFORE it can touch a baseline; rejects are quarantined + logged, not dropped silently.",
+   "UNIT GUARD — a sample whose unit can't be resolved to the canonical unit is quarantined (never assumed).",
+   "IDEMPOTENT INGEST — every sample carries a stable source id; re-delivered/duplicate payloads are no-ops (handles webhook replays + backfill).",
+   "CANARY/RECOMPUTE — baselines are recomputable from the immutable raw store; a discovered upstream bug is fixed by reprocessing, not patching baselines in place.",
+   "PROVENANCE — every baseline keeps the source, device, unit, schema-version and transform of each contributing sample, so any corruption is traceable and reversible."
+  ]
+ }
+}

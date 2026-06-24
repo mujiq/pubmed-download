@@ -3631,6 +3631,22 @@ def build_wearable_baselines():
              '<a class="xref" href="appendix-biomarkers.html">bands (Appendix A · Markers)</a> &rarr; '
              '<b>personal baseline (you are here)</b> &middot; mobile prototype: '
              '<a class="xref" href="wearable-baselines.html">Wearable baselines (mobile)</a>.</div>')
+    h.append('<h2 id="ui-connect">How the UI connects to the baselines</h2>')
+    h.append('<p class="small">A baseline is a triple <code>{centre μ, robust spread σ, confidence, drift}</code>. The '
+             '<a class="xref" href="baseline-mob-viz.html">mobile baseline UI</a> renders that triple five ways &mdash; '
+             'each screen reads directly off the baseline model:</p>')
+    h.append('<div class="tablewrap"><table><thead><tr><th>Screen</th><th>Reads</th><th>Baseline quantity</th></tr></thead><tbody>'
+             '<tr><td><b>Baseline Band</b></td><td class="small">one metric vs its personal μ ± k·σ band over time</td><td class="small mono">{μ, σ}</td></tr>'
+             '<tr><td><b>Deviation Scan</b></td><td class="small">today\'s personal z per metric (morning scan)</td><td class="small mono">z = (x−μ)/σ</td></tr>'
+             '<tr><td><b>Body Radar</b></td><td class="small">polar composite — outward = better-than-baseline</td><td class="small mono">z → pillars</td></tr>'
+             '<tr><td><b>Baseline Drift</b></td><td class="small">how the centre itself moves week-over-week</td><td class="small mono">drift of μ</td></tr>'
+             '<tr><td><b>Confidence &amp; Trust</b></td><td class="small">band widens over data gaps (absence = uncertainty)</td><td class="small mono">q_source·exp(−Δt/τ)</td></tr>'
+             '</tbody></table></div>')
+    h.append('<div class="callout spec"><div class="ct">Where the baseline comes from</div>'
+             'The μ/σ above are computed by the <a class="xref" href="wearable-baseline-pipeline.html">Wearable baseline pipeline</a> '
+             '&mdash; which unifies <b>Terra · HealthKit · Health Connect · vendor clouds</b>, transforms every source to a '
+             'canonical unit, applies the robust+adaptive formula, and runs the data-quality rules that keep a bad sample, a '
+             'time-zone glitch, a dead battery or an upstream schema change from corrupting the band.</div>')
     return "Baselines (Wearables)", "".join(h)
 
 def _sex_gated(sex):
@@ -4162,6 +4178,148 @@ def build_prevention():
                      % "".join("<li>%s</li>" % _esc(x) for x in k.get(col, [])))
         h.append('</tr></tbody></table></div>')
     return "Prevention & engagement", "".join(h)
+
+# =================================================================== WEARABLE BASELINE PIPELINE
+def build_baseline_pipeline():
+    """Wearable baseline ingestion, unification, canonicalisation, formulas & data-quality — the
+    fool-proof pipeline from Terra/HealthKit/Health Connect/vendor clouds to a personal baseline and
+    the mobile baseline UI. Server-rendered from data/wearable-metrics.json + baseline-sources.json
+    + baseline-formulas.json + baseline-dq-rules.json."""
+    def L(n):
+        try:
+            return _load(n)
+        except Exception:
+            return {}
+    M = L("wearable-metrics.json"); SRC = L("baseline-sources.json")
+    FM = L("baseline-formulas.json"); DQ = L("baseline-dq-rules.json")
+    metrics = M.get("metrics", {}); rules = DQ.get("rules", [])
+    flow = ('flowchart LR\n'
+            '  T["Terra"] & HK["Apple HealthKit"] & HC["Health Connect"] & VC["Vendor clouds"] --> IN["Ingest<br/>(idempotent)"]\n'
+            '  IN --> VAL{"Validate<br/>type · unit · plausibility"}\n'
+            '  VAL -->|reject| Q[("Quarantine + log")]\n'
+            '  VAL -->|pass| MG["Unify / merge<br/>(trust · resolution · recency)"]\n'
+            '  MG --> CAN["Canonical units<br/>(SI)"]\n'
+            '  CAN --> BL["Baseline<br/>(robust median/MAD + EWMA)"]\n'
+            '  BL --> Z["Personal z<br/>(Doc 03 §2b)"]\n'
+            '  Z --> UI["Mobile baseline UI"]\n'
+            '  RAW[("Immutable raw store")] -.->|recompute| BL\n'
+            '  classDef k fill:#0c1726,stroke:#2b5a86,color:#cfe0f5; class IN,VAL,MG,CAN,BL,Z k')
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Inputs &amp; intake &rsaquo; Wearable baseline pipeline</div>',
+         '<h1>Wearable Baseline Pipeline <span class="small muted">&middot; Terra · HealthKit · device clouds &rarr; one fool-proof baseline</span></h1>',
+         '<p class="lead">How raw wearable data from <b>Terra</b>, <b>Apple HealthKit</b>, <b>Google Health Connect</b> and '
+         '<b>vendor cloud APIs</b> (Oura · Whoop · Garmin · Fitbit · Withings · Dexcom · Libre) is ingested, validated, '
+         '<b>unified</b>, transformed to <b>canonical units</b>, and turned into a <b>robust personal baseline</b> that '
+         'drives the <a class="xref" href="baseline-mob-viz.html">mobile baseline UI</a> and the personal z-score '
+         '(<a class="xref" href="03-scoring-formula.html">Doc 03 §2b</a>, κ_resp). Every way the data can be wrong, late, '
+         'duplicated or mis-united is a typed rule with a build-time completeness guard. Single sources: '
+         '<code>data/wearable-metrics.json · baseline-sources.json · baseline-formulas.json · baseline-dq-rules.json</code>.</p>', ILLUS,
+         '<div class="diagram"><div class="dt">Pipeline &mdash; ingest &rarr; validate &rarr; unify &rarr; canonicalise &rarr; baseline &rarr; z &rarr; UI</div>'
+         '<pre class="mermaid">%s</pre></div>' % flow]
+    # 1 · Sources & unification
+    h.append('<h2 id="sources">1 &middot; Sources &amp; unification</h2>')
+    h.append('<div class="tablewrap"><table><thead><tr><th>Source</th><th>Ingest</th><th>Trust</th><th>Quirks that bite baselines</th></tr></thead><tbody>')
+    for k, s in SRC.get("sources", {}).items():
+        h.append('<tr><td><b>%s</b></td><td class="small">%s</td><td class="small muted">%s</td><td class="small">%s</td></tr>'
+                 % (_esc(s.get("label", k)), _esc(s.get("ingest", "")), _esc(s.get("trust", "")), _esc(" · ".join(s.get("quirks", [])))))
+    h.append('</tbody></table></div>')
+    mp = SRC.get("merge_policy", {})
+    h.append('<div class="callout note"><div class="ct">Merge policy &mdash; same metric, many sources</div><ol class="small">%s</ol>%s</div>'
+             % ("".join("<li>%s</li>" % _esc(x) for x in mp.get("order", [])),
+                '<p class="small"><b>Conflict:</b> %s</p>' % _esc(mp.get("conflict", ""))))
+    rob = SRC.get("robustness", {})
+    h.append('<div class="callout spec"><div class="ct">Robustness contract &mdash; absorbing upstream change</div>'
+             '<ul class="small">%s</ul></div>' % "".join("<li>%s</li>" % _esc(x) for x in rob.get("rules", [])))
+    # 2 · Canonical units + metric registry
+    h.append('<h2 id="metrics">2 &middot; Canonical metrics registry</h2>')
+    h.append('<p class="small muted">Every metric transformed to its canonical unit before any baseline math; SI stored internally. '
+             'Groups: <b>individual</b> · <b>aggregated</b> · <b>derived</b> · <b>frequency</b>.</p>')
+    h.append('<div class="tablewrap"><table><thead><tr><th>Metric</th><th>Pillar</th><th>Group</th><th>Canonical</th>'
+             '<th>Raw&rarr;day</th><th>Sources (native unit &middot; trap)</th><th>Formula</th></tr></thead><tbody>')
+    for mk, m in metrics.items():
+        srcs = m.get("sources", {})
+        scells = []
+        for sk in ("terra", "healthkit", "healthconnect", "devicecloud"):
+            sv = srcs.get(sk)
+            if not sv:
+                continue
+            trap = sv.get("trap") or sv.get("us_unit")
+            scells.append("<b>%s</b> %s%s" % (sk, _esc(sv.get("unit", "")), (' <span class="chip b-red">trap</span>' if trap else "")))
+        h.append('<tr id="m-%s"><td><b>%s</b></td><td>%s</td><td>%s</td><td class="mono">%s</td><td class="small muted">%s</td>'
+                 '<td class="small">%s</td><td class="small mono">%s</td></tr>'
+                 % (_esc(mk), _esc(m.get("label", mk)), _esc(m.get("pillar", "")), _esc(m.get("group", "")),
+                    _esc(m.get("canon", "")), _esc(m.get("agg", "")), " &middot; ".join(scells), _esc(m.get("formula", ""))))
+    h.append('</tbody></table></div>')
+    # the source traps, called out
+    traps = []
+    for mk, m in metrics.items():
+        for sk, sv in m.get("sources", {}).items():
+            if isinstance(sv, dict) and sv.get("trap"):
+                traps.append((m.get("label", mk), sk, sv["trap"]))
+    if traps:
+        h.append('<h3>Unit / definition traps (must transform before pooling)</h3><div class="tablewrap"><table><thead><tr>'
+                 '<th>Metric</th><th>Source</th><th>Trap</th></tr></thead><tbody>')
+        for lab, sk, tr in traps:
+            h.append('<tr><td><b>%s</b></td><td class="small muted">%s</td><td class="small">%s</td></tr>' % (_esc(lab), _esc(sk), _esc(tr)))
+        h.append('</tbody></table></div>')
+    # 3 · Baseline formulas
+    h.append('<h2 id="formulas">3 &middot; Baseline formulas</h2>')
+    h.append('<p class="small">%s</p>' % _esc(FM.get("_meta", {}).get("output_model", "")))
+    h.append('<div class="tablewrap"><table><thead><tr><th>Family</th><th>Definition</th><th>When</th><th>Robustness</th></tr></thead><tbody>')
+    for fk, f in FM.get("families", {}).items():
+        h.append('<tr><td><b>%s</b>%s</td><td class="small">%s</td><td class="small muted">%s</td><td class="small">%s</td></tr>'
+                 % (_esc(f.get("name", fk)), (' <span class="chip b-green">default</span>' if "DEFAULT" in f.get("name", "") else ""),
+                    _esc(f.get("def", "")), _esc(f.get("use", "")), _esc(f.get("robust", ""))))
+    h.append('</tbody></table></div>')
+    dg = FM.get("defaults_by_group", {})
+    h.append('<p class="small"><b>Default per group:</b> ' + " &middot; ".join("<b>%s</b> %s" % (_esc(g), _esc(v)) for g, v in dg.items()) + "</p>")
+    # 4 · Data-quality rules
+    cats = {"time": "Time &amp; time-zone", "gap": "Gaps &amp; missing", "duplication": "Duplication &amp; overlap",
+            "value": "Value anomalies", "unit": "Units &amp; definitions", "device": "Device &amp; sensor",
+            "upstream": "Upstream / schema", "structure": "Structure &amp; coherence"}
+    h.append('<h2 id="dq">4 &middot; Data-quality rules <span class="small muted">&middot; %d rules, %d categories &mdash; the fool-proof layer</span></h2>' % (len(rules), len(cats)))
+    h.append('<p class="small muted">Default stance: <b>%s</b>. Each rule: detect &rarr; action &rarr; effect-on-baseline &rarr; confidence impact. '
+             'The build guard fails if any metric is left uncovered.</p>' % _esc(DQ.get("_meta", {}).get("default_stance", "")))
+    sevc = {"high": '<span class="chip b-red">high</span>', "med": '<span class="chip b-yellow">med</span>', "low": '<span class="chip b-mut">low</span>'}
+    for ck, cl in cats.items():
+        crules = [r for r in rules if r.get("cat") == ck]
+        if not crules:
+            continue
+        h.append('<h3>%s <span class="small muted">&middot; %d</span></h3>' % (cl, len(crules)))
+        h.append('<div class="tablewrap"><table><thead><tr><th>Rule</th><th>Detect</th><th>Action &rarr; effect on baseline</th><th>Sev</th></tr></thead><tbody>')
+        for r in crules:
+            h.append('<tr><td><b>%s</b><br><span class="small muted">→ %s</span></td><td class="small">%s</td>'
+                     '<td class="small">%s <span class="muted">→ %s</span> <span class="muted">(conf: %s)</span></td><td>%s</td></tr>'
+                     % (_esc(r.get("name", "")), _esc(r.get("applies", "")), _esc(r.get("detect", "")),
+                        _esc(r.get("action", "")), _esc(r.get("effect", "")), _esc(r.get("conf", "")), sevc.get(r.get("sev"), _esc(r.get("sev", "")))))
+        h.append('</tbody></table></div>')
+    # 5 · UI connection
+    h.append('<h2 id="ui">5 &middot; How the mobile UI connects to the baselines</h2>')
+    h.append('<p class="small">The <a class="xref" href="baseline-mob-viz.html">baseline mobile prototype</a> renders the baseline '
+             'output triple <code>{center μ, spread σ_robust, confidence, drift}</code> five ways:</p>')
+    ui = [("Baseline Band", "one metric vs its personal μ ± k·σ_robust band over time", "{μ, σ_robust}"),
+          ("Deviation Scan", "today's personal z per metric, dense morning scan", "z = (x − μ)/σ_robust"),
+          ("Body Radar", "polar composite — outward = better-than-baseline, whole-body readiness", "z across metrics → pillars"),
+          ("Baseline Drift", "how the baseline centre itself moves week-over-week", "drift_slope of μ"),
+          ("Confidence & Trust", "band widens over data gaps — absence = widened uncertainty", "confidence = q_source · exp(−Δt/τ)")]
+    h.append('<div class="tablewrap"><table><thead><tr><th>Screen</th><th>Shows</th><th>From the baseline model</th></tr></thead><tbody>')
+    for nm, sh, fr in ui:
+        h.append('<tr><td><b>%s</b></td><td class="small">%s</td><td class="small mono">%s</td></tr>' % (_esc(nm), _esc(sh), _esc(fr)))
+    h.append('</tbody></table></div>')
+    # 6 · Gaps
+    h.append('<h2 id="gaps">6 &middot; Identified gaps</h2>')
+    gaps = ["No live Terra/HealthKit/vendor schema is pinned here — the source paths are illustrative and must be reconciled against current API versions before production.",
+            "The robust+adaptive formula params (windows, half-lives, winsor %) are expert-priors, not yet calibrated against labelled data (Doc 14).",
+            "Conditioned baselines (per-device, per-context) multiply state — a device/context registry + storage model is specified but not built.",
+            "Identity / shared-device disambiguation needs a real biometric-consistency model, not just a flag.",
+            "Cross-metric coherence checks need the full physiological constraint set encoded as executable assertions.",
+            "The personal-baseline math currently lives as Doc 03 §2b (κ_resp, 30-day) — this pipeline proposes the robust/adaptive upgrade and a re-baselining (change-point) mechanism that the engine does not yet implement."]
+    h.append('<ul class="small">%s</ul>' % "".join("<li>%s</li>" % _esc(g) for g in gaps))
+    h.append('<p class="small muted">Connects to: <a class="xref" href="purescore-wearable-baselines.html">Wearable baselines</a> · '
+             '<a class="xref" href="appendix-wearables.html">Wearables (trust tiers)</a> · '
+             '<a class="xref" href="appendix-wearable-corroboration.html">Wearable corroboration</a> · '
+             '<a class="xref" href="06-data-model-and-reference-ranges.html">Doc 06 data model</a> · '
+             '<a class="xref" href="baseline-mob-viz.html">Baseline mobile UI</a>.</p>')
+    return "Wearable baseline pipeline", "".join(h)
 
 # =================================================================== WEARABLE CORROBORATION (closes F4)
 def _wear_corr_counts():

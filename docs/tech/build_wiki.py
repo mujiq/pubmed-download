@@ -160,6 +160,8 @@ NAV = [
                  ("appendix-biomarkers.html", "Markers (all channels)"), ("reference-range-resolver.html", "Reference-range resolver"),
                  ("appendix-wearables.html", "Wearables"),
                  ("purescore-wearable-baselines.html", "Wearable baselines"),
+                 ("wearable-baseline-pipeline.html", "Baseline pipeline (Terra/HealthKit)"),
+                 ("baseline-mob-viz.html", "Baseline mobile UI"),
                  ("questions-hub.html", "Intake — overview"), ("appendix-onboarding.html", "Onboarding & first-run"),
                  ("appendix-questions.html", "Screeners & PROs"), ("appendix-question-bank.html", "Question bank"),
                  ("appendix-lifestyles.html", "Lifestyles"), ("appendix-wearable-corroboration.html", "Wearable corroboration"),
@@ -367,6 +369,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "reservoir-sim.html":"Reservoir simulator",
           "consent-onboarding.html":"Consent & onboarding",
           "purescore-overview.html":"PureScore · Overview","purescore-wearable-baselines.html":"Baselines (Wearables)",
+          "wearable-baseline-pipeline.html":"Wearable baseline pipeline","baseline-mob-viz.html":"Baseline mobile UI",
           "purescore-sex.html":"PureScore by sex",
           "dossier-sequences.html":"Sequences",
           "dossier-erd.html":"Data model (ERD)","dossier-c4.html":"C4 architecture",
@@ -794,6 +797,7 @@ def main():
                       ("purescore-uber-map.html", "build_purescore_uber"),
                       ("purescore-overview.html", "build_purescore_overview"),
                       ("purescore-wearable-baselines.html", "build_wearable_baselines"),
+                      ("wearable-baseline-pipeline.html", "build_baseline_pipeline"),
                       ("purescore-sex.html", "build_purescore_sex"),
                       ("dossier-sequences.html", "build_sequences"),
                       ("dossier-erd.html", "build_erd"), ("dossier-c4.html", "build_c4"),
@@ -830,6 +834,7 @@ def main():
     _engine_guard()
     _flag_guard()
     _care_guard()
+    _baseline_guard()
 
 def _engine_guard():
     """HARD guard (per D32): data/*.json is canonical for the scoring engine. Fail the build if
@@ -894,7 +899,7 @@ def _consistency_check():
     print("  [consistency] OK — count claims match live data" if not warn else "  [consistency] %d drift(s) above" % warn)
 
 # ----------------------------------------------------------------- "Connects to" footer (auto-derived)
-_DIAGRAMS = {"purescore-uber-map.html", "pillar-weights.html", "states.html", "engagement-state-machines.html",
+_DIAGRAMS = {"purescore-uber-map.html", "pillar-weights.html", "states.html", "engagement-state-machines.html", "baseline-mob-viz.html",
              "class-model.html", "dossier-erd.html", "dossier-c4.html", "dossier-sequences.html",
              "class-model.html", "wearable-baselines.html", "purescore-wearable-baselines.html",
              "consent-onboarding.html", "purescore-system.html", "reservoir-sim.html",
@@ -1029,6 +1034,43 @@ def _build_search_index():
     nsec = sum(len(r["secs"]) for r in recs)
     print("  [search] indexed %d pages · %d sections → assets/search-index.js (%d KB)"
           % (len(recs), nsec, len(js.encode("utf-8")) // 1024))
+
+def _baseline_guard():
+    """Wearable-baseline pipeline completeness: HARD-fail unless every metric has a source, a canonical
+    unit and a known formula, and is covered by EVERY data-quality category; and every DQ rule references
+    a known metric. So a new metric can't ship without its full source/unit/formula/DQ coverage."""
+    M = C._load("wearable-metrics.json").get("metrics", {})
+    FM = C._load("baseline-formulas.json")
+    formulas = set(FM.get("formula_refs", {})) | set(FM.get("families", {}))
+    rules = C._load("baseline-dq-rules.json").get("rules", [])
+    cats = {"time", "gap", "duplication", "value", "unit", "device", "upstream", "structure"}
+    bad = []
+    for mk, m in M.items():
+        if not m.get("sources"): bad.append("%s: no source mapping" % mk)
+        if not m.get("canon"): bad.append("%s: no canonical unit" % mk)
+        if m.get("formula") not in formulas: bad.append("%s: unknown formula %r" % (mk, m.get("formula")))
+    for r in rules:
+        ap = r.get("applies", "")
+        if ap != "all":
+            for mid in [x.strip() for x in ap.split(",") if x.strip()]:
+                if mid not in M: bad.append("DQ %s: unknown metric %r" % (r.get("id"), mid))
+    allcat = {r["cat"] for r in rules if r.get("applies") == "all"}
+    for mk in M:
+        covered = set(allcat)
+        for r in rules:
+            ap = r.get("applies", "")
+            if ap != "all" and mk in [x.strip() for x in ap.split(",")]:
+                covered.add(r["cat"])
+        miss = cats - covered
+        if miss: bad.append("%s: DQ categories uncovered: %s" % (mk, ", ".join(sorted(miss))))
+    print("[baseline-guard] %d metrics · %d DQ rules · %d categories" % (len(M), len(rules), len(cats)))
+    if bad:
+        print("  ! FAIL:")
+        for b in bad[:14]:
+            print("     -", b)
+        raise SystemExit("! build failed: baseline-guard — see wearable-metrics / baseline-dq-rules")
+    print("  [baseline-guard] OK — every metric has source/unit/formula + full DQ category coverage")
+
 
 def _care_guard():
     """Care-pathways integrity (Care pathways & delivery): HARD-fail if a pathway references a role
