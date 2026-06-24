@@ -4,39 +4,198 @@
   "alignment": "Reminders/nudges should route through the Doc 11 §9 delivery engine (channels, quiet hours, consent, PHI-safe payloads, safety-critical escalation), not a parallel sender."
  },
  "reminders": [
-  {"id": "hba1c-due", "trigger": "No HbA1c within 6 months", "timing": "30d before due · due · 30d overdue", "escalation": "Patient → Care Coordinator", "message": "Your blood sugar monitoring test is due. Completing it helps track your progress and prevent diabetes."},
-  {"id": "annual-review", "trigger": "12 months since last review", "message": "Let's check your progress. A quick health review can help keep you on track and reduce your risk of developing diabetes."},
-  {"id": "followup-due", "trigger": "No PCP follow-up within 6-12 months", "message": "Regular follow-up helps monitor your health and reduce the risk of developing diabetes. Schedule your visit today."}
+  {
+   "id": "hba1c-due",
+   "trigger": "No HbA1c within 6 months",
+   "timing": "30d before due · due · 30d overdue",
+   "escalation": "Patient → Care Coordinator",
+   "message": "Your blood sugar monitoring test is due. Completing it helps track your progress and prevent diabetes."
+  },
+  {
+   "id": "annual-review",
+   "trigger": "12 months since last review",
+   "message": "Let's check your progress. A quick health review can help keep you on track and reduce your risk of developing diabetes."
+  },
+  {
+   "id": "followup-due",
+   "trigger": "No PCP follow-up within 6-12 months",
+   "message": "Regular follow-up helps monitor your health and reduce the risk of developing diabetes. Schedule your visit today."
+  },
+  {
+   "id": "ramadan-med-timing",
+   "trigger": "Declared Ramadan fasting + on time-sensitive medication (metformin/insulin/antihypertensive)",
+   "timing": "1 week pre-Ramadan · daily during",
+   "escalation": "Patient → Pharmacist/Care Coordinator",
+   "message": "Ramadan is near — let's adjust your medication timing to suhoor/iftar so you stay safe while fasting."
+  },
+  {
+   "id": "ramadan-glucose-watch",
+   "trigger": "Diabetic persona + fasting + glucose data gap",
+   "timing": "during fasting hours",
+   "escalation": "Patient → Care Coordinator (hypo-risk)",
+   "message": "While fasting, check your glucose if you feel unwell — breaking the fast is allowed if you go low."
+  },
+  {
+   "id": "heat-hydration",
+   "trigger": "Summer (high heat index) + outdoor/manual work or CKD/elderly",
+   "timing": "daily, peak-heat months",
+   "escalation": "Patient",
+   "message": "It's a high-heat day — hydrate and avoid midday sun, especially with outdoor work."
+  }
  ],
  "interventions": [
-  {"id": "weight-management", "trigger": "BMI ≥25", "frequency": "weekly", "messages": ["Losing just 5-7% of body weight can significantly reduce your risk of developing diabetes.", "Every healthy choice counts. Small changes create lasting results."]},
-  {"id": "physical-activity", "frequency": "3×/week", "goal": "≥150 min/week moderate activity", "messages": ["A 30-minute walk today helps improve insulin sensitivity.", "You're one workout closer to your health goal."]},
-  {"id": "healthy-nutrition", "frequency": "2-3×/week", "messages": ["Try filling half your plate with vegetables at your next meal.", "Replacing sugary drinks with water can help lower your diabetes risk."]},
-  {"id": "high-risk-coaching", "trigger": "HbA1c ≥6.0%", "frequency": "intensified (2-3×/week)", "messages": ["Your recent results show an increased risk of developing diabetes. Consistent lifestyle changes now can make a significant difference."]}
+  {
+   "id": "weight-management",
+   "trigger": "BMI ≥25",
+   "frequency": "weekly",
+   "messages": [
+    "Losing just 5-7% of body weight can significantly reduce your risk of developing diabetes.",
+    "Every healthy choice counts. Small changes create lasting results."
+   ]
+  },
+  {
+   "id": "physical-activity",
+   "frequency": "3×/week",
+   "goal": "≥150 min/week moderate activity",
+   "messages": [
+    "A 30-minute walk today helps improve insulin sensitivity.",
+    "You're one workout closer to your health goal."
+   ]
+  },
+  {
+   "id": "healthy-nutrition",
+   "frequency": "2-3×/week",
+   "messages": [
+    "Try filling half your plate with vegetables at your next meal.",
+    "Replacing sugary drinks with water can help lower your diabetes risk."
+   ]
+  },
+  {
+   "id": "high-risk-coaching",
+   "trigger": "HbA1c ≥6.0%",
+   "frequency": "intensified (2-3×/week)",
+   "messages": [
+    "Your recent results show an increased risk of developing diabetes. Consistent lifestyle changes now can make a significant difference."
+   ]
+  },
+  {
+   "id": "ramadan-prefast-counsel",
+   "trigger": "Pre-Ramadan risk stratification & fasting-safety counselling (IDF-DAR)",
+   "frequency": "",
+   "messages": ""
+  },
+  {
+   "id": "heat-activity-timing",
+   "trigger": "Shift activity goals to cooler hours in peak-heat months; hydration plan",
+   "frequency": "",
+   "messages": ""
+  }
  ],
  "alerts": {
-  "patient": ["Test/appointment due & overdue", "High-risk result coaching prompt"],
-  "care_team": ["Worsening trend / non-engagement → Care Coordinator monitoring flag", "Dietitian-referral suggestion (high-risk / worsening)"],
-  "physician": ["Progression to diabetes (HbA1c ≥6.5% / FPG ≥126) → high-priority physician alert + complication screening within 3 months"]
+  "patient": [
+   "Test/appointment due & overdue",
+   "High-risk result coaching prompt"
+  ],
+  "care_team": [
+   "Worsening trend / non-engagement → Care Coordinator monitoring flag",
+   "Dietitian-referral suggestion (high-risk / worsening)"
+  ],
+  "physician": [
+   "Progression to diabetes (HbA1c ≥6.5% / FPG ≥126) → high-priority physician alert + complication screening within 3 months"
+  ]
  },
  "cds_rules": [
-  {"id": "CDS-PRE-03", "name": "Progression to Diabetes", "if": ["HbA1c ≥6.5%", "or FPG ≥126 mg/dL"], "then": ["Remove from Prediabetes Pathway", "Enroll in Type 2 Diabetes Pathway", "High-priority physician alert", "Confirmatory HbA1c in 3 months if clinically required", "Baseline complication screening (kidney, eye, cardiovascular) within 3 months", "Assign care-coordinator follow-up"]}
+  {
+   "id": "CDS-PRE-03",
+   "name": "Progression to Diabetes",
+   "if": [
+    "HbA1c ≥6.5%",
+    "or FPG ≥126 mg/dL"
+   ],
+   "then": [
+    "Remove from Prediabetes Pathway",
+    "Enroll in Type 2 Diabetes Pathway",
+    "High-priority physician alert",
+    "Confirmatory HbA1c in 3 months if clinically required",
+    "Baseline complication screening (kidney, eye, cardiovascular) within 3 months",
+    "Assign care-coordinator follow-up"
+   ]
+  }
  ],
  "prevention_score": {
   "name": "Prevention Score (condition-level)",
   "note": "A condition-specific composite shown on the PURA prediabetes dashboard — distinct from the whole-person PureScore. Candidate to derive FROM PureScore inputs rather than as a parallel score.",
-  "components": ["HbA1c status", "Weight change", "Activity completion", "Appointment compliance"],
-  "risk_status": [{"band": "Low", "icon": "🟢"}, {"band": "Moderate", "icon": "🟠"}, {"band": "High", "icon": "🔴"}]
+  "components": [
+   "HbA1c status",
+   "Weight change",
+   "Activity completion",
+   "Appointment compliance"
+  ],
+  "risk_status": [
+   {
+    "band": "Low",
+    "icon": "🟢"
+   },
+   {
+    "band": "Moderate",
+    "icon": "🟠"
+   },
+   {
+    "band": "High",
+    "icon": "🔴"
+   }
+  ]
  },
  "app_screens": [
-  {"screen": "My Prediabetes Dashboard", "shows": ["Risk status (traffic-light)", "Prevention Score"]},
-  {"screen": "My Progress", "shows": ["Latest HbA1c", "Weight trend", "Activity trend", "Lifestyle goals"]},
-  {"screen": "Upcoming Actions", "shows": ["HbA1c due", "Follow-up visit due", "Health-coaching activities"]}
+  {
+   "screen": "My Prediabetes Dashboard",
+   "shows": [
+    "Risk status (traffic-light)",
+    "Prevention Score"
+   ]
+  },
+  {
+   "screen": "My Progress",
+   "shows": [
+    "Latest HbA1c",
+    "Weight trend",
+    "Activity trend",
+    "Lifestyle goals"
+   ]
+  },
+  {
+   "screen": "Upcoming Actions",
+   "shows": [
+    "HbA1c due",
+    "Follow-up visit due",
+    "Health-coaching activities"
+   ]
+  }
  ],
  "kpis": {
-  "clinical": ["% progressing prediabetes → diabetes", "Mean HbA1c reduction", "% achieving HbA1c <5.7%", "Average weight loss"],
-  "engagement": ["Monthly active users", "Nudge open rate", "Health-coaching participation", "Follow-up attendance rate"],
-  "preventive": ["HbA1c completion rate", "Lifestyle-assessment completion rate", "Dietitian-referral completion rate"],
-  "executive": ["Prediabetes population size", "High-risk prediabetes population", "Conversion rate to diabetes", "Estimated diabetes cases prevented", "Cost avoidance from prevention"]
+  "clinical": [
+   "% progressing prediabetes → diabetes",
+   "Mean HbA1c reduction",
+   "% achieving HbA1c <5.7%",
+   "Average weight loss"
+  ],
+  "engagement": [
+   "Monthly active users",
+   "Nudge open rate",
+   "Health-coaching participation",
+   "Follow-up attendance rate"
+  ],
+  "preventive": [
+   "HbA1c completion rate",
+   "Lifestyle-assessment completion rate",
+   "Dietitian-referral completion rate"
+  ],
+  "executive": [
+   "Prediabetes population size",
+   "High-risk prediabetes population",
+   "Conversion rate to diabetes",
+   "Estimated diabetes cases prevented",
+   "Cost avoidance from prevention"
+  ]
  }
 }

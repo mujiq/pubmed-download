@@ -10,24 +10,110 @@
   "MEAS": "take or order a specific measurement / lab to replace a cohort estimate"
  },
  "nudges": [
-  {"id": "DEVICE-WEARABLE", "class": "DEVICE", "trigger": "no wearable data > fresh-within SLA, or never connected", "cta": "Connect your watch/ring to personalise sleep, HR & activity", "raises": "coverage+accuracy of SLP/FIT/CV wearable metrics; turns provisional baselines personal", "effort": "low", "fixes_state": "wearable_marker/baseline missing"},
-  {"id": "DEVICE-BP", "class": "DEVICE", "trigger": "home BP cohort-filled or stale > SLA", "cta": "Pair a home BP cuff (or log a reading) to confirm your CV pillar", "raises": "CV accuracy; unlocks real hypertension detection (cohort-fill can't)", "effort": "med", "fixes_state": "clinical_marker missing/stale"},
-  {"id": "DEVICE-CGM", "class": "DEVICE", "trigger": "metabolic pillar low-coverage & user eligible (prediabetic/diabetic persona)", "cta": "Set up your CGM to see time-in-range", "raises": "MET accuracy; replaces cohort glucose estimate", "effort": "med", "fixes_state": "clinical_marker missing"},
-  {"id": "INTAKE-PILLAR", "class": "INTAKE", "trigger": "a pillar's question coverage < 0.5 (PRO answers cohort-defaulted)", "cta": "Answer 3 quick questions to sharpen your {pillar} score", "raises": "{pillar} sufficiency+accuracy; removes cohort-default PRO", "effort": "low", "fixes_state": "pro_question missing"},
-  {"id": "INTAKE-ONBOARD", "class": "INTAKE", "trigger": "onboarding bootstrap incomplete / persona unresolved", "cta": "Finish your health profile (2 min) to lift your score from provisional", "raises": "global sufficiency; resolves persona & seeds goals", "effort": "low", "fixes_state": "pro_question missing"},
-  {"id": "MEAS-APOB", "class": "MEAS", "trigger": "ApoB cohort-imputed > 90 days", "cta": "Get an ApoB test — it sharpens your cardiovascular score the most", "raises": "CV accuracy; replaces cohort lipid estimate", "effort": "med", "fixes_state": "lab_marker missing"},
-  {"id": "MEAS-LIPIDS", "class": "MEAS", "trigger": "lipid panel cohort-imputed or stale > SLA", "cta": "Refresh your lipid panel", "raises": "CV accuracy", "effort": "med", "fixes_state": "lab_marker stale"},
-  {"id": "MEAS-HBA1C", "class": "MEAS", "trigger": "HbA1c cohort-imputed or stale > SLA", "cta": "Check your HbA1c", "raises": "MET accuracy", "effort": "med", "fixes_state": "lab_marker stale"},
-  {"id": "MEAS-HOMEBP", "class": "MEAS", "trigger": "no in-date BP and DEVICE-BP declined", "cta": "Log a home blood-pressure reading", "raises": "CV accuracy; real reading can flag/clear hypertension", "effort": "low", "fixes_state": "clinical_marker missing"},
-  {"id": "GOAL-SET", "class": "INTAKE", "trigger": "a defaulted (suggested) goal hasn't been confirmed", "cta": "Confirm or adjust your {pillar} goal", "raises": "goal ownership & nudge relevance (not score accuracy)", "effort": "low", "fixes_state": "user_goal missing"}
+  {
+   "id": "DEVICE-WEARABLE",
+   "class": "DEVICE",
+   "trigger": "no wearable data > fresh-within SLA, or never connected",
+   "cta": "Connect your watch/ring to personalise sleep, HR & activity",
+   "raises": "coverage+accuracy of SLP/FIT/CV wearable metrics; turns provisional baselines personal",
+   "effort": "low",
+   "fixes_state": "wearable_marker/baseline missing"
+  },
+  {
+   "id": "DEVICE-BP",
+   "class": "DEVICE",
+   "trigger": "home BP cohort-filled or stale > SLA",
+   "cta": "Pair a home BP cuff (or log a reading) to confirm your CV pillar",
+   "raises": "CV accuracy; unlocks real hypertension detection (cohort-fill can't)",
+   "effort": "med",
+   "fixes_state": "clinical_marker missing/stale"
+  },
+  {
+   "id": "DEVICE-CGM",
+   "class": "DEVICE",
+   "trigger": "metabolic pillar low-coverage & user eligible (prediabetic/diabetic persona)",
+   "cta": "Set up your CGM to see time-in-range",
+   "raises": "MET accuracy; replaces cohort glucose estimate",
+   "effort": "med",
+   "fixes_state": "clinical_marker missing"
+  },
+  {
+   "id": "INTAKE-PILLAR",
+   "class": "INTAKE",
+   "trigger": "a pillar's question coverage < 0.5 (PRO answers cohort-defaulted)",
+   "cta": "Answer 3 quick questions to sharpen your {pillar} score",
+   "raises": "{pillar} sufficiency+accuracy; removes cohort-default PRO",
+   "effort": "low",
+   "fixes_state": "pro_question missing"
+  },
+  {
+   "id": "INTAKE-ONBOARD",
+   "class": "INTAKE",
+   "trigger": "onboarding bootstrap incomplete / persona unresolved",
+   "cta": "Finish your health profile (2 min) to lift your score from provisional",
+   "raises": "global sufficiency; resolves persona & seeds goals",
+   "effort": "low",
+   "fixes_state": "pro_question missing"
+  },
+  {
+   "id": "MEAS-APOB",
+   "class": "MEAS",
+   "trigger": "ApoB cohort-imputed > 90 days",
+   "cta": "Get an ApoB test — it sharpens your cardiovascular score the most",
+   "raises": "CV accuracy; replaces cohort lipid estimate",
+   "effort": "med",
+   "fixes_state": "lab_marker missing"
+  },
+  {
+   "id": "MEAS-LIPIDS",
+   "class": "MEAS",
+   "trigger": "lipid panel cohort-imputed or stale > SLA",
+   "cta": "Refresh your lipid panel",
+   "raises": "CV accuracy",
+   "effort": "med",
+   "fixes_state": "lab_marker stale"
+  },
+  {
+   "id": "MEAS-HBA1C",
+   "class": "MEAS",
+   "trigger": "HbA1c cohort-imputed or stale > SLA",
+   "cta": "Check your HbA1c",
+   "raises": "MET accuracy",
+   "effort": "med",
+   "fixes_state": "lab_marker stale"
+  },
+  {
+   "id": "MEAS-HOMEBP",
+   "class": "MEAS",
+   "trigger": "no in-date BP and DEVICE-BP declined",
+   "cta": "Log a home blood-pressure reading",
+   "raises": "CV accuracy; real reading can flag/clear hypertension",
+   "effort": "low",
+   "fixes_state": "clinical_marker missing"
+  },
+  {
+   "id": "GOAL-SET",
+   "class": "INTAKE",
+   "trigger": "a defaulted (suggested) goal hasn't been confirmed",
+   "cta": "Confirm or adjust your {pillar} goal",
+   "raises": "goal ownership & nudge relevance (not score accuracy)",
+   "effort": "low",
+   "fixes_state": "user_goal missing"
+  }
  ],
  "escalation": {
   "model": "Offer at a base cadence. On dismiss → back off (decreasing cadence). As the underlying data AGES past its Freshness-SLA stale-after, BUMP the CTA's ranking priority and cadence (a 95-day-old ApoB outranks a 30-day-old one). Cap frequency (no spam). After N ignores → StopOutreach (engagement state machine Dormant→ReEngage→StopOutreach).",
   "freshness_sla": "tied to the per-metric fresh-within / stale-after SLA (coverage-audit F8 / wearable-metrics sampling). Staleness, not just absence, raises a completeness nudge.",
-  "continuity": "the loop runs continuously: every score render re-evaluates cohort-fill % and re-ranks completeness CTAs, so as the user closes one gap the next-best one surfaces — progressive data collection over time."
+  "continuity": "the loop runs continuously: every score render re-evaluates cohort-fill % and re-ranks completeness CTAs, so as the user closes one gap the next-best one surfaces — progressive data collection over time.",
+  "cultural_timing": "Respect Ramadan fasting hours and the five daily prayer windows (and iftar/suhoor): shift completeness nudges out of fasting/prayer times; suppress baseline-deviation alarms during declared fasting (see cohort-governance §6)."
  },
  "user_surface": {
   "note": "A user-facing 'Data Health' surface closes the loop (today the coverage audit is design-time only):",
-  "shows": ["Data completeness % and Accuracy % beside the PureScore", "the top 1–3 next-best inputs to add (ranked by ΔAccuracy-per-effort)", "which pillars are running on cohort estimates ('CV is 42% estimated — add ApoB')", "the mobile 'Confidence & Trust' baseline screen already widens bands over gaps (baseline-mob-viz) — extend it with these CTAs"]
+  "shows": [
+   "Data completeness % and Accuracy % beside the PureScore",
+   "the top 1–3 next-best inputs to add (ranked by ΔAccuracy-per-effort)",
+   "which pillars are running on cohort estimates ('CV is 42% estimated — add ApoB')",
+   "the mobile 'Confidence & Trust' baseline screen already widens bands over gaps (baseline-mob-viz) — extend it with these CTAs"
+  ]
  }
 }

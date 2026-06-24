@@ -179,6 +179,8 @@
    "id": "life_stage",
    "name": "Life stage",
    "levels": [
+    "child",
+    "adolescent",
     "young_adult",
     "reproductive",
     "perimenopause_andropause",
@@ -201,7 +203,8 @@
     "lab.E2",
     "lab.testosterone",
     "age"
-   ]
+   ],
+   "note": "Child/adolescent use age-banded PEDIATRIC growth-percentile references (illustrative in the cohort dataset; full pediatric ranges are a production requirement — see degradation-operations minors decision)."
   },
   {
    "id": "condition_load",
@@ -287,7 +290,8 @@
     "day_regular",
     "irregular",
     "shift_worker",
-    "frequent_traveler"
+    "frequent_traveler",
+    "manual_outdoor"
    ],
    "pillars": [
     "SLP",
@@ -324,6 +328,29 @@
     "nudge.completion_rate",
     "wearable.wear_time"
    ]
+  },
+  {
+   "id": "care_access",
+   "name": "Care access",
+   "levels": [
+    "full",
+    "limited",
+    "sponsorship_dependent"
+   ],
+   "pillars": [
+    "MCS",
+    "MET",
+    "CV"
+   ],
+   "perceived_signal": [
+    "Q_CORE_OCCUPATION",
+    "Q_ACCESS_INSURANCE"
+   ],
+   "actual_signal": [
+    "claims.coverage",
+    "visit.frequency"
+   ],
+   "note": "Access disparity (domestic/manual-labour/sponsorship-dependent populations) — affects data completeness, screening uptake and outcome equity."
   }
  ],
  "archetypes": [
@@ -794,6 +821,22 @@
     "type_2_diabetes (GDM)"
    ],
    "frame": "Physiologic anemia/eGFR shifts expected (Doc 08); pre-eclampsia/GDM anchors retained."
+  },
+  {
+   "key": "domestic_manual_worker",
+   "name": "Domestic / manual-labour worker",
+   "links_clinical_persona": "domestic_worker",
+   "axis_profile": {
+    "activity": "active_manual",
+    "diet_pattern": "irregular",
+    "sleep": "mild_debt",
+    "stress_load": "high",
+    "metabolic_state": "at_risk",
+    "body_composition": "lean",
+    "work_pattern": "manual_outdoor",
+    "life_stage": "young_adult",
+    "care_access": "sponsorship_dependent"
+   }
   }
  ],
  "perceived_vs_actual": {

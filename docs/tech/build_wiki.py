@@ -454,10 +454,12 @@ _PER = {
 }
 def _persona(fn): return _PER.get(fn, ["all"])
 
-JUR_LABELS = {"global":"Global","uae":"UAE","gcc":"GCC","eu":"EU","us":"US"}
+JUR_LABELS = {"global":"Global","uae":"UAE","abu_dhabi":"Abu Dhabi (DoH · Malaffi · PURA)","dubai":"Dubai (DHA)","gcc":"GCC","eu":"EU","us":"US"}
 _JUR = {
-  DOCMAP["18"]:["uae","gcc"], "consent-onboarding.html":["global","uae","gcc","eu","us"],
+  DOCMAP["18"]:["uae","gcc"], "consent-onboarding.html":["global","uae","abu_dhabi","gcc","eu","us"],
   DOCMAP["16"]:["global","uae","eu","us"], DOCMAP["19"]:["global","uae"],
+  "care-pathways.html":["uae","abu_dhabi"], "care-roles.html":["uae","abu_dhabi"],
+  "prevention-engagement.html":["uae","abu_dhabi"],
 }
 def _juris(fn): return _JUR.get(fn, ["global"])
 
@@ -1145,7 +1147,21 @@ def _coverage_guard():
         bad.append("only %d markers carry an ethnicity variation (need ≥6)" % neth)
     if not anc_wired:
         bad.append("ancestry self-declare reference list not wired into the cohort-reference decision")
-    print("[coverage-guard] %d ethnicity strata · %d ethnicity marker-variations · ancestry list wired=%s" % (len(ev), neth, anc_wired))
+    # pkg 2c coverage: pediatric life-stages, domestic-worker persona, Ramadan nudge, emirate jurisdiction
+    pa = C._load("persona-axes.json")
+    ls = next((a.get("levels", []) for a in pa.get("axes", []) if a.get("id") == "life_stage"), [])
+    if not ({"child", "adolescent"} <= set(ls)):
+        bad.append("persona-axes life_stage missing pediatric bands (child/adolescent)")
+    pers = C._load("personas.json"); pl = pers.get("personas", pers) if isinstance(pers, dict) else pers
+    if not any((r[0] if isinstance(r, list) else r.get("id")) == "domestic_worker" for r in (pl or [])):
+        bad.append("domestic-worker / access-disparity persona missing")
+    pn = C._load("prevention-nudges.json")
+    if not any("ramadan" in (r.get("id", "") + r.get("trigger", "")).lower() for r in pn.get("reminders", [])):
+        bad.append("no Ramadan-aware nudge in prevention-nudges")
+    if not ({"abu_dhabi", "dubai"} <= set(JUR_LABELS)):
+        bad.append("JUR_LABELS missing emirate split (abu_dhabi/dubai)")
+    print("[coverage-guard] %d ethnicity strata · %d ethnicity marker-vars · ancestry=%s · pediatric=%s · domestic-worker=%s · emirate-jur=%s"
+          % (len(ev), neth, anc_wired, {"child", "adolescent"} <= set(ls), any((r[0] if isinstance(r, list) else r.get("id")) == "domestic_worker" for r in (pl or [])), {"abu_dhabi", "dubai"} <= set(JUR_LABELS)))
     if bad:
         print("  ! FAIL:")
         for b in bad:
