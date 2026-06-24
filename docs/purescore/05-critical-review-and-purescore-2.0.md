@@ -305,4 +305,4 @@ so the behaviour is inspectable against the edge-case personas:
 
 The synthetic-history items are **demonstrations of the method**, not evidence; production requires
 real longitudinal data and the validation gates of Doc 13. Every decision behind this design is
-recorded in [`decisions.md`](./decisions.md) (see the Decision log).
+recorded in [`decisions.md`](decisions.html) (see the Decision log).

@@ -177,20 +177,12 @@ Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions 
     nv.classList.toggle("dim-eng", crit && !eng);
   }
   [].forEach.call(nv.querySelectorAll(".nv-chip"),function(c){c.addEventListener("click",function(){c.classList.toggle("on");focus();});});
-  // mermaid (startOnLoad, htmlLabels) must measure each diagram WHILE VISIBLE. Keep all views
-  // visible and only hide the inactive ones AFTER every diagram has a valid rendered SVG — a fixed
-  // timer races mermaid and leaves the non-default tabs as error/collapsed renders.
-  function rendered(v){
-    var svg=v.querySelector("svg"); if(!svg) return false;
-    if(svg.querySelector('[aria-roledescription="error"], .error-icon, .error-text')) return false;
-    var vb=svg.getAttribute("viewBox")||"";
-    if(/(^|\s)-?8 -?8 16 16\b/.test(vb)) return false;
-    var w=parseFloat((svg.getAttribute("style")||"").replace(/.*max-width:\s*/,""));
-    return !(w>0 && w<40);
-  }
-  function allRendered(){return [].every.call(nv.querySelectorAll(".nv-view"),rendered);}
-  var tries=0;
-  (function wait(){ if(allRendered()||tries++>240){setView("life");focus();return;} setTimeout(wait,50); })();
+  // The shared SEQUENTIAL renderer (MERMAID_HEAD) renders every diagram one-at-a-time while ALL tabs are
+  // visible (so htmlLabels measure correctly); when it signals ready we hide the inactive tabs. One
+  // renderer page-wide avoids the concurrent-render race that corrupts wide flowcharts.
+  var shown=false;function reveal(){if(shown)return;shown=true;setView("life");focus();}
+  addEventListener("mermaid-ready",reveal);
+  setTimeout(reveal,7000);
 })();</script>
 
 <div class="tablewrap"><table><thead><tr><th>From</th><th>Trigger</th><th>Guard</th><th>To</th></tr></thead><tbody>

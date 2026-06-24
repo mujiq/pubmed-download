@@ -61,7 +61,15 @@
         tn.parentNode.replaceChild(frag, tn);
       }
     }
-    try { walk(main); } catch (e) { /* never break the page */ }
+    // Defer the acronym walk until mermaid has finished rendering: this walk mutates the DOM and
+    // reflows, and doing it WHILE mermaid asynchronously measures htmlLabels corrupts wide flowcharts.
+    // The shared renderer fires "mermaid-ready" (immediately if a page has no diagrams).
+    var doWalk = function () { try { walk(main); } catch (e) { /* never break the page */ } };
+    if (document.querySelector("pre.mermaid")) {
+      var walked = false, run = function () { if (walked) return; walked = true; doWalk(); };
+      window.addEventListener("mermaid-ready", run);
+      setTimeout(run, 8000); // fallback if the event never fires
+    } else { doWalk(); }
   }
 
   // 2) SECTION HEADINGS — reveal a copy-link anchor on hover

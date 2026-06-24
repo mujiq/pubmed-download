@@ -539,11 +539,26 @@ def sidebar(active):
     s.append("</aside>")
     return "".join(s)
 
-MERMAID_HEAD = ('<script type="module">import mermaid from '
-  '"https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";'
-  'mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",'
-  'flowchart:{htmlLabels:true,curve:"basis"},themeVariables:{fontSize:"14px"}});'
-  'window.mermaid=mermaid;</script>')
+# Mermaid is BUNDLED locally (assets/mermaid.min.js, the self-contained UMD build) — no CDN, so every
+# diagram renders offline and over file:// (a CDN-only load silently broke all diagrams when offline/blocked).
+MERMAID_HEAD = ('<script src="assets/mermaid.min.js"></script><script>'
+  'window.mermaid&&mermaid.initialize({startOnLoad:false,theme:"dark",securityLevel:"loose",'
+  'flowchart:{htmlLabels:true,curve:"basis"},themeVariables:{fontSize:"14px"}});</script>')
+
+# Shared SEQUENTIAL renderer, injected at BODY-END so it runs during parse (after all diagrams exist) —
+# NOT on DOMContentLoaded, where rendering wide htmlLabels flowcharts intermittently corrupts their
+# foreignObject measurement. Renders one diagram at a time (concurrent rendering also corrupts them).
+# Pages with tabbed/manual diagrams render those themselves and mark them data-self/data-processed so
+# this loop skips them; on completion it fires "mermaid-ready" (tab scripts hide inactive tabs; the
+# acronym-walker waits for it so it never reflows mid-render).
+MERMAID_RENDER = ('<script>(function(){function go(){if(!(window.mermaid&&window.mermaid.run))return setTimeout(go,40);'
+  'var ps=[].slice.call(document.querySelectorAll("pre.mermaid:not([data-processed]):not([data-self])"));'
+  'ps.forEach(function(p){p.classList.remove("mermaid");p.classList.add("mmd-q");});'
+  '(function nx(i){if(i>=ps.length){try{window.dispatchEvent(new Event("mermaid-ready"));}catch(e){}return;}var el=ps[i];'
+  'if(!(el.textContent||"").trim()){return nx(i+1);}'
+  'el.classList.add("mermaid");var d=function(){nx(i+1);};'
+  'try{window.mermaid.run({nodes:[el],suppressErrors:true}).then(d,d);}catch(e){d();}})(0);}'
+  'go();})();</script>')
 
 def fix_mermaid(html):
     def f(m):
@@ -604,9 +619,9 @@ def page(fn, tab_title, body):
 <span class="tag">design spec — not clinically validated</span><span class="grow"></span>
 <input id="search" type="search" placeholder="Filter pages…  ( / )"></div>
 <div class="shell">%s<main class="main">%s%s%s<footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · """
-"""illustrative design, re-verify before production (<a class="xref" href="conventions.html">Conventions</a> §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
-<script src="assets/search-index.js"></script><script src="assets/search.js"></script><script src="assets/wiki.js"></script><script src="assets/pillars-data.js"></script><script src="assets/pillar-map.js"></script><script src="assets/diagram-zoom.js"></script><script src="assets/page-meta.js"></script><script src="assets/acronyms.js"></script><script src="assets/hover.js"></script></body></html>""") % (
-        esc(tab_title), MERMAID_HEAD, sidebar(fn), _chapter_strip(fn), body, prevnext(fn))
+"""illustrative design, re-verify before production (<a class="xref" href="conventions.html">Conventions</a> §5.6). Diagrams render via mermaid (bundled locally).</footer></main></div>
+%s<script src="assets/search-index.js"></script><script src="assets/search.js"></script><script src="assets/wiki.js"></script><script src="assets/pillars-data.js"></script><script src="assets/pillar-map.js"></script><script src="assets/diagram-zoom.js"></script><script src="assets/page-meta.js"></script><script src="assets/acronyms.js"></script><script src="assets/hover.js"></script></body></html>""") % (
+        esc(tab_title), MERMAID_HEAD, sidebar(fn), _chapter_strip(fn), body, prevnext(fn), MERMAID_RENDER)
     with open(os.path.join(HERE, fn), "w", encoding="utf-8") as f:
         f.write(fix_mermaid(html))
 

@@ -4,6 +4,11 @@
 > It defines the latent reservoirs `B_j`, their time-decay `λ_j`, the cross-pillar interference
 > matrix `κ`, and how reservoirs feed back into pillar risk (`B̃_k` in Doc 03 §3).
 
+> 🛠 **Run it live — [BIOMONIAC reservoir simulator](reservoir-sim.html).** Drag the behavioural and
+> Rx valves and watch the 15 reservoirs fill and drain, the `κ`-coupling cascade between them, and the
+> outcome gauges (ASCVD · T2DM · mortality · vitality) respond in real time — the runnable companion to
+> this document.
+
 ## 1. The MONIAC analogy
 
 The MONIAC (Phillips hydraulic economic computer, 1949) modelled an economy as **water in

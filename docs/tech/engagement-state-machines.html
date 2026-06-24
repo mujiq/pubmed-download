@@ -3,7 +3,7 @@
 <title>Engagement state machines — HikmaEngine Tech Wiki</title>
 <link rel="stylesheet" href="assets/wiki.css">
 <style>.topbar .brand b{color:#2ecc71}</style>
-<script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";mermaid.initialize({startOnLoad:true,theme:"dark",securityLevel:"loose",flowchart:{htmlLabels:true,curve:"basis"},themeVariables:{fontSize:"14px"}});window.mermaid=mermaid;</script></head><body>
+<script src="assets/mermaid.min.js"></script><script>window.mermaid&&mermaid.initialize({startOnLoad:false,theme:"dark",securityLevel:"loose",flowchart:{htmlLabels:true,curve:"basis"},themeVariables:{fontSize:"14px"}});</script></head><body>
 <div class="topbar"><button class="menu-btn" aria-label="menu">☰</button>
 <a class="brand" href="index.html">Hikma<b>Engine</b> · Tech Wiki</a>
 <span class="tag">design spec — not clinically validated</span><span class="grow"></span>
@@ -187,20 +187,12 @@ Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions 
     nv.classList.toggle("dim-eng", crit && !eng);
   }
   [].forEach.call(nv.querySelectorAll(".nv-chip"),function(c){c.addEventListener("click",function(){c.classList.toggle("on");focus();});});
-  // mermaid (startOnLoad, htmlLabels) must measure each diagram WHILE VISIBLE. Keep all views
-  // visible and only hide the inactive ones AFTER every diagram has a valid rendered SVG — a fixed
-  // timer races mermaid and leaves the non-default tabs as error/collapsed renders.
-  function rendered(v){
-    var svg=v.querySelector("svg"); if(!svg) return false;
-    if(svg.querySelector('[aria-roledescription="error"], .error-icon, .error-text')) return false;
-    var vb=svg.getAttribute("viewBox")||"";
-    if(/(^|\s)-?8 -?8 16 16\b/.test(vb)) return false;
-    var w=parseFloat((svg.getAttribute("style")||"").replace(/.*max-width:\s*/,""));
-    return !(w>0 && w<40);
-  }
-  function allRendered(){return [].every.call(nv.querySelectorAll(".nv-view"),rendered);}
-  var tries=0;
-  (function wait(){ if(allRendered()||tries++>240){setView("life");focus();return;} setTimeout(wait,50); })();
+  // The shared SEQUENTIAL renderer (MERMAID_HEAD) renders every diagram one-at-a-time while ALL tabs are
+  // visible (so htmlLabels measure correctly); when it signals ready we hide the inactive tabs. One
+  // renderer page-wide avoids the concurrent-render race that corrupts wide flowcharts.
+  var shown=false;function reveal(){if(shown)return;shown=true;setView("life");focus();}
+  addEventListener("mermaid-ready",reveal);
+  setTimeout(reveal,7000);
 })();</script>
 
 <div class="tablewrap"><table><thead><tr><th>From</th><th>Trigger</th><th>Guard</th><th>To</th></tr></thead><tbody>
@@ -419,5 +411,5 @@ Each box is a persisted <code>status</code>. <b>Solid edges</b> are transitions 
 </pre>
 
 <blockquote><p>Related: the <b>data-stream</b> states a whole patient can occupy live in the <a class="xref" href="states.html">Patient state machine</a>; the scoring response to these events is animated in the <a class="xref" href="feedback-loop.html">live feedback-loop demo</a>.</p></blockquote>
-<div class="connects"><div class="cx-h">Connects to</div><div class="cx-row"><span class="cx-k">Pages</span><a class="cx-chip" href="care-pathways.html">Condition pathways</a> <a class="cx-chip" href="11-daily-nudge-engine.html">Nudge engine &amp; delivery</a> <a class="cx-chip" href="index.html">Home</a> <a class="cx-chip" href="conventions.html">Conventions &amp; glossary</a> <a class="cx-chip" href="16-safety-governance-and-regulatory.html">Safety &amp; governance</a> <a class="cx-chip" href="06-data-model-and-reference-ranges.html">Data model &amp; ranges</a> <a class="cx-chip" href="13-cohort-percentiles-and-validation.html">Cohorts &amp; validation</a> <a class="cx-chip" href="07-data-streams-and-experience.html">Data streams &amp; experience</a></div><div class="cx-row"><span class="cx-k">Diagrams</span><a class="cx-chip" href="purescore-system.html">System at a glance</a> <a class="cx-chip" href="purescore-calc-uber.html">PureScore Calc Diagram</a></div></div><nav class="pn"><a class="prev" href="states.html"><div class="lbl">← Previous</div><div class="ttl">Patient life-state machine</div></a><a class="next" href="class-model.html"><div class="lbl">Next →</div><div class="ttl">Class model</div></a></nav><footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · illustrative design, re-verify before production (<a class="xref" href="conventions.html">Conventions</a> §5.6). Diagrams render via mermaid (CDN).</footer></main></div>
-<script src="assets/search-index.js"></script><script src="assets/search.js"></script><script src="assets/wiki.js"></script><script src="assets/pillars-data.js"></script><script src="assets/pillar-map.js"></script><script src="assets/diagram-zoom.js"></script><script src="assets/page-meta.js"></script><script src="assets/acronyms.js"></script><script src="assets/hover.js"></script></body></html>
+<div class="connects"><div class="cx-h">Connects to</div><div class="cx-row"><span class="cx-k">Pages</span><a class="cx-chip" href="care-pathways.html">Condition pathways</a> <a class="cx-chip" href="11-daily-nudge-engine.html">Nudge engine &amp; delivery</a> <a class="cx-chip" href="index.html">Home</a> <a class="cx-chip" href="conventions.html">Conventions &amp; glossary</a> <a class="cx-chip" href="16-safety-governance-and-regulatory.html">Safety &amp; governance</a> <a class="cx-chip" href="06-data-model-and-reference-ranges.html">Data model &amp; ranges</a> <a class="cx-chip" href="13-cohort-percentiles-and-validation.html">Cohorts &amp; validation</a> <a class="cx-chip" href="07-data-streams-and-experience.html">Data streams &amp; experience</a></div><div class="cx-row"><span class="cx-k">Diagrams</span><a class="cx-chip" href="purescore-system.html">System at a glance</a> <a class="cx-chip" href="purescore-calc-uber.html">PureScore Calc Diagram</a></div></div><nav class="pn"><a class="prev" href="states.html"><div class="lbl">← Previous</div><div class="ttl">Patient life-state machine</div></a><a class="next" href="class-model.html"><div class="lbl">Next →</div><div class="ttl">Class model</div></a></nav><footer class="wf">HikmaEngine Tech Wiki · generated from <code>docs/purescore</code> · illustrative design, re-verify before production (<a class="xref" href="conventions.html">Conventions</a> §5.6). Diagrams render via mermaid (bundled locally).</footer></main></div>
+<script>(function(){function go(){if(!(window.mermaid&&window.mermaid.run))return setTimeout(go,40);var ps=[].slice.call(document.querySelectorAll("pre.mermaid:not([data-processed]):not([data-self])"));ps.forEach(function(p){p.classList.remove("mermaid");p.classList.add("mmd-q");});(function nx(i){if(i>=ps.length){try{window.dispatchEvent(new Event("mermaid-ready"));}catch(e){}return;}var el=ps[i];if(!(el.textContent||"").trim()){return nx(i+1);}el.classList.add("mermaid");var d=function(){nx(i+1);};try{window.mermaid.run({nodes:[el],suppressErrors:true}).then(d,d);}catch(e){d();}})(0);}go();})();</script><script src="assets/search-index.js"></script><script src="assets/search.js"></script><script src="assets/wiki.js"></script><script src="assets/pillars-data.js"></script><script src="assets/pillar-map.js"></script><script src="assets/diagram-zoom.js"></script><script src="assets/page-meta.js"></script><script src="assets/acronyms.js"></script><script src="assets/hover.js"></script></body></html>

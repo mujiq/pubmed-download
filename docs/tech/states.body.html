@@ -116,14 +116,14 @@ are on the <a class="xref" href="engagement-state-machines.html">Engagement stat
   </div>
 </div>
 
-<script type="module">
-import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+<script>
+var mermaid = window.mermaid;   // bundled locally (assets/mermaid.min.js) via MERMAID_HEAD — no CDN
 mermaid.initialize({startOnLoad:false, theme:"dark", securityLevel:"loose",
   themeVariables:{fontSize:"12px", primaryColor:"#13233e", primaryBorderColor:"#2b4a86", lineColor:"#5b6b8c", primaryTextColor:"#e8edf6"}});
 
 // startOnLoad is off on this page (the mega-chart renders manually); render the static
 // care-pathway state diagram explicitly so it isn't left as raw text.
-(async function(){ var el=document.getElementById("cpwState"); if(el){ try{ var r=await mermaid.render("cpwR", el.textContent); el.innerHTML=r.svg; }catch(e){} } })();
+(async function(){ var el=document.getElementById("cpwState"); if(el){ el.setAttribute("data-processed","1"); el.classList.remove("mermaid"); try{ var r=await mermaid.render("cpwR", el.textContent); el.innerHTML=r.svg; }catch(e){} } })();
 
 /* ============ state catalogue (metadata for the detail panel) ============ */
 function S(id,label,band,d,notes){return {id:id,label:label,band:band,d:d,notes:notes||[]};}

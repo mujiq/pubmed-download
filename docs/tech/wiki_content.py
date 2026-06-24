@@ -2920,8 +2920,8 @@ _BM_JS = """<style>
 .bm-tool button.on{background:var(--acc,#6cf);color:#04121f;border-color:var(--acc,#6cf);font-weight:600}
 #bm-legend span[data-area]{cursor:pointer;border-radius:7px;padding:3px 9px;font-size:12px}
 </style>
-<script type="module">
-import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+<script>
+var mermaid = window.mermaid;   /* bundled locally (assets/mermaid.min.js) via MERMAID_HEAD — no CDN */
 mermaid.initialize({startOnLoad:false,theme:"dark",securityLevel:"loose",flowchart:{htmlLabels:true,curve:"basis"},themeVariables:{fontSize:"13px"}});
 (function(){
  var frame=document.getElementById("bm-frame"),stage=document.getElementById("bm-stage"),hud=document.getElementById("bm-hud");
