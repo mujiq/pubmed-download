@@ -148,7 +148,7 @@ def md_to_html(md):
 # inputs → personalize → act → trust & govern → see the system → build → reference/tools.
 # Each chapter has a one-line blurb (NAV_BLURB). Doc number badges float; identity preserved.
 NAV = [
- ("Start here", [("index.html", "Home"), ("purescore-uber-map.html", "Calculation Explorer"),
+ ("Start here", [("terminology-standardization.html", "\U0001F4A1 Terminology standardization"), ("ooux-system-map.html", "\U0001F5FA OOUX system map"), ("ooux-alignment.html", "\U0001F9ED OOUX alignment"), ("glossary.html", "Glossary"), ("index.html", "Home"), ("purescore-uber-map.html", "Calculation Explorer"),
                  (DOCMAP["01"], SHORT["01"], "01"), ("conventions.html", "Conventions & glossary"),
                  ("decisions.html", "Decision log")]),
  ("1 · How scoring works", [("purescore-overview.html", "Overview"),
@@ -163,7 +163,7 @@ NAV = [
                  ("appendix-questions.html", "Screeners & PROs"), ("appendix-question-bank.html", "Question bank"),
                  ("appendix-lifestyles.html", "Lifestyles"), ("appendix-wearable-corroboration.html", "Wearable corroboration"),
                  ("eligibility-gating.html", "Eligibility & gating")]),
- ("3 · Data quality & degradation", [("progressive-data.html", "Progressive data & degradation"),
+ ("3 · Data quality & degradation", [("progressive-data.html", "Data quality & graceful degradation"),
                  ("cohort-governance.html", "Cohort fallback governance"),
                  ("degradation-integrity.html", "Cohort fallback integrity & safety"),
                  ("degradation-operations.html", "Cohort fallback lifecycle & ops"),
@@ -196,7 +196,8 @@ NAV = [
                  ("states.html", "Patient life-state machine"),
                  ("engagement-state-machines.html", "Engagement state machines"),
                  ("class-model.html", "Class model"),
-                 ("dossier-erd.html", "Data model (ERD)"), ("dossier-c4.html", "C4 architecture"),
+                 ("dossier-erd.html", "Data model (ERD)"), ("data-dictionary.html", "Data dictionary"),
+                 ("dossier-c4.html", "C4 architecture"),
                  ("dossier-api.html", "API contracts"), ("dossier-sequences.html", "Sequences"),
                  ("dossier-stories.html", "User stories")]),
  ("10 · Admin (clinician config)", [("admin-index.html", "Dashboard"), ("admin-lab-ranges.html", "Lab ranges"),
@@ -249,7 +250,7 @@ CHAPTERS = {
               ("For developers", "06-data-model-and-reference-ranges.html", "Data model & ranges"),
               ("For product", "appendix-onboarding.html", "Onboarding & first-run")]},
  "3 · Data quality & degradation": {"intro": "What happens to the inputs before they become a score: progressive data collection, graceful degradation to cohort statistics when data is missing/stale/invalid, the governance and integrity safeguards around that, the ClickHouse cohort-percentiles dataset, and the wearable baseline pipeline.",
-   "starts": [("For clinicians", "progressive-data.html", "Progressive data & degradation"),
+   "starts": [("For clinicians", "progressive-data.html", "Data quality & graceful degradation"),
               ("For developers", "wearable-baseline-pipeline.html", "Wearable baseline pipeline"),
               ("For product", "cohort-percentiles.html", "Cohort percentiles dataset")]},
  "4 · Making it personal": {"intro": "The context that reshapes a score: biological sex, life-stage and acute events, established clinical-risk equations, and the persona models used to pressure-test it across very different patients.",
@@ -297,6 +298,10 @@ PDESC = {
  "wearable-baseline-pipeline.html": "Terra/HealthKit/vendor data unified into one robust personal baseline, with exhaustive data-quality and estimator-hazard rules.",
  "purescore-uber-map.html": "Run the full scoring pipeline live — audit tree, dataflow map and editable leaves.",
  "01-vision-principles-and-lessons.html": "What PureScore is, the principles it holds to, and lessons that shaped it.",
+ "glossary.html": "Every term, one canonical spelling — clinical · product · technical — plus the terminology-standardization rulings.",
+ "terminology-standardization.html": "The PureScore v1→v2 change map (biggest shifts, build status, where each lives) plus the terminology-discrepancy register: variants, canonical rulings, lenses, and the proposed rewrite scope.",
+ "ooux-system-map.html": "The whole-app Object-Oriented UX map — ~70 objects across 15 layers and 10 features, with relationships, CTAs and cross-feature impact. The system map the wiki aligns to.",
+ "ooux-alignment.html": "How the wiki aligns to the OOUX system map: ~85% aligned in substance; word collisions, stale numbers, and open product decisions, with prioritized reconciliations.",
  "conventions.html": "Notation, glossary and the conventions every other page assumes.",
  "decisions.html": "The running decision log (D-numbers) referenced throughout the specs.",
  "purescore-overview.html": "A plain-language tour of pillars → markers → score before the formal math.",
@@ -349,6 +354,7 @@ PDESC = {
  "engagement-state-machines.html": "The nudge-delivery and engagement lifecycle machines (firewall, channels, escalation).",
  "class-model.html": "The full object model — class diagram plus a per-class engineering explorer.",
  "dossier-erd.html": "The entity-relationship model: every persisted entity and its fields.",
+ "data-dictionary.html": "Every metadata table in one place for the DB team — field dictionary + inferred schema/DDL, live from data/*.json.",
  "dossier-c4.html": "C4 architecture views — system context, containers and components.",
  "dossier-api.html": "Request/response contracts for the scoring and intake endpoints.",
  "dossier-sequences.html": "Key runtime sequences — scoring, intake, nudge delivery and escalation.",
@@ -360,11 +366,11 @@ PDESC = {
  "admin-personas.html": "Configure personas and framing.",
  "admin-governance.html": "Governance and sign-off workflow.",
 }
-PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
+PTITLE = {"index.html":"Home","glossary.html":"Glossary","terminology-standardization.html":"Terminology standardization","ooux-system-map.html":"OOUX system map","ooux-alignment.html":"OOUX alignment","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
           "production-gaps.html":"Production readiness — gaps",
           "spec-audit.html":"Spec build-readiness audit",
           "pillar-weights.html":"Pillar weights & correlations",
-          "progressive-data.html":"Progressive data & graceful degradation",
+          "progressive-data.html":"Data quality & graceful degradation",
           "cohort-governance.html":"Cohort fallback — governance & safeguards",
           "degradation-integrity.html":"Cohort fallback — integrity & safety",
           "degradation-operations.html":"Cohort fallback — lifecycle & operations",
@@ -399,7 +405,7 @@ PTITLE = {"index.html":"Home","conventions.html":"Conventions & glossary","decis
           "wearable-baseline-pipeline.html":"Wearable baseline pipeline","baseline-mob-viz.html":"Baseline mobile UI",
           "purescore-sex.html":"PureScore by sex",
           "dossier-sequences.html":"Sequences",
-          "dossier-erd.html":"Data model (ERD)","dossier-c4.html":"C4 architecture",
+          "dossier-erd.html":"Data model (ERD)","data-dictionary.html":"Data dictionary","dossier-c4.html":"C4 architecture",
           "dossier-api.html":"API contracts","dossier-stories.html":"User stories",
           "appendix-biomarkers.html#spreadsheet":"Biomarkers grid","appendix-wearables.html#spreadsheet":"Wearables grid","appendix-personas.html#spreadsheet":"Personas grid",
           "appendix-lifestyles.html#spreadsheet":"Lifestyles grid","appendix-adherence.html#spreadsheet":"Adherence grid","appendix-goals.html#spreadsheet":"Goals grid",
@@ -424,7 +430,7 @@ def _ctype(fn):
     if fn in ("index.html", "conventions.html", "decisions.html"): return "meta"
     if fn.startswith("admin-"): return "admin"
     if fn in ("purescore-uber-map.html", "feedback-loop.html", "reference-range-resolver.html",
-              "consent-onboarding.html"): return "explorer"
+              "consent-onboarding.html", "ooux-system-map.html"): return "explorer"
     if fn.startswith("dossier-") or fn in ("states.html", "engagement-state-machines.html", "class-model.html"):
         return "diagram"
     if fn.startswith("appendix-"): return "catalog"
@@ -812,11 +818,23 @@ def main():
     C.write_unit_data()   # generate assets/units-data.js from data/units.json (SI-canonical units + conversions)
     C.write_pillar_data() # generate assets/pillars-data.js (pillar-fan hover cards + click-to-section)
     C.write_weights_data()# generate assets/weights-data.js (pillar weights & correlations diagram)
+    C.write_export_data() # generate assets/export-data.js (canonical reference export: pillars/reservoirs/markers/wearables + weights)
     render_index()
     render_chapters()
     for n in sorted(DOCMAP): render_doc(n)
     render_simple("README.md", "conventions.html", "Conventions & glossary", "Conventions & glossary")
     render_simple("decisions.md", "decisions.html", "Decision log", "Decision log")
+    _tsmd = os.path.join(HERE, "..", "TERMINOLOGY-STANDARDIZATION.md")   # lives at docs/ root, rendered into the wiki
+    if os.path.exists(_tsmd):
+        _tsh, _ = md_to_html(open(_tsmd, encoding="utf-8").read())
+        page("terminology-standardization.html", "Terminology standardization",
+             '<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Terminology standardization</div>'
+             + C.build_whats_new() + _tsh)
+    _oamd = os.path.join(HERE, "..", "OOUX-ALIGNMENT.md")   # lives at docs/ root, rendered into the wiki
+    if os.path.exists(_oamd):
+        _oah, _ = md_to_html(open(_oamd, encoding="utf-8").read())
+        page("ooux-alignment.html", "OOUX alignment",
+             '<div class="crumbs"><a href="index.html">Home</a> &rsaquo; OOUX alignment</div>' + _oah)
     # builders resolved by name at call time so a not-yet-present builder (multi-agent edits) is skipped, not fatal
     # IA cleanup: each dataset's companion grid is folded into its appendix as a "Spreadsheet view" (no standalone grid pages)
     MERGE_GRID = {"appendix-biomarkers.html": "build_grid_biomarkers", "appendix-wearables.html": "build_grid_wearables",
@@ -825,7 +843,7 @@ def main():
                   "appendix-persona-matrix.html": "build_grid_persona_matrix", "appendix-question-bank.html": "build_grid_questions",
                   "appendix-onboarding.html": "build_grid_onboarding", "appendix-wearable-corroboration.html": "build_grid_wearable_corroboration",
                   "dossier-erd.html": "build_grid_erd"}
-    for fn, bname in [("appendix-biomarkers.html", "build_biomarkers"), ("reference-range-resolver.html", "build_range_resolver"), ("appendix-wearables.html", "build_wearables"),
+    for fn, bname in [("glossary.html", "build_glossary"), ("appendix-biomarkers.html", "build_biomarkers"), ("reference-range-resolver.html", "build_range_resolver"), ("appendix-wearables.html", "build_wearables"),
                       ("appendix-questions.html", "build_questions"), ("appendix-personas.html", "build_personas"),
                       ("appendix-question-bank.html", "build_question_bank"), ("appendix-lifestyles.html", "build_lifestyles"),
                       ("appendix-coverage-audit.html", "build_coverage_audit"),
@@ -852,7 +870,7 @@ def main():
                       ("cohort-percentiles.html", "build_cohort_percentiles"),
                       ("purescore-sex.html", "build_purescore_sex"),
                       ("dossier-sequences.html", "build_sequences"),
-                      ("dossier-erd.html", "build_erd"), ("dossier-c4.html", "build_c4"),
+                      ("dossier-erd.html", "build_erd"), ("data-dictionary.html", "build_data_dictionary"), ("dossier-c4.html", "build_c4"),
                       ("dossier-api.html", "build_api"), ("dossier-stories.html", "build_stories")]:
         build = getattr(C, bname, None)
         if build is None:
@@ -893,6 +911,44 @@ def main():
     _coverage_guard()
     _clinical_validation_guard()
     _cohort_guard()
+    _whatsnew_guard()
+
+def _whatsnew_guard():
+    """What's-new tracking table integrity (terminology page header): HARD-fail if a change carries an
+    unknown status or a 'where it lives' link that doesn't resolve to a real wiki page — so the v1->v2
+    change map stays a LIVE navigation index, never a stale changelog."""
+    wn = C._load("whats-new.json")
+    changes = wn.get("changes", [])
+    VALID = {"built", "spec", "planned"}
+    valid_pages = set(PTITLE) | set(ORDER)   # plus on-disk existence (guards run after generation)
+    bad, seen, nlinks = [], set(), 0
+    for c in changes:
+        cid = c.get("id", "?")
+        if cid in seen:
+            bad.append("duplicate id %r" % cid)
+        seen.add(cid)
+        for f in ("title", "from", "to", "status"):
+            if not c.get(f):
+                bad.append("%s: missing %s" % (cid, f))
+        if c.get("status") not in VALID:
+            bad.append("%s: status %r not in %s" % (cid, c.get("status"), sorted(VALID)))
+        if not c.get("links"):
+            bad.append("%s: no links" % cid)
+        for l in c.get("links", []):
+            nlinks += 1
+            href = (l.get("href") or "").split("#")[0]
+            if href not in valid_pages and not os.path.exists(os.path.join(HERE, href)):
+                bad.append("%s: link %r resolves to no page" % (cid, href))
+    nb = sum(1 for c in changes if c.get("status") == "built")
+    ns = sum(1 for c in changes if c.get("status") == "spec")
+    npl = sum(1 for c in changes if c.get("status") == "planned")
+    print("[whatsnew-guard] %d changes · %d built / %d spec / %d planned · %d links" % (len(changes), nb, ns, npl, nlinks))
+    if bad:
+        print("  ! FAIL:")
+        for b in bad:
+            print("     -", b)
+        raise SystemExit("! build failed: whats-new guard")
+    print("  [whatsnew-guard] OK — statuses valid, every 'where it lives' link resolves")
 
 def _engine_guard():
     """HARD guard (per D32): data/*.json is canonical for the scoring engine. Fail the build if
@@ -960,7 +1016,7 @@ def _consistency_check():
 _DIAGRAMS = {"purescore-uber-map.html", "pillar-weights.html", "states.html", "engagement-state-machines.html", "baseline-mob-viz.html",
              "class-model.html", "dossier-erd.html", "dossier-c4.html", "dossier-sequences.html",
              "class-model.html", "wearable-baselines.html",
-             "consent-onboarding.html", "purescore-system.html", "reservoir-sim.html",
+             "consent-onboarding.html", "purescore-system.html", "reservoir-sim.html", "ooux-system-map.html",
              "purescore-calc-uber.html"}
 _GRID_OF = {"appendix-biomarkers.html": "appendix-biomarkers.html#spreadsheet", "appendix-wearables.html": "appendix-wearables.html#spreadsheet",
             "appendix-personas.html": "appendix-personas.html#spreadsheet", "appendix-lifestyles.html": "appendix-lifestyles.html#spreadsheet",
@@ -1071,7 +1127,15 @@ def _plain(html):
 def _write_hover_data():
     """Emit assets/acronyms.js + assets/page-meta.js for the wiki-wide hover tooltips (assets/hover.js)."""
     import json as _json
-    ac = C._load("acronyms.json").get("acronyms", {})
+    ac = dict(C._load("acronyms.json").get("acronyms", {}))
+    # Glossary is the canonical superset: add its terms so concept/product terms get hover tooltips too.
+    try:
+        for _t in C._load("glossary.json").get("terms", []):
+            _k, _d = _t.get("term"), (_t.get("def") or "").strip()
+            if _k and _d and _k not in ac:
+                ac[_k] = _d if len(_d) <= 160 else _d[:157].rstrip() + "…"
+    except Exception:
+        pass
     open(os.path.join(HERE, "assets", "acronyms.js"), "w", encoding="utf-8").write(
         "window.PURESCORE_ACRONYMS=" + _json.dumps(ac, ensure_ascii=False) + ";")
     meta = {fn: {"title": title, "desc": PDESC.get(fn, "")} for fn, title in PTITLE.items()}
@@ -1086,7 +1150,14 @@ def _build_search_index():
         fn = os.path.basename(f)
         h = open(f, encoding="utf-8").read()
         m = re.search(r'<main class="main">(.*)</main>', h, re.S)
-        body = m.group(1) if m else h
+        if m:
+            body = m.group(1)
+            standalone = False
+        else:                                  # standalone full page (no wiki chrome): index its visible
+            bm = re.search(r'<body[^>]*>(.*)</body>', h, re.S)   # static text, minus script/style noise
+            tt = re.search(r'<title[^>]*>(.*?)</title>', h, re.S)  # <title> carries key terms (e.g. BIOMONIAC)
+            body = (tt.group(1) + ' ' if tt else '') + re.sub(r'<(script|style)[^>]*>.*?</\1>', ' ', bm.group(1) if bm else h, flags=re.S)
+            standalone = True
         body = body.split('<div class="connects">')[0].split('<nav class="pn">')[0]
         title = PTITLE.get(fn) or _navlabel(fn) or fn
         secs, heads = [], list(re.finditer(r'<h([1-3])(?:\s+id="([^"]+)")?[^>]*>(.*?)</h\1>', body, flags=re.S))
@@ -1096,8 +1167,8 @@ def _build_search_index():
             end = heads[i + 1].start() if i + 1 < len(heads) else len(body)
             secs.append({"i": mm.group(2) or "", "h": htext, "s": _plain(body[mm.end():end])[:160]})
             if len(secs) >= 80: break          # cap pathological pages (e.g. the question bank)
-        if not secs:
-            secs = [{"i": "", "h": title, "s": _plain(body)[:160]}]
+        if not secs:                           # no headings (e.g. interactive standalone) → index visible text
+            secs = [{"i": "", "h": title, "s": _plain(body)[:400 if standalone else 160]}]
         recs.append({"f": fn, "t": title, "m": MOD_LABEL.get(_MOD_OF.get(fn, ""), ""), "secs": secs})
     js = "window.PURESCORE_SEARCH=" + json.dumps(recs, ensure_ascii=False, separators=(",", ":")) + ";"
     open(os.path.join(HERE, "assets", "search-index.js"), "w", encoding="utf-8").write(js)

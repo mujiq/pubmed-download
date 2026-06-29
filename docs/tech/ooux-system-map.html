@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pura · OOUX System Map · Whole App</title>
+<style>
+  :root{
+    --bg:#F4F6FB; --card:#FFFFFF; --ink:#0F172A; --muted:#64748B; --line:#E2E8F0;
+    --obj-bg:#DBEAFE; --obj-bd:#3B82F6; --obj-tx:#1E3A8A;
+    --core-bg:#FEF3C7; --core-bd:#F59E0B; --core-tx:#92400E;
+    --meta-bg:#FCE7F3; --meta-bd:#EC4899; --meta-tx:#9D174B;
+    --cta-bg:#D1FAE5; --cta-bd:#10B981; --cta-tx:#065F46;
+    --new:#6366F1; --reframed:#F59E0B; --existing:#64748B; --foldin:#8B5CF6; --deferred:#94A3B8; --attr:#0EA5E9;
+    --engine:#7C3AED; --safety:#DC2626;
+    --shadow:0 1px 2px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.06);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1320px;margin:0 auto;padding:0 24px}
+
+  header.top{background:linear-gradient(135deg,#0F172A,#1E293B 60%,#312E81);color:#fff;padding:34px 0 28px}
+  header.top h1{margin:0 0 6px;font-size:27px;letter-spacing:-.02em;font-weight:700}
+  header.top .sub{font-size:15px;color:#CBD5E1;max-width:880px}
+  .metarow{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+    padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.10);color:#E2E8F0;border:1px solid rgba(255,255,255,.16)}
+  .chip b{color:#fff}
+
+  /* view toggle */
+  .viewbar{position:sticky;top:0;z-index:60;background:rgba(244,246,251,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .viewbar .wrap{display:flex;align-items:center;gap:14px;padding:10px 24px}
+  .tabs{display:flex;gap:6px;background:#E9EEF6;padding:4px;border-radius:12px}
+  .tab{font-size:13.5px;font-weight:600;padding:7px 16px;border-radius:9px;border:none;background:transparent;color:#475569;cursor:pointer}
+  .tab.on{background:#fff;color:#0F172A;box-shadow:var(--shadow)}
+  .viewbar .hint{font-size:12px;color:var(--muted);margin-left:auto}
+
+  section{padding:26px 0}
+  h2.s{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 14px;font-weight:700}
+
+  /* ===== MAP VIEW ===== */
+  .maptools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 6px}
+  .maptools .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;min-width:64px}
+  .lchip{font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;color:#475569;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .lchip .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .lchip.off{opacity:.4;text-decoration:line-through}
+  .btn{font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:9px;border:1px solid var(--line);background:#fff;color:#334155;cursor:pointer}
+  .btn:hover{border-color:#94A3B8}
+
+  .stage{position:relative;background:
+      radial-gradient(circle at 1px 1px, #E2E8F0 1px, transparent 0) 0 0/22px 22px,
+      var(--card);
+    border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;height:840px;margin-top:8px}
+  #svg{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+  #svg.panning{cursor:grabbing}
+  .edge path{fill:none;stroke:#CBD5E1;stroke-width:1.4}
+  .edge text{font-size:10.5px;fill:#94A3B8;font-weight:700}
+  .edge .ebg{fill:#fff;opacity:.92}
+  .edge.dim{opacity:.05}
+  .edge.hot path{stroke:var(--obj-bd);stroke-width:2.4}
+  .edge.hot text{fill:#1E3A8A}
+  .edge.hot .verb{display:block}
+  .edge .verb{display:none}
+  .gnode{cursor:pointer}
+  .gnode rect.box{fill:#fff;stroke:#CBD5E1;stroke-width:1.5;rx:9}
+  .gnode .nm{font-size:12px;font-weight:700;fill:#0F172A;dominant-baseline:central;text-anchor:middle}
+  .gnode .stat{stroke:#fff;stroke-width:1.5}
+  .gnode:hover rect.box{stroke:#64748B}
+  .gnode.dim{opacity:.13}
+  .gnode.sel rect.box{stroke:var(--obj-bd);stroke-width:3}
+  .gnode.system rect.box{stroke-dasharray:4 3;stroke:#A78BFA}
+  .gnode.system .nm{fill:#6D5BD0}
+  .gnode.gone{display:none}
+  .edge.gone{display:none}
+  .btn.on{background:#312E81;color:#fff;border-color:#312E81}
+
+  .zoomctl{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;gap:6px}
+  .zoomctl button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:18px;cursor:pointer;color:#334155;box-shadow:var(--shadow)}
+
+  /* drawer */
+  .drawer{position:absolute;top:0;right:0;height:100%;width:380px;max-width:90%;background:#fff;border-left:1px solid var(--line);
+    box-shadow:-12px 0 30px rgba(15,23,42,.10);transform:translateX(102%);transition:transform .22s ease;overflow-y:auto;z-index:5}
+  .drawer.open{transform:translateX(0)}
+  .drawer .dh{padding:16px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+  .drawer .dh .ln{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .drawer .dname{font-size:18px;font-weight:800;letter-spacing:-.01em}
+  .drawer .x{border:none;background:#F1F5F9;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:16px;color:#475569}
+  .drawer .ddef{font-size:13px;color:#475569;margin-top:7px}
+  .drawer .db{padding:14px 18px;display:flex;flex-direction:column;gap:14px}
+  .seg .seg-h{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;margin:0 0 7px;display:flex;align-items:center;gap:6px;color:#475569}
+  .seg .seg-h .sw{width:9px;height:9px;border-radius:2px;display:inline-block}
+  .swc{background:var(--core-bd)} .swm{background:var(--meta-bd)} .swt{background:var(--cta-bd)} .swr{background:var(--obj-bd)}
+  .pills{display:flex;flex-wrap:wrap;gap:5px}
+  .pill{font-size:12px;padding:4px 9px;border-radius:7px;border:1px solid;line-height:1.3}
+  .pill.core{background:var(--core-bg);border-color:var(--core-bd);color:var(--core-tx)}
+  .pill.meta{background:var(--meta-bg);border-color:var(--meta-bd);color:var(--meta-tx)}
+  .pill.cta{background:var(--cta-bg);border-color:var(--cta-bd);color:var(--cta-tx)}
+  .pill.todo{background:#fff;border-style:dashed;border-color:#CBD5E1;color:#94A3B8;font-style:italic}
+  .featpill{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px;color:#fff}
+  .rel-list{display:flex;flex-direction:column;gap:5px}
+  .rel-row{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:6px 9px;border-radius:8px;background:#F8FAFC;border:1px solid var(--line);cursor:pointer}
+  .rel-row:hover{border-color:var(--obj-bd);background:var(--obj-bg)}
+  .rel-row.nolink{cursor:default;opacity:.7}
+  .rel-row .card-b{font-size:10px;font-weight:800;color:#fff;background:var(--obj-bd);padding:2px 6px;border-radius:5px;min-width:34px;text-align:center}
+  .rel-row .card-b.incoming{background:#0EA5E9}
+  .rel-row .verb{color:var(--muted);font-weight:600}
+  .rel-row .tgt{font-weight:700;color:#0F172A}
+  .rel-row .dir{color:#94A3B8;font-weight:800}
+
+  /* ===== CARDS VIEW (secondary) ===== */
+  .legend{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow);margin-bottom:16px}
+  .legend .orca{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media(max-width:820px){.legend .orca{grid-template-columns:repeat(2,1fr)}}
+  .lk{border-radius:10px;padding:11px 12px;border:1px solid;font-size:12.5px}
+  .lk b{display:block;margin-bottom:2px}
+  .lk.obj{background:var(--obj-bg);border-color:var(--obj-bd);color:var(--obj-tx)}
+  .lk.core{background:var(--core-bg);border-color:var(--core-bd);color:var(--core-tx)}
+  .lk.meta{background:var(--meta-bg);border-color:var(--meta-bd);color:var(--meta-tx)}
+  .lk.cta{background:var(--cta-bg);border-color:var(--cta-bd);color:var(--cta-tx)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .layer-h{display:flex;align-items:center;gap:10px;margin:22px 0 12px}
+  .layer-h .lh-name{font-size:17px;font-weight:700}
+  .layer-h .lh-rule{flex:1;height:1px;background:var(--line)}
+  .layer-h .lh-n{font-size:12px;color:var(--muted);font-weight:600}
+  .objc{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+  .objc .ohead{background:var(--obj-bg);border-bottom:2px solid var(--obj-bd);padding:11px 13px}
+  .objc .ohead .ln{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .objc .oname{font-weight:700;font-size:15px;color:var(--obj-tx)}
+  .objc .ocode{font-size:11px;font-weight:700;color:#1e40af;opacity:.7}
+  .objc .odef{font-size:12px;color:#1e3a8a;opacity:.92;margin-top:4px}
+  .objc .obody{padding:11px 13px;display:flex;flex-direction:column;gap:10px;flex:1}
+  .objc .ofoot{border-top:1px solid var(--line);padding:8px 13px;display:flex;align-items:center;justify-content:space-between;gap:6px;background:#FBFCFE;flex-wrap:wrap}
+  .statusb{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px;color:#fff}
+  .flags{display:flex;gap:5px}
+  .fl{font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:5px;color:#fff}
+  .fl.engine{background:var(--engine)} .fl.safety{background:var(--safety)}
+  .objc.attribute .ohead{background:#E0F2FE;border-bottom-color:var(--attr)}
+  .objc.system .ohead{background:#EDE9FE;border-bottom-color:var(--engine)}
+  .objc.system .oname{color:#5B21B6}
+  .objc.system{border-style:dashed}
+  .objc.pattern .ohead{background:#CFFAFE;border-bottom-color:#0891B2}
+  .objc.pattern .oname{color:#155E75}
+  .objc.pattern{border-style:dashed}
+  .objc.deferred{opacity:.78;border-style:dashed}
+  .ofeats{display:flex;gap:4px;flex-wrap:wrap}
+
+  /* tables + provenance */
+  .tbl{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);font-size:13px}
+  .tbl th{background:#0F172A;color:#fff;text-align:left;padding:11px 13px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em}
+  .tbl td{padding:11px 13px;border-top:1px solid var(--line);vertical-align:top;color:#334155}
+  .tbl td b{color:var(--ink)}
+  .tbl tr.breaks td{background:#FEF2F2}
+  .tbl tr.flag td{background:#FFFBEB}
+  .recon{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:980px){.recon{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:680px){.recon{grid-template-columns:1fr}}
+  .rc{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 17px;box-shadow:var(--shadow)}
+  .rc h3{margin:0 0 9px;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .rc h3 .tag{font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;color:#fff}
+  .rc ul{margin:0;padding-left:18px;font-size:12.5px;color:#334155}
+  .rc li{margin:5px 0}
+  .rc.brief{border-left:4px solid var(--new)} .rc.engine-c{border-left:4px solid var(--engine)}
+  .rc.gap{border-left:4px solid var(--safety)} .rc.narrative{border-left:4px solid #0EA5E9}
+
+  footer{padding:30px 0 56px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);margin-top:18px}
+  footer code{background:#EEF2F7;padding:2px 6px;border-radius:5px;font-size:11.5px;color:#334155}
+  .hide{display:none !important}
+  .note{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <h1>Pura · OOUX System Map · Whole App</h1>
+    <div class="sub">The cross-Pura object model the whole app is built from, run through the <b>ORCA</b> pass (Objects · Relationships · CTAs · Attributes). Consolidated from every feature briefing workflow to date (My Health, PureScore, Digital Twin, Nutrition &amp; Fitness, Goals, Family). The map is the relationships with cardinality; click any object for its detail. Filter by <b>layer</b> (what kind of object) or by <b>feature</b> (which part of the app owns or shares it).</div>
+    <div class="metarow">
+      <span class="chip"><b id="m-objs">0</b> member-facing objects</span>
+      <span class="chip"><b id="m-edges">0</b> relationships</span>
+      <span class="chip"><b id="m-feats">0</b> features</span>
+      <span class="chip"><span id="m-extra"></span></span>
+      <span class="chip">Source: <b>pura-objects.md v2.4.0</b> + catalogue-v1</span>
+      <span class="chip">Status: living, updated each brief</span>
+      <span class="chip">2026-06-23</span>
+    </div>
+  </div>
+</header>
+
+<div class="viewbar">
+  <div class="wrap">
+    <div class="tabs">
+      <button class="tab on" id="tab-map" onclick="setView('map')">Relationship map</button>
+      <button class="tab" id="tab-cards" onclick="setView('cards')">Object cards</button>
+    </div>
+    <span class="hint" id="viewhint">Click an object to focus it and open its detail · drag to pan · scroll to zoom</span>
+    <button class="btn" id="fsBtn" onclick="toggleFs()" title="Toggle full screen (Esc to exit)" style="margin-left:10px">⛶ Full screen</button>
+  </div>
+</div>
+<script>
+/* Full-screen toggle — switches the whole map in/out of full screen (Esc also exits). */
+(function(){
+  function fsOn(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+  window.toggleFs = function(){
+    var d = document, el = d.documentElement;
+    if(!fsOn()){ (el.requestFullscreen || el.webkitRequestFullscreen || function(){}).call(el); }
+    else { (d.exitFullscreen || d.webkitExitFullscreen || function(){}).call(d); }
+  };
+  function sync(){
+    var b = document.getElementById("fsBtn"); if(!b) return;
+    var on = fsOn();
+    b.textContent = on ? "⤢ Exit full screen" : "⛶ Full screen";
+    b.classList.toggle("on", on);
+  }
+  document.addEventListener("fullscreenchange", sync);
+  document.addEventListener("webkitfullscreenchange", sync);
+})();
+</script>
+
+<!-- ===================== MAP VIEW ===================== -->
+<section id="mapView">
+  <div class="wrap">
+    <div class="maptools">
+      <span class="lbl">Layers</span>
+      <span id="layerChips"></span>
+      <button class="btn" onclick="allLayers(true)">All</button>
+      <button class="btn" onclick="allLayers(false)">None</button>
+    </div>
+    <div class="maptools">
+      <span class="lbl">Features</span>
+      <span id="featChips"></span>
+      <button class="btn" onclick="allFeats(true)">All</button>
+      <button class="btn" onclick="allFeats(false)">None</button>
+    </div>
+    <div class="maptools">
+      <button class="btn" id="backendBtn" onclick="toggleBackend()">Show backend layer</button>
+      <button class="btn" onclick="resetView()">Reset view</button>
+      <button class="btn" onclick="setFocus(null)">Clear focus</button>
+      <span class="lbl" style="margin-left:8px">Cardinality</span>
+      <span class="lchip" style="cursor:default"><b>1:1</b> one to one</span>
+      <span class="lchip" style="cursor:default"><b>1:N</b> one to many</span>
+      <span class="lchip" style="cursor:default"><b>N:N</b> many to many</span>
+    </div>
+    <div class="stage">
+      <svg id="svg" viewBox="0 0 1640 1120" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#94A3B8"></path>
+          </marker>
+          <marker id="arrowhot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#3B82F6"></path>
+          </marker>
+        </defs>
+        <g id="viewport">
+          <g id="edges"></g>
+          <g id="nodes"></g>
+        </g>
+      </svg>
+      <div class="zoomctl">
+        <button onclick="zoomBy(1.2)">+</button>
+        <button onclick="zoomBy(0.83)">−</button>
+      </div>
+      <div class="drawer" id="drawer">
+        <div class="dh">
+          <div class="ln"><span class="dname" id="d-name"></span><button class="x" onclick="setFocus(null)">✕</button></div>
+          <div id="d-badges" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"></div>
+          <div id="d-feats" style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap"></div>
+          <div class="ddef" id="d-def"></div>
+        </div>
+        <div class="db" id="d-body"></div>
+      </div>
+    </div>
+    <p class="note">The graph shows <b>only what a member can see and interact with</b> (the OOUX object test: the member recognises it, can have many of them, and acts on it). Backend / engine objects (the Moniac substrate, the scoring internals, the AI selection logic) and clinician-only scores are hidden by default — press <b>Show backend layer</b> (dashed purple nodes) to reveal them. Descriptors (reference range, pillars, derived priority, confidence, adherence) are modelled as <b>attributes</b>, not objects, and live in the cards view + the detail panel. Node fill = layer · border ring + dot = status. Arrows read subject to object (MeasuredValue <b>of</b> Biomarker is N:1). The <b>feature filter</b> isolates one part of the app; shared-spine objects (Member, Biomarker, Timeline, Daily Summary, Pura Agent) light up under several.</p>
+  </div>
+</section>
+
+<!-- ===================== CARDS VIEW ===================== -->
+<section id="cardsView" class="hide">
+  <div class="wrap">
+    <div class="legend">
+      <div class="orca">
+        <div class="lk obj"><b>Objects &amp; Relationships</b>Blue. The object and its relationship chips.</div>
+        <div class="lk core"><b>Core content</b>Yellow. The substance a member consumes.</div>
+        <div class="lk meta"><b>Metadata</b>Pink. Descriptors that qualify, filter, flag.</div>
+        <div class="lk cta"><b>CTAs</b>Green. The actions on the object.</div>
+      </div>
+      <p class="note" style="margin-top:12px">Cards are grouped by layer and tagged with the features that share them. <b style="color:#7C3AED">BACKEND</b> = engine / scoring internals the member never sees or acts on (hidden from the relationship map by default). <b style="color:#0EA5E9">ATTRIBUTE</b> = a descriptor of another object, not a standalone object. <b style="color:#0891B2">PATTERN</b> = an experience / flow pattern across screens (e.g. StoryThread), not an object. All are kept first-class in the catalogue; this view re-tiers them per the OOUX member-facing test.</p>
+    </div>
+    <div id="grid"></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="s">Cross-feature impact map · what each feature shares, depends on, breaks</h2>
+    <table class="tbl">
+      <thead><tr><th style="width:15%">Feature</th><th style="width:34%">Shares / touches via</th><th style="width:25%">Depends on</th><th style="width:26%">Breaks if</th></tr></thead>
+      <tbody id="impact"></tbody>
+    </table>
+    <p class="note">Rows shaded red carry a safety or trust failure mode; amber rows are flagged or deferred. The shared-spine objects (Biomarker, Timeline, Daily Summary, PureScore, the Pura Agent) are where features meet, and where consistency is the trust precondition.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="s">Provenance · which briefing workflow contributed what</h2>
+    <div class="recon" id="provenance"></div>
+    <p class="note">Every object traces to the brief that introduced or reframed it, per the OOUX catalogue-update protocol. The canonical catalogue (<code>pura-objects.md</code>) is bumped, logged and source-stamped at every brief close.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p style="color:#5B21B6;background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;padding:12px 14px"><b>Grooming rule — applies on every update of this deliverable.</b> This dashboard is the <b>member-facing</b> view of the catalogue. Run each catalogue object through the OOUX object test before it becomes a graph node: the member must (1) recognise it, (2) be able to have many of them, and (3) act on it. If it fails, demote it — <b>a descriptor that qualifies / filters / flags another object → attribute</b> (cards + drawer only, surfaced as a pill on its parent); <b>machinery the member never sees or acts on</b> (engine, scoring internals, AI / selection logic, clinician-only, detection signals) <b>→ backend</b> (status <code>system</code>: hidden from the graph by default, revealed by the toggle, badged BACKEND in cards); <b>an experience / flow pattern across screens</b> (e.g. StoryThread) <b>→ pattern</b> (cards only). A detection signal is not an object — what the member sees is the <b>Notification / nudge</b> it raises. Two objects modelling the same thing collapse to one (Plan and Protocol were the same; merged into Protocol). Change the HTML only — never the catalogue: <code>pura-objects.md</code> and <code>catalogue-v1.md</code> keep these as first-class objects; this view re-tiers them for the member.</p>
+    <p><b>Modelling calls carried across the app:</b> Confidence, Explanation, Provenance, Credibility, ContextualisedStatus, Adherence and Outcome are <b>cross-cutting attributes / measures</b>, not objects. <b>Timeline is one canonical object</b>; per-feature mini-timelines are views of it. <b>Daily Summary is a shared, cross-feature surface</b> (My Health + Nutrition &amp; Fitness + the homescreen). <b>PureScore is the slow outcome</b> (a 3 to 4 month trend), never the immediate reward; the immediate reinforcement lives in Daily Summary + Insight Line + Action Funnel + Streak + sporadic FitCoins. <b>Pillars are backend architecture</b> (the Moniac substrate: Knobs → Reservoirs → Biomarkers → OutcomeProjections), surfacing is an experience decision.</p>
+    <p>Source of record: <code>Requirements/_OOUX/catalogue-v1.md</code> + canonical <code>.claude/skills/pura-design-orchestrator/references/pura-objects.md</code> (v2.4.0). Per-feature views: <code>My-Health/_briefing/04-ooux.md</code> · <code>Nutrition/_briefing/2026-06-12-nutrition-fitness-brief/04-ooux.md</code> · <code>Goals/_briefing/2026-06-21-goals-protocol-journey/04-ooux.md</code> · <code>Family/_briefing/04-ooux.md</code>. Template: My Health <code>_briefing/04-ooux.html</code>.</p>
+  </div>
+</footer>
+
+<script>
+/* =====================================================================
+   GROOMING RULE — apply on EVERY update of this deliverable (HTML only).
+   This is the MEMBER-FACING view of the catalogue. Each object must pass
+   the OOUX object test to be a graph node: the member (1) recognises it,
+   (2) can have many of them, (3) acts on it. Otherwise demote via `status`:
+     - "attribute" : a descriptor that qualifies/filters/flags another
+        object (e.g. ReferenceRange, PureScore Pillar, DerivedPriority,
+        Confidence, Adherence). Cards + drawer only; surface it as a pill
+        on its parent object's core/meta.
+     - "system"    : machinery the member never sees/acts on (engine,
+        scoring internals, AI/selection logic, clinician-only, detection
+        signals — e.g. Biomarker Engine, ClinicalIntelligence, RewardFunction,
+        Action Funnel, Reservoir, Knob, OutcomeProjection, ValueOfInformation,
+        WearableSync, ClinicalScore, CaregiverLoadSignal). Hidden from the
+        graph by default; revealed by the backend toggle; badged BACKEND.
+        A detection signal is NOT an object — what the member sees is the
+        Notification / nudge it raises (model the signal as system, link it
+        to Notification).
+     - "pattern"   : an experience / narrative / interaction pattern across
+        screens, not an object (e.g. StoryThread). Cards + drawer only.
+   Two objects modelling the same thing collapse to one (Plan == Protocol:
+   merged into Protocol). NEVER edit pura-objects.md / catalogue-v1.md to do
+   this — they keep these as first-class objects; the re-tiering lives here.
+   ===================================================================== */
+/* ---------------- TAXONOMY ---------------- */
+const L = {member:"Member",agents:"Agents & engine",data:"Health data",scoring:"Scoring",trust:"Trust & completeness",engine:"Moniac substrate",future:"Future / Twin",narrative:"Narrative / timeline",action:"Action & goals",logging:"Logging & daily loop",family:"Family",economy:"Economy & clinical",comms:"Comms",attr:"Attributes",deferred:"Deferred"};
+const LAYER_ORDER = ["member","agents","data","scoring","trust","engine","future","narrative","action","logging","family","economy","comms","attr","deferred"];
+const LAYER_FILL = {member:"#F1F5F9",agents:"#EDE9FE",data:"#E0F2FE",scoring:"#FEF9C3",trust:"#FEF3C7",engine:"#EDE4FF",future:"#DCFCE7",narrative:"#FAE8FF",action:"#FFE4E6",logging:"#DBEAFE",family:"#FCE7F3",economy:"#D1FAE5",comms:"#E2E8F0",attr:"#ECFEFF",deferred:"#F1F5F9"};
+const STATUS_LABEL = {new:"NEW",reframed:"REFRAMED",existing:"EXISTING",foldin:"FOLD-IN",deferred:"DEFERRED",attribute:"ATTRIBUTE",system:"BACKEND",pattern:"PATTERN"};
+const STATUS_VAR = {new:"#6366F1",reframed:"#F59E0B",existing:"#64748B",foldin:"#8B5CF6",deferred:"#94A3B8",attribute:"#0EA5E9",system:"#7C3AED",pattern:"#0891B2"};
+
+/* the new whole-app dimension: which feature owns / shares the object */
+const FEAT = {core:"Shared spine",myhealth:"My Health",purescore:"PureScore",twin:"Digital Twin",goals:"Goals",nutrition:"Nutrition & Fitness",family:"Family",care:"Care & clinical",engage:"Engagement",home:"Homescreen / Daily"};
+const FEATC = {core:"#475569",myhealth:"#2563EB",purescore:"#D97706",twin:"#7C3AED",goals:"#059669",nutrition:"#EA580C",family:"#DB2777",care:"#DC2626",engage:"#0D9488",home:"#0EA5E9"};
+const FEAT_ORDER = ["core","myhealth","purescore","twin","goals","nutrition","family","care","engage","home"];
+
+/* ---------------- OBJECTS ---------------- */
+const OBJ = [
+ /* ---- member ---- */
+ {n:"Member",code:"O01·1",layer:"member",status:"existing",feat:["core","family"],def:"The person; owns everything. Health-literacy level and data-reality drive how deeply Pura discloses.",
+  core:["demographics","conditions","medications","goals"],meta:["health-literacy level","data-reality (EMR-rich / limited / tourist / chronic)","subscription tier"],cta:["edit profile","manage consent"]},
+
+ /* ---- agents & engine ---- */
+ {n:"Pura Agent",code:"8a",layer:"agents",status:"existing",feat:["core","goals","nutrition","home"],def:"The conversational surface across PureScore, Timeline, the Twin and logging. Captures goals in the member's words; narrates the why.",
+  core:["conversation","narration"],meta:["accountabilityMode (supportive, not surveillance)","reasons across features"],cta:["ask","log conversationally","surface insight","explain"]},
+ {n:"Care Team Agent",code:"O04·4",layer:"agents",status:"existing",feat:["care"],def:"Generic class for the care surface: Concierge, MedGemma, HITL team, the member's PCP. Named instances respond at different speeds.",
+  core:["the responding agent"],meta:["instances: Concierge / MedGemma / HITL / PCP","response window"],cta:["message","request 2nd opinion","escalate","view provenance"]},
+ {n:"ClinicalIntelligence",code:"O04",layer:"agents",status:"system",flags:["engine"],feat:["core","care","myhealth"],def:"The AI multi-agent layer (MASH) that powers safety escalation, Care Plan eligibility gating and Insight derivation. The engine behind the surfaces.",
+  core:["the multi-agent reasoning layer"],meta:["agent roster","eligibility gates","RewardFunction host"],cta:[]},
+ {n:"ProviderNetwork",code:"O03",layer:"agents",status:"foldin",feat:["care","family"],def:"Scheduling, consultation routing, clinical decision support. Enables Care Plan execution and the book-a-consult EnhancementAction; gender- and language-matched.",
+  core:["providers","availability"],meta:["routing rules","specialty","gender / language match"],cta:["book","reschedule","route"]},
+ {n:"CareProviderInterface",code:"new",layer:"agents",status:"new",flags:["safety"],feat:["care","family"],def:"A nurse / care-provider reach-out surface. When an Insight or BiometricAlert hits harm-level 3+, a real person reaches out. Distinct from the doctor portal.",
+  core:["the reach-out","the case"],meta:["triggered at harm-level 3+","who reaches out"],cta:["reach out","triage","schedule"]},
+
+ /* ---- health data ---- */
+ {n:"Biomarker",code:"O07·9",layer:"data",status:"reframed",feat:["core","myhealth","purescore"],def:"A measurable health marker (its definition + reference ranges), not a single reading. The single most shared object; centralised in My Health, not owned by PureScore.",
+  core:["name","plain-English meaning","reference ranges (sex / age-adjusted)"],meta:["unit","category","clinical-flag taxonomy (safety-critical vs lifestyle)","male-centric set is a first-fix gap"],cta:["view","learn what this means","see over time"]},
+ {n:"Biomarker Engine",code:"9a",layer:"data",status:"system",flags:["engine"],feat:["core","myhealth"],def:"⭐ Connective tissue. The single source of truth for biomarker definitions, current + historical values, trend, clinical flags. Read by every feature.",
+  core:["definitions table","current + historical values"],meta:["reference ranges by sex / age","trend computation rules","clinical-flag rules"],cta:[]},
+ {n:"MeasuredValue",code:"new",layer:"data",status:"new",feat:["myhealth","core"],def:"One raw reading of a Biomarker. Raw equals trusted. A value can be stale and must be flagged, never trusted as current.",
+  core:["value","unit","timestamp"],meta:["Confidence","ContextualisedStatus","freshness / recency","reference range (read against)","AdjudicationReason"],cta:["view","see source","see trend","what this means"]},
+ {n:"Source",code:"O11",layer:"data",status:"reframed",feat:["core","myhealth"],def:"Where a value came from: device, lab, manual entry, doctor, or an EMR auto-fetch (Malaffi pulls ~2 years of labs, diagnoses, meds, no upload needed).",
+  core:["type","name"],meta:["freshness","measurement window","trust-tier (clinical > consumer)"],cta:["connect","prioritise","troubleshoot"]},
+ {n:"Connected Device",code:"15a",layer:"data",status:"existing",feat:["core","nutrition","myhealth"],def:"Wearable hardware (Apple Watch / Oura / WHOOP / Garmin) syncing via HealthKit / Health Connect. Continuous feed into the Biomarker Engine. A kind of Source.",
+  core:["device type","biomarkers contributed"],meta:["pair status","last sync","health-platform"],cta:["pair","sync","configure","disconnect"]},
+ {n:"WearableSync",code:"31",layer:"data",status:"system",feat:["core","nutrition","myhealth"],def:"The continuous connection + auto-sync from a Connected Device. Strongest engagement predictor (IRR 1.45). Derived metrics carry the signal, not just base metrics.",
+  core:["connection state","streamed metrics","derived scores"],meta:["sync freshness","per-day source attribution","Logs created"],cta:["sync","prioritise","disconnect"]},
+ {n:"LabReport",code:"new",layer:"data",status:"new",feat:["myhealth","core"],def:"An uploaded, scanned or EMR-fetched lab panel; the episodic ingestion object. A kind of Source that emits MeasuredValues and lands as a TimelineEvent.",
+  core:["the document","markers extracted"],meta:["OCR / extraction confidence","test date","ordering lab","trust-tier clinical"],cta:["scan","upload","auto-fetch (EMR)","review","share with doctor"]},
+ {n:"ReferenceRange",code:"new",layer:"data",status:"attribute",feat:["myhealth"],def:"The lab-specific band a value is read against, not a generic range. Moving from static lab ranges to personal / population-calibrated ranges.",
+  core:["low / high bounds"],meta:["lab origin","sex / age context"],cta:["view","what this means"]},
+ {n:"Symptom",code:"15",layer:"data",status:"existing",feat:["myhealth","care"],def:"A member-reported health signal. Time-bound, trackable; lands on the Timeline.",
+  core:["the symptom","onset"],meta:["severity","duration","trackable"],cta:["log","track over time","share with care team","mark resolved"]},
+ {n:"FoodItem",code:"37",layer:"data",status:"new",feat:["nutrition"],def:"The logged food entity. Regional Gulf-cuisine coverage (machboos, harees, luqaimat, mandi). Honesty over precision: a rough-estimate path at social meals.",
+  core:["name","nutrition data","portion"],meta:["regional coverage flag","rough-estimate path","AI-read confidence"],cta:["search","confirm AI read","adjust portion","save as favourite"]},
+ {n:"Medication",code:"O12",layer:"data",status:"foldin",feat:["care","myhealth","family"],def:"Prescriptions, interactions, adherence. A TimelineEvent source and a Twin input (meds shift trajectories). Central to chronic / elderly members and family interaction checks.",
+  core:["prescriptions","schedule"],meta:["interactions","adherence"],cta:["log","set reminder","view interactions"]},
+
+ /* ---- scoring ---- */
+ {n:"PureScore",code:"O16·10",layer:"scoring",status:"reframed",feat:["purescore","myhealth","home"],def:"The composite present-state score (0 to 100). The SLOW outcome (3 to 4 month trend), proof of progress, never the immediate reward. % primary; pillars off the UI.",
+  core:["percentage","status tier","contributing biomarkers + variables"],meta:["Confidence (banded)","Explanation","score-state (new / estimated / partial / complete)","pillars (backend: Risk / Reserve / Lifestyle / Vitality, off the UI)","plateau = honest, not a verdict"],cta:["view","see contributors","how to improve","see trend"]},
+ {n:"PureScore Pillar",code:"10a",layer:"scoring",status:"attribute",feat:["purescore"],def:"Backend architecture only (Risk / Reserve / Lifestyle / Vitality), a weighted aggregate over the Moniac substrate. Never a commitment to show; surfacing is an experience decision.",
+  core:["pillar score","biomarker set"],meta:["weight","status tier","directional trend","backend only"],cta:["(system) drill to biomarker"]},
+ {n:"HealthAge",code:"10b",layer:"scoring",status:"reframed",feat:["purescore","myhealth"],def:"A secondary, traceable, trend-not-verdict age read. Never primary, never bare. Shown only when Confidence passes the data threshold.",
+  core:["value","trend","the biomarkers behind it"],meta:["Confidence","Explanation","hidden when data too thin"],cta:["view"]},
+ {n:"ClinicalScore",code:"revived",layer:"scoring",status:"system",flags:["safety"],feat:["purescore","care"],def:"The validated clinical risk indices (ASCVD, FINDRISC, kidney, biological age). Clinician-facing for credibility; not surfaced raw. Layered onto PureScore so one critical pillar pulls it down.",
+  core:["index value","range / band"],meta:["the biomarkers behind it","clinician-facing","13 systems / 66 diseases"],cta:["(clinician) view"]},
+
+ /* ---- trust & completeness ---- */
+ {n:"KnowledgeLevel",code:"new",layer:"trust",status:"new",feat:["myhealth","core"],def:"How much Pura knows about this member, to what depth. The trust + provenance + enhancement object, so partial-data members are never silently misled.",
+  core:["coverage score","the gap taxonomy","per-domain coverage"],meta:["gap types: structural / temporal / recoverable","similarity-search estimate for thin users","cohort / stratum"],cta:["see what's missing","improve"]},
+ {n:"EnhancementAction",code:"new",layer:"trust",status:"new",feat:["myhealth","goals"],def:"The concrete step to know more. Maps one-to-one onto a gap type; doubles as the cross-service activation loop.",
+  core:["type (connect / upload / book / complete)","what it unlocks"],meta:["gap-type it closes"],cta:["do it"]},
+
+ /* ---- Moniac substrate ---- */
+ {n:"Reservoir",code:"new",layer:"engine",status:"system",flags:["engine"],feat:["purescore","twin"],def:"The engine's physiological state that builds and decays over time (Glycemic, Vascular, Inflammation, Fitness, Recovery...). Biomarkers are its readouts. 9 in the sim.",
+  core:["level (0 to 100)","polarity (asset / burden)"],meta:["setpoint","time-constant (tau)","sufficiency","confidence"],cta:["view","drill in","explore in the Twin"]},
+ {n:"Knob",code:"new",layer:"engine",status:"system",feat:["purescore","twin","goals"],def:"A patient-changeable input that drives the engine (steps, sleep, aerobic, diet, statin, GLP-1...). A Plan / Action moves one or more knobs; a What-If lever IS a knob change. 16 in the sim.",
+  core:["current setting","healthy direction"],meta:["range","units","13 behavioural + 3 Rx"],cta:["(via Action / What-If) adjust"]},
+ {n:"OutcomeProjection",code:"new",layer:"engine",status:"system",feat:["purescore","twin","care"],def:"A forward-projected clinical outcome over a horizon (30 / 90 / 365 days): ASCVD risk, T2D risk, mortality hazard, vitality, bio-age gap. The forward form of ClinicalScore.",
+  core:["projected value","risk band","horizon"],meta:["confidence grows-uncertain with horizon","held-change projection"],cta:["view","project"]},
+ {n:"ValueOfInformation",code:"new",layer:"engine",status:"system",feat:["myhealth"],def:"A ranking of the next data worth collecting, by how much it would improve the score / projection. Turns the gap taxonomy into a prioritised ask.",
+  core:["the ranked next data"],meta:["computed from reservoir sufficiency + KnowledgeLevel"],cta:["see the next best data"]},
+ {n:"RewardFunction",code:"new",layer:"engine",status:"system",flags:["engine"],feat:["core"],def:"How the engine ranks candidate actions: outcome gain 0.45 · adherence 0.20 · harm 0.20 · engagement 0.10 · effort 0.05. The RL logic behind Insight / NBA selection. Lives on ClinicalIntelligence.",
+  core:["the ranking"],meta:["expected-gain × P(adherence)"],cta:[]},
+ {n:"Action Funnel",code:"19a",layer:"engine",status:"system",feat:["core","goals","home"],def:"Daily action selection from four tributaries (Care Plans / Action Packs / Signals / Discoveries). Three funnels converge to one action a day; the rest surface as Next Best Actions.",
+  core:["the selected action","the NBA set"],meta:["four tributaries","ranked by RewardFunction"],cta:["surface today's action","see NBAs"]},
+
+ /* ---- future / Twin ---- */
+ {n:"Digital Twin",code:"O09·12",layer:"future",status:"existing",feat:["twin","myhealth"],def:"The future projection. Temporal, 4-layer (insight → systems → projections → What-If). The Moniac reservoir-cascade is the substrate. Embedded with PureScore as one experience inside My Health.",
+  core:["layer state","projections (3 / 6 / 12-month)","insight line"],meta:["uses all biomarkers, organs, wearable data","Google-Maps layered vignettes","spatial-vs-temporal open"],cta:["explore","project","simulate"]},
+ {n:"Insight Line",code:"12a",layer:"future",status:"new",feat:["twin","home","core"],def:"The one-sentence trajectory statement everyone sees (Twin Layer 0). Surfaced daily in the Daily Summary. The lead; the chart is the drill-down for the why.",
+  core:["the through-line sentence"],meta:["signal source","cadence (daily)","confidence"],cta:["read","tap for context"]},
+ {n:"Trajectory Projection",code:"12c",layer:"future",status:"new",feat:["twin","goals"],def:"The 3 / 6 / 12-month forward projection per pillar / biomarker; the slow proof a daily effort reaches the body (the Goals SM-F read).",
+  core:["forecast value","time horizon"],meta:["confidence interval","scenario label","inputs used"],cta:["view projection","see context"]},
+ {n:"What-If Simulator",code:"12d",layer:"future",status:"new",feat:["twin"],def:"Interactive levers for power users (Twin Layer 3). A lever IS a Knob change. Anti-doomsday, near-term, reversible; becomes a Plan when committed.",
+  core:["the lever","the projected change"],meta:["Confidence","near-term, reversible","deep / web view"],cta:["adjust variable","run scenario","save","commit"]},
+
+ /* ---- narrative / timeline ---- */
+ {n:"Timeline",code:"11",layer:"narrative",status:"reframed",feat:["core","myhealth"],def:"The member's whole Pura health history; one canonical longitudinal record. Mini-timelines (score trends, lab history, wearable graphs) are views of it. The wearable + lab fusion white-space.",
+  core:["data sources","events"],meta:["time range","filters","per-condition / per-goal views"],cta:["scrub","filter","jump to biomarker","share with doctor"]},
+ {n:"Timeline Event",code:"11a",layer:"narrative",status:"new",feat:["core","myhealth"],def:"One dated event on the Timeline.",
+  core:["linked biomarkers"],meta:["timestamp","type (lab / wearable / consult / medication / check-in / diagnosis / life-event)","Source"],cta:["open source","annotate"]},
+ {n:"StoryThread",code:"new",layer:"narrative",status:"pattern",feat:["myhealth"],def:"NOT an object — an experience / narrative pattern: how one biomarker's story is stitched across screens (past on the Timeline → present in PureScore → future in the Twin). The member experiences the through-line; they do not create, own or manage 'a StoryThread'. (catalogue-v1 locks it as an object; revisit that.)",
+  core:["the through-line (past → present → future)"],meta:["a presentation / flow pattern, not a thing the member acts on"],cta:[]},
+
+ /* ---- action & goals ---- */
+ {n:"Insight",code:"O26",layer:"action",status:"reframed",feat:["core","myhealth","nutrition"],def:"What to do, surfaced in ONE view. Split medically-validated vs wearable / lifestyle (it draws on wearable signals, not just labs and the score). Wellness + recommendation framing, not diagnosis. Earned wisdom (own behaviour) outperforms generic advice.",
+  core:["the recommendation"],meta:["type (medical / wearable / lifestyle)","Explanation","Provenance","priority + source attribution","P(adherence), expected-gain","draws on wearable signals"],cta:["view","act on","dismiss"]},
+ {n:"Care Plan",code:"O20a·16",layer:"action",status:"existing",feat:["care"],def:"A clinical programme that sets ClinicalGoals and biomarker targets. Distinct by prescriber; the identity-shift plan; top priority when present. Runs a 9-step lifecycle across nested phases. Earns credit toward the member's goal.",
+  core:["the clinical programme","outcomes","actions"],meta:["9-step lifecycle","phases (A / B / C: lifestyle → habit → clinical)","prescriber = clinician","harm-3+ routes to a nurse"],cta:["enrol","follow","pause","share with care team"]},
+ {n:"Care Plan Phase",code:"O27·17",layer:"action",status:"attribute",feat:["care"],def:"Nested in Care Plan — a sub-stage (A / B / C: lifestyle → habit → clinical), each a cue → action → goal. The member progresses through phases inside the Care Plan; it is not a standalone object they manage.",
+  core:["cue","action","goal"],meta:["phase (A / B / C)","progression rule","nested in Care Plan"],cta:[]},
+ {n:"Daily Action",code:"18",layer:"action",status:"existing",feat:["goals","care","home"],def:"Today's Priority — the single doable thing today, distilled from the Protocol, Care Plan and signals by the Action Funnel. Member-facing: 'the one thing today'.",
+  core:["the action","the cue"],meta:["the goal it serves","P(adherence)","expected gain"],cta:["do it","not today","see why","defer"]},
+ {n:"Action Pack",code:"19",layer:"action",status:"reframed",feat:["goals"],def:"A bounded, reusable, OUTCOME-shaped bundle of actions (a 30-day Sleep Reset). The building block of a Protocol; many per Protocol. Never module-shaped. A cousin of Challenge (distinct by prescriber).",
+  core:["name","outcome it serves","actions[]"],meta:["origin (curated / AI-assembled / member-built)","shape = outcome-shaped","reusable"],cta:["browse","start","see progress","add to my plan"]},
+ {n:"PersonalGoal",code:"26",layer:"action",status:"reframed",feat:["goals","nutrition"],def:"The member-chosen aspiration, in their words. Distinct by prescriber. The umbrella seam across food and movement. Gains a horizon, a Theme, biomarker success markers; can own sub-goals.",
+  core:["name","target","success markers (biomarkers)"],meta:["horizon (~1yr / 4-6wk / event-dated)","theme ref","prescriber = member","lane (food / movement / both)","derived priority (PureScore-derived, supports / conflicts)"],cta:["say it","set a sub-goal","give it a theme","pause","complete"]},
+ {n:"Protocol",code:"27",layer:"action",status:"reframed",feat:["goals","nutrition","myhealth"],def:"The member's living, adaptive plan for a goal. One per goal. Composed of Action Packs, each a cue → action → goal step (the if-then structure; this ABSORBS the former separate 'Plan' object — they were the same thing). Improves on a data ladder (profile → watch → labs → conversation). Member-facing: 'your plan'. Distinct from clinical Care Plan.",
+  core:["goal ref","composed-of: Action Packs"],meta:["data-ladder state","lane","planningMode","if-then structure (cue → action → goal)","current version"],cta:["view","see why this action","edit","feed it data","see how it adapted","commit"]},
+ {n:"DerivedPriority",code:"O20a-bridge",layer:"action",status:"attribute",feat:["myhealth","goals"],def:"A PureScore-derived priority that still serves the member's stated goal. The bridge between what the data says matters and what the member chose.",
+  core:["the priority"],meta:["supports / conflicts with PersonalGoal"],cta:["view","reconcile"]},
+ {n:"Challenge",code:"30",layer:"action",status:"existing",feat:["engage","nutrition"],def:"A time-bound, community- or B2B-driven challenge ('UAE: 8,000 steps'). Competitive. Distinct by prescriber from Care Plan and PersonalGoal. A cousin of Action Pack.",
+  core:["the challenge","duration"],meta:["prescriber = AI / B2B / community","competitive"],cta:["browse","join","pause","complete"]},
+ {n:"Programme",code:"34",layer:"action",status:"new",feat:["nutrition"],def:"Programme / Routine — the beginner's fitness adherence front door: exercise selection + programming + progressive overload. No nutrition equivalent (the nutrition Protocol is the analogue).",
+  core:["exercise selection","progression rule"],meta:["experience level","equipment","frequency","autoregulation (RPE / RIR)"],cta:["pick a programme","generate","swap exercise","progress load"]},
+ {n:"Theme",code:"23",layer:"action",status:"reframed",feat:["goals"],def:"The identity layer above goals ('best version of myself'). A persistent AI-maintained thread that becomes a living knowledge card; the Goals stickiness layer. (Was Memory Anchor.)",
+  core:["name (identity statement)","goals wrapped"],meta:["surfaced-daily flag"],cta:["name it","wrap goals into it","see it daily"]},
+
+ /* ---- logging & daily loop ---- */
+ {n:"Log",code:"28",layer:"logging",status:"reframed",feat:["nutrition","goals"],def:"A single act of logging (meal / workout / photo / voice / import / wearable-sync). One Log keeps one Streak alive regardless of lane. Shared infrastructure; contributes to the slow PureScore trend, not an on-the-spot move.",
+  core:["type","content"],meta:["lane (food / fitness)","modality","timestamp","derived biomarker"],cta:["log (tap / photo / voice)","import","sync from wearable"]},
+ {n:"MealLog",code:"O2a",layer:"logging",status:"new",feat:["nutrition"],def:"The food LoggingAct concrete form. Modality: voice / photo-confirm / one-tap recent / import / manual. Daily cadence. References FoodItems.",
+  core:["meal occasion","food items"],meta:["modality","daily cadence","regional coverage"],cta:["log by voice","log by photo","log recent","log rough estimate"]},
+ {n:"WorkoutSession",code:"33",layer:"logging",status:"new",feat:["nutrition"],def:"The fitness LoggingAct concrete form: a training session and its sets. Numeric set / rep / weight entry under time pressure, rest timer, RPE / RIR. Weekly cadence.",
+  core:["exercises[]","sets[] (reps / weight / RPE)"],meta:["rest-timer state","duration","PRs","weekly cadence"],cta:["start session","log set","start rest timer","finish","auto-sync from watch"]},
+ {n:"Streak",code:"29",layer:"logging",status:"new",feat:["nutrition","goals","engage"],def:"The consistency record per goal, with a designed off day (a beat, never a hard reset). Per-lane cadence: daily (food) vs weekly (fitness).",
+  core:["current count","consistencyRate ('45 of 50')"],meta:["cadence (daily food / weekly fitness)","graceState (freeze / decay)","non-punitive frame"],cta:["view","see consistency","take a beat"]},
+ {n:"Reminder",code:"35",layer:"logging",status:"new",feat:["nutrition","core"],def:"The keep-alive. Fasting-aware (suppress during the fast, iftar / suhoor clustering). Type: nudge / return (day after a lapse) / streak-at-risk / plan.",
+  core:["the prompt"],meta:["trigger event","type","fasting-aware flag"],cta:["snooze","turn off","respond (return)"]},
+ {n:"Check-in",code:"19b·1",layer:"logging",status:"existing",feat:["goals","home"],def:"The friction-light yes / no the wearable cannot answer (Daily Summary Tab 1). Binary, max three a day, asks only what the sensors miss. Feeds Adherence.",
+  core:["the question","the answer"],meta:["binary","max 3 / day","asks only what the wearable cannot"],cta:["answer"]},
+ {n:"Daily Summary",code:"19b",layer:"logging",status:"new",feat:["core","home","myhealth","nutrition"],def:"⭐ Shared / cross-feature. The homescreen acknowledgement + immediate-feedback surface. On a log / check-in it ACKNOWLEDGES the act and surfaces the immediate reinforcement PureScore cannot give. Every feature plugs into it.",
+  core:["Follow-up Chip (3-sentence Past / Present / Future)","Today's Focus","Daily Check-in","Agent Deep-dive"],meta:["wearable-required","anchor = agent voice (PureScore stays in chrome)","module registry (7 slots / feature)"],cta:["view","tap chip (deep-dive)","answer check-in","act on Today's Focus"]},
+ {n:"Patterns card",code:"36",layer:"logging",status:"new",feat:["nutrition"],def:"First-class reflective object (home: Wellness → Nutrition / Fitness). The hook on the Home Dashboard, the 'why' for today's action, narrated by the agent. Nutrition-led, fitness-secondary. Renamed from 'Insight' to avoid the Genomics collision.",
+  core:["the pattern"],meta:["lane (nutrition-led / fitness-secondary)","hook state","never an upsell (EMPATHISE guard)"],cta:["open pattern","act on pattern","dismiss"]},
+ {n:"Conversation Thread",code:"25",layer:"logging",status:"existing",feat:["core"],def:"A multi-turn member ↔ care-team / agent exchange, with context. Becomes input to the Protocol data ladder and crystallises into a Theme.",
+  core:["the exchange","context"],meta:["multi-turn","feeds the data ladder"],cta:["start","resume","crystallise into a theme","feed Protocol"]},
+
+ /* ---- family ---- */
+ {n:"Household",code:"O02",layer:"family",status:"reframed",feat:["family"],def:"The family as a unit; the container the overview reads (was the one-line FamilyEcosystem fold-in). Holds members, roles, shared trends and the household status answer.",
+  core:["name","member count","household status answer","composition"],meta:["primary manager","generations + staff"],cta:["see who needs you","see everyone","add a family member","switch member"]},
+ {n:"FamilyLink",code:"new",layer:"family",status:"new",feat:["family"],def:"The edge between a Member and a Household. Carries Role, relationship and the consent state. The spine object: the family is relationships, not a profile list.",
+  core:["role","relationship label"],meta:["link state (invited / active / paused)","verification source (UAE Pass)"],cta:["invite","set role","manage sharing","remove from family"]},
+ {n:"ConsentGrant",code:"new",layer:"family",status:"new",feat:["family"],def:"A revocable grant: who may see what category of whose data, at what sensitivity tier. The adoption gate, modelled (not a cross-cutting attribute, because in family it is authored, reciprocal, revocable per pair).",
+  core:["grantor","grantee","data category"],meta:["sensitivity tier (low / high)","default (opt-out / opt-in)","state (granted / revoked)"],cta:["share (ceremony)","adjust","revoke","see who can see this"]},
+ {n:"AttentionItem",code:"new",layer:"family",status:"new",feat:["family"],def:"The surfaced 'who needs you / what is slipping' unit on the overview. Worry-first content: a reason to act, framed as loss to prevent, with a why and a next step. The family analogue of the Next Best Action.",
+  core:["subject member","loss-framed headline","the why","next step"],meta:["severity","source (BiometricAlert / HouseholdTask / FamilyInsight)","timestamp"],cta:["act now","see why","snooze","delegate"]},
+ {n:"HouseholdTask",code:"new",layer:"family",status:"new",feat:["family"],def:"A time-bound obligation across members: refill, vaccination, follow-up, visa or insurance renewal, newborn 30-day add, domestic-staff screening. The cognitive-offload unit.",
+  core:["type","subject member","due date"],meta:["owner","confirmation state","regulatory flag"],cta:["do it","delegate","mark done","confirm done"]},
+ {n:"CareTeam",code:"new",layer:"family",status:"new",feat:["family","care"],def:"A context-formed team (members + providers + non-Pura invitees) that assembles around a health event and dissolves after. The fluid family, made an object.",
+  core:["trigger context","members","providers"],meta:["non-Pura invitees","formed date","dissolve condition"],cta:["assemble","add a person","invite a provider","disband"]},
+ {n:"CaregiverLoadSignal",code:"new",layer:"family",status:"system",feat:["family","care"],def:"Backend detection — the model that spots strain on the family health manager (declining activity, disrupted sleep, missed appointments). NOT a thing the member sees: it surfaces as a gentle nudge (a Notification) that can start her own Care Plan.",
+  core:["contributing signals"],meta:["confidence band","validated-model flag","surfaces as a Notification, not a screen"],cta:[]},
+ {n:"FamilyInsight",code:"new",layer:"family",status:"new",feat:["family"],def:"A household-level discovery invisible in any single profile: shared deficiency, cross-member medication interaction, environmental correlation, stress contagion. The defensible layer.",
+  core:["the connection","members involved"],meta:["confidence band","established-science vs correlation flag","clinician-review status"],cta:["see the connection","share with a member","book a consult","dismiss"]},
+ {n:"FamilyTrend",code:"new",layer:"family",status:"deferred",feat:["family"],def:"A weakest-link household signal (not an average) that names which member most needs attention. Held until clinically validated (Wave 2).",
+  core:["weakest-link member","household band"],meta:["confidence","validation status","DEFERRED Wave 2"],cta:["view"]},
+ {n:"Coverage",code:"new",layer:"family",status:"deferred",feat:["family"],def:"Per-member insurance coverage, renewal dates, dependent and domestic-staff compliance. The overview links to it; v1 does not contain it (Wave 3 link-out).",
+  core:["coverage","renewal dates"],meta:["dependent gap","domestic-staff compliance","DEFERRED Wave 3"],cta:["view coverage","renew","add dependent","see deadlines"]},
+
+ /* ---- economy & clinical ---- */
+ {n:"FitCoin",code:"20",layer:"economy",status:"reframed",feat:["engage","nutrition"],def:"Pura's reward currency. rewardMode: set (challenge-gated, predictable) + sporadic (variable-ratio drops for genuine habit acts outside challenges) — the immediate on-the-spot reward PureScore cannot give. Ethical guardrail binding.",
+  core:["balance","earn history"],meta:["rewardMode (set / sporadic)","trigger event","ethical guardrail (genuine acts only)"],cta:["earn (set)","earn (sporadic)","see how I earned this","redeem"]},
+ {n:"Care Credit",code:"21",layer:"economy",status:"existing",feat:["engage"],def:"Subscription / preventative credit. Different from FitCoin.",
+  core:["balance"],meta:["earn rule"],cta:["earn (auto)","redeem","view history"]},
+ {n:"Subscription",code:"22",layer:"economy",status:"existing",feat:["engage"],def:"The member's subscription tier (Free / Premium / Pro). Higher tiers may carry monthly Care Credit allocations.",
+  core:["tier"],meta:["billing","allocations"],cta:["upgrade","downgrade","cancel","add-on"]},
+
+ /* ---- comms ---- */
+ {n:"Notification",code:"24",layer:"comms",status:"existing",feat:["core"],def:"Any proactive comm from Pura. Channel-aware, P1 to P6 routing. Carries an agent provenance badge.",
+  core:["the message"],meta:["channel","priority (P1 to P6)","agent provenance"],cta:["view","snooze","dismiss","action one-tap"]},
+
+ /* ---- safety ---- */
+ {n:"BiometricAlert",code:"O29",layer:"agents",status:"foldin",flags:["safety"],feat:["myhealth","care","family"],def:"Safety-critical triggers (P0) on a MeasuredValue; routes to Care Plan escalation or a care-provider reach-out. A red value must escalate, never render as a calm card.",
+  core:["the trigger","the escalation route"],meta:["priority (P0)","response window","threshold breached"],cta:["acknowledge","escalate"]},
+
+ /* ---- cross-cutting attributes (cards + drawer only) ---- */
+ {n:"Confidence",code:"attr",layer:"attr",status:"attribute",feat:["core"],def:"On every derived object. Calculated from data coverage + freshness; surfaced as bands (High / Medium / Low / Insufficient); always paired with a plain-language Explanation. Gates behaviour (Insufficient → no recommendations).",core:[],meta:["two faces: data sufficiency + model uncertainty","banded gate"],cta:[]},
+ {n:"Explanation",code:"attr",layer:"attr",status:"attribute",feat:["core"],def:"What this means and why. On values, scores, insights. Candidate object if it becomes authored, reused content.",core:[],meta:["why-this","input-influence"],cta:[]},
+ {n:"Provenance",code:"attr",layer:"attr",status:"attribute",feat:["core"],def:"The relationship from an object to its Source(s) and data. The trust spine; the consistency guarantee the whole experience stands on.",core:[],meta:["object → source traceability"],cta:[]},
+ {n:"Credibility",code:"attr",layer:"attr",status:"attribute",feat:["core"],def:"Validated-by (MBZUAI), corroborated-by, used-by-N. Pura has the substrate but rarely surfaces it.",core:[],meta:["validated-by","corroborated-by","used-by-N"],cta:[]},
+ {n:"ContextualisedStatus",code:"attr",layer:"attr",status:"attribute",feat:["core"],def:"In-range / borderline / out, with meaning. Never a bare red flag.",core:[],meta:["in-range / borderline / out"],cta:[]},
+ {n:"Adherence",code:"attr",layer:"attr",status:"attribute",feat:["goals","nutrition","care"],def:"Cross-cutting measure: did the member do what was set. Computed from Log + WearableSync + Check-in; visualised as the daily read in Daily Summary. Closes the action → adherence → outcome loop.",core:[],meta:["the daily read is its visualisation","not an object"],cta:[]},
+ {n:"Outcome",code:"attr",layer:"attr",status:"attribute",feat:["care","myhealth"],def:"Cross-cutting: the result of acting, distinct from adherence. Adherence = did they do it; Outcome = did it work (the re-test at point B: 3 / 6 / 9 / 12 months).",core:[],meta:["the re-test result","closes the loop"],cta:[]},
+
+ /* ---- deferred ---- */
+ {n:"Genomics",code:"O06",layer:"deferred",status:"deferred",feat:["myhealth"],def:"Static risk that enriches PureScore, the Twin and Insight. Promoted from deferred to an active enrichment input; modelling work parked.",core:["genetic risk markers"],meta:["enriches score / twin / insight"],cta:[]},
+ {n:"WellnessMentalHealth",code:"O05",layer:"deferred",status:"deferred",feat:["myhealth"],def:"The 5 wellness domains the system covers: Sleep · Stress & Recovery · Nutrition · Exercise · Mental Health. The lifestyle taxonomy the Moniac knobs sit under.",core:["stress","mood","sleep","nutrition","exercise"],meta:["the lifestyle vignette on the Twin"],cta:[]}
+];
+const objByName = {}; OBJ.forEach(o=>objByName[o.n]=o);
+
+/* ---------------- RELATIONSHIPS (directed, with cardinality) ---------------- */
+const EDGES = [
+ /* ownership */
+ {f:"Member",t:"PureScore",v:"owns",c:"1:1"},
+ {f:"Member",t:"Timeline",v:"owns",c:"1:1"},
+ {f:"Member",t:"Digital Twin",v:"owns",c:"1:1"},
+ {f:"Member",t:"KnowledgeLevel",v:"owns",c:"1:1"},
+ {f:"Member",t:"PersonalGoal",v:"sets",c:"1:N"},
+ {f:"Member",t:"Medication",v:"takes",c:"1:N"},
+ {f:"Member",t:"Household",v:"belongs to",c:"N:1"},
+ {f:"Member",t:"Conversation Thread",v:"has",c:"1:N"},
+ {f:"Member",t:"Care Team Agent",v:"consults",c:"N:N"},
+ {f:"Member",t:"Subscription",v:"holds",c:"1:1"},
+ /* data */
+ {f:"MeasuredValue",t:"Biomarker",v:"of",c:"N:1"},
+ {f:"MeasuredValue",t:"Source",v:"from",c:"N:1"},
+ {f:"MeasuredValue",t:"ReferenceRange",v:"read against",c:"N:1"},
+ {f:"Biomarker",t:"ReferenceRange",v:"has",c:"1:N"},
+ {f:"Biomarker",t:"Biomarker Engine",v:"lives in",c:"N:1"},
+ {f:"Connected Device",t:"Source",v:"is a",c:"N:1"},
+ {f:"LabReport",t:"Source",v:"is a",c:"N:1"},
+ {f:"WearableSync",t:"Connected Device",v:"syncs",c:"N:1"},
+ {f:"WearableSync",t:"MeasuredValue",v:"streams",c:"1:N"},
+ {f:"LabReport",t:"MeasuredValue",v:"emits",c:"1:N"},
+ {f:"LabReport",t:"Timeline Event",v:"lands as",c:"1:1"},
+ {f:"MealLog",t:"FoodItem",v:"references",c:"N:N"},
+ {f:"Symptom",t:"Timeline",v:"lands on",c:"N:1"},
+ /* scoring */
+ {f:"PureScore",t:"MeasuredValue",v:"derived from",c:"1:N"},
+ {f:"PureScore",t:"Biomarker Engine",v:"reads",c:"N:1"},
+ {f:"PureScore",t:"PureScore Pillar",v:"aggregates",c:"1:N"},
+ {f:"PureScore Pillar",t:"Biomarker",v:"groups",c:"1:N"},
+ {f:"HealthAge",t:"Biomarker",v:"derived from",c:"1:N"},
+ {f:"ClinicalScore",t:"Biomarker",v:"computed from",c:"1:N"},
+ {f:"ClinicalScore",t:"PureScore",v:"layered onto",c:"N:1"},
+ /* trust */
+ {f:"KnowledgeLevel",t:"Source",v:"computed from",c:"1:N"},
+ {f:"KnowledgeLevel",t:"MeasuredValue",v:"computed from",c:"1:N"},
+ {f:"KnowledgeLevel",t:"PureScore",v:"limits",c:"1:1"},
+ {f:"KnowledgeLevel",t:"EnhancementAction",v:"improved by",c:"1:N"},
+ {f:"EnhancementAction",t:"ProviderNetwork",v:"booked via",c:"N:1"},
+ {f:"EnhancementAction",t:"Connected Device",v:"connects",c:"N:1"},
+ /* Moniac substrate */
+ {f:"Knob",t:"Reservoir",v:"drives",c:"N:N"},
+ {f:"Reservoir",t:"Biomarker",v:"reads out as",c:"1:N"},
+ {f:"Reservoir",t:"OutcomeProjection",v:"drives",c:"1:N"},
+ {f:"OutcomeProjection",t:"PureScore",v:"aggregated into",c:"N:1"},
+ {f:"OutcomeProjection",t:"ClinicalScore",v:"projects",c:"N:1"},
+ {f:"ValueOfInformation",t:"KnowledgeLevel",v:"ranks",c:"N:1"},
+ {f:"ValueOfInformation",t:"EnhancementAction",v:"drives",c:"1:N"},
+ {f:"RewardFunction",t:"ClinicalIntelligence",v:"lives on",c:"N:1"},
+ {f:"RewardFunction",t:"Action Funnel",v:"ranks",c:"1:1"},
+ {f:"Action Funnel",t:"Insight",v:"selects",c:"1:N"},
+ {f:"Action Funnel",t:"Daily Action",v:"surfaces",c:"1:1"},
+ {f:"ClinicalIntelligence",t:"Insight",v:"derives",c:"1:N"},
+ {f:"ClinicalIntelligence",t:"BiometricAlert",v:"powers",c:"1:N"},
+ {f:"ClinicalIntelligence",t:"Care Plan",v:"gates",c:"1:N"},
+ /* future / Twin */
+ {f:"Digital Twin",t:"PureScore",v:"baselines on",c:"1:1"},
+ {f:"Digital Twin",t:"Reservoir",v:"substrate",c:"1:N"},
+ {f:"Digital Twin",t:"MeasuredValue",v:"uses",c:"1:N"},
+ {f:"Digital Twin",t:"Timeline",v:"uses trends from",c:"1:1"},
+ {f:"Digital Twin",t:"Insight Line",v:"surfaces",c:"1:1"},
+ {f:"Digital Twin",t:"Trajectory Projection",v:"projects",c:"1:N"},
+ {f:"Digital Twin",t:"What-If Simulator",v:"feeds",c:"1:N"},
+ {f:"What-If Simulator",t:"Knob",v:"adjusts",c:"1:N"},
+ {f:"What-If Simulator",t:"Protocol",v:"commits into",c:"1:1"},
+ {f:"Trajectory Projection",t:"PersonalGoal",v:"proves",c:"1:1"},
+ /* narrative */
+ {f:"Timeline",t:"Timeline Event",v:"composed of",c:"1:N"},
+ {f:"Timeline Event",t:"Source",v:"from",c:"N:1"},
+ {f:"Timeline Event",t:"Biomarker",v:"links",c:"N:N"},
+ /* action & goals */
+ {f:"Insight",t:"PureScore",v:"derived from",c:"N:1"},
+ {f:"Insight",t:"Digital Twin",v:"derived from",c:"N:1"},
+ {f:"Insight",t:"Connected Device",v:"derived from (wearable)",c:"N:1"},
+ {f:"Insight",t:"Protocol",v:"commits into",c:"1:1"},
+ {f:"Insight",t:"Daily Summary",v:"surfaces in",c:"N:1"},
+ {f:"Care Plan",t:"Biomarker",v:"targets",c:"1:N"},
+ {f:"Care Plan",t:"Digital Twin",v:"adherence feeds",c:"N:1"},
+ {f:"Care Plan",t:"PersonalGoal",v:"earns credit toward",c:"N:1"},
+ {f:"Care Plan",t:"Daily Action",v:"surfaces",c:"1:N"},
+ {f:"DerivedPriority",t:"PersonalGoal",v:"supports / conflicts",c:"N:1"},
+ {f:"DerivedPriority",t:"PureScore",v:"derived from",c:"N:1"},
+ {f:"PersonalGoal",t:"Protocol",v:"has",c:"1:1"},
+ {f:"PersonalGoal",t:"PersonalGoal",v:"owns sub-goals",c:"1:N",self:true},
+ {f:"PersonalGoal",t:"Theme",v:"serves",c:"N:1"},
+ {f:"PersonalGoal",t:"Biomarker",v:"targets",c:"1:N"},
+ {f:"PersonalGoal",t:"Streak",v:"has",c:"1:1"},
+ {f:"PersonalGoal",t:"FitCoin",v:"completion earns",c:"N:N"},
+ {f:"Protocol",t:"Action Pack",v:"composed of",c:"1:N"},
+ {f:"Action Pack",t:"Daily Action",v:"made of",c:"1:N"},
+ {f:"Protocol",t:"Daily Action",v:"surfaces",c:"1:N"},
+ {f:"Protocol",t:"Reminder",v:"schedules",c:"1:N"},
+ {f:"Programme",t:"Protocol",v:"specialises",c:"N:1"},
+ {f:"WorkoutSession",t:"Programme",v:"performed against",c:"N:1"},
+ {f:"Pura Agent",t:"PersonalGoal",v:"captures",c:"1:N"},
+ /* logging & daily loop */
+ {f:"PersonalGoal",t:"Log",v:"fed by",c:"1:N"},
+ {f:"Log",t:"Streak",v:"keeps alive",c:"N:1"},
+ {f:"Log",t:"PureScore",v:"contributes to trend",c:"N:1"},
+ {f:"Log",t:"Daily Summary",v:"acknowledged in",c:"N:1"},
+ {f:"Log",t:"FitCoin",v:"may trigger sporadic",c:"N:1"},
+ {f:"Streak",t:"FitCoin",v:"milestone drops",c:"1:N"},
+ {f:"MealLog",t:"Log",v:"is a",c:"N:1"},
+ {f:"WorkoutSession",t:"Log",v:"is a",c:"N:1"},
+ {f:"Daily Summary",t:"Insight Line",v:"surfaces",c:"1:1"},
+ {f:"Daily Summary",t:"Action Funnel",v:"presents",c:"1:1"},
+ {f:"Daily Summary",t:"Streak",v:"shows",c:"1:1"},
+ {f:"Daily Summary",t:"Pura Agent",v:"deep-dive",c:"1:1"},
+ {f:"Daily Summary",t:"Check-in",v:"asks",c:"1:N"},
+ {f:"Daily Summary",t:"Protocol",v:"adherence feeds",c:"1:1"},
+ {f:"Patterns card",t:"PersonalGoal",v:"read off",c:"N:1"},
+ {f:"Patterns card",t:"PureScore",v:"reflective hook",c:"1:1"},
+ {f:"Pura Agent",t:"Patterns card",v:"surfaces",c:"1:N"},
+ {f:"Pura Agent",t:"Log",v:"accepts",c:"1:N"},
+ {f:"Reminder",t:"Log",v:"fires on",c:"1:N"},
+ {f:"Conversation Thread",t:"Protocol",v:"feeds ladder",c:"N:1"},
+ {f:"Conversation Thread",t:"Theme",v:"crystallises into",c:"N:1"},
+ /* family */
+ {f:"FamilyLink",t:"Member",v:"links",c:"N:1"},
+ {f:"FamilyLink",t:"Household",v:"into",c:"N:1"},
+ {f:"FamilyLink",t:"ConsentGrant",v:"carries",c:"1:N"},
+ {f:"Household",t:"AttentionItem",v:"surfaces",c:"1:N"},
+ {f:"AttentionItem",t:"Member",v:"about",c:"N:1"},
+ {f:"AttentionItem",t:"BiometricAlert",v:"escalated from",c:"1:1"},
+ {f:"AttentionItem",t:"HouseholdTask",v:"resolves via",c:"1:N"},
+ {f:"AttentionItem",t:"FamilyInsight",v:"resolves via",c:"1:N"},
+ {f:"HouseholdTask",t:"Member",v:"assigned to",c:"N:1"},
+ {f:"ConsentGrant",t:"Member",v:"governs read of",c:"N:N"},
+ {f:"CareTeam",t:"ProviderNetwork",v:"includes",c:"N:N"},
+ {f:"CareTeam",t:"Member",v:"includes",c:"N:N"},
+ {f:"CaregiverLoadSignal",t:"Member",v:"detected on",c:"1:1"},
+ {f:"CaregiverLoadSignal",t:"Care Plan",v:"triggers",c:"1:1"},
+ {f:"CaregiverLoadSignal",t:"Notification",v:"surfaces as a nudge",c:"1:1"},
+ {f:"FamilyInsight",t:"Biomarker",v:"reasons across",c:"N:N"},
+ {f:"FamilyInsight",t:"ClinicalIntelligence",v:"via",c:"N:1"},
+ {f:"FamilyInsight",t:"Medication",v:"checks",c:"N:N"},
+ {f:"FamilyTrend",t:"Household",v:"weakest link of",c:"N:1"},
+ {f:"Coverage",t:"Member",v:"covers",c:"1:N"},
+ /* economy / clinical / comms */
+ {f:"Medication",t:"Timeline Event",v:"appears as",c:"1:N"},
+ {f:"Medication",t:"Digital Twin",v:"shifts",c:"N:1"},
+ {f:"Medication",t:"Insight",v:"feeds adherence",c:"N:1"},
+ {f:"Subscription",t:"Care Credit",v:"tier carries",c:"1:N"},
+ {f:"Member",t:"Challenge",v:"joins",c:"N:N"},
+ {f:"Challenge",t:"FitCoin",v:"set drops",c:"1:N"},
+ {f:"BiometricAlert",t:"MeasuredValue",v:"raised on",c:"N:1"},
+ {f:"BiometricAlert",t:"Care Plan",v:"routes to",c:"N:1"},
+ {f:"BiometricAlert",t:"CareProviderInterface",v:"escalates to",c:"N:1"},
+ {f:"ProviderNetwork",t:"Care Plan",v:"executes",c:"1:N"},
+ {f:"Notification",t:"Care Team Agent",v:"provenance",c:"N:1"},
+ {f:"Care Team Agent",t:"Insight",v:"surfaces",c:"1:N"}
+];
+
+/* relationships referenced but not yet modelled (shown in the drawer as gaps) */
+const GAPS = {
+ Symptom:[{v:"escalation route to",t:"Care Team Agent"}],
+ "Digital Twin":[{v:"spatial-vs-temporal reconciliation",t:"(open)"},{v:"should reflect",t:"Symptom"}],
+ "PureScore Pillar":[{v:"status-tier naming lock",t:"(open)"}],
+ Protocol:[{v:"generation engine owner + data path",t:"(unbuilt)"}],
+ ConsentGrant:[{v:"member disagreement",t:"ConflictResolution"}],
+ FamilyInsight:[{v:"family trajectory",t:"Digital Twin"}],
+ Coverage:[{v:"in-network booking",t:"ProviderNetwork"}],
+ Member:[{v:"owns",t:"all objects"}]
+};
+
+/* OOUX grooming tiers: member-facing objects render in the graph by default;
+   "system" = backend / engine machinery (laid out but hidden until the backend toggle);
+   "attribute" / "deferred" = cards + drawer only. See the grooming rule note near the top. */
+const MEMBERFACING = new Set(["new","reframed","existing","foldin"]);
+const GRAPH = OBJ.filter(o=>MEMBERFACING.has(o.status)||o.status==="system");
+const inGraph = new Set(GRAPH.map(o=>o.n));
+let showBackend=false;
+
+/* ---------------- CROSS-FEATURE IMPACT ---------------- */
+const IMPACT = [
+ {s:"My Health",v:"The score-led home; owns the centralised Biomarker + Timeline + KnowledgeLevel that every feature reads; embeds PureScore + the Twin as one experience",d:"the unified store + 'one biomarker, one value everywhere' guarantee",b:"a biomarker reads differently across surfaces (trust collapses)",c:"breaks"},
+ {s:"PureScore",v:"The present read; biomarkers + variables (not pillars) surface; the slow outcome shown as a trend",d:"the Moniac substrate; locked PureScore decisions; confidence banding",b:"the score moves on noise, or is shown as the immediate reward",c:"breaks"},
+ {s:"Digital Twin",v:"Shares the Moniac engine with PureScore (one model → present score + future projection); the anatomical / educational layer",d:"the reservoir-cascade substrate; cohort calibration (aspiration)",b:"the Twin and the score tell different stories from the same data",c:"flag"},
+ {s:"Goals",v:"PersonalGoal → Protocol → Action Packs → Daily Action; Adherence feeds the Daily Summary read; reads the slow proof off the Trajectory Projection",d:"the Protocol generation engine (unbuilt, shared with Nutrition)",b:"the protocol engine has no owner / data path before build",c:"flag"},
+ {s:"Nutrition & Fitness",v:"One engine, two front doors: shared PersonalGoal + Log + Streak; FoodItem + WorkoutSession concrete logs; sporadic FitCoins; Patterns card",d:"regional Gulf-cuisine coverage; the shared logging abstraction",b:"the two lanes drift into two unconnected features (no shared record beneath)",c:"flag"},
+ {s:"Family",v:"Re-reads My Health objects through ConsentGrant; AttentionItem composes alerts + tasks + discoveries; FamilyInsight reasons across members via MASH",d:"the linked-profile data model + per-pair consent engine",b:"a member's data is read without their ConsentGrant",c:"breaks"},
+ {s:"Daily Summary / Homescreen",v:"The shared acknowledgement + immediate-feedback surface every feature plugs into; the loop's reflection point; agent voice is the anchor",d:"the module registry (7 slots / feature); a wearable baseline",b:"it becomes a dead-end dashboard with no return loop, or features fight for the hero",c:"flag"},
+ {s:"Care Plans",v:"Clinician-prescribed, identity-shift, top priority; sets ClinicalGoals + biomarker targets; adherence feeds the Twin; earns credit toward the personal goal",d:"care-plan data + the override-but-serves model",b:"clinical overrides silently, with no visible link to the personal goal",c:"breaks"},
+ {s:"Wearables",v:"Connected Device + WearableSync stream high-frequency MeasuredValues into the Biomarker Engine and Timeline; auto-fill the movement lane",d:"guided connection + per-day source attribution",b:"source ambiguity unresolved, or stale data trusted as current",c:"breaks"},
+ {s:"AI Agent / MASH",v:"ClinicalIntelligence is the engine behind the surfaces; the Pura Agent narrates across features and accepts conversational logs; RewardFunction ranks actions",d:"one unified data service (not per-feature queries)",b:"the agent's answers diverge from the surfaces",c:""},
+ {s:"Safety / Signal Engine",v:"A safety-critical MeasuredValue raises a BiometricAlert that routes to Care Plan escalation or a care-provider reach-out",d:"the clinical-flag taxonomy on Biomarker; an escalation path",b:"a red value renders as a calm card with no escalation",c:"breaks"},
+ {s:"Engagement & Economy",v:"FitCoin (set + sporadic), Streak, Challenge, Care Credit, Subscription; the immediate reinforcement layer the slow score cannot give",d:"the ethical guardrail on variable-ratio rewards",b:"rewards drive over-logging or manufacture streak anxiety",c:"flag"}
+];
+
+/* ---------------- PROVENANCE (per-brief contribution) ---------------- */
+const PROV = [
+ {cls:"brief",tag:"#6366F1",tagL:"MY HEALTH",h:"My Health brief · catalogue v1 seed",items:[
+   "Built the data + scoring + narrative + trust spine from scratch: Biomarker, MeasuredValue, Source, ReferenceRange, Timeline, KnowledgeLevel, EnhancementAction. (Its 'Plan' object was a duplicate of Protocol — merged; StoryThread re-tiered as a pattern.)",
+   "Reframed Biomarker, PureScore, HealthAge, Digital Twin, Insight, Member; reconciled 7 objects from the old OOUX (FamilyEcosystem, Medication, ActionPack, MASH, ProviderNetwork, BiometricAlert, CarePlanPhase).",
+   "Set the hard dependency: one biomarker resolves to one value everywhere."]},
+ {cls:"engine-c",tag:"#7C3AED",tagL:"SCORING ENGINE",h:"Moniac fold-ins (8-10 June meetings)",items:[
+   "Added the causal substrate: Reservoir, Knob, OutcomeProjection, ValueOfInformation, RewardFunction.",
+   "Re-scoped PureScore as a weighted aggregate over the substrate; revived ClinicalScore (clinician-facing risk, layered onto PureScore).",
+   "Pillars moved off the UI (backend only); biomarkers centralised in My Health; EMR auto-fetch; Confidence became a banded gate."]},
+ {cls:"brief",tag:"#EA580C",tagL:"NUTRITION",h:"Nutrition & Fitness brief · v2.1-2.3",items:[
+   "One engine, two front doors: added WorkoutSession, Programme, Reminder, Patterns card, FoodItem; extended PersonalGoal, Log, Streak (cadence), Protocol.",
+   "Promoted Daily Summary to a shared, cross-feature surface (v2.3).",
+   "Corrected the reinforcement layer (v2.2): PureScore = the slow outcome; sporadic FitCoins added as the immediate reward."]},
+ {cls:"brief",tag:"#059669",tagL:"GOALS",h:"Goals + protocol journey · v2.4",items:[
+   "Renamed AdaptivePlan → Protocol (composed of Action Packs), LoggingAct → Log, Memory Anchor → Theme.",
+   "Refined Action Pack as the outcome-shaped reusable building block; the daily read modelled as a visualisation of Adherence (no new object).",
+   "Extended PersonalGoal with horizon, theme, success markers + sub-goals; new goal / plan / loop edges."]},
+ {cls:"brief",tag:"#DB2777",tagL:"FAMILY",h:"Family brief · (pending lock)",items:[
+   "Built the family object model: Household, FamilyLink, ConsentGrant, AttentionItem, HouseholdTask, CareTeam, CaregiverLoadSignal, FamilyInsight.",
+   "AttentionItem is the family analogue of the Next Best Action; ConsentGrant modelled as an object (authored, reciprocal, revocable per pair).",
+   "Scope expansion: pulled Insurance / Coverage back in (Wave 3); the catalogue is now cross-Pura, not My Health only."]},
+ {cls:"gap",tag:"#DC2626",tagL:"OPEN GAPS",h:"Cross-feature gaps for later beats",items:[
+   "Digital Twin spatial-vs-temporal reconciliation (8 June temporal lock vs 11 June Luminous Anatomy).",
+   "The Protocol generation engine: no owner / data path yet (shared Goals + Nutrition dependency).",
+   "ConsentGrant ↔ ConflictResolution (member disagreement has no resolution object).",
+   "PureScore Pillar status-tier naming lock; Symptom → care-team escalation route."]}
+];
+
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-");
+
+/* ---------------- LAYOUT (force-directed, deterministic) ---------------- */
+const W=1640,H=1120;
+const pos={};
+function layout(){
+  const ns=GRAPH, n=ns.length, cx=W/2, cy=H/2, R=470;
+  ns.forEach((o,i)=>{const a=2*Math.PI*i/n; pos[o.n]={x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)};});
+  const k=128, iters=560;
+  const elist=EDGES.filter(e=>!e.self&&inGraph.has(e.f)&&inGraph.has(e.t));
+  for(let it=0;it<iters;it++){
+    const t=1-it/iters;
+    const fx={},fy={}; ns.forEach(o=>{fx[o.n]=0;fy[o.n]=0;});
+    for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){
+      const a=ns[i].n,b=ns[j].n; let dx=pos[a].x-pos[b].x,dy=pos[a].y-pos[b].y;
+      let d=Math.sqrt(dx*dx+dy*dy)||.01; const rep=k*k/d; const ux=dx/d,uy=dy/d;
+      fx[a]+=ux*rep;fy[a]+=uy*rep;fx[b]-=ux*rep;fy[b]-=uy*rep;
+    }
+    elist.forEach(e=>{
+      let dx=pos[e.f].x-pos[e.t].x,dy=pos[e.f].y-pos[e.t].y; let d=Math.sqrt(dx*dx+dy*dy)||.01;
+      const att=d*d/k; const ux=dx/d,uy=dy/d;
+      fx[e.f]-=ux*att;fy[e.f]-=uy*att;fx[e.t]+=ux*att;fy[e.t]+=uy*att;
+    });
+    ns.forEach(o=>{ fx[o.n]+=(cx-pos[o.n].x)*0.02; fy[o.n]+=(cy-pos[o.n].y)*0.02; });
+    ns.forEach(o=>{
+      let dsp=Math.sqrt(fx[o.n]*fx[o.n]+fy[o.n]*fy[o.n])||.01; const md=Math.min(dsp,50*t+2);
+      pos[o.n].x+=fx[o.n]/dsp*md; pos[o.n].y+=fy[o.n]/dsp*md;
+      pos[o.n].x=Math.max(86,Math.min(W-86,pos[o.n].x)); pos[o.n].y=Math.max(50,Math.min(H-50,pos[o.n].y));
+    });
+  }
+}
+const NODE_W={},NODE_H=34;
+function nodeW(o){return Math.max(74, o.n.length*7.4+24);}
+
+/* ---------------- RENDER GRAPH ---------------- */
+function renderGraph(){
+  layout();
+  GRAPH.forEach(o=>NODE_W[o.n]=nodeW(o));
+  const eg=document.getElementById("edges"), ng=document.getElementById("nodes");
+  let eh="";
+  EDGES.forEach((e,i)=>{
+    if(e.self) return;
+    if(!inGraph.has(e.f)||!inGraph.has(e.t)) return;
+    eh+=`<g class="edge" id="e${i}" data-f="${e.f}" data-t="${e.t}">
+      <path id="ep${i}" marker-end="url(#arrow)"></path>
+      <rect class="ebg" id="ebg${i}" rx="3" height="14"></rect>
+      <text id="ec${i}" text-anchor="middle"><tspan class="card">${e.c}</tspan><tspan class="verb" id="ev${i}"> · ${e.v}</tspan></text>
+    </g>`;
+  });
+  eg.innerHTML=eh;
+  let nh="";
+  GRAPH.forEach(o=>{
+    const w=NODE_W[o.n], x=pos[o.n].x, y=pos[o.n].y;
+    nh+=`<g class="gnode${o.status==='system'?' system':''}" id="n-${slug(o.n)}" data-name="${o.n}" data-layer="${o.layer}" transform="translate(${x},${y})">
+      <rect class="box" x="${-w/2}" y="${-NODE_H/2}" width="${w}" height="${NODE_H}" rx="9" style="fill:${LAYER_FILL[o.layer]}"></rect>
+      <circle class="stat" cx="${w/2-9}" cy="${-NODE_H/2+9}" r="4.5" fill="${STATUS_VAR[o.status]}"></circle>
+      <text class="nm" x="0" y="1">${o.n}</text>
+    </g>`;
+  });
+  ng.innerHTML=nh;
+  redrawEdges();
+  const mf=new Set(OBJ.filter(o=>MEMBERFACING.has(o.status)).map(o=>o.n));
+  document.getElementById("m-edges").textContent=EDGES.filter(e=>!e.self&&mf.has(e.f)&&mf.has(e.t)).length;
+  document.getElementById("m-objs").textContent=mf.size;
+  document.getElementById("m-feats").textContent=Object.keys(FEAT).length;
+  const sysN=OBJ.filter(o=>o.status==="system").length, attrN=OBJ.filter(o=>o.status==="attribute").length, patN=OBJ.filter(o=>o.status==="pattern").length;
+  const exEl=document.getElementById("m-extra"); if(exEl) exEl.innerHTML=`+ <b>${sysN}</b> backend · <b>${attrN}</b> attributes · <b>${patN}</b> pattern (hidden)`;
+  GRAPH.forEach(o=>{
+    const el=document.getElementById("n-"+slug(o.n));
+    el.addEventListener("pointerdown",onNodeDown);
+  });
+}
+function edgeEndpoints(e){
+  const A=pos[e.f],B=pos[e.t]; const wA=NODE_W[e.f]/2+4,wB=NODE_W[e.t]/2+6,hh=NODE_H/2+4;
+  let dx=B.x-A.x,dy=B.y-A.y;
+  const sA=Math.min(Math.abs(dx)>.01?wA/Math.abs(dx):1e9, Math.abs(dy)>.01?hh/Math.abs(dy):1e9);
+  const sB=Math.min(Math.abs(dx)>.01?wB/Math.abs(dx):1e9, Math.abs(dy)>.01?hh/Math.abs(dy):1e9);
+  return {x1:A.x+dx*sA,y1:A.y+dy*sA,x2:B.x-dx*sB,y2:B.y-dy*sB};
+}
+function redrawEdges(){
+  EDGES.forEach((e,i)=>{
+    if(e.self||!inGraph.has(e.f)||!inGraph.has(e.t))return;
+    const p=edgeEndpoints(e);
+    const mx=(p.x1+p.x2)/2,my=(p.y1+p.y2)/2;
+    const path=document.getElementById("ep"+i); if(!path)return;
+    path.setAttribute("d",`M${p.x1},${p.y1} L${p.x2},${p.y2}`);
+    const tx=document.getElementById("ec"+i); tx.setAttribute("x",mx); tx.setAttribute("y",my+3.5);
+    const bg=document.getElementById("ebg"+i);
+    const labLen=document.getElementById("e"+i).classList.contains("hot")?(e.c.length+e.v.length+3)*6+8:(e.c.length*7+10);
+    bg.setAttribute("x",mx-labLen/2); bg.setAttribute("y",my-7); bg.setAttribute("width",labLen);
+  });
+}
+
+/* ---------------- PAN / ZOOM ---------------- */
+let scale=1,tx=0,ty=0;
+const vp=()=>document.getElementById("viewport");
+function applyVP(){vp().setAttribute("transform",`translate(${tx},${ty}) scale(${scale})`);}
+function zoomBy(f){ const svg=document.getElementById("svg"); const r=svg.getBoundingClientRect();
+  const cxp=r.width/2,cyp=r.height/2; zoomAt(cxp,cyp,f); }
+function zoomAt(px,py,f){
+  const gx=(px - tx/1)/scale, gy=(py - ty/1)/scale;
+  let ns=Math.max(.35,Math.min(2.8,scale*f));
+  tx = px - gx*ns; ty = py - gy*ns; scale=ns; applyVP();
+}
+function resetView(){scale=1;tx=0;ty=0;applyVP();setFocus(null);}
+(function wirePanZoom(){
+  const svg=document.getElementById("svg");
+  let panning=false,sx,sy,stx,sty,moved=false;
+  svg.addEventListener("pointerdown",ev=>{
+    if(ev.target.closest(".gnode"))return;
+    panning=true;moved=false;sx=ev.clientX;sy=ev.clientY;stx=tx;sty=ty;svg.classList.add("panning");svg.setPointerCapture(ev.pointerId);
+  });
+  svg.addEventListener("pointermove",ev=>{
+    if(!panning)return; const dx=ev.clientX-sx,dy=ev.clientY-sy; if(Math.abs(dx)+Math.abs(dy)>3)moved=true;
+    tx=stx+dx;ty=sty+dy;applyVP();
+  });
+  svg.addEventListener("pointerup",ev=>{
+    if(panning){panning=false;svg.classList.remove("panning"); if(!moved && !ev.target.closest(".gnode")) setFocus(null);}
+  });
+  svg.addEventListener("wheel",ev=>{ev.preventDefault(); const r=svg.getBoundingClientRect();
+    zoomAt(ev.clientX-r.left,ev.clientY-r.top, ev.deltaY<0?1.12:0.9);},{passive:false});
+})();
+
+/* ---------------- NODE DRAG + CLICK ---------------- */
+let drag=null;
+function clientToGraph(ev){
+  const svg=document.getElementById("svg"); const r=svg.getBoundingClientRect();
+  const sc=Math.min(r.width/W,r.height/H); const offX=(r.width-W*sc)/2, offY=(r.height-H*sc)/2;
+  const vx=(ev.clientX-r.left-offX)/sc, vy=(ev.clientY-r.top-offY)/sc;
+  return {x:(vx-tx)/scale,y:(vy-ty)/scale};
+}
+function onNodeDown(ev){
+  ev.stopPropagation();
+  const g=ev.currentTarget; const name=g.dataset.name; const start=clientToGraph(ev);
+  drag={name,g,ox:start.x-pos[name].x,oy:start.y-pos[name].y,moved:false,sx:ev.clientX,sy:ev.clientY};
+  g.setPointerCapture(ev.pointerId);
+  g.addEventListener("pointermove",onNodeMove);
+  g.addEventListener("pointerup",onNodeUp);
+}
+function onNodeMove(ev){
+  if(!drag)return; if(Math.abs(ev.clientX-drag.sx)+Math.abs(ev.clientY-drag.sy)>3)drag.moved=true;
+  const p=clientToGraph(ev); pos[drag.name].x=p.x-drag.ox; pos[drag.name].y=p.y-drag.oy;
+  drag.g.setAttribute("transform",`translate(${pos[drag.name].x},${pos[drag.name].y})`);
+  redrawEdges();
+}
+function onNodeUp(ev){
+  if(!drag)return; const g=drag.g; g.removeEventListener("pointermove",onNodeMove); g.removeEventListener("pointerup",onNodeUp);
+  if(!drag.moved){ setFocus(drag.name); }
+  drag=null;
+}
+
+/* ---------------- FOCUS + DRAWER ---------------- */
+let focus=null;
+function setFocus(name){
+  focus=name;
+  const nodes=document.querySelectorAll(".gnode"), edges=document.querySelectorAll(".edge");
+  if(!name){
+    nodes.forEach(n=>n.classList.remove("dim","sel"));
+    edges.forEach(e=>e.classList.remove("dim","hot"));
+    EDGES.forEach((e,i)=>{const path=document.getElementById("ep"+i); if(path)path.setAttribute("marker-end","url(#arrow)");});
+    closeDrawer(); redrawEdges(); applyFilter(); return;
+  }
+  const neigh=new Set([name]);
+  EDGES.forEach(e=>{if(e.f===name)neigh.add(e.t); if(e.t===name)neigh.add(e.f);});
+  nodes.forEach(n=>{const nm=n.dataset.name; n.classList.toggle("dim",!neigh.has(nm)); n.classList.toggle("sel",nm===name);});
+  EDGES.forEach((e,i)=>{
+    if(e.self)return; const el=document.getElementById("e"+i); if(!el)return;
+    const on=e.f===name||e.t===name; el.classList.toggle("hot",on); el.classList.toggle("dim",!on);
+    const path=document.getElementById("ep"+i); if(path)path.setAttribute("marker-end",on?"url(#arrowhot)":"url(#arrow)");
+  });
+  redrawEdges();
+  openDrawer(name);
+}
+function relRowsFor(name){
+  const out=[];
+  EDGES.forEach(e=>{ if(e.self){ if(e.f===name) out.push({dir:"out",v:e.v,t:e.f,c:e.c,nolink:true}); return;}
+    if(e.f===name) out.push({dir:"out",v:e.v,t:e.t,c:e.c});
+    else if(e.t===name) out.push({dir:"in",v:e.v,t:e.f,c:e.c});
+  });
+  (GAPS[name]||[]).forEach(g=>out.push({dir:"out",v:g.v,t:g.t,c:"?",nolink:true,gap:true}));
+  return out;
+}
+function openDrawer(name){
+  const o=objByName[name]; const dr=document.getElementById("drawer");
+  document.getElementById("d-name").textContent=o.n;
+  const badges=[`<span class="statusb" style="background:${STATUS_VAR[o.status]}">${STATUS_LABEL[o.status]}</span>`];
+  (o.flags||[]).forEach(f=>badges.push(`<span class="fl ${f}">${f.toUpperCase()}</span>`));
+  if(o.code && o.code!=="new" && o.code!=="attr")badges.push(`<span class="chip" style="background:#EEF2F7;color:#475569;border-color:#E2E8F0">ref ${o.code}</span>`);
+  document.getElementById("d-badges").innerHTML=badges.join("");
+  document.getElementById("d-feats").innerHTML=(o.feat||[]).map(f=>`<span class="featpill" style="background:${FEATC[f]}">${FEAT[f]}</span>`).join("");
+  document.getElementById("d-def").textContent=o.def;
+  let html="";
+  const hasA=(o.core.length+o.meta.length)>0;
+  if(hasA){
+    html+=`<div class="seg"><div class="seg-h"><span class="sw swc"></span>Attributes</div><div class="pills">`;
+    html+=o.core.map(c=>`<span class="pill core">${c}</span>`).join("");
+    html+=o.meta.map(m=>`<span class="pill meta">${m}</span>`).join("");
+    html+=`</div></div>`;
+  }
+  html+=`<div class="seg"><div class="seg-h"><span class="sw swt"></span>CTAs</div><div class="pills">`;
+  html+=o.cta.length?o.cta.map(c=>`<span class="pill cta">${c}</span>`).join(""):`<span class="pill todo">no member CTAs (system object)</span>`;
+  html+=`</div></div>`;
+  const rels=relRowsFor(name);
+  html+=`<div class="seg"><div class="seg-h"><span class="sw swr"></span>Relationships (${rels.length})</div><div class="rel-list">`;
+  html+=rels.map(r=>{
+    const sysTgt = objByName[r.t] && objByName[r.t].status==="system";
+    const linkable=!r.nolink && inGraph.has(r.t) && !sysTgt;
+    const cls="rel-row"+(linkable?"":" nolink");
+    const onclick=linkable?`onclick="setFocus('${r.t.replace(/'/g,"")}')"`:"";
+    const isIn=r.dir==="in";
+    const cardCls="card-b"+(isIn?" incoming":"");
+    const gapNote=r.gap?` <span style="color:#94A3B8">(not yet modelled)</span>`:(sysTgt?` <span style="color:#7C3AED">(backend)</span>`:"");
+    const inner=isIn
+      ? `<span class="tgt">${r.t}</span><span class="verb">${r.v}</span><span class="dir">→</span><span style="color:#94A3B8;font-weight:600">this</span>`
+      : `<span class="dir">this →</span><span class="verb">${r.v}</span><span class="tgt">${r.t}</span>`;
+    return `<div class="${cls}" ${onclick}><span class="${cardCls}">${r.c}</span>${inner}${gapNote}</div>`;
+  }).join("");
+  html+=`</div></div>`;
+  document.getElementById("d-body").innerHTML=html;
+  dr.classList.add("open");
+}
+function closeDrawer(){document.getElementById("drawer").classList.remove("open");}
+
+/* ---------------- FILTERS (layer + feature) ---------------- */
+let activeLayers=new Set(GRAPH.map(o=>o.layer));
+let activeFeats=new Set(Object.keys(FEAT));
+function buildLayerChips(){
+  const host=document.getElementById("layerChips"); host.innerHTML="";
+  [...new Set(GRAPH.map(o=>o.layer))].forEach(k=>{
+    const c=document.createElement("span"); c.className="lchip"; c.dataset.k=k;
+    c.innerHTML=`<span class="sw" style="background:${LAYER_FILL[k]};border:1px solid #cbd5e1"></span>${L[k]}`;
+    c.onclick=()=>{ if(activeLayers.has(k)){activeLayers.delete(k);c.classList.add("off");}else{activeLayers.add(k);c.classList.remove("off");} applyFilter(); };
+    host.appendChild(c);
+  });
+}
+function buildFeatChips(){
+  const host=document.getElementById("featChips"); host.innerHTML="";
+  FEAT_ORDER.forEach(k=>{
+    const c=document.createElement("span"); c.className="lchip"; c.dataset.k=k;
+    c.innerHTML=`<span class="sw" style="background:${FEATC[k]}"></span>${FEAT[k]}`;
+    c.onclick=()=>{ if(activeFeats.has(k)){activeFeats.delete(k);c.classList.add("off");}else{activeFeats.add(k);c.classList.remove("off");} applyFilter(); };
+    host.appendChild(c);
+  });
+}
+function nodeVisible(o){ if(o.status==="system" && !showBackend) return false; return activeLayers.has(o.layer) && (o.feat||[]).some(f=>activeFeats.has(f)); }
+function toggleBackend(){ showBackend=!showBackend; const b=document.getElementById("backendBtn"); b.classList.toggle("on",showBackend); b.textContent=showBackend?"Hide backend layer":"Show backend layer"; applyFilter(); }
+function applyFilter(){
+  document.querySelectorAll(".gnode").forEach(n=>{
+    const o=objByName[n.dataset.name];
+    n.classList.toggle("gone", !nodeVisible(o));
+  });
+  EDGES.forEach((e,i)=>{ if(e.self)return; const el=document.getElementById("e"+i); if(!el)return;
+    const show=inGraph.has(e.f)&&inGraph.has(e.t)&&nodeVisible(objByName[e.f])&&nodeVisible(objByName[e.t]);
+    el.classList.toggle("gone",!show);
+  });
+}
+function allLayers(on){ activeLayers = on? new Set(GRAPH.map(o=>o.layer)) : new Set();
+  document.querySelectorAll("#layerChips .lchip").forEach(c=>c.classList.toggle("off",!on)); applyFilter(); }
+function allFeats(on){ activeFeats = on? new Set(Object.keys(FEAT)) : new Set();
+  document.querySelectorAll("#featChips .lchip").forEach(c=>c.classList.toggle("off",!on)); applyFilter(); }
+
+/* ---------------- CARDS VIEW ---------------- */
+function card(o){
+  const flags=(o.flags||[]).map(f=>`<span class="fl ${f}">${f.toUpperCase()}</span>`).join("");
+  const code=(o.code&&o.code!=="new"&&o.code!=="attr")?`<span class="ocode">${o.code}</span>`:"";
+  let a=""; if(o.core.length+o.meta.length){
+    a=`<div class="seg"><div class="seg-h"><span class="sw swc"></span>Attributes</div><div class="pills">`+
+      o.core.map(c=>`<span class="pill core">${c}</span>`).join("")+o.meta.map(m=>`<span class="pill meta">${m}</span>`).join("")+`</div></div>`;
+  }
+  let c=`<div class="seg"><div class="seg-h"><span class="sw swt"></span>CTAs</div><div class="pills">`+
+    (o.cta.length?o.cta.map(x=>`<span class="pill cta">${x}</span>`).join(""):`<span class="pill todo">system object</span>`)+`</div></div>`;
+  const feats=(o.feat||[]).map(f=>`<span class="featpill" style="background:${FEATC[f]}">${FEAT[f]}</span>`).join("");
+  return `<div class="objc ${o.status}">
+    <div class="ohead"><div class="ln"><span class="oname">${o.n}</span><div class="flags">${flags}${code}</div></div><div class="odef">${o.def}</div></div>
+    <div class="obody">${a}${c}</div>
+    <div class="ofoot"><div class="ofeats">${feats}</div><span class="statusb" style="background:${STATUS_VAR[o.status]}">${STATUS_LABEL[o.status]}</span></div></div>`;
+}
+function renderCards(){
+  let html="";
+  LAYER_ORDER.forEach(layer=>{
+    const items=OBJ.filter(o=>o.layer===layer); if(!items.length)return;
+    html+=`<div class="layer-h"><span class="lh-name">${L[layer]}</span><span class="lh-rule"></span><span class="lh-n">${items.length}</span></div><div class="grid">${items.map(card).join("")}</div>`;
+  });
+  document.getElementById("grid").innerHTML=html;
+}
+
+function renderImpact(){
+  document.getElementById("impact").innerHTML=IMPACT.map(r=>{
+    const cls=r.c==="breaks"?"breaks":(r.c==="flag"?"flag":"");
+    return `<tr class="${cls}"><td><b>${r.s}</b></td><td>${r.v}</td><td>${r.d}</td><td>${r.b}</td></tr>`;
+  }).join("");
+}
+function renderProvenance(){
+  document.getElementById("provenance").innerHTML=PROV.map(p=>{
+    return `<div class="rc ${p.cls}"><h3><span class="tag" style="background:${p.tag}">${p.tagL}</span>${p.h}</h3><ul>${p.items.map(i=>`<li>${i}</li>`).join("")}</ul></div>`;
+  }).join("");
+}
+
+/* ---------------- VIEW TOGGLE ---------------- */
+function setView(v){
+  document.getElementById("mapView").classList.toggle("hide",v!=="map");
+  document.getElementById("cardsView").classList.toggle("hide",v!=="cards");
+  document.getElementById("tab-map").classList.toggle("on",v==="map");
+  document.getElementById("tab-cards").classList.toggle("on",v==="cards");
+  document.getElementById("viewhint").textContent = v==="map"
+    ? "Click an object to focus it and open its detail · drag to pan · scroll to zoom · filter by layer or feature"
+    : "The full object inventory, grouped by layer; each card is tagged with the features that share it";
+}
+
+/* ---------------- INIT ---------------- */
+renderGraph(); buildLayerChips(); buildFeatChips(); renderCards(); renderImpact(); renderProvenance(); applyFilter(); applyVP();
+</script>
+</body>
+</html>

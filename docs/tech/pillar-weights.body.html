@@ -25,6 +25,8 @@ controls here change <b>marker applicability &amp; reference ranges</b>, not the
   <button class="pw-chip on" data-t="markers" type="button">markers</button>
   <button class="pw-chip on" data-t="res" type="button">reservoirs</button>
   <button class="pw-chip on" data-t="sexage" type="button">sex/age badges</button>
+  <span class="pw-grow"></span>
+  <button class="pw-tab" id="pw-export" type="button" title="Download the canonical pillars, reservoirs, markers, wearable metrics &amp; engine constants — each with weights — as a multi-tab Excel (.xls) file">&#11015; Export to Excel</button>
 </div>
 <div class="pw-filter" id="pw-filter">
   <span class="pw-lab">Filter</span>
@@ -86,7 +88,167 @@ controls here change <b>marker applicability &amp; reference ranges</b>, not the
 .pw-rv{display:inline-block;font-size:10px;color:#7fbfe6;background:#0c1c2b;border:1px solid #21384d;border-radius:5px;padding:1px 5px;margin:1px;cursor:pointer}
 </style>
 <script src="assets/weights-data.js"></script>
+<script src="assets/export-data.js"></script>
 <script>
+/* ---- Export reference data → styled multi-tab Excel (.xls, SpreadsheetML 2003) ----
+   McKinsey-style workbook (navy headers · teal accent · zebra · traffic-light bands ·
+   magnitude-tinted weights · cover/contents · title blocks · source footers · frozen panes)
+   built from window.PURESCORE_EXPORT (generated from data/*.json). file://-safe (Blob). */
+(function(){
+  var E = window.PURESCORE_EXPORT;
+  var btn = document.getElementById("pw-export");
+  if(!btn) return;
+  if(!E){ btn.disabled = true; btn.title = "export data not loaded"; return; }
+  function xe(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+  /* ---- style registry ---- */
+  var FN='ss:FontName="Calibri"', BRD='<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F1"/></Borders>';
+  var STYLES = '<Styles>'
+   + '<Style ss:ID="Default" ss:Name="Normal"><Font '+FN+' ss:Size="9.5" ss:Color="#1A2330"/><Alignment ss:Vertical="Top"/></Style>'
+   + '<Style ss:ID="t"><Font '+FN+' ss:Size="15" ss:Bold="1" ss:Color="#051C2C"/><Alignment ss:Vertical="Center"/></Style>'
+   + '<Style ss:ID="st"><Font '+FN+' ss:Size="9" ss:Italic="1" ss:Color="#5B6B7F"/><Alignment ss:Vertical="Center"/></Style>'
+   + '<Style ss:ID="ac"><Interior ss:Color="#36C2B4" ss:Pattern="Solid"/></Style>'
+   + '<Style ss:ID="h"><Font '+FN+' ss:Size="9.5" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#051C2C" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#36C2B4"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#143442"/></Borders></Style>'
+   + '<Style ss:ID="hl" ss:Parent="h"><Alignment ss:Horizontal="Left" ss:Vertical="Center" ss:WrapText="1"/></Style>'
+   + '<Style ss:ID="c"><Alignment ss:Horizontal="Left" ss:Vertical="Top" ss:WrapText="1"/><Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>'+BRD+'</Style>'
+   + '<Style ss:ID="cA" ss:Parent="c"><Interior ss:Color="#F4F7FB" ss:Pattern="Solid"/></Style>'
+   + '<Style ss:ID="k"><Font '+FN+' ss:Size="9.5" ss:Bold="1" ss:Color="#051C2C"/><Alignment ss:Horizontal="Left" ss:Vertical="Center"/><Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>'+BRD+'</Style>'
+   + '<Style ss:ID="kA" ss:Parent="k"><Interior ss:Color="#F4F7FB" ss:Pattern="Solid"/></Style>'
+   + '<Style ss:ID="n"><Alignment ss:Horizontal="Right" ss:Vertical="Top"/><Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>'+BRD+'</Style>'
+   + '<Style ss:ID="nA" ss:Parent="n"><Interior ss:Color="#F4F7FB" ss:Pattern="Solid"/></Style>'
+   + '<Style ss:ID="wLo"><Font '+FN+' ss:Size="9.5" ss:Bold="1" ss:Color="#2251FF"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/><NumberFormat ss:Format="0.00"/><Interior ss:Color="#EAF2FD" ss:Pattern="Solid"/>'+BRD+'</Style>'
+   + '<Style ss:ID="wMd" ss:Parent="wLo"><Interior ss:Color="#CFE0FB" ss:Pattern="Solid"/></Style>'
+   + '<Style ss:ID="wHi" ss:Parent="wLo"><Interior ss:Color="#AFCDF7" ss:Pattern="Solid"/></Style>'
+   + '<Style ss:ID="wsOk"><Font '+FN+' ss:Size="9.5" ss:Bold="1" ss:Color="#1E7A45"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/><NumberFormat ss:Format="0.00"/><Interior ss:Color="#E8F6EE" ss:Pattern="Solid"/>'+BRD+'</Style>'
+   + '<Style ss:ID="wsBad"><Font '+FN+' ss:Size="9.5" ss:Bold="1" ss:Color="#B23146"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/><NumberFormat ss:Format="0.00"/><Interior ss:Color="#FBE0E4" ss:Pattern="Solid"/>'+BRD+'</Style>'
+   + '<Style ss:ID="bg"><Font '+FN+' ss:Size="9" ss:Color="#1E7A45"/><Alignment ss:Horizontal="Left" ss:Vertical="Top" ss:WrapText="1"/><Interior ss:Color="#E3F4E9" ss:Pattern="Solid"/>'+BRD+'</Style>'
+   + '<Style ss:ID="by"><Font '+FN+' ss:Size="9" ss:Color="#8A6D1A"/><Alignment ss:Horizontal="Left" ss:Vertical="Top" ss:WrapText="1"/><Interior ss:Color="#FBF1D8" ss:Pattern="Solid"/>'+BRD+'</Style>'
+   + '<Style ss:ID="br"><Font '+FN+' ss:Size="9" ss:Color="#B23146"/><Alignment ss:Horizontal="Left" ss:Vertical="Top" ss:WrapText="1"/><Interior ss:Color="#FBE0E4" ss:Pattern="Solid"/>'+BRD+'</Style>'
+   + '<Style ss:ID="syes"><Font '+FN+' ss:Size="9" ss:Bold="1" ss:Color="#B23146"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Interior ss:Color="#FBE0E4" ss:Pattern="Solid"/>'+BRD+'</Style>'
+   + '<Style ss:ID="sno"><Font '+FN+' ss:Size="9" ss:Color="#9AA6BD"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>'+BRD+'</Style>'
+   + '<Style ss:ID="ft"><Font '+FN+' ss:Size="8" ss:Italic="1" ss:Color="#5B6B7F"/><Alignment ss:Horizontal="Left" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#DCE3EC"/></Borders></Style>'
+   + '<Style ss:ID="cvT"><Font '+FN+' ss:Size="20" ss:Bold="1" ss:Color="#051C2C"/><Alignment ss:Vertical="Center"/></Style>'
+   + '<Style ss:ID="cvST"><Font '+FN+' ss:Size="10" ss:Italic="1" ss:Color="#5B6B7F"/><Alignment ss:Vertical="Center"/></Style>'
+   + '<Style ss:ID="cvBig"><Font '+FN+' ss:Size="13" ss:Bold="1" ss:Color="#2251FF"/><Alignment ss:Vertical="Center"/></Style>'
+   + '<Style ss:ID="cvSec"><Font '+FN+' ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#051C2C" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#36C2B4"/></Borders></Style>'
+   + '<Style ss:ID="cvK"><Font '+FN+' ss:Size="10" ss:Bold="1" ss:Color="#051C2C"/><Alignment ss:Vertical="Top"/></Style>'
+   + '<Style ss:ID="cvB"><Font '+FN+' ss:Size="10" ss:Color="#1A2330"/><Alignment ss:Vertical="Top" ss:WrapText="1"/></Style>'
+   + '</Styles>';
+
+  function C(val, style, merge){
+    var isN = (typeof val==="number" && isFinite(val));
+    var m = merge ? ' ss:MergeAcross="'+merge+'"' : '';
+    var d = (val==null||val==="") ? '' : '<Data ss:Type="'+(isN?"Number":"String")+'">'+(isN?val:xe(val))+'</Data>';
+    return '<Cell ss:StyleID="'+style+'"'+m+'>'+d+'</Cell>';
+  }
+  function wBucket(v){ v=Math.abs(+v||0); return v>=0.20?"wHi":(v>=0.10?"wMd":"wLo"); }
+  function styleFor(kind, alt, v){
+    switch(kind){
+      case "key":   return alt?"kA":"k";
+      case "num":   return alt?"nA":"n";
+      case "weight":return wBucket(v);
+      case "wsum":  return Math.abs((+v||0)-1)>0.005 ? "wsBad":"wsOk";
+      case "bandG": return "bg"; case "bandY": return "by"; case "bandR": return "br";
+      case "safety":return String(v).toLowerCase()==="yes" ? "syes":"sno";
+      default:      return alt?"cA":"c";
+    }
+  }
+  var FOOT = "Illustrative — re-verify before production (README §5.6). Generated from data/*.json (canonical). Calibration: expert-prior, not outcome-calibrated.";
+  function dataSheet(name, title, subtitle, cols, rows){
+    var n = cols.length, w = '<Worksheet ss:Name="'+xe(name)+'"><Table ss:DefaultRowHeight="14">';
+    w += cols.map(function(c){ return '<Column ss:Width="'+c.w+'"/>'; }).join("");
+    w += '<Row ss:Height="26"><Cell ss:StyleID="t" ss:MergeAcross="'+(n-1)+'"><Data ss:Type="String">'+xe(title)+'</Data></Cell></Row>';
+    w += '<Row ss:Height="15"><Cell ss:StyleID="st" ss:MergeAcross="'+(n-1)+'"><Data ss:Type="String">'+xe(subtitle)+'</Data></Cell></Row>';
+    w += '<Row ss:Height="4"><Cell ss:StyleID="ac" ss:MergeAcross="'+(n-1)+'"></Cell></Row>';
+    w += '<Row ss:Height="28">'+cols.map(function(c){
+        return '<Cell ss:StyleID="'+(c.hl?"hl":"h")+'"><Data ss:Type="String">'+xe(c.l)+'</Data></Cell>'; }).join("")+'</Row>';
+    rows.forEach(function(r, i){
+      var alt = (i%2===1);
+      w += '<Row>'+cols.map(function(c){ return C(r[c.k], styleFor(c.kind, alt, r[c.k])); }).join("")+'</Row>';
+    });
+    w += '<Row ss:Height="22"><Cell ss:StyleID="ft" ss:MergeAcross="'+(n-1)+'"><Data ss:Type="String">'+xe(FOOT)+'</Data></Cell></Row>';
+    w += '</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><DoNotDisplayGridlines/><FreezePanes/><FrozenNoSplit/><SplitHorizontal>4</SplitHorizontal><TopRowBottomPane>4</TopRowBottomPane><SplitVertical>1</SplitVertical><LeftColumnRightPane>1</LeftColumnRightPane><ActivePane>3</ActivePane></WorksheetOptions></Worksheet>';
+    return w;
+  }
+  function coverSheet(){
+    var c = E.meta.counts;
+    var w = '<Worksheet ss:Name="Read me"><Table ss:DefaultRowHeight="15"><Column ss:Width="150"/><Column ss:Width="640"/>';
+    function sec(t){ return '<Row ss:Height="20"><Cell ss:StyleID="cvSec" ss:MergeAcross="1"><Data ss:Type="String">'+xe(t)+'</Data></Cell></Row>'; }
+    function kv(k,v,st){ return '<Row><Cell ss:StyleID="cvK"><Data ss:Type="String">'+xe(k)+'</Data></Cell><Cell ss:StyleID="'+(st||"cvB")+'"><Data ss:Type="String">'+xe(v)+'</Data></Cell></Row>'; }
+    w += '<Row ss:Height="8"></Row>';
+    w += '<Row ss:Height="34"><Cell ss:StyleID="cvT" ss:MergeAcross="1"><Data ss:Type="String">PureScore — Canonical Reference &amp; Weights</Data></Cell></Row>';
+    w += '<Row ss:Height="18"><Cell ss:StyleID="cvST" ss:MergeAcross="1"><Data ss:Type="String">HikmaEngine · pillars · reservoirs · markers · wearable metrics · engine constants — each with weights</Data></Cell></Row>';
+    w += '<Row ss:Height="5"><Cell ss:StyleID="ac" ss:MergeAcross="1"></Cell></Row><Row ss:Height="8"></Row>';
+    w += '<Row ss:Height="22"><Cell ss:StyleID="cvBig" ss:MergeAcross="1"><Data ss:Type="String">'+c.pillars+' Pillars     ·     '+c.reservoirs+' Reservoirs     ·     '+c.markers+' Markers     ·     '+c.wearables+' Wearable metrics     ·     '+c.constants+' Constants</Data></Cell></Row>';
+    w += '<Row ss:Height="8"></Row>' + sec("Contents");
+    [["Pillars","The 12 scored pillars and their base weights Wₖ (Σ = 1.00)."],
+     ["Reservoirs","15 MONIAC stocks — polarity, inflows, the ρₖ contribution cap and κ cross-couplings."],
+     ["Markers","81 markers — green / amber / red bands and within-pillar weights."],
+     ["Wearables","19 wearable metrics — units, sampling and tolerances."],
+     ["Constants","Engine constants — γ, δ, ρₖ, φ, gates and caps."]].forEach(function(r){ w += kv(r[0], r[1]); });
+    w += '<Row ss:Height="8"></Row>' + sec("Legend");
+    w += kv("Weight types","Pillar base weight Wₖ · Marker within-pillar weight · Reservoir cap ρₖ + κ coupling · Wearable tolerance (±). Weight cells are tinted by magnitude.");
+    w += kv("Bands","Green — optimal / in-range","bg");
+    w += '<Row><Cell ss:StyleID="cvK"></Cell><Cell ss:StyleID="by"><Data ss:Type="String">Amber — watch / borderline</Data></Cell></Row>';
+    w += '<Row><Cell ss:StyleID="cvK"></Cell><Cell ss:StyleID="br"><Data ss:Type="String">Red — at-risk / out-of-range</Data></Cell></Row>';
+    w += kv("Marker wt-sum","Per-pillar within-pillar weights are shown raw (pre-normalisation); a value ≠ 1.00 is flagged red (e.g. INF = 1.06).");
+    w += kv("Polarity","asset = builds reserve (good) · burden = accumulates risk (bad).");
+    w += kv("Calibration","expert-prior — set by expert judgement, not yet outcome-calibrated on a cohort.");
+    w += '<Row ss:Height="10"></Row>';
+    w += '<Row ss:Height="24"><Cell ss:StyleID="ft" ss:MergeAcross="1"><Data ss:Type="String">'+xe(FOOT)+'</Data></Cell></Row>';
+    w += '</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><DoNotDisplayGridlines/></WorksheetOptions></Worksheet>';
+    return w;
+  }
+  function buildWorkbook(){
+    var wb = '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n'
+      + '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:x="urn:schemas-microsoft-com:office:excel">'
+      + STYLES
+      + '<ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel"><ActiveSheet>0</ActiveSheet><ProtectStructure>False</ProtectStructure></ExcelWorkbook>'
+      + coverSheet();
+    wb += dataSheet("Pillars", "PureScore — Pillars & base weights",
+      "Base weights Wₖ sum to 1.00 · expert-prior · marker wt-sum shown for transparency",
+      [{k:"code",l:"Code",kind:"key",w:46},{k:"name",l:"Pillar",kind:"text",w:160,hl:1},
+       {k:"covers",l:"Covers",kind:"text",w:250,hl:1},{k:"base_weight",l:"Base weight Wₖ",kind:"weight",w:84},
+       {k:"marker_wt_sum",l:"Marker wt-sum ✓",kind:"wsum",w:96},{k:"marker_count",l:"# markers",kind:"num",w:64},
+       {k:"calibration",l:"Calibration",kind:"text",w:90,hl:1},{k:"basis",l:"Basis / rationale",kind:"text",w:300,hl:1}], E.pillars);
+    wb += dataSheet("Reservoirs", "PureScore — MONIAC reservoirs",
+      "15 stocks · polarity, inflows, ρₖ contribution cap and κ cross-couplings",
+      [{k:"code",l:"Code",kind:"key",w:54},{k:"name",l:"Reservoir",kind:"text",w:150,hl:1},
+       {k:"polarity",l:"Polarity",kind:"text",w:74},{k:"feeds_pillar",l:"Feeds",kind:"text",w:60},
+       {k:"inflows",l:"Inflows (marker good→bad)",kind:"text",w:240,hl:1},{k:"incoming_coupling_kappa",l:"Coupling κ",kind:"text",w:150,hl:1},
+       {k:"contribution_cap_rho_k",l:"Cap ρₖ",kind:"weight",w:64},{k:"tau_days",l:"τ days",kind:"num",w:60},
+       {k:"setpoint",l:"Setpoint",kind:"num",w:68},{k:"calibration",l:"Calibration",kind:"text",w:88,hl:1},
+       {k:"basis",l:"Basis / rationale",kind:"text",w:270,hl:1}], E.reservoirs);
+    wb += dataSheet("Markers", "PureScore — Markers & within-pillar weights",
+      "81 markers · green / amber / red bands · within-pillar weights · safety-critical flags",
+      [{k:"pillar",l:"Pillar",kind:"key",w:52},{k:"marker",l:"Marker",kind:"text",w:175,hl:1},
+       {k:"unit",l:"Unit",kind:"text",w:74},{k:"tier",l:"Tier",kind:"num",w:44},
+       {k:"green",l:"Green",kind:"bandG",w:150,hl:1},{k:"yellow",l:"Yellow",kind:"bandY",w:175,hl:1},{k:"red",l:"Red",kind:"bandR",w:150,hl:1},
+       {k:"within_pillar_weight",l:"Within-pillar wt",kind:"weight",w:90},{k:"two_sided",l:"Two-sided",kind:"num",w:66},
+       {k:"safety_critical",l:"Safety-critical",kind:"safety",w:88},{k:"source",l:"Source",kind:"text",w:170,hl:1}], E.markers);
+    wb += dataSheet("Wearables", "PureScore — Wearable metrics",
+      "19 metrics · pillar mapping · units, sampling and tolerance",
+      [{k:"id",l:"ID",kind:"key",w:150},{k:"label",l:"Metric",kind:"text",w:150,hl:1},
+       {k:"pillar",l:"Pillar",kind:"num",w:56},{k:"group",l:"Group",kind:"text",w:90},
+       {k:"unit",l:"Unit",kind:"text",w:66},{k:"si_unit",l:"SI",kind:"text",w:60},
+       {k:"sampling_freq",l:"Sampling freq",kind:"text",w:210,hl:1},{k:"aggregation",l:"Aggregation",kind:"text",w:210,hl:1},
+       {k:"plausibility",l:"Plausible",kind:"text",w:84},{k:"trust_tier",l:"Trust tier",kind:"text",w:120,hl:1},
+       {k:"tolerance",l:"Tolerance",kind:"num",w:80}], E.wearables);
+    wb += dataSheet("Constants", "PureScore — Engine constants",
+      "The global constants that scale the weighted model",
+      [{k:"symbol",l:"Symbol",kind:"key",w:70},{k:"meaning",l:"Meaning",kind:"text",w:320,hl:1},
+       {k:"value",l:"Value",kind:"text",w:120},{k:"reference",l:"Reference",kind:"text",w:120,hl:1}], E.constants);
+    return wb + '</Workbook>';
+  }
+  btn.addEventListener("click", function(){
+    var blob = new Blob(["﻿"+buildWorkbook()], {type:"application/vnd.ms-excel"});
+    var url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = "purescore-reference-weights.xls";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+  });
+})();
 (function(){
   var WD=window.PURESCORE_WEIGHTS||{},P=WD.pillars||{},RES=WD.reservoirs||{},COUP=WD.coupling||[];
   var ORDER=["CV","MET","REN","HEP","INF","HEM","ENDO","BCM","NUT","SLP","FIT","MCS"].filter(function(c){return P[c];});

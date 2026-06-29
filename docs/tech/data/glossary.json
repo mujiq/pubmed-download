@@ -1,0 +1,1488 @@
+{
+ "_meta": {
+  "source": "hand-curated + merged from acronyms.json",
+  "note": "Canonical unified glossary feeding both the Glossary page (build_glossary) and the wiki-wide hover tooltips (assets/acronyms.js via _write_hover_data). Lenses: clinical / product / technical. 'rulings' is the terminology-standardization register (D-series).",
+  "lenses": {
+   "clinical": "Clinical term",
+   "product": "Product / Mobile-UI term",
+   "technical": "Technical / engine term"
+  }
+ },
+ "rulings": [
+  {
+   "id": 1,
+   "concept": "First-time setup flow",
+   "canonical": "Onboarding",
+   "variants": [
+    "first-run",
+    "sign-up",
+    "registration"
+   ],
+   "lenses": [
+    "product"
+   ],
+   "status": "approved",
+   "ruling": "Use <b>Onboarding</b> for the one-time first-run experience (demographics, consent, cold-start). 'First-run' is an informal alias only. Onboarding is the first phase of <b>Intake</b>."
+  },
+  {
+   "id": 2,
+   "concept": "Ongoing data collection (the question/answer system)",
+   "canonical": "Intake",
+   "variants": [],
+   "lenses": [
+    "product"
+   ],
+   "status": "approved",
+   "ruling": "Bare <b>Intake</b> = the product data-collection umbrella (Onboarding + Progressive profiling + Check-ins). The clinical sense must always be qualified: write <b>dietary intake</b> or <b>reservoir inflow</b>, never bare 'intake'."
+  },
+  {
+   "id": 3,
+   "concept": "Collecting more user attributes over time",
+   "canonical": "Progressive profiling",
+   "variants": [
+    "progressive data (collection)",
+    "staged profiling",
+    "progressive disclosure"
+   ],
+   "lenses": [
+    "product"
+   ],
+   "status": "approved",
+   "ruling": "Use <b>Progressive profiling</b> for gradually gathering user attributes/demographics across sessions. The data-quality chapter is renamed to <b>Data quality &amp; graceful degradation</b> so 'progressive' no longer collides with the degradation pipeline."
+  },
+  {
+   "id": 4,
+   "concept": "System↔user interaction",
+   "canonical": "Nudge (outbound) / Check-in (inbound)",
+   "variants": [
+    "micro-action",
+    "daily action",
+    "prompt"
+   ],
+   "lenses": [
+    "product"
+   ],
+   "status": "approved",
+   "ruling": "<b>Nudge</b> = a system→user prompt suggesting a behaviour/action (the nudge engine). <b>Check-in</b> = a system→user prompt <i>requesting</i> data (mood/stress/adherence self-report). An <b>adherence check-in</b> is a check-in confirming a prescribed action was done."
+  },
+  {
+   "id": 5,
+   "concept": "Care construct",
+   "canonical": "Care pathway (protocol) / Care plan (instance)",
+   "variants": [
+    "treatment plan",
+    "care program"
+   ],
+   "lenses": [
+    "clinical",
+    "product"
+   ],
+   "status": "approved",
+   "ruling": "<b>Care pathway</b> = the standardized condition-level clinical PROTOCOL/template (IEAT lifecycle). <b>Care plan</b> = the PERSONALIZED instance generated for one user from a pathway (their bundle of interventions + goals). A care plan is an instance of a care pathway."
+  },
+  {
+   "id": 6,
+   "concept": "Desired aim",
+   "canonical": "Goal (user) / Target (setpoint)",
+   "variants": [
+    "objective",
+    "aspiration"
+   ],
+   "lenses": [
+    "product",
+    "technical"
+   ],
+   "status": "approved",
+   "ruling": "<b>Goal</b> = the user-stated aspiration that personalizes scoring/actions (drives m_k^goal). <b>Target</b> = a technical/clinical setpoint or threshold (reservoir B^target, calibration target, validation target population). Never use 'target' to mean a user goal."
+  },
+  {
+   "id": 7,
+   "concept": "Questionnaire family",
+   "canonical": "Instrument (set) · screener (subtype) · PRO (channel)",
+   "variants": [
+    "questionnaire",
+    "survey",
+    "self-report",
+    "assessment (misuse)"
+   ],
+   "lenses": [
+    "clinical",
+    "technical"
+   ],
+   "status": "approved",
+   "ruling": "<b>Instrument</b> = any validated question set (absorbs 'questionnaire'/'survey'). <b>Screener</b> = a defined subtype: a short triage instrument (e.g. PHQ-2). <b>PRO (patient-reported outcome)</b> = the input channel/modality (absorbs 'self-report'). <b>Assessment</b> is reserved for a clinical risk-assessment process — never for a questionnaire."
+  },
+  {
+   "id": 8,
+   "concept": "The 12 health systems",
+   "canonical": "Pillar",
+   "variants": [
+    "domain (evidence-ID token only)",
+    "health system",
+    "axis"
+   ],
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "status": "approved",
+   "ruling": "<b>Pillar</b> is the one canonical term for the 12 systems in all prose. <b>Domain</b> is permitted ONLY as the frozen field/ID token in the evidence registry (EVD-&lt;DOMAIN&gt;-…), where renaming would break stable keys."
+  },
+  {
+   "id": 9,
+   "concept": "A measured/scored quantity",
+   "canonical": "Marker",
+   "variants": [
+    "biomarker",
+    "metric (derived only)",
+    "signal (informal)"
+   ],
+   "lenses": [
+    "clinical",
+    "technical"
+   ],
+   "status": "approved",
+   "ruling": "<b>Marker</b> = any scored input (lab, wearable or PRO). 'Biomarker' is an alias of marker. <b>Metric</b> is reserved for a derived/computed value (e.g. HRV from raw beats). 'Signal' is informal — avoid in spec prose."
+  }
+ ],
+ "terms": [
+  {
+   "term": "ACC/AHA",
+   "def": "American College of Cardiology / American Heart Association guideline",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "ADA",
+   "def": "American Diabetes Association",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "AHI",
+   "def": "Apnoea–Hypopnoea Index (events per hour of sleep)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "ALMI",
+   "def": "Appendicular Lean Mass Index (muscle mass)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "ALT",
+   "def": "Alanine Aminotransferase (liver enzyme)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "ApoB",
+   "def": "Apolipoprotein B — the particle-count atherogenic lipid marker",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "ASCVD",
+   "def": "Atherosclerotic Cardiovascular Disease",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Assessment",
+   "def": "A clinical risk-assessment PROCESS (e.g. safety triage, DPIA). Not a synonym for a questionnaire — use Instrument for question sets.",
+   "lenses": [
+    "clinical",
+    "technical"
+   ],
+   "variants": [],
+   "see": [
+    "Instrument"
+   ],
+   "src": "concept",
+   "ruling": 7
+  },
+  {
+   "term": "ATC",
+   "def": "Anatomical Therapeutic Chemical drug classification",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "ATH",
+   "def": "Atherogenic reservoir",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "AUDIT-C",
+   "def": "Alcohol Use Disorders Identification Test (consumption)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "BCM",
+   "def": "Body Composition & Musculoskeletal pillar",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "BMD",
+   "def": "Bone Mineral Density",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "BP",
+   "def": "Blood Pressure",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "BSH",
+   "def": "British Society for Haematology",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Care pathway",
+   "def": "The standardized, condition-level clinical PROTOCOL/template (Identify–Engage–Assess–Transform lifecycle) that draws interventions from the action catalogue. A template, not a per-user object.",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [
+    "Care plan",
+    "IEAT"
+   ],
+   "src": "concept",
+   "ruling": 5
+  },
+  {
+   "term": "Care plan",
+   "def": "The PERSONALIZED instance generated for one user from a care pathway — their specific bundle of interventions and goals (Doc 09). A care plan is an instance of a care pathway.",
+   "lenses": [
+    "product",
+    "clinical"
+   ],
+   "variants": [
+    "treatment plan",
+    "care program"
+   ],
+   "see": [
+    "Care pathway",
+    "Goal",
+    "Nudge"
+   ],
+   "src": "concept",
+   "ruling": 5
+  },
+  {
+   "term": "CDS",
+   "def": "Clinical Decision Support",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "CGM",
+   "def": "Continuous Glucose Monitor",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Check-in",
+   "def": "A system→user prompt that REQUESTS data — a short self-report (mood/stress/adherence). Inbound. An 'adherence check-in' confirms a prescribed action was done.",
+   "lenses": [
+    "product",
+    "clinical"
+   ],
+   "variants": [
+    "mood check",
+    "1-tap check"
+   ],
+   "see": [
+    "Nudge",
+    "PRO",
+    "Instrument"
+   ],
+   "src": "concept",
+   "ruling": 4
+  },
+  {
+   "term": "CKD",
+   "def": "Chronic Kidney Disease",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Cold-start",
+   "def": "The state of a brand-new user with little data; bootstrapped from cohort statistics until Progressive profiling and measurements accrue.",
+   "lenses": [
+    "product",
+    "technical"
+   ],
+   "variants": [],
+   "see": [
+    "Onboarding",
+    "Progressive profiling",
+    "Cohort fallback"
+   ],
+   "src": "concept"
+  },
+  {
+   "term": "CV",
+   "def": "Cardiovascular & Vascular pillar",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "CVD",
+   "def": "Cardiovascular Disease",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Data quality & graceful degradation",
+   "def": "The pipeline that substitutes a cohort statistic when an input is missing/stale/decayed/invalid, lowers Accuracy, widens the forecast and nudges to fill the gap. (Renamed from 'Progressive data & degradation' to avoid colliding with Progressive profiling.)",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [
+    "progressive data & degradation"
+   ],
+   "see": [
+    "Progressive profiling",
+    "Cohort fallback"
+   ],
+   "src": "concept",
+   "ruling": 3
+  },
+  {
+   "term": "DEXA",
+   "def": "Dual-energy X-ray Absorptiometry (body composition / bone scan)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "DHA",
+   "def": "Dubai Health Authority",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Dietary intake",
+   "def": "Clinical/nutritional consumption of a nutrient (e.g. fibre intake, g/day). Always qualified — distinct from the product 'Intake' process.",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [
+    "Intake",
+    "Reservoir inflow"
+   ],
+   "src": "concept",
+   "ruling": 2
+  },
+  {
+   "term": "DoH",
+   "def": "Department of Health (Abu Dhabi regulator)",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Domain",
+   "def": "In the evidence registry/ID scheme (EVD-<DOMAIN>-…) and clinical-scores prose, a synonym for Pillar. Permitted only as a frozen ID token; use 'Pillar' in prose.",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [
+    "Pillar"
+   ],
+   "src": "concept",
+   "ruling": 8
+  },
+  {
+   "term": "DP",
+   "def": "Differential Privacy",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "eGFR",
+   "def": "estimated Glomerular Filtration Rate (kidney function)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "EHR",
+   "def": "Electronic Health Record",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "EMR",
+   "def": "Electronic Medical Record",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "ESC/EAS",
+   "def": "European Society of Cardiology / European Atherosclerosis Society guideline",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "EWMA",
+   "def": "Exponentially-Weighted Moving Average",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "FH",
+   "def": "Familial Hypercholesterolaemia",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "FHIR",
+   "def": "Fast Healthcare Interoperability Resources (HL7 standard)",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "FIB-4",
+   "def": "Fibrosis-4 Index (liver fibrosis estimate)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "FIT",
+   "def": "Fitness pillar",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "G6PD",
+   "def": "Glucose-6-Phosphate Dehydrogenase (deficiency → oxidative-drug risk)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "GAD-2",
+   "def": "Generalised Anxiety Disorder-2 (brief anxiety screen)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "GAD-7",
+   "def": "Generalised Anxiety Disorder-7 scale",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "GDM",
+   "def": "Gestational Diabetes Mellitus",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "GDPR",
+   "def": "EU General Data Protection Regulation",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "GLY",
+   "def": "Glycaemic reservoir",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Goal",
+   "def": "A user-stated aspiration that personalizes scoring and actions — raises the weight of tied pillars via m_k^goal (Doc 09/11). Distinct from a (technical) Target.",
+   "lenses": [
+    "product"
+   ],
+   "variants": [
+    "objective",
+    "aspiration"
+   ],
+   "see": [
+    "Target",
+    "Care plan"
+   ],
+   "src": "concept",
+   "ruling": 6
+  },
+  {
+   "term": "HbA1c",
+   "def": "Glycated haemoglobin — 3-month average blood glucose",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "HDL-C",
+   "def": "High-Density Lipoprotein Cholesterol",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "HEM",
+   "def": "Haematologic pillar",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "HEP",
+   "def": "Hepatic pillar",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "HRV",
+   "def": "Heart-Rate Variability (autonomic balance)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "hsCRP",
+   "def": "high-sensitivity C-Reactive Protein (inflammation)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "ICD-10",
+   "def": "International Classification of Diseases, 10th revision",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "IDA",
+   "def": "Iron-Deficiency Anaemia",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "IDF",
+   "def": "International Diabetes Federation",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "IDF-DAR",
+   "def": "IDF & Diabetes and Ramadan international alliance guidance",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "IEAT",
+   "def": "Identify–Engage–Assess–Treat care lifecycle",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "INF",
+   "def": "Inflammation & Immunity pillar",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Instrument",
+   "def": "A validated question set used as an input (e.g. PHQ-9, GAD-7, STOP-Bang). Umbrella term absorbing 'questionnaire' and 'survey'. A short triage instrument is a Screener.",
+   "lenses": [
+    "clinical",
+    "technical"
+   ],
+   "variants": [
+    "questionnaire",
+    "survey"
+   ],
+   "see": [
+    "Screener",
+    "PRO"
+   ],
+   "src": "concept",
+   "ruling": 7
+  },
+  {
+   "term": "Intake",
+   "def": "The umbrella product process for collecting questions and data from a user over time — Onboarding, Progressive profiling and Check-ins all sit under it. NB: the clinical sense (dietary intake, reservoir inflow) must always be qualified.",
+   "lenses": [
+    "product"
+   ],
+   "variants": [],
+   "see": [
+    "Onboarding",
+    "Progressive profiling",
+    "Check-in",
+    "Dietary intake",
+    "Reservoir inflow"
+   ],
+   "src": "concept",
+   "ruling": 2
+  },
+  {
+   "term": "IOM",
+   "def": "Institute of Medicine (US) reference standard",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "ISI",
+   "def": "Insomnia Severity Index",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "KDIGO",
+   "def": "Kidney Disease: Improving Global Outcomes guideline",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "KPI",
+   "def": "Key Performance Indicator",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "LDL-C",
+   "def": "Low-Density Lipoprotein Cholesterol",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "LOINC",
+   "def": "Logical Observation Identifiers Names and Codes",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "MAD",
+   "def": "Median Absolute Deviation (robust spread)",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Malaffi",
+   "def": "Abu Dhabi's health-information exchange (EMR)",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Marker",
+   "def": "Any scored input — a lab, wearable or PRO value mapped to a green/yellow/red band within a pillar. Canonical; 'biomarker' is an alias.",
+   "lenses": [
+    "clinical",
+    "technical"
+   ],
+   "variants": [
+    "biomarker"
+   ],
+   "see": [
+    "Metric",
+    "Pillar"
+   ],
+   "src": "concept",
+   "ruling": 9
+  },
+  {
+   "term": "MCS",
+   "def": "Mental & Cognitive pillar",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "MET",
+   "def": "Metabolic pillar",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Metric",
+   "def": "A derived/computed value (e.g. HRV computed from raw inter-beat intervals). Reserved sense — not every marker is a 'metric'.",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [
+    "Marker"
+   ],
+   "src": "concept",
+   "ruling": 9
+  },
+  {
+   "term": "MVPA",
+   "def": "Moderate-to-Vigorous Physical Activity",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "NAFLD",
+   "def": "Non-Alcoholic Fatty Liver Disease",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Next best action",
+   "def": "The single recommended action surfaced to a user at a point in time, selected from the recommended-actions catalogue (Doc 12) and delivered as a Nudge.",
+   "lenses": [
+    "product"
+   ],
+   "variants": [
+    "recommended action",
+    "NBA"
+   ],
+   "see": [
+    "Nudge",
+    "Recommended action"
+   ],
+   "src": "concept"
+  },
+  {
+   "term": "NICE",
+   "def": "UK National Institute for Health and Care Excellence",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Nudge",
+   "def": "A system→user prompt that suggests a behaviour or action (delivered by the nudge engine, Doc 11). Outbound. Distinct from a Check-in (which requests data).",
+   "lenses": [
+    "product"
+   ],
+   "variants": [
+    "micro-action",
+    "daily action"
+   ],
+   "see": [
+    "Check-in",
+    "Next best action",
+    "Recommended action"
+   ],
+   "src": "concept",
+   "ruling": 4
+  },
+  {
+   "term": "NUT",
+   "def": "Nutrition pillar",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "ODI",
+   "def": "Oxygen Desaturation Index",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Onboarding",
+   "def": "The one-time first-run experience that registers a new user: demographics, consent, device pairing and cold-start. The first phase of Intake. (Canonical; 'first-run' is an alias.)",
+   "lenses": [
+    "product"
+   ],
+   "variants": [
+    "first-run",
+    "sign-up"
+   ],
+   "see": [
+    "Intake",
+    "Progressive profiling",
+    "Cold-start"
+   ],
+   "src": "concept",
+   "ruling": 1
+  },
+  {
+   "term": "OOD",
+   "def": "Out-Of-Distribution (user outside any cohort cell)",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "OSA",
+   "def": "Obstructive Sleep Apnoea",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "PDPL",
+   "def": "UAE Personal Data Protection Law",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "PE",
+   "def": "Pre-Eclampsia",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "PHQ-2",
+   "def": "Patient Health Questionnaire-2 (brief depression screen)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "PHQ-9",
+   "def": "Patient Health Questionnaire-9 (depression screen)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Pillar",
+   "def": "One of the 12 canonical health systems PureScore scores (CV, MET, REN, HEP, INF, HEM, ENDO, BCM, NUT, SLP, FIT, MCS). The canonical term for these systems in all prose.",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [
+    "health system",
+    "axis"
+   ],
+   "see": [
+    "Marker",
+    "Reservoir",
+    "Domain"
+   ],
+   "src": "concept",
+   "ruling": 8
+  },
+  {
+   "term": "PIT",
+   "def": "Probability Integral Transform (calibration check)",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "PRO",
+   "def": "Patient-Reported Outcome — the input CHANNEL/modality for self-reported data (alongside lab and wearable channels). Absorbs 'self-report'. The questionnaire itself is an Instrument.",
+   "lenses": [
+    "clinical",
+    "technical"
+   ],
+   "variants": [
+    "patient-reported outcome",
+    "self-report"
+   ],
+   "see": [
+    "Instrument",
+    "Screener"
+   ],
+   "src": "concept",
+   "ruling": 7
+  },
+  {
+   "term": "Progressive profiling",
+   "def": "Gradually collecting more user attributes/demographics across sessions (cold-start bootstrap deepening by applicability P1→P5). Distinct from the data-degradation pipeline.",
+   "lenses": [
+    "product"
+   ],
+   "variants": [
+    "staged profiling",
+    "progressive disclosure"
+   ],
+   "see": [
+    "Onboarding",
+    "Cold-start",
+    "Data quality & graceful degradation"
+   ],
+   "src": "concept",
+   "ruling": 3
+  },
+  {
+   "term": "PSI",
+   "def": "Population Stability Index (drift monitor)",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "PURA",
+   "def": "Public health / preventive-care programme (Abu Dhabi)",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "R_crit",
+   "def": "critical-marker risk floor (a critical red marker floors its pillar)",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "REN",
+   "def": "Renal pillar",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Reservoir",
+   "def": "A MONIAC stock that accumulates chronic burden or asset reserve and feeds pillars with memory (Doc 04). 15 canonical reservoirs.",
+   "lenses": [
+    "technical",
+    "clinical"
+   ],
+   "variants": [
+    "stock"
+   ],
+   "see": [
+    "Reservoir inflow",
+    "Pillar"
+   ],
+   "src": "concept"
+  },
+  {
+   "term": "Reservoir inflow",
+   "def": "In the MONIAC reservoir model, the driver that fills (or, for asset reservoirs, the training/intake stimulus that raises) a stock. Always qualified — not the product 'Intake'.",
+   "lenses": [
+    "technical",
+    "clinical"
+   ],
+   "variants": [
+    "inflow"
+   ],
+   "see": [
+    "Reservoir",
+    "Intake"
+   ],
+   "src": "concept",
+   "ruling": 2
+  },
+  {
+   "term": "RHR",
+   "def": "Resting Heart Rate",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "RMSSD",
+   "def": "Root Mean Square of Successive Differences (an HRV time-domain metric)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "SaMD",
+   "def": "Software as a Medical Device",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "SBP",
+   "def": "Systolic Blood Pressure",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Screener",
+   "def": "A defined subtype of Instrument: a short triage question set (e.g. PHQ-2, GAD-2, AUDIT-C) used to flag who needs the full instrument.",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [
+    "Instrument",
+    "PRO"
+   ],
+   "src": "concept",
+   "ruling": 7
+  },
+  {
+   "term": "SDNN",
+   "def": "Standard Deviation of NN intervals (an HRV metric; differs from RMSSD)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "SLA",
+   "def": "Service-Level Agreement",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "SLO",
+   "def": "Service-Level Objective",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "SLP",
+   "def": "Sleep pillar",
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "SpO2",
+   "def": "peripheral oxygen saturation",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "SpO₂",
+   "def": "peripheral oxygen saturation",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "SRI",
+   "def": "Sleep Regularity Index",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "T2D",
+   "def": "Type-2 Diabetes",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "Target",
+   "def": "A technical or clinical setpoint/threshold — e.g. a reservoir setpoint (B^target), a calibration target, or the target population in validation. Never a user goal.",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [
+    "setpoint"
+   ],
+   "see": [
+    "Goal"
+   ],
+   "src": "concept",
+   "ruling": 6
+  },
+  {
+   "term": "TIR",
+   "def": "Time-In-Range (glucose 70–180 mg/dL)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "UACR",
+   "def": "Urine Albumin-to-Creatinine Ratio (kidney damage)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "VO2max",
+   "def": "maximal oxygen uptake (cardiorespiratory fitness)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "VO₂max",
+   "def": "maximal oxygen uptake (cardiorespiratory fitness)",
+   "lenses": [
+    "clinical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "WHO",
+   "def": "World Health Organization",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "WORM",
+   "def": "Write-Once-Read-Many (immutable storage)",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  },
+  {
+   "term": "κ_resp",
+   "def": "personal-baseline responsiveness cap (Stage 2b)",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "acronym"
+  }
+ ]
+}

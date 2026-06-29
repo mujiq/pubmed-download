@@ -3376,6 +3376,161 @@ def _grid_page(crumb, h1, lead, source_href, source_label, gridhtml, tab):
          gridhtml, _GRID_ASSETS]
     return tab, "".join(h)
 
+# ----- Data dictionary (DB team) — live from data/*.json, no duplication -----
+def build_data_dictionary():
+    import glob
+    DATA = os.path.join(_HERE, "data")
+    # wiki-internal QA / meta — not app data the DB team ingests
+    EXCLUDE = {"spec-audit.json", "editorial-review.json", "consolidation-plan.json", "audit-log.json",
+               "remediations.json", "clinical-flags.json", "cohort-governance.json",
+               "degradation-integrity.json", "degradation-operations.json"}
+    GROUPS = [
+        ("Engine", ["calc-graph.json", "constants.json", "pillar-weights.json", "pillars.json",
+                    "reservoir-flows.json", "coverage.json", "modifiers.json", "qsource.json"]),
+        ("Clinical & ranges", ["conditions.json", "marker-glossary.json", "units.json", "range-variations.json",
+                    "clinical-validation.json", "instruments.json", "cohort-percentiles.json"]),
+        ("People & personas", ["personas.json", "persona-matrix.json", "persona-axes.json", "onboarding.json"]),
+        ("Action & care", ["adherence.json", "adherence-actions.json", "goals.json", "prevention-nudges.json",
+                    "care-pathways.json", "care-roles.json", "data-completeness-nudges.json"]),
+        ("Intake / questions", ["question-bank.json"]),
+        ("Wearables", ["wearables.json", "wearable-metrics.json", "wearable-corroboration.json"]),
+        ("Reference & provenance", ["citations.json", "acronyms.json"]),
+        ("Object model (dossier)", ["dossier.json", "dossier-core.json"]),
+        ("Baselines & degradation", ["baseline-formulas.json", "baseline-sources.json", "baseline-math-ops.json",
+                    "baseline-dq-rules.json", "degradation-model.json"]),
+    ]
+    G2 = {fn: g for g, fs in GROUPS for fn in fs}
+    # sharded files folded into their merged source (noted, not duplicated)
+    SHARDS = {os.path.basename(p) for p in glob.glob(os.path.join(DATA, "qb-*.json"))} | {
+        "dossier-markers.json", "dossier-nudge.json", "dossier-questions.json",
+        "dossier-reservoir.json", "dossier-scoring.json"}
+
+    def jtype(v):
+        if isinstance(v, bool): return "boolean"
+        if isinstance(v, int): return "integer"
+        if isinstance(v, float): return "number"
+        if isinstance(v, str): return "string"
+        if isinstance(v, list): return "array"
+        if isinstance(v, dict): return "object"
+        return "null"
+    def sqltype(types):
+        t = set(types)
+        if t <= {"integer"}: return "INTEGER"
+        if t <= {"integer", "number"}: return "NUMERIC"
+        if t <= {"boolean"}: return "BOOLEAN"
+        if t & {"array", "object"}: return "JSONB"
+        return "TEXT"
+    def ident(s):
+        s = re.sub(r"[^0-9a-zA-Z]+", "_", str(s)).strip("_").lower()
+        return s or "t"
+    def tables_of(obj):
+        out = []
+        if isinstance(obj, list):
+            recs = [x for x in obj if isinstance(x, dict)]
+            if recs: out.append(("(root)", recs))
+            return out
+        if not isinstance(obj, dict): return out
+        for k, v in obj.items():
+            if k in ("_meta", "meta", "_compat"): continue
+            if isinstance(v, list):
+                recs = [x for x in v if isinstance(x, dict)]
+                if recs: out.append((k, recs))
+            elif isinstance(v, dict) and v:
+                vals = list(v.values())
+                if all(isinstance(x, dict) for x in vals): out.append((k, vals))
+                elif all(not isinstance(x, (dict, list)) for x in vals): out.append((k, [v]))  # flat config → 1 row
+        return out
+    def schema_of(records):
+        n = len(records); fields = {}; order = []
+        for r in records[:600]:
+            for k, v in r.items():
+                if k not in fields: fields[k] = {"types": set(), "present": 0, "eg": ""}; order.append(k)
+                fields[k]["types"].add(jtype(v)); fields[k]["present"] += 1
+                if not fields[k]["eg"] and v not in (None, "", [], {}):
+                    ex = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
+                    fields[k]["eg"] = ex[:64]
+        return n, [(k, fields[k]) for k in order]
+
+    files = sorted(os.path.basename(p) for p in glob.glob(os.path.join(DATA, "*.json")))
+    files = [f for f in files if f not in EXCLUDE and f not in SHARDS]
+    dict_rows, src_rows, schema_groups = [], [], {}
+    n_src = n_tab = n_field = 0
+    for fn in files:
+        try: obj = _load(fn)
+        except Exception: continue
+        grp = G2.get(fn, "Other")
+        tabs = tables_of(obj)
+        if not tabs: continue
+        n_src += 1
+        sz = os.path.getsize(os.path.join(DATA, fn)) // 1024
+        s_tab = s_field = s_rows = 0
+        for tname, recs in tabs:
+            n, fields = schema_of(recs)
+            s_tab += 1; s_field += len(fields); s_rows += n
+            ddl = ["-- %s :: %s   (%d rows)" % (fn, tname, n), "CREATE TABLE %s (" % ident(tname)]
+            for i, (fk, info) in enumerate(fields):
+                pct = round(100 * info["present"] / max(n, 1))
+                typ = "/".join(sorted(info["types"]))
+                st = sqltype(info["types"])
+                dict_rows.append({"Group": grp, "Source": fn, "Table": tname, "Field": fk, "JSON type": typ,
+                                  "SQL": st, "Fill": "%d%%" % pct, "Example": info["eg"]})
+                comma = "," if i < len(fields) - 1 else ""
+                note = ("  -- %d%%%s" % (pct, "  e.g. " + info["eg"] if info["eg"] else ""))
+                ddl.append("  %-26s %-8s%s%s" % (ident(fk), st, comma, note))
+            ddl.append(");")
+            schema_groups.setdefault(grp, []).append("\n".join(ddl))
+        n_tab += s_tab; n_field += s_field
+        src_rows.append({"Group": grp, "Source": fn, "Tables": s_tab, "Rows": s_rows, "Fields": s_field, "KB": sz})
+
+    src_cols = [{"key": "Group", "label": "Group"}, {"key": "Source", "label": "Source (data/*.json)", "filter": "text"},
+                {"key": "Tables", "label": "Tables", "type": "num"}, {"key": "Rows", "label": "Rows", "type": "num"},
+                {"key": "Fields", "label": "Fields", "type": "num"}, {"key": "KB", "label": "KB", "type": "num"}]
+    dict_cols = [{"key": "Group", "label": "Group"}, {"key": "Source", "label": "Source", "filter": "text"},
+                 {"key": "Table", "label": "Table", "filter": "text"}, {"key": "Field", "label": "Field", "filter": "text"},
+                 {"key": "JSON type", "label": "JSON type"}, {"key": "SQL", "label": "SQL type"},
+                 {"key": "Fill", "label": "Fill"}, {"key": "Example", "label": "Example", "filter": "none"}]
+
+    schema_html = []
+    for grp, _f in GROUPS + [("Other", [])]:
+        if grp not in schema_groups: continue
+        schema_html.append('<h3 id="ddl-%s">%s</h3>' % (ident(grp), _esc(grp)))
+        for ddl in schema_groups[grp]:
+            schema_html.append('<pre class="code"><code>%s</code></pre>' % _esc(ddl))
+
+    body = ['<div class="crumbs"><a href="index.html">Home</a> › 8 · System &amp; build › Data dictionary</div>',
+            '<h1>Data dictionary — every metadata table, one place</h1>',
+            '<p class="lead">A consolidated, build-time inventory of the <b>%d app-data <code>data/*.json</code> sources</b> '
+            'that drive PureScore — <b>%d tables · %d fields</b>. For the database team: each field with its JSON type, '
+            'an inferred SQL type, fill-rate and an example. Generated <b>live from the same JSON</b> the wiki and engine '
+            'use (no duplicate copy); see the related <a class="xref" href="dossier-erd.html">Data model (ERD)</a> and '
+            '<a class="xref" href="class-model.html">Class model</a>.</p>' % (n_src, n_tab, n_field),
+            '<div class="callout note"><div class="ct">Scope &amp; provenance</div>Curated to <b>app data</b> (engine, clinical, '
+            'people, action, intake, wearables, reference, object model). Excludes wiki-internal QA/meta '
+            '(spec-audit, editorial-review, audit-log, remediations, clinical-flags, governance). '
+            '<code>question-bank.json</code> is sharded by domain into 12 <code>qb-*.json</code>; <code>dossier.json</code> into '
+            '5 <code>dossier-*.json</code> — folded here to avoid duplication. Types/fill/examples are <b>inferred from the data</b> '
+            '(first ~600 records per table); re-verify before DDL use.</div>',
+            '<div class="nv-bar" style="display:flex;gap:6px;margin:10px 0"><span class="nv-lab" style="font-size:11px;color:#8aa0b6;text-transform:uppercase;align-self:center">View</span>'
+            '<button class="dd-tab on" data-dd="dict" type="button">Dictionary</button>'
+            '<button class="dd-tab" data-dd="schema" type="button">Schema / DDL</button></div>',
+            '<div id="dd-dict">',
+            '<h2 id="sources">Sources</h2>', _grid("dd-src", src_cols, src_rows),
+            '<h2 id="fields">Field dictionary</h2>',
+            '<p class="small muted">Every field across every source — sort/filter/search, or download XLS. One row per field.</p>',
+            _grid("dd-fields", dict_cols, dict_rows), '</div>',
+            '<div id="dd-schema" style="display:none"><h2 id="schema">Schema · CREATE TABLE (inferred)</h2>',
+            '<p class="small muted">Illustrative DDL inferred from the JSON — JSONB for arrays/objects; fill-rate noted per column. Reconcile with <a class="xref" href="dossier-erd.html">Doc ERD</a> before production.</p>',
+            "".join(schema_html), '</div>',
+            '<style>.dd-tab{font:inherit;font-size:12.5px;padding:5px 11px;border-radius:8px;border:1px solid var(--line,#2a3340);'
+            'background:var(--bg,#0c1320);color:inherit;cursor:pointer}.dd-tab.on{background:#2b5a86;border-color:#2b5a86;color:#fff;font-weight:700}</style>',
+            '<script>(function(){var b=[].slice.call(document.querySelectorAll(".dd-tab"));function set(v){'
+            'document.getElementById("dd-dict").style.display=(v==="dict")?"block":"none";'
+            'document.getElementById("dd-schema").style.display=(v==="schema")?"block":"none";'
+            'b.forEach(function(x){x.classList.toggle("on",x.getAttribute("data-dd")===v);});}'
+            'b.forEach(function(x){x.addEventListener("click",function(){set(x.getAttribute("data-dd"));});});})();</script>',
+            _GRID_ASSETS]
+    return "Data dictionary", "".join(body)
+
 # ----- 1. biomarkers -----
 def build_grid_biomarkers():
     rows = []
@@ -4512,8 +4667,8 @@ def build_progressive_data():
             return {}
     DM = L("degradation-model.json"); NU = L("data-completeness-nudges.json")
     meta = DM.get("_meta", {})
-    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; How scoring works &rsaquo; Progressive data &amp; graceful degradation</div>',
-         '<h1>Progressive Data &amp; Graceful Degradation <span class="small muted">&middot; missing &rarr; cohort &rarr; lower accuracy &rarr; nudge</span></h1>',
+    h = ['<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Data quality &rsaquo; Data quality &amp; graceful degradation</div>',
+         '<h1>Data Quality &amp; Graceful Degradation <span class="small muted">&middot; missing &rarr; cohort &rarr; lower accuracy &rarr; nudge</span></h1>',
          '<p class="lead">PureScore never blocks on missing data. When any input &mdash; a lab, a wearable metric, a clinical reading, '
          'a lifestyle answer, a personal baseline, or a goal &mdash; is <b>missing, stale, decayed or invalid</b>, the system '
          'substitutes a <b>cohort statistic</b> (age&times;sex&times;life-stage median/mean, D33) so the score stays continuous, '
@@ -4590,7 +4745,7 @@ def build_progressive_data():
              '<a class="xref" href="appendix-onboarding.html">Progressive profiling</a> · '
              '<a class="xref" href="appendix-coverage-audit.html">Coverage audit</a> · '
              '<a class="xref" href="11-daily-nudge-engine.html">Nudge engine</a>.</p>')
-    return "Progressive data &amp; graceful degradation", "".join(h)
+    return "Data quality & graceful degradation", "".join(h)
 
 # =================================================================== COHORT-FALLBACK GOVERNANCE (rounds 2-3)
 def _render_governance(fname, crumb, h1, lead_html, locked_label, connects):
@@ -4623,7 +4778,7 @@ def build_cohort_governance():
             'back-off, drift, out-of-distribution), how missing values are <b>imputed</b> (conditional, not marginal), the '
             '<b>equity</b>, <b>longitudinal-stability</b>, <b>integration/provenance</b> and <b>UAE-locale</b> safeguards. '
             'Single source: <code>data/cohort-governance.json</code>.</p>')
-    connects = ('<p class="small muted">Connects to: <a class="xref" href="progressive-data.html">Progressive data &amp; degradation</a> · '
+    connects = ('<p class="small muted">Connects to: <a class="xref" href="progressive-data.html">Data quality &amp; graceful degradation</a> · '
                 '<a class="xref" href="degradation-integrity.html">Integrity &amp; safety</a> · '
                 '<a class="xref" href="06-data-model-and-reference-ranges.html">Doc 06 data model</a> · '
                 '<a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13 cohort percentiles</a> · '
@@ -4638,7 +4793,7 @@ def build_degradation_integrity():
             '<b>perverse incentive</b> not to measure, keeping data <b>authentic</b> and the cohort from <b>collapsing</b> on its own '
             'output, keeping users <b>safe while degraded</b>, and meeting <b>care-pathway &amp; regulatory</b> duties. '
             'Single source: <code>data/degradation-integrity.json</code>.</p>')
-    connects = ('<p class="small muted">Connects to: <a class="xref" href="progressive-data.html">Progressive data</a> · '
+    connects = ('<p class="small muted">Connects to: <a class="xref" href="progressive-data.html">Data quality &amp; graceful degradation</a> · '
                 '<a class="xref" href="cohort-governance.html">Cohort governance</a> · '
                 '<a class="xref" href="care-pathways.html">Care pathways</a> · '
                 '<a class="xref" href="consent-onboarding.html">Consent &amp; onboarding</a>.</p>')
@@ -4826,7 +4981,7 @@ def build_cohort_percentiles():
              '<li><b>Versioned &amp; reproducible:</b> every score pins the <code>cohort_version</code>; a drift monitor (PSI/KL) compares versions to catch autophagy/shrinkage.</li>'
              '<li><b>Wiring (Package 3):</b> the build emits the usable p50 lookup into <code>calc-data.js</code> so the illustrative engine\'s <code>cohortMedian()</code> can resolve it; production reads ClickHouse directly.</li>'
              '</ul>')
-    h.append('<p class="small muted">Connects to: <a class="xref" href="progressive-data.html">Progressive data &amp; degradation</a> · '
+    h.append('<p class="small muted">Connects to: <a class="xref" href="progressive-data.html">Data quality &amp; graceful degradation</a> · '
              '<a class="xref" href="cohort-governance.html">Cohort governance</a> · '
              '<a class="xref" href="clinical-validation.html">Clinical validation</a> · '
              '<a class="xref" href="13-cohort-percentiles-and-validation.html">Doc 13 cohort percentiles</a>.</p>')
@@ -4897,3 +5052,237 @@ def build_grid_wearable_corroboration():
     return _grid_page("Wearable-corroboration grid", "Wearable corroboration — spreadsheet",
                       "Every wearable corroboration metric, tolerance &amp; question count, flat &amp; sortable. Source:",
                       "appendix-wearable-corroboration.html", "Wearable corroboration", _grid("g-wc", cols, rows), "Wearable-corroboration grid")
+
+# =================================================================== UNIFIED GLOSSARY
+def build_glossary():
+    """Unified canonical glossary (clinical · product · technical) + terminology-standardization
+    rulings. Server-rendered from data/glossary.json; the same file feeds the wiki-wide hover
+    tooltips via _write_hover_data(). Single source of truth for what each term means and which
+    spelling is canonical."""
+    G = _load("glossary.json")
+    LENS = G["_meta"]["lenses"]                       # {key: label}
+    LCHIP = {"clinical": ("lc-cli", "Clinical"), "product": ("lc-pro", "Product / UI"),
+             "technical": ("lc-tec", "Technical")}
+    def chips(ls):
+        return "".join('<span class="lchip %s">%s</span>' % (LCHIP[x][0], LCHIP[x][1])
+                       for x in ls if x in LCHIP)
+    style = ("<style>"
+             ".lchip{display:inline-block;font-size:11px;line-height:1.5;padding:0 7px;border-radius:10px;"
+             "margin:0 4px 2px 0;border:1px solid #cbd5e1;white-space:nowrap}"
+             ".lc-cli{background:#eef6ff;border-color:#9cc4f0;color:#1e4e87}"
+             ".lc-pro{background:#eafaf0;border-color:#8fd6aa;color:#1d6b3d}"
+             ".lc-tec{background:#f4f0fb;border-color:#c2aee8;color:#5a3aa0}"
+             ".gl-rule{border:1px solid #e2e8f0;border-left:4px solid #6366f1;border-radius:8px;"
+             "padding:12px 14px;margin:10px 0;background:#fafbff}"
+             ".gl-rule .can{font-weight:700;color:#1e293b}"
+             ".gl-rule .var{color:#64748b;font-size:13px}"
+             ".gl-filter{position:sticky;top:0;background:#fff;padding:8px 0;z-index:2;border-bottom:1px solid #eee}"
+             ".gl-filter input[type=text]{padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;min-width:230px}"
+             ".gl-filter label{font-size:13px;margin-left:12px;cursor:pointer}"
+             "tr.gl-hide{display:none}.gl-term{font-weight:600;white-space:nowrap}"
+             "</style>")
+    h = [style,
+         '<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Glossary</div>',
+         '<h1>Glossary <span class="small muted">&middot; one canonical term per concept, across clinical &middot; product &middot; technical</span></h1>',
+         '<p class="lead">A single source of truth for what every term means and <b>which spelling is canonical</b>. '
+         'Each entry is tagged by lens &mdash; %s. This page also powers the wiki-wide hover tooltips '
+         '(<code>data/glossary.json</code> &rarr; <code>assets/acronyms.js</code>).</p>'
+         % " &middot; ".join("<b>%s</b>" % _esc(v) for v in LENS.values()),
+         '<div class="callout note"><div class="ct">Lenses</div>%s</div>'
+         % chips(["clinical", "product", "technical"])]
+
+    # --- Standardization rulings (the terminology-discrepancy register) ---
+    h.append('<h2 id="rulings">Standardization rulings</h2>')
+    h.append('<p class="small muted">Where one concept had several names across the wiki, this is the agreed '
+             'canonical term. Variants are retained only as aliases. (Recorded, not yet mass-applied to body text.)</p>')
+    for r in G.get("rulings", []):
+        var = (' <span class="var">aliases: %s</span>' % _esc(", ".join(r["variants"]))) if r.get("variants") else ""
+        h.append('<div class="gl-rule" id="rule-%s"><div>%s &nbsp; <span class="can">%s</span>%s</div>'
+                 '<div style="margin:4px 0">%s</div><div class="small">%s</div></div>'
+                 % (r["id"], chips(r.get("lenses", [])), _esc(r["concept"]),
+                    "", "<b>Canonical:</b> " + _esc(r["canonical"]) + var, r["ruling"]))
+
+    # --- A–Z glossary, filterable ---
+    terms = G.get("terms", [])
+    h.append('<h2 id="az">A&ndash;Z glossary <span class="small muted">(%d terms)</span></h2>' % len(terms))
+    h.append('<div class="gl-filter"><input type="text" id="glq" placeholder="Filter terms&hellip;" '
+             'oninput="glFilter()" aria-label="Filter glossary">'
+             '<label><input type="checkbox" class="glL" value="clinical" checked onchange="glFilter()"> Clinical</label>'
+             '<label><input type="checkbox" class="glL" value="product" checked onchange="glFilter()"> Product</label>'
+             '<label><input type="checkbox" class="glL" value="technical" checked onchange="glFilter()"> Technical</label></div>')
+    h.append('<div class="tablewrap"><table id="gltab"><thead><tr><th>Term</th><th>Lens</th>'
+             '<th>Definition</th><th>Variants / aliases</th><th>See also</th></tr></thead><tbody>')
+    for t in terms:
+        ls = " ".join(t.get("lenses", []))
+        see = ", ".join(t.get("see", []))
+        var = ", ".join(t.get("variants", []))
+        rl = (' <a class="small" href="#rule-%s" title="standardization ruling">&sect;</a>' % t["ruling"]) if t.get("ruling") else ""
+        h.append('<tr data-lens="%s" data-term="%s"><td class="gl-term" id="t-%s">%s%s</td><td>%s</td>'
+                 '<td>%s</td><td class="small muted">%s</td><td class="small">%s</td></tr>'
+                 % (ls, _esc(t["term"].lower()), _esc(re.sub(r"[^A-Za-z0-9]+", "-", t["term"]).strip("-").lower()),
+                    _esc(t["term"]), rl, chips(t.get("lenses", [])), _esc(t["def"]),
+                    _esc(var), _esc(see)))
+    h.append('</tbody></table></div>')
+    h.append('<script>function glFilter(){var q=(document.getElementById("glq").value||"").toLowerCase();'
+             'var on={};document.querySelectorAll(".glL").forEach(function(c){on[c.value]=c.checked});'
+             'document.querySelectorAll("#gltab tbody tr").forEach(function(tr){'
+             'var ls=(tr.getAttribute("data-lens")||"").split(" ");'
+             'var lensOk=ls.some(function(x){return on[x]});'
+             'var txt=(tr.getAttribute("data-term")+" "+tr.textContent).toLowerCase();'
+             'var qOk=!q||txt.indexOf(q)>=0;tr.classList.toggle("gl-hide",!(lensOk&&qOk))})}</script>')
+    return "Glossary", "".join(h)
+
+# =================================================================== REFERENCE-DATA EXPORT
+def write_export_data():
+    """Emit assets/export-data.js (window.PURESCORE_EXPORT) — the canonical pillars / reservoirs /
+    markers / wearable-metrics / engine-constants reference, each with weights, assembled from
+    data/*.json. Consumed by the 'Export reference data (Excel)' control on pillar-weights.html.
+    Regenerated every build so the export can never desync from the engine JSON."""
+    PJ = _load("pillars.json")["pillars"]
+    PW = {c: float(w) for c, w in _load("pillar-weights.json")["weights"]}
+    PWmeta = _load("pillar-weights.json")
+    CG = _load("calc-graph.json")
+    RF = {r["id"]: r for r in _load("reservoir-flows.json")["reservoirs"]}
+    COUP = CG.get("reservoir_coupling", [])
+    CONST = _load("constants.json")["constants"]
+    RHO = next((c[2] for c in CONST if c[0] == "ρ_k"), "0.20")
+    try:
+        WM = _load("wearable-metrics.json")["metrics"]
+    except Exception:
+        WM = {}
+    try:
+        WC = {m["id"]: m for m in _load("wearable-corroboration.json")}
+    except Exception:
+        WC = {}
+
+    def num(x):
+        try: return float(str(x))
+        except Exception: return None
+
+    # --- Pillars (+ per-pillar marker weight-sum check) ---
+    mwt_sum = {}
+    for code, name, covers, markers in PJ:
+        mwt_sum[code] = round(sum(num(m[7]) or 0 for m in markers), 3)
+    pillars = []
+    for code, name, covers, markers in PJ:
+        pillars.append({"code": code, "name": name, "covers": covers,
+                        "base_weight": PW.get(code), "marker_wt_sum": mwt_sum.get(code),
+                        "marker_count": len(markers),
+                        "calibration": PWmeta.get("calibration_status", ""),
+                        "basis": PWmeta.get("basis", {}).get(code, "")})
+
+    # --- Markers ---
+    markers_out = []
+    for code, name, covers, markers in PJ:
+        for m in markers:
+            mn, unit, tier, two, g, y, r, wt, src, crit = m
+            markers_out.append({"pillar": code, "marker": mn, "unit": unit,
+                                "tier": tier, "green": g, "yellow": y, "red": r,
+                                "within_pillar_weight": num(wt),
+                                "two_sided": "yes" if two else "no",
+                                "safety_critical": "yes" if crit else "no", "source": src})
+
+    # --- Reservoirs (calc-graph canonical + reservoir-flows dynamics + couplings) ---
+    reservoirs = []
+    for key, rv in CG.get("reservoirs", {}).items():
+        rf = RF.get(key, {})
+        inflows = "; ".join("%s %s→%s" % (i[0], i[1], i[2]) for i in rv.get("inputs", []))
+        coup = []
+        for c in COUP:
+            if c.get("t") == key:
+                coup += ["%s(+%s)" % (s, v) for s, v in c.get("add", [])]
+                coup += ["%s(−%s)" % (s, v) for s, v in c.get("subDeficit", [])]
+        reservoirs.append({"code": key.upper(), "name": rv.get("label", key),
+                           "polarity": rv.get("polarity", rf.get("pol", "")),
+                           "feeds_pillar": (rv.get("feeds") or rf.get("feeds", "")),
+                           "inflows": inflows,
+                           "incoming_coupling_kappa": ", ".join(coup),
+                           "contribution_cap_rho_k": num(RHO),
+                           "tau_days": rf.get("tau"), "setpoint": rf.get("sp"),
+                           "calibration": rv.get("calibration_status", ""),
+                           "basis": rv.get("basis", "")})
+
+    # --- Wearable metrics (+ tolerance from corroboration) ---
+    wearables = []
+    items = WM.items() if isinstance(WM, dict) else [(m.get("id"), m) for m in WM]
+    for mid, w in items:
+        pl = w.get("plaus", {})
+        wearables.append({"id": mid, "label": w.get("label", ""), "pillar": w.get("pillar", ""),
+                          "group": w.get("group", ""), "unit": w.get("canon", ""), "si_unit": w.get("si", ""),
+                          "sampling_freq": w.get("freq", ""), "aggregation": w.get("agg", ""),
+                          "plausibility": ("%s–%s" % (pl.get("min"), pl.get("max")) if pl else ""),
+                          "trust_tier": w.get("trust", ""),
+                          "tolerance": WC.get(mid, {}).get("tolerance", "")})
+
+    constants = [{"symbol": c[0], "meaning": c[1], "value": c[2], "reference": c[3]} for c in CONST]
+
+    out = {
+        "meta": {"generated_from": "data/*.json (canonical, regenerated each build)",
+                 "note": "Pillars & markers carry weights; reservoirs use the global ρ_k cap + κ couplings; wearables carry a tolerance. Pillar base weights sum to 1.00; per-pillar marker weight-sum is shown for transparency (raw, pre-normalisation).",
+                 "counts": {"pillars": len(pillars), "reservoirs": len(reservoirs),
+                            "markers": len(markers_out), "wearables": len(wearables), "constants": len(constants)}},
+        "pillars": pillars, "reservoirs": reservoirs, "markers": markers_out,
+        "wearables": wearables, "constants": constants,
+    }
+    import json as _json
+    with open(os.path.join(_HERE, "assets", "export-data.js"), "w", encoding="utf-8") as f:
+        f.write("/* GENERATED from data/*.json by wiki_content.write_export_data(). Do NOT edit. */\n"
+                "window.PURESCORE_EXPORT=" + _json.dumps(out, ensure_ascii=False) + ";")
+    print("  [export] %d pillars · %d reservoirs · %d markers · %d wearables → assets/export-data.js"
+          % (len(pillars), len(reservoirs), len(markers_out), len(wearables)))
+
+
+def build_whats_new():
+    """The 'What changed: PureScore v1 -> revamped' tracking table that opens the terminology page.
+    Data-driven from data/whats-new.json; build_wiki._whatsnew_guard validates every status + link.
+    Status pills: built (live) / spec (designed) / planned (directional)."""
+    try:
+        wn = _load("whats-new.json")
+    except Exception:
+        return ""
+    m = wn.get("_meta", {})
+    changes = wn.get("changes", [])
+    leg = m.get("status_legend", {})
+    SLABEL = {"built": "Built", "spec": "Spec’d", "planned": "Planned"}
+    css = ('<style>'
+      '.wn{margin:6px 0 30px;border:1px solid #243150;border-radius:12px;padding:16px 18px;background:#0e1626}'
+      '.wn h2{margin:0 0 6px;font-size:19px}'
+      '.wn .wn-intro{color:#9aa6c4;font-size:13.5px;margin:0 0 14px;max-width:82ch}'
+      '.wn .tablewrap{overflow-x:auto}'
+      '.wn table{width:100%;border-collapse:collapse;font-size:13px}'
+      '.wn th,.wn td{border:1px solid #243150;padding:8px 10px;vertical-align:top;text-align:left}'
+      '.wn th{background:#13203a;font-weight:600;white-space:nowrap}'
+      '.wn td.n{text-align:center;color:#7f8db0}'
+      '.wn .ttl{font-weight:600;color:#e8edf6}'
+      '.wn .frm{color:#94a0bf}.wn .to{color:#dfe6f5}.wn .arw{color:#5b6b8c;padding:0 5px}'
+      '.wn .pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;white-space:nowrap}'
+      '.wn .built{background:#0f3320;color:#5eead4;border:1px solid #1f6f4a}'
+      '.wn .spec{background:#2c2510;color:#f5c560;border:1px solid #7a5b1e}'
+      '.wn .planned{background:#2a1530;color:#d6a4ef;border:1px solid #6b327a}'
+      '.wn .lk a{white-space:nowrap}.wn .lk .s{color:#46557a;padding:0 4px}'
+      '.wn .lg{font-size:12px;color:#8b97b8;margin:10px 0 0}'
+      '</style>')
+    h = [css, '<section class="wn" id="whats-new">',
+         '<h2>%s</h2>' % _esc(m.get("title", "What changed")),
+         '<p class="wn-intro">%s</p>' % _esc(m.get("intro", "")),
+         '<div class="tablewrap"><table><thead><tr><th>#</th><th>Change</th>'
+         '<th>%s &rarr; %s</th><th>Status</th><th>Where it lives</th></tr></thead><tbody>'
+         % (_esc(m.get("from_label", "v1")), _esc(m.get("to_label", "Revamped")))]
+    for i, c in enumerate(changes, 1):
+        st = c.get("status", "")
+        parts = ['<a class="xref" href="%s">%s</a>' % (_esc(l.get("href", "")), _esc(l.get("label", "")))
+                 for l in c.get("links", [])]
+        links = '<span class="s">&middot;</span>'.join(parts)
+        h.append('<tr><td class="n">%d</td><td class="ttl">%s</td>'
+                 '<td><span class="frm">%s</span><span class="arw">&rarr;</span><span class="to">%s</span></td>'
+                 '<td><span class="pill %s">%s</span></td><td class="lk">%s</td></tr>'
+                 % (i, _esc(c.get("title", "")), _esc(c.get("from", "")), _esc(c.get("to", "")),
+                    _esc(st), _esc(SLABEL.get(st, st)), links))
+    h.append('</tbody></table></div>')
+    h.append('<p class="lg"><b>Status</b> &mdash; '
+             '<span class="pill built">Built</span> %s &nbsp; '
+             '<span class="pill spec">Spec’d</span> %s &nbsp; '
+             '<span class="pill planned">Planned</span> %s</p>'
+             % (_esc(leg.get("built", "")), _esc(leg.get("spec", "")), _esc(leg.get("planned", ""))))
+    h.append('</section>')
+    return "".join(h)

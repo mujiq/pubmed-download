@@ -1,0 +1,112 @@
+{
+ "_meta": {
+  "title": "What changed — PureScore v1 → the revamped HikmaEngine",
+  "intro": "The biggest conceptual shifts from the original PureScore to the revamped engine. Status tracks build-readiness for the tech team; every “Where it lives” link is guard-checked against a real page so this stays a live navigation map, not a stale changelog.",
+  "from_label": "PureScore v1",
+  "to_label": "Revamped",
+  "status_legend": {
+   "built": "Implemented — engine + spec are live in this wiki",
+   "spec": "Designed / spec’d — documented, not yet fully built",
+   "planned": "Directional — intent set, detailed spec pending"
+  }
+ },
+ "changes": [
+  {
+   "id": "sex-lifestage",
+   "title": "Sex, hormones & life-stage",
+   "from": "One unisex set of bands & pillar weights for everyone",
+   "to": "Bands, weights and reservoir dynamics reshaped by biological sex, hormonal milieu (cycle · pregnancy · menopause · andropause) and life-stage",
+   "status": "built",
+   "links": [
+    {"href": "purescore-sex.html", "label": "PureScore by sex"},
+    {"href": "08-sex-specific-models.html", "label": "Doc 08 · Sex-specific models"},
+    {"href": "states.html", "label": "Life-state machine"}
+   ]
+  },
+  {
+   "id": "pillars-12",
+   "title": "Pillars: 5 → 12",
+   "from": "5 pillars",
+   "to": "12 pillars — cardiovascular, metabolic, renal, hepatic, inflammation, hematologic, endocrine, body-composition, nutrition, sleep, fitness, mental/cognitive",
+   "status": "built",
+   "links": [
+    {"href": "02-pillars-and-marker-catalog.html", "label": "Doc 02 · 12 pillars & markers"},
+    {"href": "pillar-weights.html", "label": "Pillar weights & correlations"},
+    {"href": "03-scoring-formula.html", "label": "Doc 03 · Scoring formula"}
+   ]
+  },
+  {
+   "id": "wearables-19",
+   "title": "Wearable metrics: 2 → 19",
+   "from": "2 wearable signals (steps · heart rate)",
+   "to": "19 metrics across recovery, sleep, cardiorespiratory fitness, activity and continuous monitoring — resting HR, HRV (RMSSD), SpO₂, skin-temp deviation, total sleep, sleep efficiency, sleep regularity, deep+REM, overnight SpO₂/ODI (apnea), nighttime HR/HRV recovery, VO₂max, steps, MVPA, sedentary time, HR recovery, gait speed, CGM time-in-range, CGM glycemic variability, home BP — each pillar-tagged with trust tiers & personal baselines",
+   "status": "built",
+   "links": [
+    {"href": "wearable-baseline-pipeline.html", "label": "Wearable baseline pipeline"},
+    {"href": "07-data-streams-and-experience.html", "label": "Doc 07 · Data streams"},
+    {"href": "wearable-baselines.html", "label": "Wearable baselines UI"},
+    {"href": "appendix-wearable-corroboration.html", "label": "Wearable corroboration"}
+   ]
+  },
+  {
+   "id": "biomoniac-reservoirs",
+   "title": "BIOMONIAC reservoirs — assets & burden",
+   "from": "Point-in-time snapshot — no latent state or momentum",
+   "to": "15 connected reservoirs of accumulated assets & burden, multivariate and κ-coupled across pillars, giving the score momentum, hysteresis and lead/lag",
+   "status": "built",
+   "links": [
+    {"href": "reservoir-sim.html", "label": "Reservoir simulator / BIOMONIAC"},
+    {"href": "04-moniac-reservoir-dynamics.html", "label": "Doc 04 · Reservoir dynamics"}
+   ]
+  },
+  {
+   "id": "user-goals",
+   "title": "User goals",
+   "from": "No explicit, tracked user goals",
+   "to": "First-class user goals captured by progressive profiling and/or mined from chat sessions, steering scoring and the action engine",
+   "status": "spec",
+   "links": [
+    {"href": "questions-hub.html", "label": "Questions & intake"},
+    {"href": "07-data-streams-and-experience.html", "label": "Doc 07 · Goal stream"},
+    {"href": "appendix-onboarding.html", "label": "Onboarding"}
+   ]
+  },
+  {
+   "id": "onboarding-pro",
+   "title": "Onboarding · progressive profiling · PRO",
+   "from": "One-shot intake form",
+   "to": "Progressive onboarding that fills the profile over time, plus Patient-Reported Outcomes (PROs) feeding the engine",
+   "status": "spec",
+   "links": [
+    {"href": "consent-onboarding.html", "label": "Consent & onboarding prototype"},
+    {"href": "appendix-onboarding.html", "label": "Onboarding"},
+    {"href": "questions-hub.html", "label": "Questions & intake"},
+    {"href": "eligibility-gating.html", "label": "Eligibility & gating"}
+   ]
+  },
+  {
+   "id": "nextbestaction",
+   "title": "NextBestAction → health outcomes",
+   "from": "Generic nudges & recommendations",
+   "to": "NextBestAction explicitly optimised to improve health OUTCOMES (not just engagement) — ranked by outcome impact",
+   "status": "planned",
+   "links": [
+    {"href": "12-recommended-actions-catalogue.html", "label": "Doc 12 · Recommended actions"},
+    {"href": "11-daily-nudge-engine.html", "label": "Doc 11 · Nudge engine"},
+    {"href": "care-pathways.html", "label": "Care pathways"}
+   ]
+  },
+  {
+   "id": "knob-forecast",
+   "title": "Knobs & multi-horizon forecast",
+   "from": "Static score — no what-if or projection",
+   "to": "Adjustable knobs that forecast PureScore and per-pillar trajectories over 90 / 180 / 365 days (live single-point recompute is built today; the time-horizon projection is the spec’d extension)",
+   "status": "spec",
+   "links": [
+    {"href": "purescore-uber-map.html", "label": "Calculation Explorer — editable leaves"},
+    {"href": "feedback-loop.html", "label": "Live feedback-loop demo"},
+    {"href": "purescore-calc-uber.html", "label": "PureScore calc pipeline"}
+   ]
+  }
+ ]
+}
