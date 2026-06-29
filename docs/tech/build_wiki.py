@@ -148,7 +148,7 @@ def md_to_html(md):
 # inputs → personalize → act → trust & govern → see the system → build → reference/tools.
 # Each chapter has a one-line blurb (NAV_BLURB). Doc number badges float; identity preserved.
 NAV = [
- ("Start here", [("terminology-standardization.html", "\U0001F4A1 Terminology standardization"), ("ooux-system-map.html", "\U0001F5FA OOUX system map"), ("ooux-alignment.html", "\U0001F9ED OOUX alignment"), ("glossary.html", "Glossary"), ("index.html", "Home"), ("purescore-uber-map.html", "Calculation Explorer"),
+ ("Start here", [("terminology-standardization.html", "\U0001F4A1 Terminology standardization"), ("ooux-system-map.html", "\U0001F5FA OOUX system map"), ("ooux-alignment.html", "\U0001F9ED OOUX alignment"), ("product-config-design.html", "⚙ Config & simulator"), ("glossary.html", "Glossary"), ("index.html", "Home"), ("purescore-uber-map.html", "Calculation Explorer"),
                  (DOCMAP["01"], SHORT["01"], "01"), ("conventions.html", "Conventions & glossary"),
                  ("decisions.html", "Decision log")]),
  ("1 · How scoring works", [("purescore-overview.html", "Overview"),
@@ -302,6 +302,7 @@ PDESC = {
  "terminology-standardization.html": "The PureScore v1→v2 change map (biggest shifts, build status, where each lives) plus the terminology-discrepancy register: variants, canonical rulings, lenses, and the proposed rewrite scope.",
  "ooux-system-map.html": "The whole-app Object-Oriented UX map — ~70 objects across 15 layers and 10 features, with relationships, CTAs and cross-feature impact. The system map the wiki aligns to.",
  "ooux-alignment.html": "How the wiki aligns to the OOUX system map: ~85% aligned in substance; word collisions, stale numbers, and open product decisions, with prioritized reconciliations.",
+ "product-config-design.html": "Runtime-configurable scoring: edit pillars/markers/wearables/questions + reservoir wiring via allocation sliders & a connection matrix, simulate impact across the cohort, served from a versioned in-memory snapshot (0 DB per score).",
  "conventions.html": "Notation, glossary and the conventions every other page assumes.",
  "decisions.html": "The running decision log (D-numbers) referenced throughout the specs.",
  "purescore-overview.html": "A plain-language tour of pillars → markers → score before the formal math.",
@@ -366,7 +367,7 @@ PDESC = {
  "admin-personas.html": "Configure personas and framing.",
  "admin-governance.html": "Governance and sign-off workflow.",
 }
-PTITLE = {"index.html":"Home","glossary.html":"Glossary","terminology-standardization.html":"Terminology standardization","ooux-system-map.html":"OOUX system map","ooux-alignment.html":"OOUX alignment","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
+PTITLE = {"index.html":"Home","glossary.html":"Glossary","terminology-standardization.html":"Terminology standardization","ooux-system-map.html":"OOUX system map","ooux-alignment.html":"OOUX alignment","product-config-design.html":"Config & simulator","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
           "production-gaps.html":"Production readiness — gaps",
           "spec-audit.html":"Spec build-readiness audit",
           "pillar-weights.html":"Pillar weights & correlations",
@@ -834,7 +835,13 @@ def main():
     if os.path.exists(_oamd):
         _oah, _ = md_to_html(open(_oamd, encoding="utf-8").read())
         page("ooux-alignment.html", "OOUX alignment",
-             '<div class="crumbs"><a href="index.html">Home</a> &rsaquo; OOUX alignment</div>' + _oah)
+             '<div class="crumbs"><a href="index.html">Home</a> &rsaquo; OOUX alignment</div>'
+             + C.build_ooux_alignment() + _oah)
+    _pcmd = os.path.join(HERE, "..", "PRODUCT-CONFIG-DESIGN.md")   # lives at docs/ root, rendered into the wiki
+    if os.path.exists(_pcmd):
+        _pch, _ = md_to_html(open(_pcmd, encoding="utf-8").read())
+        page("product-config-design.html", "Config & simulator",
+             '<div class="crumbs"><a href="index.html">Home</a> &rsaquo; Config &amp; simulator</div>' + _pch)
     # builders resolved by name at call time so a not-yet-present builder (multi-agent edits) is skipped, not fatal
     # IA cleanup: each dataset's companion grid is folded into its appendix as a "Spreadsheet view" (no standalone grid pages)
     MERGE_GRID = {"appendix-biomarkers.html": "build_grid_biomarkers", "appendix-wearables.html": "build_grid_wearables",
@@ -912,6 +919,44 @@ def main():
     _clinical_validation_guard()
     _cohort_guard()
     _whatsnew_guard()
+    _ooux_guard()
+
+def _ooux_guard():
+    """OOUX terminology decision-register integrity (ooux-alignment page): HARD-fail if a collision has
+    an invalid decision/recommended value or a link that resolves to no page. Keeps the register a live,
+    pickable tracker rather than stale prose."""
+    oa = C._load("ooux-alignment.json")
+    cols = oa.get("collisions", [])
+    VALID = {"adopt", "keep", "alias", "split", "product", "fix-map", "pending"}
+    valid_pages = set(PTITLE) | set(ORDER)
+    bad, seen, nlinks = [], set(), 0
+    for c in cols:
+        cid = c.get("id", "?")
+        if cid in seen:
+            bad.append("duplicate id %r" % cid)
+        seen.add(cid)
+        for f in ("title", "ooux", "wiki", "decision", "recommended"):
+            if not c.get(f):
+                bad.append("%s: missing %s" % (cid, f))
+        if c.get("decision") not in VALID:
+            bad.append("%s: decision %r invalid" % (cid, c.get("decision")))
+        if c.get("recommended") not in (VALID - {"pending"}):
+            bad.append("%s: recommended %r invalid" % (cid, c.get("recommended")))
+        for l in c.get("links", []):
+            nlinks += 1
+            href = (l.get("href") or "").split("#")[0]
+            if href not in valid_pages and not os.path.exists(os.path.join(HERE, href)):
+                bad.append("%s: link %r resolves to no page" % (cid, href))
+    ndec = sum(1 for c in cols if c.get("decision") != "pending")
+    neng = sum(1 for c in cols if c.get("engine_load"))
+    print("[ooux-guard] %d collisions · %d decided / %d pending · %d engine-load · %d links"
+          % (len(cols), ndec, len(cols) - ndec, neng, nlinks))
+    if bad:
+        print("  ! FAIL:")
+        for b in bad:
+            print("     -", b)
+        raise SystemExit("! build failed: ooux-alignment guard")
+    print("  [ooux-guard] OK — decisions valid, every link resolves")
 
 def _whatsnew_guard():
     """What's-new tracking table integrity (terminology page header): HARD-fail if a change carries an

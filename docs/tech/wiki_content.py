@@ -5286,3 +5286,82 @@ def build_whats_new():
              % (_esc(leg.get("built", "")), _esc(leg.get("spec", "")), _esc(leg.get("planned", ""))))
     h.append('</section>')
     return "".join(h)
+
+
+def build_ooux_alignment():
+    """The OOUX terminology decision-register that opens the OOUX-alignment page. Data-driven from
+    data/ooux-alignment.json; build_wiki._ooux_guard validates every decision value + link. Each row is
+    a collision between the wiki and the canonical OOUX system map, with measured blast radius, an expert
+    recommendation and your DECISION (pending until set). ⚙ = engine-load-bearing (changing it touches a guard)."""
+    try:
+        oa = _load("ooux-alignment.json")
+    except Exception:
+        return ""
+    m = oa.get("_meta", {})
+    cols = oa.get("collisions", [])
+    DLABEL = {"adopt": "Adopt OOUX", "keep": "Keep wiki", "alias": "Alias", "split": "Split",
+              "product": "Product call", "fix-map": "Fix map", "pending": "Pending"}
+    css = ('<style>'
+      '.oa{margin:6px 0 30px;border:1px solid #243150;border-radius:12px;padding:16px 18px;background:#0e1626}'
+      '.oa h2{margin:0 0 6px;font-size:19px}'
+      '.oa .oa-intro{color:#9aa6c4;font-size:13.5px;margin:0 0 14px;max-width:88ch}'
+      '.oa .tablewrap{overflow-x:auto}'
+      '.oa table{width:100%;border-collapse:collapse;font-size:12.5px}'
+      '.oa th,.oa td{border:1px solid #243150;padding:7px 9px;vertical-align:top;text-align:left}'
+      '.oa th{background:#13203a;font-weight:600;white-space:nowrap}'
+      '.oa td.n{text-align:center;color:#7f8db0}'
+      '.oa .ttl{font-weight:600;color:#e8edf6}'
+      '.oa .mng{color:#8b97b8;font-size:11.5px;margin-top:2px;max-width:46ch}'
+      '.oa .ox{color:#d6a4ef}.oa .wk{color:#5eead4}.oa .vs{color:#5b6b8c;padding:0 4px}'
+      '.oa .blast{color:#94a0bf;white-space:normal;max-width:24ch}'
+      '.oa .eng{color:#f5c560;font-weight:700;cursor:help}'
+      '.oa .pill{display:inline-block;border-radius:999px;padding:2px 8px;font-size:10.5px;font-weight:700;white-space:nowrap}'
+      '.oa .adopt{background:#10331f;color:#5eead4;border:1px solid #1f6f4a}'
+      '.oa .keep{background:#10243a;color:#7fb0f0;border:1px solid #28507e}'
+      '.oa .alias{background:#0f2f30;color:#67e8d0;border:1px solid #1f6a66}'
+      '.oa .split{background:#251a36;color:#c4a0ee;border:1px solid #533a7a}'
+      '.oa .product{background:#2c2510;color:#f5c560;border:1px solid #7a5b1e}'
+      '.oa .fixmap{background:#331417;color:#f08a8a;border:1px solid #7a2b2b}'
+      '.oa .pending{background:#1a2233;color:#8b97b8;border:1px solid #34425e}'
+      '.oa .rec{color:#aeb9d6}.oa .rec .pill{margin-bottom:3px}'
+      '.oa .lk a{white-space:nowrap}.oa .lk .s{color:#46557a;padding:0 3px}'
+      '.oa .lg{font-size:11.5px;color:#8b97b8;margin:10px 0 0;line-height:1.7}'
+      '</style>')
+    def pill(v):
+        cls = "fixmap" if v == "fix-map" else v
+        return '<span class="pill %s">%s</span>' % (cls, _esc(DLABEL.get(v, v)))
+    h = [css, '<section class="oa" id="decision-register">',
+         '<h2>%s</h2>' % _esc(m.get("title", "OOUX alignment")),
+         '<p class="oa-intro">%s Anchored on <a class="xref" href="%s">the OOUX system map</a>.</p>'
+         % (_esc(m.get("intro", "")), _esc(m.get("anchor", "ooux-system-map.html"))),
+         '<div class="tablewrap"><table><thead><tr><th>#</th><th>Collision</th>'
+         '<th>OOUX &harr; Wiki</th><th>Blast radius</th><th>Recommended</th><th>Decision</th><th>Where</th>'
+         '</tr></thead><tbody>']
+    for i, c in enumerate(cols, 1):
+        eng = ' <span class="eng" title="engine-load-bearing — changing this touches a build guard">&#9881;</span>' if c.get("engine_load") else ''
+        parts = ['<a class="xref" href="%s">%s</a>' % (_esc(l.get("href", "")), _esc(l.get("label", "")))
+                 for l in c.get("links", [])]
+        links = '<span class="s">&middot;</span>'.join(parts)
+        dec = c.get("decision", "pending")
+        decnote = c.get("decision_note") or ""
+        recnote = c.get("recommended_note") or ""
+        h.append('<tr><td class="n">%d</td>'
+                 '<td><span class="ttl">%s</span>%s<div class="mng">%s</div></td>'
+                 '<td><span class="ox">%s</span><span class="vs">&harr;</span><span class="wk">%s</span></td>'
+                 '<td class="blast">%s</td>'
+                 '<td class="rec">%s<div class="mng">%s</div></td>'
+                 '<td>%s%s</td>'
+                 '<td class="lk">%s</td></tr>'
+                 % (i, _esc(c.get("title", "")), eng, _esc(c.get("meaning", "")),
+                    _esc(c.get("ooux", "")), _esc(c.get("wiki", "")),
+                    _esc(c.get("blast", "")),
+                    pill(c.get("recommended", "pending")), _esc(recnote),
+                    pill(dec), ('<div class="mng">%s</div>' % _esc(decnote)) if decnote else '',
+                    links))
+    h.append('</tbody></table></div>')
+    leg = m.get("decision_legend", {})
+    order = ["adopt", "keep", "alias", "split", "product", "fix-map", "pending"]
+    legbits = " &nbsp; ".join(pill(k) + " " + _esc(leg.get(k, "")) for k in order if k in leg)
+    h.append('<p class="lg"><b>Decision key</b> &mdash; %s<br>&#9881; = engine-load-bearing (a build guard depends on the term).</p>' % legbits)
+    h.append('</section>')
+    return "".join(h)
