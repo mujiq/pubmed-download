@@ -48,7 +48,7 @@
     "product"
    ],
    "status": "approved",
-   "ruling": "Use <b>Progressive profiling</b> for gradually gathering user attributes/demographics across sessions. The data-quality chapter is renamed to <b>Data quality &amp; graceful degradation</b> so 'progressive' no longer collides with the degradation pipeline."
+   "ruling": "Use <b>Progressive profiling</b> for gradually gathering member attributes/demographics across sessions. The data-quality chapter is renamed to <b>Data quality &amp; graceful degradation</b> so 'progressive' no longer collides with the degradation pipeline."
   },
   {
    "id": 4,
@@ -63,12 +63,12 @@
     "product"
    ],
    "status": "approved",
-   "ruling": "<b>Nudge</b> = a system→user prompt suggesting a behaviour/action (the nudge engine). <b>Check-in</b> = a system→user prompt <i>requesting</i> data (mood/stress/adherence self-report). An <b>adherence check-in</b> is a check-in confirming a prescribed action was done."
+   "ruling": "<b>Nudge</b> = a system→user prompt suggesting a behaviour/action (the nudge engine). <b>Check-in</b> = a system→user prompt <i>requesting</i> data (mood/stress/adherence self-report). An <b>adherence check-in</b> is a check-in confirming a prescribed action was done. <i>OOUX cross-walk:</i> at the member surface a Nudge is a <b>Notification</b>(type=nudge); the 'nudge engine' = <b>Action Funnel</b> + RewardFunction + ClinicalIntelligence. Check-ins follow a max-3/day budget."
   },
   {
    "id": 5,
    "concept": "Care construct",
-   "canonical": "Care pathway (protocol) / Care plan (instance)",
+   "canonical": "Care pathway (template) / Care plan (prescribed) / Protocol (member)",
    "variants": [
     "treatment plan",
     "care program"
@@ -78,7 +78,7 @@
     "product"
    ],
    "status": "approved",
-   "ruling": "<b>Care pathway</b> = the standardized condition-level clinical PROTOCOL/template (IEAT lifecycle). <b>Care plan</b> = the PERSONALIZED instance generated for one user from a pathway (their bundle of interventions + goals). A care plan is an instance of a care pathway."
+   "ruling": "<b>Care pathway</b> = the standardized condition-level clinical <i>template</i> (IEAT lifecycle) — do NOT call it a 'protocol'. <b>Care plan</b> = the clinician-prescribed instance generated for one member from a pathway (their bundle of interventions + goals). <b>Protocol</b> = the member-authored lifestyle plan-per-goal (OOUX). Three distinct constructs along the prescriber axis; reserve the word 'protocol' for the member's plan only."
   },
   {
    "id": 6,
@@ -93,7 +93,7 @@
     "technical"
    ],
    "status": "approved",
-   "ruling": "<b>Goal</b> = the user-stated aspiration that personalizes scoring/actions (drives m_k^goal). <b>Target</b> = a technical/clinical setpoint or threshold (reservoir B^target, calibration target, validation target population). Never use 'target' to mean a user goal."
+   "ruling": "<b>Goal</b> = the member-stated aspiration that personalizes scoring/actions (drives m_k^goal). <b>Target</b> = a technical/clinical setpoint or threshold (reservoir B^target, calibration target, validation target population). Never use 'target' to mean a user goal. <b>PersonalGoal</b> is the OOUX object name for a member's Goal."
   },
   {
    "id": 7,
@@ -126,7 +126,7 @@
     "product"
    ],
    "status": "approved",
-   "ruling": "<b>Pillar</b> is the one canonical term for the 12 systems in all prose. <b>Domain</b> is permitted ONLY as the frozen field/ID token in the evidence registry (EVD-&lt;DOMAIN&gt;-…), where renaming would break stable keys."
+   "ruling": "<b>Pillar</b> is the one canonical term for the 12 systems in all prose. <b>Domain</b> is permitted ONLY as the frozen field/ID token in the evidence registry (EVD-&lt;DOMAIN&gt;-…), where renaming would break stable keys. <i>OOUX:</i> its 4 'PureScore Pillars' (Risk/Reserve/Lifestyle/Vitality) are <b>score facets</b> — an optional roll-up ABOVE the 12, never a replacement."
   },
   {
    "id": 9,
@@ -142,7 +142,76 @@
     "technical"
    ],
    "status": "approved",
-   "ruling": "<b>Marker</b> = any scored input (lab, wearable or PRO). 'Biomarker' is an alias of marker. <b>Metric</b> is reserved for a derived/computed value (e.g. HRV from raw beats). 'Signal' is informal — avoid in spec prose."
+   "ruling": "<b>Marker</b> = any scored input (lab, wearable or PRO). 'Biomarker' is an alias of marker. <b>Metric</b> is reserved for a derived/computed value (e.g. HRV from raw beats). 'Signal' is informal — avoid in spec prose. Adopt the OOUX object split <b>MarkerDef</b> (definition) / <b>MeasuredValue</b> (a reading) / <b>ReferenceRange</b> (bands) — the wiki already mirrors it (MarkerDef / Measurement / ReferenceDist). 'Biomarker' is the My-Health product-surface alias."
+  },
+  {
+   "id": 10,
+   "concept": "The person / app actor",
+   "canonical": "Member",
+   "variants": [
+    "patient (clinical prose)",
+    "user (legacy/product)"
+   ],
+   "lenses": [
+    "product",
+    "clinical"
+   ],
+   "status": "approved",
+   "ruling": "<b>Member</b> is the canonical term for the person the system serves (OOUX's primary object). Use <b>Member</b> in product and user-facing prose. <b>Patient</b> stays only in genuinely clinical framing and in fixed terms — <b>patient-reported outcome</b>, <b>patient safety</b>, in-/out-patient — which are NEVER renamed. Internal code identifiers (the <code>PatientState</code> class, <code>patient</code> data keys, <code>patient_app</code>) keep their names to avoid breaking the engine; this ruling records the mapping. 'User' = legacy/technical (UX, end-user, decision-log author) — leave as-is."
+  },
+  {
+   "id": 11,
+   "concept": "The headline banded number",
+   "canonical": "Accuracy",
+   "variants": [
+    "confidence (OOUX sense)"
+   ],
+   "lenses": [
+    "product",
+    "technical"
+   ],
+   "status": "approved",
+   "ruling": "<b>Accuracy</b> = the headline banded number the member sees (OOUX calls this same number 'Confidence'). Its named sub-components: <b>Confidence</b> = trustworthiness of the inputs; <b>Sufficiency</b> = how complete the data is. One number, one word — Accuracy; reserve 'Confidence' for the sub-component (and the statistical sense), never the headline band."
+  },
+  {
+   "id": 12,
+   "concept": "Data-sufficiency / trust level",
+   "canonical": "Sufficiency",
+   "variants": [
+    "KnowledgeLevel (OOUX)"
+   ],
+   "lenses": [
+    "technical",
+    "product"
+   ],
+   "status": "approved",
+   "ruling": "<b>Sufficiency</b> = how much usable data backs the score (cohort-fallback included). OOUX's <b>KnowledgeLevel</b> is the product-surface alias for the same idea."
+  },
+  {
+   "id": 13,
+   "concept": "Biological-age outcome",
+   "canonical": "BioAge",
+   "variants": [
+    "HealthAge (OOUX/product)"
+   ],
+   "lenses": [
+    "clinical",
+    "product"
+   ],
+   "status": "approved",
+   "ruling": "<b>BioAge</b> (biological age) is the canonical outcome term; <b>HealthAge</b> is the product-surface alias."
+  },
+  {
+   "id": 14,
+   "concept": "Action-selection pipeline objects",
+   "canonical": "Action Funnel / Insight / EnhancementAction / Value of Information",
+   "variants": [],
+   "lenses": [
+    "product",
+    "technical"
+   ],
+   "status": "approved",
+   "ruling": "Adopt the OOUX names for the (previously unnamed) action-selection pipeline: <b>Action Funnel</b> = the selection/ranking stages; <b>Insight</b> = the nudge-card payload; <b>EnhancementAction</b> = a MEASURE/CLINICAL nudge; <b>Value of Information</b> = the ΔAccuracy-per-effort ranking. Pure relabel — no math change."
   }
  ],
  "terms": [
@@ -1483,6 +1552,141 @@
    "variants": [],
    "see": [],
    "src": "acronym"
+  },
+  {
+   "term": "Member",
+   "def": "The person the system serves — the canonical actor (OOUX). Product/user-facing term for what clinical prose calls a patient.",
+   "lenses": [
+    "product"
+   ],
+   "variants": [],
+   "see": [
+    "Patient"
+   ],
+   "src": "ruling"
+  },
+  {
+   "term": "Biomarker",
+   "def": "My-Health product-surface alias of Marker (which canonically spans lab, wearable and PRO).",
+   "lenses": [
+    "product"
+   ],
+   "variants": [],
+   "see": [
+    "Marker"
+   ],
+   "src": "ruling"
+  },
+  {
+   "term": "KnowledgeLevel",
+   "def": "OOUX product-surface alias for Sufficiency (how much usable data backs the score).",
+   "lenses": [
+    "product"
+   ],
+   "variants": [],
+   "see": [
+    "Sufficiency"
+   ],
+   "src": "ruling"
+  },
+  {
+   "term": "HealthAge",
+   "def": "OOUX/product alias for BioAge (biological age).",
+   "lenses": [
+    "product"
+   ],
+   "variants": [],
+   "see": [
+    "BioAge"
+   ],
+   "src": "ruling"
+  },
+  {
+   "term": "Action Funnel",
+   "def": "The action selection/ranking pipeline (OOUX name for the wiki's previously-unnamed selection stages).",
+   "lenses": [
+    "product",
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "ruling"
+  },
+  {
+   "term": "Insight",
+   "def": "The nudge-card payload delivered to the member (OOUX).",
+   "lenses": [
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "ruling"
+  },
+  {
+   "term": "EnhancementAction",
+   "def": "A MEASURE or CLINICAL nudge that improves data or care (OOUX).",
+   "lenses": [
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "ruling"
+  },
+  {
+   "term": "Value of Information",
+   "def": "The ΔAccuracy-per-effort ranking that orders candidate actions (OOUX name).",
+   "lenses": [
+    "technical"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "ruling"
+  },
+  {
+   "term": "Score facet",
+   "def": "OOUX's 4 backend 'PureScore Pillars' (Risk/Reserve/Lifestyle/Vitality) as an optional roll-up ABOVE the 12 clinical pillars.",
+   "lenses": [
+    "product"
+   ],
+   "variants": [],
+   "see": [
+    "Pillar"
+   ],
+   "src": "ruling"
+  },
+  {
+   "term": "Protocol",
+   "def": "The member-authored lifestyle plan-per-goal (OOUX). Distinct from a Care pathway (template) and a Care plan (clinician-prescribed).",
+   "lenses": [
+    "product",
+    "clinical"
+   ],
+   "variants": [],
+   "see": [
+    "Care pathway",
+    "Care plan"
+   ],
+   "src": "ruling"
+  },
+  {
+   "term": "Daily Action",
+   "def": "The single hero action surfaced per day (OOUX); the rest of the ranked set are NBAs.",
+   "lenses": [
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "ruling"
+  },
+  {
+   "term": "Daily Summary",
+   "def": "The immediate acknowledgement/reinforcement surface (OOUX) — what PureScore, a slow outcome, cannot be.",
+   "lenses": [
+    "product"
+   ],
+   "variants": [],
+   "see": [],
+   "src": "ruling"
   }
  ]
 }

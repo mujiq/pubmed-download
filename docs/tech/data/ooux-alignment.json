@@ -25,9 +25,25 @@
    "recommended": "alias",
    "recommended_note": "Member as the product-surface alias keeps clinical/engine prose precise; ‘patient-reported outcomes’ and ‘patient safety’ are fixed terms and must NOT be renamed.",
    "decision": "adopt",
-   "decision_note": "DECIDED: adopt Member everywhere incl. demo data. Preserve fixed clinical terms (patient-reported outcomes/PRO, patient safety).",
-   "pages": ["dossier*.json (demo)", "07-data-streams", "09-acute-events", "11-daily-nudge", "wiki_content.py", "glossary"],
-   "links": [{"href": "glossary.html", "label": "Glossary"}, {"href": "07-data-streams-and-experience.html", "label": "Doc 07"}]
+   "decision_note": "DECIDED: adopt Member everywhere incl. demo data. Preserve fixed clinical terms (patient-reported outcomes/PRO, patient safety). Canon set in glossary ruling #10; prose/display propagation pending (code identifiers PatientState/keys preserved).",
+   "pages": [
+    "dossier*.json (demo)",
+    "07-data-streams",
+    "09-acute-events",
+    "11-daily-nudge",
+    "wiki_content.py",
+    "glossary"
+   ],
+   "links": [
+    {
+     "href": "glossary.html",
+     "label": "Glossary"
+    },
+    {
+     "href": "07-data-streams-and-experience.html",
+     "label": "Doc 07"
+    }
+   ]
   },
   {
    "id": "band-confidence-accuracy",
@@ -39,9 +55,23 @@
    "engine_load": true,
    "recommended": "keep",
    "recommended_note": "Headline band = ‘Accuracy’ (wiki); Confidence + Sufficiency = its named sub-components; OOUX adopts ‘Accuracy’. NOT a blind replace — most ‘Confidence’ hits are the statistical sense.",
-   "decision": "pending",
-   "pages": ["degradation-model.json", "clinical-flags.json", "13-cohort-percentiles", "17-clinician-red-team"],
-   "links": [{"href": "13-cohort-percentiles-and-validation.html", "label": "Doc 13"}, {"href": "17-clinician-red-team-and-blind-spots.html", "label": "Doc 17"}]
+   "decision": "keep",
+   "pages": [
+    "degradation-model.json",
+    "clinical-flags.json",
+    "13-cohort-percentiles",
+    "17-clinician-red-team"
+   ],
+   "links": [
+    {
+     "href": "13-cohort-percentiles-and-validation.html",
+     "label": "Doc 13"
+    },
+    {
+     "href": "17-clinician-red-team-and-blind-spots.html",
+     "label": "Doc 17"
+    }
+   ]
   },
   {
    "id": "marker-biomarker",
@@ -53,9 +83,23 @@
    "engine_load": true,
    "recommended": "alias",
    "recommended_note": "Keep Marker canonical in engine/clinical prose; Biomarker = My-Health product alias. Adopt OOUX object split MarkerDef / MeasuredValue / ReferenceRange (wiki already mirrors it).",
-   "decision": "pending",
-   "pages": ["calc-graph.json", "02-pillars-and-marker-catalog", "06-data-model", "glossary"],
-   "links": [{"href": "06-data-model-and-reference-ranges.html", "label": "Doc 06"}, {"href": "glossary.html", "label": "Glossary"}]
+   "decision": "alias",
+   "pages": [
+    "calc-graph.json",
+    "02-pillars-and-marker-catalog",
+    "06-data-model",
+    "glossary"
+   ],
+   "links": [
+    {
+     "href": "06-data-model-and-reference-ranges.html",
+     "label": "Doc 06"
+    },
+    {
+     "href": "glossary.html",
+     "label": "Glossary"
+    }
+   ]
   },
   {
    "id": "pillar",
@@ -67,9 +111,23 @@
    "engine_load": true,
    "recommended": "keep",
    "recommended_note": "The 12 keep the word ‘Pillar’. OOUX’s 4 → rename ‘score facets / dimensions’, modelled as an optional roll-up ABOVE the 12, never a replacement.",
-   "decision": "pending",
-   "pages": ["calc-graph.json", "pillar-weights.json", "02-pillars-and-marker-catalog", "03-scoring-formula"],
-   "links": [{"href": "02-pillars-and-marker-catalog.html", "label": "Doc 02"}, {"href": "pillar-weights.html", "label": "Pillar weights"}]
+   "decision": "keep",
+   "pages": [
+    "calc-graph.json",
+    "pillar-weights.json",
+    "02-pillars-and-marker-catalog",
+    "03-scoring-formula"
+   ],
+   "links": [
+    {
+     "href": "02-pillars-and-marker-catalog.html",
+     "label": "Doc 02"
+    },
+    {
+     "href": "pillar-weights.html",
+     "label": "Pillar weights"
+    }
+   ]
   },
   {
    "id": "plan-protocol",
@@ -81,9 +139,22 @@
    "engine_load": false,
    "recommended": "split",
    "recommended_note": "Three sharply-named constructs: Care pathway = clinical template (backend) · Care plan = clinician-prescribed instance · Protocol = member-authored lifestyle plan-per-goal. Reword ruling #5 to stop calling the template a ‘protocol’.",
-   "decision": "pending",
-   "pages": ["care-pathways.json", "12-recommended-actions-catalogue", "glossary"],
-   "links": [{"href": "care-pathways.html", "label": "Care pathways"}, {"href": "12-recommended-actions-catalogue.html", "label": "Doc 12"}]
+   "decision": "split",
+   "pages": [
+    "care-pathways.json",
+    "12-recommended-actions-catalogue",
+    "glossary"
+   ],
+   "links": [
+    {
+     "href": "care-pathways.html",
+     "label": "Care pathways"
+    },
+    {
+     "href": "12-recommended-actions-catalogue.html",
+     "label": "Doc 12"
+    }
+   ]
   },
   {
    "id": "action-pipeline",
@@ -95,9 +166,17 @@
    "engine_load": false,
    "recommended": "adopt",
    "recommended_note": "§3 selection → Action Funnel · nudge-card payload → Insight · MEASURE/CLINICAL nudges → EnhancementAction · ΔAccuracy-per-effort ranking → Value of Information.",
-   "decision": "pending",
-   "pages": ["11-daily-nudge-engine", "12-recommended-actions-catalogue"],
-   "links": [{"href": "11-daily-nudge-engine.html", "label": "Doc 11"}]
+   "decision": "adopt",
+   "pages": [
+    "11-daily-nudge-engine",
+    "12-recommended-actions-catalogue"
+   ],
+   "links": [
+    {
+     "href": "11-daily-nudge-engine.html",
+     "label": "Doc 11"
+    }
+   ]
   },
   {
    "id": "daily-contract",
@@ -109,9 +188,16 @@
    "engine_load": false,
    "recommended": "product",
    "recommended_note": "Distinguish Daily Action (the one hero) from NBAs (the rest of the ranked set) in Doc 11 §3.3/§4.",
-   "decision": "pending",
-   "pages": ["11-daily-nudge-engine"],
-   "links": [{"href": "11-daily-nudge-engine.html", "label": "Doc 11"}]
+   "decision": "product",
+   "pages": [
+    "11-daily-nudge-engine"
+   ],
+   "links": [
+    {
+     "href": "11-daily-nudge-engine.html",
+     "label": "Doc 11"
+    }
+   ]
   },
   {
    "id": "daily-summary",
@@ -123,9 +209,16 @@
    "engine_load": false,
    "recommended": "product",
    "recommended_note": "Either adopt Daily Summary as the acknowledgement surface, or explicitly scope it out of the scoring spec.",
-   "decision": "pending",
-   "pages": ["11-daily-nudge-engine"],
-   "links": [{"href": "11-daily-nudge-engine.html", "label": "Doc 11"}]
+   "decision": "product",
+   "pages": [
+    "11-daily-nudge-engine"
+   ],
+   "links": [
+    {
+     "href": "11-daily-nudge-engine.html",
+     "label": "Doc 11"
+    }
+   ]
   },
   {
    "id": "app-ownership",
@@ -137,9 +230,22 @@
    "engine_load": false,
    "recommended": "adopt",
    "recommended_note": "Invert biomarker ownership to My Health in Ch.2 + Doc 06; position PureScore as one of 10 features; add a ‘Where PureScore sits’ orientation.",
-   "decision": "pending",
-   "pages": ["index", "purescore-system", "06-data-model"],
-   "links": [{"href": "purescore-system.html", "label": "System map"}, {"href": "06-data-model-and-reference-ranges.html", "label": "Doc 06"}]
+   "decision": "adopt",
+   "pages": [
+    "index",
+    "purescore-system",
+    "06-data-model"
+   ],
+   "links": [
+    {
+     "href": "purescore-system.html",
+     "label": "System map"
+    },
+    {
+     "href": "06-data-model-and-reference-ranges.html",
+     "label": "Doc 06"
+    }
+   ]
   },
   {
    "id": "trust-knowledgelevel",
@@ -151,9 +257,18 @@
    "engine_load": true,
    "recommended": "alias",
    "recommended_note": "Keep Sufficiency canonical in the engine; KnowledgeLevel = OOUX product-surface alias. Reconcile with the Confidence/Accuracy decision (#band).",
-   "decision": "pending",
-   "pages": ["clinical-flags.json", "05-critical-review", "17-clinician-red-team"],
-   "links": [{"href": "05-critical-review-and-purescore-2.0.html", "label": "Doc 05"}]
+   "decision": "alias",
+   "pages": [
+    "clinical-flags.json",
+    "05-critical-review",
+    "17-clinician-red-team"
+   ],
+   "links": [
+    {
+     "href": "05-critical-review-and-purescore-2.0.html",
+     "label": "Doc 05"
+    }
+   ]
   },
   {
    "id": "age-healthage",
@@ -165,9 +280,17 @@
    "engine_load": false,
    "recommended": "alias",
    "recommended_note": "Keep BioAge canonical; HealthAge = product-surface alias (or adopt HealthAge if the app already ships it).",
-   "decision": "pending",
-   "pages": ["10-clinical-scores-integration", "06-data-model"],
-   "links": [{"href": "10-clinical-scores-integration.html", "label": "Doc 10"}]
+   "decision": "alias",
+   "pages": [
+    "10-clinical-scores-integration",
+    "06-data-model"
+   ],
+   "links": [
+    {
+     "href": "10-clinical-scores-integration.html",
+     "label": "Doc 10"
+    }
+   ]
   },
   {
    "id": "goal-target",
@@ -179,9 +302,18 @@
    "engine_load": true,
    "recommended": "keep",
    "recommended_note": "Confirmed aligned — keep both; PersonalGoal is just OOUX’s object name for the wiki’s Goal.",
-   "decision": "pending",
-   "pages": ["goals.json", "09-acute-events", "12-recommended-actions-catalogue"],
-   "links": [{"href": "09-acute-events-and-life-stage-plans.html", "label": "Doc 09"}]
+   "decision": "keep",
+   "pages": [
+    "goals.json",
+    "09-acute-events",
+    "12-recommended-actions-catalogue"
+   ],
+   "links": [
+    {
+     "href": "09-acute-events-and-life-stage-plans.html",
+     "label": "Doc 09"
+    }
+   ]
   },
   {
    "id": "stale-numbers",
@@ -193,9 +325,21 @@
    "engine_load": true,
    "recommended": "fix-map",
    "recommended_note": "Re-sync the OOUX map text to JSON canon: reservoirs 9→15, knobs 16→19, horizons, and 13/66 → 12/26 (trace or correct).",
-   "decision": "pending",
-   "pages": ["ooux-system-map.html"],
-   "links": [{"href": "ooux-system-map.html", "label": "OOUX map"}, {"href": "reservoir-sim.html", "label": "Reservoir sim"}]
+   "decision": "fix-map",
+   "pages": [
+    "ooux-system-map.html"
+   ],
+   "links": [
+    {
+     "href": "ooux-system-map.html",
+     "label": "OOUX map"
+    },
+    {
+     "href": "reservoir-sim.html",
+     "label": "Reservoir sim"
+    }
+   ],
+   "decision_note": "Applied: map '13 systems / 66 diseases' → '12 systems / 26 diseases' (verified vs conditions.json). Reservoir/knob counts not present in the map's visible text; outcome horizons left as-is (canon unsettled — whats-new uses 90/180/365)."
   }
  ]
 }

@@ -148,7 +148,7 @@ def md_to_html(md):
 # inputs → personalize → act → trust & govern → see the system → build → reference/tools.
 # Each chapter has a one-line blurb (NAV_BLURB). Doc number badges float; identity preserved.
 NAV = [
- ("Start here", [("terminology-standardization.html", "\U0001F4A1 Terminology standardization"), ("ooux-system-map.html", "\U0001F5FA OOUX system map"), ("ooux-alignment.html", "\U0001F9ED OOUX alignment"), ("product-config-design.html", "⚙ Config & simulator"), ("glossary.html", "Glossary"), ("index.html", "Home"), ("purescore-uber-map.html", "Calculation Explorer"),
+ ("Start here", [("terminology-standardization.html", "\U0001F4A1 Terminology standardization"), ("ooux-system-map.html", "\U0001F5FA OOUX system map"), ("ooux-alignment.html", "\U0001F9ED OOUX alignment"), ("product-config-design.html", "⚙ Config & simulator"), ("product-config-editor.html", "↳ Config editor"), ("product-config-simulator.html", "↳ Cohort simulator"), ("product-config-reservoir.html", "↳ Reservoir matrix"), ("glossary.html", "Glossary"), ("index.html", "Home"), ("purescore-uber-map.html", "Calculation Explorer"),
                  (DOCMAP["01"], SHORT["01"], "01"), ("conventions.html", "Conventions & glossary"),
                  ("decisions.html", "Decision log")]),
  ("1 · How scoring works", [("purescore-overview.html", "Overview"),
@@ -303,6 +303,9 @@ PDESC = {
  "ooux-system-map.html": "The whole-app Object-Oriented UX map — ~70 objects across 15 layers and 10 features, with relationships, CTAs and cross-feature impact. The system map the wiki aligns to.",
  "ooux-alignment.html": "How the wiki aligns to the OOUX system map: ~85% aligned in substance; word collisions, stale numbers, and open product decisions, with prioritized reconciliations.",
  "product-config-design.html": "Runtime-configurable scoring: edit pillars/markers/wearables/questions + reservoir wiring via allocation sliders & a connection matrix, simulate impact across the cohort, served from a versioned in-memory snapshot (0 DB per score).",
+ "product-config-editor.html": "Interactive prototype — Screen 1: 100-point allocation sliders over the real pillar/marker data with live Σ=100% redistribution.",
+ "product-config-simulator.html": "Interactive prototype — Screen 2: before/after PureScore distribution across a seeded 2,000-member cohort as you adjust candidate weights.",
+ "product-config-reservoir.html": "Interactive prototype — Screen 3: editable reservoir connection matrix (κ couplings, inflow gains, feeds).",
  "conventions.html": "Notation, glossary and the conventions every other page assumes.",
  "decisions.html": "The running decision log (D-numbers) referenced throughout the specs.",
  "purescore-overview.html": "A plain-language tour of pillars → markers → score before the formal math.",
@@ -367,7 +370,7 @@ PDESC = {
  "admin-personas.html": "Configure personas and framing.",
  "admin-governance.html": "Governance and sign-off workflow.",
 }
-PTITLE = {"index.html":"Home","glossary.html":"Glossary","terminology-standardization.html":"Terminology standardization","ooux-system-map.html":"OOUX system map","ooux-alignment.html":"OOUX alignment","product-config-design.html":"Config & simulator","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
+PTITLE = {"index.html":"Home","glossary.html":"Glossary","terminology-standardization.html":"Terminology standardization","ooux-system-map.html":"OOUX system map","ooux-alignment.html":"OOUX alignment","product-config-design.html":"Config & simulator","product-config-editor.html":"Config editor — prototype","product-config-simulator.html":"Cohort simulator — prototype","product-config-reservoir.html":"Reservoir config — prototype","conventions.html":"Conventions & glossary","decisions.html":"Decision log",
           "production-gaps.html":"Production readiness — gaps",
           "spec-audit.html":"Spec build-readiness audit",
           "pillar-weights.html":"Pillar weights & correlations",
@@ -898,6 +901,9 @@ def main():
                     ("engagement-state-machines.html", "Engagement state machines"),
                     ("purescore-system.html", "System at a glance"),
                     ("pillar-weights.html", "Pillar weights & correlations"),
+                    ("product-config-editor.html", "Config editor — prototype"),
+                    ("product-config-simulator.html", "Cohort simulator — prototype"),
+                    ("product-config-reservoir.html", "Reservoir config — prototype"),
                     ("purescore-calc-uber.html", "PureScore Calc Diagram")]:
         body = os.path.join(HERE, fn[:-5] + ".body.html")
         if os.path.exists(body):
