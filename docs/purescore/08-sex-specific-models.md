@@ -28,13 +28,13 @@ Uncertainty defaults to caution (README §5.4), never to a reassuring "in range.
 
 ### 1.1 Organ-inventory gating
 A marker is scored only if the relevant organ/axis is present. PSA is omitted (not scored as
-"green") for a patient without a prostate; AMH/antral context is omitted without ovaries. This
+"green") for a member without a prostate; AMH/antral context is omitted without ovaries. This
 prevents both false reassurance and irrelevant red flags. Post-surgical/absent organs set the
 marker to `not-applicable`, excluded from `cov_k` denominators (Doc 03 §3).
 
 ### 1.3 Intersex / DSD handling
 Intersex / differences of sex development are **not** forced into a binary. The engine uses the
-patient's actual `organ_inventory`, measured baseline hormone profile, and any
+member's actual `organ_inventory`, measured baseline hormone profile, and any
 clinician-specified reference frame; where no validated population range exists, markers are scored
 against the **individual's own longitudinal baseline** (intra-individual reference change value)
 rather than a mismatched population band, and flagged low-confidence with a clinician note. This is
@@ -82,7 +82,7 @@ healthy cycle*, not as deterioration:
 | Respiratory rate | lower | slightly higher | phase-aware |
 
 The SLP/FIT/CV pillars receive **phase-adjusted** resting-HR and HRV baselines for menstruating
-patients, so a normal luteal HRV dip is not mis-scored as poor recovery (Doc 02 SLP/CV). Absolute
+members, so a normal luteal HRV dip is not mis-scored as poor recovery (Doc 02 SLP/CV). Absolute
 safety thresholds (e.g. true fever, tachycardia) still apply on top of the phase baseline.
 
 #### 2.1.3 Flagging irregularity (the score's real job here)
@@ -376,7 +376,7 @@ Doc 02 Pillar 7.
    the score (README §5.1). Uncertainty defaults to caution (README §5.4).
 5. **Equity of reference ranges.** Where population ranges were derived in non-representative
    cohorts, affected bands are flagged for re-derivation (Doc 13 fairness/drift); intersex and
-   gender-diverse patients use individual-baseline scoring rather than a forced population band
+   gender-diverse members use individual-baseline scoring rather than a forced population band
    (§1.3).
 6. **All thresholds re-verified on cadence** before production (README §5.6); reproductive guidance
    changes (e.g. ACOG/ADA updates) trigger a model-version bump (Doc 13/16).

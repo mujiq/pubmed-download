@@ -27,17 +27,17 @@ health, fitness, sleep, nutrition, and wellbeing. It is **not** a diagnostic med
 **no autonomous diagnostic or treatment claim**, and **never** substitutes for a clinician
 (README §1, §5.1; Doc 01 §3.1 anti-Babylon). Every critical/red state escalates to a human
 (Doc 03 §4–§5). This is a *design constraint*, not a marketing posture: the system is built so that
-the patient-facing surface cannot make a device-grade claim.
+the member-facing surface cannot make a device-grade claim.
 
 ### 1.2 Where the line is — US FDA
 
-Two safe-harbours keep the patient-facing product out of medical-device regulation. Both are
+Two safe-harbours keep the member-facing product out of medical-device regulation. Both are
 **conditional**; the conditions are engineering requirements, not aspirations.
 
 **(a) General Wellness policy (low-risk wellness).** A product is low-risk general wellness when it
 (i) makes only **general-wellness claims** (maintain/encourage a healthy lifestyle) and (ii) does
 **not** reference a specific disease/condition in a diagnostic, curative, mitigating, or
-preventive way. PureScore's patient surface stays here:
+preventive way. PureScore's member surface stays here:
 
 | Allowed (general-wellness) claim | Forbidden (device-grade) claim |
 |----------------------------------|--------------------------------|
@@ -47,15 +47,15 @@ preventive way. PureScore's patient surface stays here:
 | "Your wellness score is in the *at-risk* band — see a clinician." | "Your ASCVD 10-yr risk is 14% — start a statin." |
 | "We detected a value your clinician should review urgently." | "This is a hypertensive emergency; do X." |
 
-The patient-facing app renders, at most, a **wellness-level prompt to consult a clinician**
+The member-facing app renders, at most, a **wellness-level prompt to consult a clinician**
 (Doc 10 §1.1). Numerical clinical risk estimates (ASCVD, KDIGO, FIB-4, FRAX, KFRE, PhenoAge …)
-live **only** in the gated clinician layer (Doc 10) and are never surfaced to the patient as a
+live **only** in the gated clinician layer (Doc 10) and are never surfaced to the member as a
 diagnosis (§1.5).
 
 **(b) Clinical Decision Support (CDS) exemption — for the clinician layer only.** Software that
 supports a clinician can be **non-device CDS** when **all four** hold: (1) it is **not** intended to
 acquire/process/analyze a signal from a *signal-acquisition device* (e.g. raw ECG/imaging
-interpretation); (2) it displays/analyzes medical information about a patient; (3) it provides
+interpretation); (2) it displays/analyzes medical information about a member; (3) it provides
 **recommendations** (options) to a *healthcare professional*; and (4) it enables that professional
 to **independently review the basis** of the recommendation (it does not rely *primarily* on the
 software's output). The Doc 10 clinician layer is engineered to satisfy (3) and especially (4): every
@@ -71,7 +71,7 @@ prediction, prognosis, treatment of a disease) is a **medical device**, and **MD
 guidance plus the *Rule 11* classification logic push most diagnostic/decision-driving software to
 **Class IIa or higher** (rising to IIb/III as the information drives serious or critical decisions).
 General-wellness/lifestyle software *without* a medical purpose is out of scope. PureScore's
-patient surface is positioned as **lifestyle/wellness software, no medical purpose**; the clinician
+member surface is positioned as **lifestyle/wellness software, no medical purpose**; the clinician
 layer, if/where it provides information *used to take decisions with diagnosis or therapeutic
 purposes*, is treated as **potentially MDR-regulated** and is gated and governed accordingly. GDPR
 **Art. 9** (health = special-category data) and, for the EU AI Act, the **high-risk** classification
@@ -81,8 +81,8 @@ of health/safety AI are assessed per release (§4, §5).
 
 | If a feature… | …then it crosses into | Consequence (gate, do not ship until met) |
 |----------------|----------------------|-------------------------------------------|
-| Tells a patient they have / don't have a condition | FDA device / MDR medical purpose | Full device pathway: QMS (ISO 13485), clinical validation, 510(k)/De Novo or MDR conformity + Notified Body, post-market surveillance |
-| Gives an autonomous treatment/medication instruction | Device + practice-of-medicine | Prohibited on the patient surface; clinician-layer only as inspectable CDS |
+| Tells a member they have / don't have a condition | FDA device / MDR medical purpose | Full device pathway: QMS (ISO 13485), clinical validation, 510(k)/De Novo or MDR conformity + Notified Body, post-market surveillance |
+| Gives an autonomous treatment/medication instruction | Device + practice-of-medicine | Prohibited on the member surface; clinician-layer only as inspectable CDS |
 | Drives a clinician decision the clinician can't independently review | Loses CDS exemption → device | Re-architect for inspectability (Doc 10 §4) or pursue device pathway |
 | Interprets a raw signal-acquisition stream (ECG morphology, image) | Device (criterion 1 fails) | Out of scope for this product; route to a cleared device |
 | Markets a wellness feature with a disease claim | Device by **intended use** | Block at claims review (§7); intended use is set by claims, not internals |
@@ -94,9 +94,9 @@ feature into a device. Claims review (§7.3) is therefore a release gate (§8).
 
 The Doc 10 clinical-scores layer is a **separate product surface** with separate controls:
 (1) access restricted to **credentialed clinicians** (and, where lawful and separately governed,
-payers per Doc 19) via role-based access (§4.3); (2) **never** rendered to patients as diagnosis;
+payers per Doc 19) via role-based access (§4.3); (2) **never** rendered to members as diagnosis;
 (3) every output **inspectable** to preserve the CDS posture (§1.2b); (4) its own validation,
-OOD-flagging, and audit (Doc 10 §6, Doc 13, §5 here). Patient and clinician layers have **distinct
+OOD-flagging, and audit (Doc 10 §6, Doc 13, §5 here). Member and clinician layers have **distinct
 intended-use statements, distinct claims, and distinct regulatory determinations**.
 
 ---
@@ -108,7 +108,7 @@ intended-use statements, distinct claims, and distinct regulatory determinations
 Every critical marker in Doc 02 carries an `escalation ∈ {emergency, urgent, routine}` tag
 (Doc 03 §4.1). The pathway is determined by the tag, not by the headline number.
 
-| Tier | Examples (Doc 02) | Patient-facing action | System action | Target time-to-clinician |
+| Tier | Examples (Doc 02) | Member-facing action | System action | Target time-to-clinician |
 |------|-------------------|----------------------|---------------|--------------------------|
 | **emergency** (acute-danger red) | K⁺ ≥5.6/≤3.2, SpO2 <92, Hb <11, hsCRP/WBC sepsis screen, suicidality (MCS) | Unambiguous *"seek emergency care now / call your clinician now"*; show emergency + crisis resources; **no reassuring framing** | Fire emergency pathway (Doc 03 §5.3); alert named on-call clinician; create high-priority case; log | **Immediate** (minutes); confirm receipt |
 | **urgent** | New eGFR <30, ALT/AST acute >3× ULN, BP ≥180/120 region, moderate–severe OSA flag | *"Contact your clinician within 24–72h"*; book/escalate | Open priority case to care team; track acknowledgement; re-prompt if unacknowledged | **24–72 h** |
@@ -129,7 +129,7 @@ Doc 10 §2.6) — forces MCS to **red/critical irrespective of the total**, is *
 2. **Immediate human escalation** to the named on-call clinician / crisis protocol; C-SSRS is the
    **structured referral instrument the clinician applies** — never an in-app autonomous triage
    (Doc 10 §2.6).
-3. **No autonomous risk-stratification or reassurance.** The app does not tell the patient they are
+3. **No autonomous risk-stratification or reassurance.** The app does not tell the member they are
    "low risk." Uncertainty here defaults hard to escalation (README §5.4).
 4. **Audit + duty-of-care logging** (§4.5) and warm-handoff confirmation that a human received it.
 
@@ -160,7 +160,7 @@ This is README §5.4 made operational. The system is **asymmetric by constructio
 - **No silent imputation into clinical scores** — an under-determined clinical score is *not
   computable*, never guessed (Doc 10 §3.1).
 
-The forbidden state — *telling a patient they are fine in a way that could mask an emergency* — is
+The forbidden state — *telling a member they are fine in a way that could mask an emergency* — is
 designed out (Doc 01 §3.1). Where the model is unsure, it **says so and escalates / recommends
 measurement** (the highest-yield nudge is often "measure the marker dominating your uncertainty",
 Doc 11 §1.1).
@@ -185,18 +185,18 @@ Severity (S), Likelihood (L), Detectability (D) on 1–5 (5 = worst / least dete
 Priority = S×L×D (qualitative; recomputed with real telemetry in production). Every mitigation
 maps to an enforced control elsewhere in the spec.
 
-| # | Failure mode | How a patient is harmed | S | L | D | Mitigations (enforced) |
+| # | Failure mode | How a member is harmed | S | L | D | Mitigations (enforced) |
 |---|--------------|-------------------------|---|---|---|------------------------|
-| F1 | **False reassurance** (Babylon mode) | Real danger masked; patient doesn't seek care | 5 | 2 | 4 | Critical cascade + crit cap (Doc 03 §5.3); safety-dominant `max` (Doc 03 §2); low-coverage caps green (§2.4); no patient-facing "you're fine" near reds |
+| F1 | **False reassurance** (Babylon mode) | Real danger masked; member doesn't seek care | 5 | 2 | 4 | Critical cascade + crit cap (Doc 03 §5.3); safety-dominant `max` (Doc 03 §2); low-coverage caps green (§2.4); no member-facing "you're fine" near reds |
 | F2 | **Missed red-flag / under-escalation** | Emergency not routed to a human in time | 5 | 2 | 3 | Escalation tags + pathways (§2.1); crisis pathway (§2.2); acknowledgement tracking + re-prompt; hard floors (Doc 03 §4) |
 | F3 | **Alert fatigue** | Real alerts ignored because too many fire | 4 | 3 | 3 | Tiered escalation (§2.1); anti-flap hysteresis (Doc 03 §6); top-5 nudge cap (Doc 11); monitor alert-acknowledgement rate (§5.4) |
-| F4 | **Automation bias** | Clinician/patient over-trusts the number | 4 | 3 | 4 | Inspectable CDS (§1.2b, Doc 10 §4); explainability shipped with every score (Doc 03 §7); discrepancy banner (Doc 10 §5); human-override primacy (§2.5) |
+| F4 | **Automation bias** | Clinician/member over-trusts the number | 4 | 3 | 4 | Inspectable CDS (§1.2b, Doc 10 §4); explainability shipped with every score (Doc 03 §7); discrepancy banner (Doc 10 §5); human-override primacy (§2.5) |
 | F5 | **Miscalibration / drift** | Bands wrong for this cohort → wrong risk | 4 | 3 | 3 | Calibration + drift monitoring (Doc 13); OOD flagging (Doc 10 §6); version bump + re-validation on any constant change (§5.1) |
 | F6 | **Data error** (unit/transcription/device) | Spurious red (anxiety, over-treatment) or spurious green | 4 | 3 | 3 | Confirming-measurement requirement before critical→non-critical transition (Doc 03 §6); plausibility/unit checks (Doc 06); confidence-weighting (Doc 03 §3); **wearable trust-tiering — a consumer/inferential wearable cannot drive red/critical without clinical-grade confirmation (D22; Doc 05 §3.4; Doc 07 §2)** |
 | F7 | **Equity harm** | Worse score/access/pricing for a protected class | 5 | 2 | 4 | No-proxy rule (README §5.5; §6); fairness audit gate (Doc 13); cohorting reduces not encodes disparity (Doc 01 §2.8); appeal rights (§6.4) |
 | F8 | **Privacy / security breach** | Sensitive health (incl. genetic, reproductive) exposed | 5 | 2 | 3 | Encryption, RBAC, audit logging, minimization (§4); genetic (GINA) + reproductive special handling (§4.4–§4.5); breach response (§4.6) |
-| F9 | **Reproductive-data weaponization** | Pregnancy/fertility data used against the patient | 5 | 2 | 4 | Heightened minimization/consent for Doc 08 data (§4.5); legal-process resistance; opt-out; default no third-party sharing |
-| F10 | **Over-claiming / scope creep into SaMD** | Patient acts on an unvalidated "diagnosis" | 5 | 2 | 3 | Claims review gate (§1.4, §7.3); intended-use control; clinician-layer gating (§1.5); validation-before-scale (Doc 13) |
+| F9 | **Reproductive-data weaponization** | Pregnancy/fertility data used against the member | 5 | 2 | 4 | Heightened minimization/consent for Doc 08 data (§4.5); legal-process resistance; opt-out; default no third-party sharing |
+| F10 | **Over-claiming / scope creep into SaMD** | Member acts on an unvalidated "diagnosis" | 5 | 2 | 3 | Claims review gate (§1.4, §7.3); intended-use control; clinician-layer gating (§1.5); validation-before-scale (Doc 13) |
 | F11 | **Acute-event mishandling** | Wrong re-prioritization during a real event | 4 | 2 | 3 | Acute-mode hysteresis + revert (Doc 09); clinician confirmation for care actions; escalation unaffected by acute weights |
 | F12 | **Nudge harm / dark pattern** | Unsafe or manipulative recommendation | 4 | 2 | 3 | Contraindication screening on actions (Doc 11 §1); anti-overpromise (Doc 01 §3.1); evidence-weighted, attributed Δ (Doc 11) |
 
@@ -240,7 +240,7 @@ blocker (§8).
 
 - **Encryption** in transit (TLS 1.2+/mTLS) and at rest (AES-256); key management with rotation and
   separation of duties; field-level encryption for the most sensitive classes (§4.4–§4.5).
-- **Role-based / attribute-based access control:** patient (own data), clinician (assigned patients,
+- **Role-based / attribute-based access control:** member (own data), clinician (assigned members,
   Doc 10 gated layer), payer (separately governed, de-identified/aggregated where possible, Doc 19),
   engineer (no clear PHI in routine ops). **Minimum-necessary** by default; break-glass access is
   logged and reviewed.
@@ -260,7 +260,7 @@ BioAge) get the **strictest** controls:
 - **Separate explicit consent**, separate storage, field-level encryption, and the right to delete
   genetic data without losing other functionality.
 - Genetic results that are clinically actionable route through a **clinician** (and, where relevant,
-  genetic counseling), never as an autonomous patient-facing diagnosis (§1).
+  genetic counseling), never as an autonomous member-facing diagnosis (§1).
 
 ### 4.5 Reproductive data — special handling (tie to Doc 08)
 
@@ -348,7 +348,7 @@ No model runs ownerless. Each production model/version has:
 
 ### 5.7 Oversight / ethics board
 
-A standing **Clinical & Ethics Oversight Board** (clinicians, ethicist, patient advocate, privacy/
+A standing **Clinical & Ethics Oversight Board** (clinicians, ethicist, member advocate, privacy/
 legal, fairness/biostatistics) reviews: new claims and intended-use changes (§1, §7.3); validation
 and fairness results before launch (Doc 13, §8); serious incidents and breaches (§4.6, §5.3); the
 genetic/reproductive/actuarial firewall (§4.4–§4.5, Doc 19); and the appeal/contest process (§6.4).
@@ -384,13 +384,13 @@ track wealth.
 
 ### 6.3 Health-literacy-appropriate communication
 
-Patient-facing language is plain, at an appropriate reading level, culturally aware, and conservative
+Member-facing language is plain, at an appropriate reading level, culturally aware, and conservative
 (Doc 01 §3.3 Mayo communication standard). Numbers come with meaning ("at-risk band — worth a
 clinician visit"), never alarmist and never falsely reassuring (§2.4).
 
 ### 6.4 Appeal / contest rights
 
-A patient (or clinician on their behalf) can **contest** a score, an escalation, a data point, or a
+A member (or clinician on their behalf) can **contest** a score, an escalation, a data point, or a
 pricing/access decision: request the explanation (Doc 03 §7), correct erroneous data (re-scores
 deterministically, Doc 03 §6), request **human review**, and appeal to the oversight board (§5.7).
 Decisions and rationales are logged (§4.3). For any consequential automated decision, a
@@ -400,7 +400,7 @@ Decisions and rationales are logged (§4.3). For any consequential automated dec
 
 ## 7. Transparency (anti-Babylon)
 
-### 7.1 Explainability to patients and clinicians
+### 7.1 Explainability to members and clinicians
 
 Every score ships with the Doc 03 §7 explainability object: the binding constraint, per-pillar
 contributors, reservoir contributions, personalization rationale, and coverage/confidence caveats.
@@ -416,7 +416,7 @@ a fixed cadence (README §5.6).
 
 ### 7.3 Honest communication standard (claims control)
 
-The anti-Babylon rule (Doc 01 §3.1): **no claim ships ahead of its evidence.** Every patient- or
+The anti-Babylon rule (Doc 01 §3.1): **no claim ships ahead of its evidence.** Every member- or
 market-facing claim passes a **claims-review gate** (§1.4, §5.7) checking that it is (a) bounded by
 prospectively validated evidence for the population in front of us, (b) a general-wellness claim
 (not a device/disease claim, §1.2), and (c) not an overpromise (explicitly including
@@ -438,7 +438,7 @@ A production deployment (or any version bump, §5.1) is **blocked** unless **eve
 | G3 | **Safety — escalation** | emergency/urgent/routine pathways fire, acknowledge, and re-prompt; crisis pathway exercised | Clinical | §2.1–§2.3 |
 | G4 | **Fail-safe defaults** | No false-reassurance path; low-coverage caps green; uncertainty ⇒ caution proven | Clinical + Technical | §2.4; README §5.4 |
 | G5 | **Regulatory positioning** | Wellness/CDS classification confirmed for this config; clinician layer gated; counsel sign-off | Privacy/Legal + Clinical | §1 |
-| G6 | **Claims review** | Every patient/market claim general-wellness, evidence-bounded, no overpromise | Oversight Board | §7.3; §1.4 |
+| G6 | **Claims review** | Every member/market claim general-wellness, evidence-bounded, no overpromise | Oversight Board | §7.3; §1.4 |
 | G7 | **Fairness** | No protected-class proxy; calibration/error parity across subgroups within tolerance | Fairness + Technical | §6; Doc 13; Doc 19 |
 | G8 | **Privacy & security** | DPIA/risk assessment done; encryption, RBAC, audit, consent in place; genetic/reproductive firewalls verified; breach plan live | Privacy/Security | §4 |
 | G9 | **Governance / MLOps** | Versioning, change control, monitoring, rollback, incident process, **model card** published; owners named | Technical | §5 |

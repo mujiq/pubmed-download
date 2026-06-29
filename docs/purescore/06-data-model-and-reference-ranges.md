@@ -2,7 +2,7 @@
 
 > Binding conventions: `README.md §3`. This document defines *what data exists*, *how it is
 > tiered*, and *how reference ranges (medians/percentiles/bands) are derived from literature when
-> the patient's own data is missing.*
+> the member's own data is missing.*
 
 ## 1. Data-model overview (FHIR-aligned)
 
@@ -43,7 +43,7 @@ Key rules:
   cases are handled by `organ_inventory` per Doc 08, not a binary fallback.
 - Every `Measurement` carries `source` and `confidence`. A literature-fallback value has
   `source = literature_fallback` and reduced `confidence`, which lowers pillar **coverage**
-  (README §4) and is surfaced to the patient and clinician.
+  (README §4) and is surfaced to the member and clinician.
 
 ## 2. Provenance, recency, and confidence
 
@@ -64,7 +64,7 @@ confidence_i(t) = q_source(source_i) · exp( -(t - effectiveTime_i) / τ_i )
 
 ## 3. Measurement tiers (Core / Peripheral / Comprehensive)
 
-Tiers package measurements into one visit at a sustainable cost and patient burden. They are an
+Tiers package measurements into one visit at a sustainable cost and member burden. They are an
 **operational/cost grouping**, orthogonal to the green/yellow/red clinical bands.
 
 | Tier | Cadence (default, persona-adjusted) | Cost / burden | Purpose |
@@ -98,7 +98,7 @@ clinical-pathway version of the critical cascade (Doc 03 §6, Doc 09 acute pathw
 ## 4. Reference-range strategy (literature-only mode)
 
 Per the project decision, PureScore v0.1 derives medians, percentiles, and bands from
-**published literature**, not from a proprietary patient warehouse. Two distinct objects:
+**published literature**, not from a proprietary member warehouse. Two distinct objects:
 
 ### 4.1 Clinical optimal/caution/critical bands — from guidelines
 The green/yellow/red **bands** (`[L_i^opt, U_i^opt]`, etc.) come from clinical practice
@@ -132,19 +132,19 @@ population reference datasets stratified by age × sex (× condition where avail
 Each `ReferenceDist` stores `source`, `sample_n`, and `vintage` so coverage and staleness are
 auditable.
 
-### 4.3 Median fallback when the patient lacks a marker
-If a patient has no usable measurement for marker `i`, PureScore imputes the **cohort median**
+### 4.3 Median fallback when the member lacks a marker
+If a member has no usable measurement for marker `i`, PureScore imputes the **cohort median**
 (`F_{i,c}^{-1}(0.5)`) as a *neutral prior*, flags `source = literature_fallback`, and assigns low
 confidence. Effects:
 - The marker contributes at **reduced weight** (weight scaled by confidence; Doc 03 §3).
-- The pillar's **coverage** drops, which is shown to patient/clinician and **suppresses
+- The pillar's **coverage** drops, which is shown to member/clinician and **suppresses
   over-confident green claims** (a pillar that is "green" only because of imputed medians is
   labelled *low-coverage green*, not a clean bill of health).
 - The nudge engine (Doc 11) may surface **"measure this"** as a high-value action when an
   imputed marker has high potential leverage on the score.
 
 ### 4.4 Why the clinical anchor must dominate the percentile (worked rationale)
-Consider HbA1c in a cohort of poorly-controlled type-2 diabetics. A patient at HbA1c 7.5% might
+Consider HbA1c in a cohort of poorly-controlled type-2 diabetics. A member at HbA1c 7.5% might
 sit at the cohort's 40th percentile (better than cohort peers) yet be clinically **yellow/red**.
 PureScore therefore combines the two so the clinical anchor cannot be diluted:
 
@@ -157,7 +157,7 @@ adverse for a healthy young cohort), never *lower* it below the clinical anchor.
 Doc 03 §2.
 
 ## 5. Data quality, missingness, and gaming resistance
-- **Missing-not-at-random** is assumed: patients skip tests for reasons correlated with risk.
+- **Missing-not-at-random** is assumed: members skip tests for reasons correlated with risk.
   Imputation is *neutral-prior + low-confidence*, never optimistic.
 - **Anti-gaming:** wearable signals are cross-checked for plausibility (e.g., implausible step
   counts, HR/HRV inconsistency); self-reported survey items are weighted below objective labs;

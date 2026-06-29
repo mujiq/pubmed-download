@@ -19,7 +19,7 @@
 
 ## 0. What this document guarantees
 
-1. A patient always maps to a **well-defined cohort** with a calibrated percentile, even when their
+1. A member always maps to a **well-defined cohort** with a calibrated percentile, even when their
    own data is sparse — via hierarchical partial pooling, never via a silently tiny cell.
 2. Every displayed percentile and every shrunken estimate has a **stated uncertainty**.
 3. No parameter (`λ, κ, u, W, φ, ρ`) reaches production without passing **calibration, discrimination,
@@ -50,7 +50,7 @@ tree is built coarse→fine so that every leaf has a chain of ancestors to borro
 - **Sex** is `sex` (Male/Female) for physiology (Doc 06 §1.1); rare intersex/DSD handling follows
   Doc 08 via organ inventory.
 - **Disease flags `D`** and **medication classes `Mx`** are sets; the leaf is their full
-  conjunction. Most patients carry 0–3 flags, so leaves are sparse — hence pooling (§1.3).
+  conjunction. Most members carry 0–3 flags, so leaves are sparse — hence pooling (§1.3).
 
 ### 1.2 Minimum cell size and the credibility floor
 
@@ -105,32 +105,32 @@ age-smoothed L, M, S parameters per sex×disease branch) whose random effects ar
 parent — this yields smooth, monotone, age-continuous percentile curves without ragged cell
 boundaries.
 
-### 1.4 Mapping a patient to one (and to many overlapping) cohorts
+### 1.4 Mapping a member to one (and to many overlapping) cohorts
 
-A patient rarely belongs to a single tidy leaf:
+A member rarely belongs to a single tidy leaf:
 
 - **Primary cohort** `c(p)`: the most specific leaf whose pooled estimate passes the credibility
   floor — the one used for the binding `q_i = F_{i,c}(x_i)` in the score (Doc 03 §2).
 - **Overlapping cohorts:** a 62-y-old woman with T2D *and* CKD *on* a statin is simultaneously a
   member of the `T2D`, the `CKD`, and the `statin` strata. For **display and analytics** PureScore
-  can stack-rank her within each ("vs other T2D patients", "vs CKD stage-matched peers"); for the
+  can stack-rank her within each ("vs other T2D members", "vs CKD stage-matched peers"); for the
   **binding score** it uses the single most-specific credible leaf to avoid double counting.
 - **Conflict rule:** where overlapping cohorts disagree, the **safety-dominant** rule (README §5.2)
   still holds — the clinical anchor `r_i^clin` is cohort-independent and always wins; the percentile
-  blend `φ·r_i^cohort` can only *raise* concern (Doc 06 §4.4, Doc 03 §2). A patient cannot be made to
+  blend `φ·r_i^cohort` can only *raise* concern (Doc 06 §4.4, Doc 03 §2). A member cannot be made to
   look healthy by selecting a sicker comparison cohort.
 - **Cohort membership is logged** with the score (§6) so any percentile claim is reproducible and
   auditable.
 
 ---
 
-## 2. Percentile engine and empirical-Bayes shrinkage of the patient's own data
+## 2. Percentile engine and empirical-Bayes shrinkage of the member's own data
 
 There are **two distinct shrinkage problems**, and the document keeps them separate:
 
 - **§1.3** shrinks *sparse cohort cells* toward parent cohorts (population estimation).
-- **§2.2** shrinks a *single patient's sparse own measurements* toward their cohort prior
-  (per-patient estimation). Both are empirical Bayes; they compose.
+- **§2.2** shrinks a *single member's sparse own measurements* toward their cohort prior
+  (per-member estimation). Both are empirical Bayes; they compose.
 
 ### 2.1 Estimating `F_{i,c}` from population data
 
@@ -142,14 +142,14 @@ so a percentile derived mostly from a grandparent stratum is labelled as such �
 analogue of *low-coverage green* (Doc 06 §4.3, Doc 03 §3).
 
 Disease-specific registries are used where the general-population percentile would mislead (a CKD
-patient ranked against the general population would look catastrophic on eGFR by construction); the
+member ranked against the general population would look catastrophic on eGFR by construction); the
 clinical anchor still dominates regardless of which `F` is chosen.
 
-### 2.2 Empirical-Bayes shrinkage of a patient's sparse own data (the formula)
+### 2.2 Empirical-Bayes shrinkage of a member's sparse own data (the formula)
 
-A patient with few of their own measurements of marker `i` should not have a percentile estimated
-from noise. Treat the patient's latent "true" value `θ_{p,i}` as drawn from the cohort prior and
-shrink the patient's noisy observed mean toward the cohort median:
+A member with few of their own measurements of marker `i` should not have a percentile estimated
+from noise. Treat the member's latent "true" value `θ_{p,i}` as drawn from the cohort prior and
+shrink the member's noisy observed mean toward the cohort median:
 
 ```
  Prior (cohort):     θ_{p,i}        ~  Normal( μ_{i,c},  τ_{i,c}² )       # μ_{i,c}=F_{i,c}^{-1}(0.5)
@@ -166,7 +166,7 @@ shrink the patient's noisy observed mean toward the cohort median:
 
 - **One noisy reading** (`n_{p,i}=1`) ⇒ `ω` small ⇒ percentile sits near the cohort median (we do not
   over-react to a single spot value). **Repeated concordant readings** ⇒ `ω → 1` ⇒ percentile reflects
-  the patient's own data. This is the statistical counterpart of the reservoir layer's refusal to let
+  the member's own data. This is the statistical counterpart of the reservoir layer's refusal to let
   one good (or bad) day dominate (Doc 04 §4).
 - This shrinkage applies to the **percentile/personalization** path only. It is **clipped out of the
   safety path**: the clinical anchor `r_i^clin` (Doc 03 §1) is computed on the *raw* observed value,
@@ -230,7 +230,7 @@ and validated intermediate endpoints. The loss couples the dynamic system to out
   no single pillar/cohort multiplier can dominate; `φ < 1` is a hard cap (cohort can never override the
   clinical anchor — Doc 06 §4.4).
 - All fits use **nested cross-validation** (inner = hyperparameters, outer = honest performance) with
-  patient-grouped, **temporally-ordered** folds (train past → test future) to prevent leakage.
+  member-grouped, **temporally-ordered** folds (train past → test future) to prevent leakage.
 
 ### 3.3 The stability / Hurwitz gate (promised by Doc 04 §3 and §5)
 
@@ -323,9 +323,9 @@ fine**. It is validated as a **screening test for true emergencies**:
 - **External & temporal validation:** performance is re-demonstrated on an **external site** and on a
   **later time window** than training (temporal split), because guideline drift, assay changes, and
   population shift erode transported models.
-- **Out-of-distribution (OOD) detection at inference:** each patient's feature vector is scored for
+- **Out-of-distribution (OOD) detection at inference:** each member's feature vector is scored for
   cohort membership / density (Mahalanobis distance to the cohort, conformal nonconformity, or an
-  isolation-forest novelty score). A patient flagged OOD gets **widened intervals, a low-confidence
+  isolation-forest novelty score). A member flagged OOD gets **widened intervals, a low-confidence
   banner, and biased-to-caution handling**, and the case is routed for human review rather than given
   an overconfident number (README §5.4).
 - **Conformal prediction** supplies finite-sample coverage guarantees on the percentile/risk

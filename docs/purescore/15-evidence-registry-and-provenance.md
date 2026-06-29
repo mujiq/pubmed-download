@@ -31,14 +31,14 @@ The **engine** computes; the **evidence registry** justifies. They are deliberat
 ## 2. The "diesel ignition" provenance model
 
 A reference range is not static and is not purely personal. It **ignites cold on guideline evidence
-and warms into a personalized baseline** as the patient's own data accrues — exactly how a diesel is
+and warms into a personalized baseline** as the member's own data accrues — exactly how a diesel is
 cranked with glow-plugs/starter and then runs on its own combustion.
 
 | Stage | "Engine" analogue | PureScore source | When it dominates |
 |---|---|---|---|
-| **Crank** | glow-plug + starter | **Clinical guideline anchor** (registry band) | cold start: no/little patient data |
+| **Crank** | glow-plug + starter | **Clinical guideline anchor** (registry band) | cold start: no/little member data |
 | **Warm-up** | idling on starter assist | **Real-world cohort range** (NHANES/UK-Biobank-class + local cohort percentile) | some cohort data; sparse personal data |
-| **Running** | self-sustaining combustion | **Personal baseline** (z-score vs the patient's own history) | personal series established (Doc 05 §5) |
+| **Running** | self-sustaining combustion | **Personal baseline** (z-score vs the member's own history) | personal series established (Doc 05 §5) |
 
 The **effective optimum/center** used for interpretation and anomaly detection is a weighted blend:
 

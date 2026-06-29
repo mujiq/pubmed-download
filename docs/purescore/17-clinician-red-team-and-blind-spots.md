@@ -37,7 +37,7 @@ Each row: **Attack** → **Handled by** → **Residual (honest)**.
 | Attack | Handled by | Residual |
 |---|---|---|
 | "A hemolyzed K⁺ will trigger a crisis." | Confirmation logic (D14): isolated **implausible/low-quality** critical → **reconfirm**, not cascade; a *confirmed* critical still fires. | Plausibility/device-quality inputs needed from the data layer. |
-| "Early-warning will bury people in alerts." | Tiered **Watch→Advisory→Alert** (D2); patient sees only multivariate/confirmed signals; Doc 14 enforces **PPV-at-realistic-prevalence** + an alarm budget (the Babylon false-positive lesson). | Thresholds need prevalence-specific calibration. |
+| "Early-warning will bury people in alerts." | Tiered **Watch→Advisory→Alert** (D2); member sees only multivariate/confirmed signals; Doc 14 enforces **PPV-at-realistic-prevalence** + an alarm budget (the Babylon false-positive lesson). | Thresholds need prevalence-specific calibration. |
 | "Worst-sensitive aggregation hides diffuse risk / or over-reacts." | Critical **cascade** + independent **Criticality badge** distinguish "40 from one red" vs "40 from many yellows"; companion vector carries the decomposition. | — |
 
 ## E. Personalization & the cold start

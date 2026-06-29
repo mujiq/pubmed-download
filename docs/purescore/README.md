@@ -4,7 +4,7 @@
 **Positioning:** Wellness-grade, clinician-in-the-loop. PureScore is **not** a diagnostic
 medical device and makes **no** autonomous diagnostic or treatment claims. Every critical
 state escalates to a human clinician.
-**Audience of this score:** patients (primary). Derived clinical and actuarial layers serve
+**Audience of this score:** members (primary). Derived clinical and actuarial layers serve
 clinicians and payers and are *gated* behind separate access and governance.
 
 ---
@@ -18,10 +18,10 @@ version: `purescore-architecture.html`).*
 
 PureScore is a single 0–100 number, decomposed into **12 health pillars**, each built from a
 tiered catalogue of **biomarkers, wearable signals, and lifestyle/persona inputs**. It is
-personalized to a patient's **cohort** (age band × sex × disease flags × medication flags) and
+personalized to a member's **cohort** (age band × sex × disease flags × medication flags) and
 to their **life stage** and **goals**.
 
-When the system has the patient's own data it uses it. When it does not, it falls back to
+When the system has the member's own data it uses it. When it does not, it falls back to
 **literature-derived medians and percentiles** for that cohort (NHANES, UK-Biobank-class
 distributions, and guideline reference ranges) so a score can always be produced, with an
 explicit **confidence/coverage** annotation.
@@ -85,11 +85,11 @@ Read 00 → 04 first; they define everything the later documents depend on.
 These symbols and definitions are **binding** across all PureScore documents.
 
 ### 3.1 Indices and sets
-- `p` — patient. `t` — time (days, unless noted). `Δ` — update interval.
+- `p` — member. `t` — time (days, unless noted). `Δ` — update interval.
 - `i ∈ M` — a marker (biomarker, wearable signal, or lifestyle/persona metric).
 - `k ∈ {1..12}` — a pillar (see §3.4).
 - `j ∈ R` — a reservoir (Doc 04).
-- `c(p)` — patient's **cohort**: a stratum `(age_band, sex, D, Mx)` where `D` is the set of
+- `c(p)` — member's **cohort**: a stratum `(age_band, sex, D, Mx)` where `D` is the set of
   active disease flags and `Mx` the set of active medication classes.
 
 ### 3.2 Per-marker quantities
@@ -138,7 +138,7 @@ These symbols and definitions are **binding** across all PureScore documents.
 - **Interference (κ)** — cross-pillar coupling: one reservoir feeding another.
 - **Critical cascade** — propagation of a critical marker → pillar → PureScore.
 - **Acute mode** — temporary re-prioritization toward an acute life event (Doc 09).
-- **Coverage/confidence** — fraction of a pillar's weighted markers backed by *the patient's own*
+- **Coverage/confidence** — fraction of a pillar's weighted markers backed by *the member's own*
   recent data vs literature fallback.
 - **Valve / knob** — an intervention lever that changes a reservoir's inflow or outflow rate; what a
   recommended action moves (Doc 04, Doc 12).
@@ -148,7 +148,7 @@ These symbols and definitions are **binding** across all PureScore documents.
   confidence, **trajectory**, volatility, **modifiability**, **representativeness** (Doc 05).
 - **Trajectory** — the direction/slope of a pillar or reservoir over time (companion vector; Doc 05).
 - **Modifiability** — the share of a pillar's risk that is actionable now (companion vector; Doc 05).
-- **Representativeness** — how well the patient matches the reference cohort; when low it suppresses
+- **Representativeness** — how well the member matches the reference cohort; when low it suppresses
   the cohort percentile term (Doc 05, Doc 15).
 - **Managed state** — a marker deliberately held in range by treatment, read in context rather than as
   raw risk (Doc 05).

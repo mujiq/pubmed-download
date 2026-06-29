@@ -99,7 +99,7 @@ the injected `B_ACU` magnitude, and the routing.
 **Hard safety boundary (A3).** Emergency acute-danger reds **do not** enter self-managed acute mode.
 They route straight to the emergency pathway (Doc 16) via the existing cascade (Doc 03 §5.3): the
 pillar is critical, `PureScore ≤ PURE_CRIT_CAP`, `overall_status = CRITICAL`, and a human is engaged.
-Acute mode (A0–A2) is for **sub-emergency** recovery the patient can self-manage *with* care-team
+Acute mode (A0–A2) is for **sub-emergency** recovery the member can self-manage *with* care-team
 visibility — never a substitute for escalation. The reserve-deficit reds of Doc 03 §4.1 (e.g., very
 low VO2max) are **not** acute events; they drive priority-improvement plans in Part B.
 
@@ -110,12 +110,12 @@ While an event is **active** (A1/A2), the override applies four coupled changes:
 1. **Weight spike — acute dominates optimization.** For each affected pillar `k`,
    `m_k^acute` is set per A.4 and `W_k = W_k^base · m_k^cohort · m_k^goal · m_k^acute` is
    renormalized (Doc 03 §5.1). The affected pillar(s) now carry the bulk of the score's attention;
-   far-from-the-event pillars are de-emphasized so the patient is not nagged about, say, Lp(a) the
+   far-from-the-event pillars are de-emphasized so the member is not nagged about, say, Lp(a) the
    week after surgery.
 
 2. **Acute reservoir injection (Doc 04 §7).** Inject `B_ACU` — a transient, high-`λ` reservoir
    linked to the affected pillar(s) via `u_{k,ACU}`. Because `λ_ACU` is large, `B_ACU` drains as the
-   patient heals, providing the *recovery clock* and the revert trigger (A.6). Where the event also
+   member heals, providing the *recovery clock* and the revert trigger (A.6). Where the event also
    feeds a chronic tank (sepsis → `B_INFL`; MI → permanent step on `B_ATH`; AKI → possible permanent
    `RENR` loss), that coupling persists after `B_ACU` drains — honest reversibility (Doc 04 §4.4).
 
@@ -160,7 +160,7 @@ flapping (Doc 03 §6).
 **On exit (resolved):**
 1. `m_k^acute → 1` for the affected pillars (ramped down over `τ_ramp`, not snapped, so the headline
    eases back); `W_k` renormalized (Doc 03 §5.1).
-2. `m_k^goal` is **restored to the patient's long-term life-stage goals** (Part B) — the long-term
+2. `m_k^goal` is **restored to the member's long-term life-stage goals** (Part B) — the long-term
    nudge stream resumes.
 3. The valve bundle reverts from *recovery* to the **life-stage default bundle** (Part B), often with
    a *graded-return* sub-plan (e.g., return-to-exercise ramp after an injury or post-op).
@@ -187,7 +187,7 @@ flapping (Doc 03 §6).
 ### B.1 What a plan is, mechanically
 
 A **life-stage plan** is a default configuration of three things the rest of the spec already
-defines, chosen for the patient's stage and cohort:
+defines, chosen for the member's stage and cohort:
 
 1. **`m_k^goal` weights** (Doc 03 §5.1) — which pillars the stage emphasizes.
 2. **Valve bundles** (Doc 04 §6) — the standing intervention/nudge settings that fill assets
@@ -200,7 +200,7 @@ opens the relevant valves harder, and raises its `m_k^goal` (B.7). Reproductive-
 (pregnancy, post-partum, peri/menopause, andropause) are **deferred to Doc 08**.
 
 **Named good practices borrowed (Doc 01):**
-- **Kaiser Permanente** — *panel management* (every patient on a panel has a known care-gap list) and
+- **Kaiser Permanente** — *panel management* (every member on a panel has a known care-gap list) and
   *care-gap closure* (proactive outreach when a Tier-1/2 measurement or screening is overdue). In
   PureScore, the cadence tables below *are* the panel/care-gap list; an overdue cell is a care gap.
 - **Mayo Clinic** — *evidence-based, team-based* care: every plan element cites a guideline class and
@@ -308,7 +308,7 @@ ProvenCare pathway branching):
 | **Recovered** | step cadence/valves/`m_k^goal` back down with the same **hysteresis** as Part A so the plan doesn't flap (Doc 03 §6) |
 
 This is the explicit tie between **status → plan**: the plan is a function of pillar state, so a
-yellow MET pillar quietly tightens the metabolic nutrition + zone-2 dose without the patient having to
+yellow MET pillar quietly tightens the metabolic nutrition + zone-2 dose without the member having to
 ask, and relaxes again when MET returns to green.
 
 ### B.8 Cohort-specific lifestyle goals → valves (the through-line)

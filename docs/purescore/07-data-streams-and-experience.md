@@ -3,7 +3,7 @@
 > Binding conventions: `README.md §3`. This document defines the **input taxonomy** (lab biomarkers,
 > wearable metrics, user goals, lifestyle/PRO), how **consumer wearables are trust-tiered** into the
 > engine (decision **D22**), how wearable signals map across pillars, and the **product surfaces** that
-> make the patient journey effortless (AI scribe, AI chat agent, scheduling, in-home tracking,
+> make the member journey effortless (AI scribe, AI chat agent, scheduling, in-home tracking,
 > insurance auth, household accounts). It feeds the companion vector (Doc 05 §4) and the nudge engine
 > (Doc 11/12). **Illustrative; consumer-grade ≠ medical-grade — flagged, not assumed (Doc 01).**
 
@@ -66,7 +66,7 @@ Daily backbone of Trajectory & Early-warning: **resting HR, HRV, sleep, steps, C
 Devices: Apple Watch, Samsung, Oura, Whoop, CGM (Libre/Dexcom), Omron cuff, smart scale, in-home
 passive sensors (sleep mat, motion, fall detection).
 
-## 5. The effortless experience (reduce patient load)
+## 5. The effortless experience (reduce member load)
 | Surface | What it removes |
 |---|---|
 | **AI scribe** | ambient visit notes → structured data; the score updates itself — no forms |

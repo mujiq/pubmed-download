@@ -4,8 +4,8 @@
 
 > Binding conventions: `README.md §3`. This document connects established, **validated clinical
 > risk scores** to the PureScore pillars and markers (Doc 02) and to the scoring formula (Doc 03).
-> These scores live in the **gated clinician layer**: they are decision-support, **not** patient-
-> facing diagnosis. PureScore itself stays **wellness-grade** (README §1, §5) — the patient sees a
+> These scores live in the **gated clinician layer**: they are decision-support, **not** member-
+> facing diagnosis. PureScore itself stays **wellness-grade** (README §1, §5) — the member sees a
 > wellness number and a *"consult your clinician"* escalation, never an autonomous diagnosis.
 >
 > **Re-verify caveat.** Every equation, cut-point, risk band, and validated population named below
@@ -18,12 +18,12 @@
 
 ## 1. Positioning and hard boundaries
 
-PureScore is wellness-grade and patient-facing. Clinical risk scores are a **separate, gated layer**
+PureScore is wellness-grade and member-facing. Clinical risk scores are a **separate, gated layer**
 consumed only by credentialed clinicians (and, where lawful and separately governed, payers per
 Doc 19). The boundary is non-negotiable:
 
 1. **No auto-diagnosis.** Computing FINDRISC, ASCVD, FIB-4, FRAX, etc. produces a *risk estimate*
-   for a clinician to interpret. The patient-facing app never renders these as a diagnosis or a
+   for a clinician to interpret. The member-facing app never renders these as a diagnosis or a
    treatment instruction. It renders, at most, a wellness-level prompt: *"some of your markers
    suggest it's worth discussing X with your clinician."*
 2. **The safety anchor is never bypassed** (README §5.2, Doc 03 §2, §4). A clinical score may
@@ -130,7 +130,7 @@ anchor.
 
 > BioAge is presented to clinicians as a **composite contextualizer** ("biological 62 vs
 > chronological 55 — age acceleration of +7y, driven mainly by INF and MET"), aligning naturally
-> with PureScore's reservoir/burden model (Doc 04). It is **not** a diagnosis and not patient-facing
+> with PureScore's reservoir/burden model (Doc 04). It is **not** a diagnosis and not member-facing
 > as such; epigenetic clocks remain research-grade pending validation (Doc 13).
 
 ### 2.8 General / whole-person (cross-pillar)
@@ -205,7 +205,7 @@ care-team model — clinician + care team see the same explainable substrate, Do
    (Doc 03 §7.1) — so the clinician immediately sees the safety-governing factor.
 2. **Pillar strip.** Per-pillar `S_k`, `status_k`, coverage `cov_k`, and top contributors
    (Doc 03 §7.2), each pillar linking to its computed clinical scores.
-3. **Clinical-score panel.** The §2 catalogue scores relevant to this patient, each as
+3. **Clinical-score panel.** The §2 catalogue scores relevant to this member, each as
    `value · band · source-guideline · model-version · OOD-flag`, e.g. *ASCVD 14.2% (intermediate,
    ACC/AHA PCE) — in-distribution* / *FIB-4 3.1 (advanced-fibrosis risk, AASLD) — refer elastography*.
 4. **Reservoir contributions.** `ρ_k·B̃_k` narrative (Doc 03 §7.3) — "chronic sleep debt adding 6 pts
@@ -218,7 +218,7 @@ care-team model — clinician + care team see the same explainable substrate, Do
    FIB-4, crisis pathway by C-SSRS) — **suggested to the care team, never auto-executed**.
 
 Everything on this surface is **explainable and traceable to inputs and weights** (README §5.3); the
-patient-facing app shows only the wellness number and a *"consult your clinician"* prompt.
+member-facing app shows only the wellness number and a *"consult your clinician"* prompt.
 
 ---
 
@@ -271,10 +271,10 @@ within it. The engine must know each equation's validated envelope and **flag ou
 
 **OOD policy (governance):**
 
-1. **Compute the envelope check first.** For each score, test the patient against its validated
+1. **Compute the envelope check first.** For each score, test the member against its validated
    ranges (age, sex, ancestry/region, assay, comorbidity exclusions). If outside, set `OOD = true`.
 2. **OOD scores are flagged, down-weighted, or withheld** from the §3.2 feedback path. An OOD score
-   may be *shown to the clinician with a prominent caveat* ("ASCVD PCE: patient age 35 — below
+   may be *shown to the clinician with a prominent caveat* ("ASCVD PCE: member age 35 — below
    validated range; interpret with caution") but **must not** silently drive `W_k`/`r_i`.
 3. **Prefer an in-distribution alternative** where one exists (e.g. SCORE2-OP for ≥70; age-adjusted
    FIB-4 in >65).

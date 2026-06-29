@@ -5,7 +5,7 @@
 ## 1. Vision
 
 PureScore is a lifelong, sex-specific, multi-pillar wellbeing operating system. It turns a
-patient's biomarkers, wearables, and lifestyle into **one explainable number with twelve honest
+member's biomarkers, wearables, and lifestyle into **one explainable number with twelve honest
 parts**, tracks it at a sustainable visit cadence, and converts it into **the five easiest things
 to do today**. It remembers accumulated burdens, reacts immediately to acute life events, and
 hands off to a clinician the moment something looks dangerous.
@@ -31,12 +31,12 @@ The product promise is modest by design and large in aggregate:
    highest-information, lowest-cost, lowest-burden measurements into a single regular visit, and
    reserves expensive deep phenotyping for cadence or trigger.
 6. **Aligned economics.** When PureScore is used by payers, the incentive must be to *improve*
-   the patient's score (value-based care), never to deny or to cherry-pick risk.
+   the member's score (value-based care), never to deny or to cherry-pick risk.
 7. **Conservative claims.** We under-promise. Every capability is bounded by what has been
    prospectively validated for the population in front of us.
 8. **Equity by construction.** Cohorting must reduce, not encode, disparity. No protected-class
    proxy may worsen access, price, or care (Doc 13 fairness, Doc 16 governance).
-9. **Effortless by construction.** Every surface should remove a step the patient used to do
+9. **Effortless by construction.** Every surface should remove a step the member used to do
    themselves — ambient AI scribe, a 24/7 chat agent, frictionless scheduling, passive in-home
    tracking, and automated insurance pre-authorization — so adherence comes from *less* friction,
    not more willpower. The household is the unit of care: one shared view, individual scores, with
@@ -53,12 +53,12 @@ red-flag presentations), and unsustainable unit economics; it collapsed into ins
 
 **Engineered countermeasures in PureScore:**
 - **No autonomous diagnosis or triage-to-reassurance.** PureScore is wellness-grade; red-flags
-  escalate to humans (Doc 16). We never tell a patient they are fine in a way that could mask an
+  escalate to humans (Doc 16). We never tell a member they are fine in a way that could mask an
   emergency.
 - **Validate before scale.** Prospective, population-specific calibration and fairness audits are
   *gates*, not afterthoughts (Doc 13). No claim ships ahead of its evidence.
 - **Transparency over mystique.** Explainable scoring, published methodology, external audit.
-- **Sustainable unit economics.** Tiering controls per-patient measurement cost; the actuarial
+- **Sustainable unit economics.** Tiering controls per-member measurement cost; the actuarial
   layer (Doc 19) targets *portfolio loss ratios with reinsurance*, not clairvoyant individual
   pricing. **"Impossible to lose money" is itself a Babylon-class overpromise and is rejected as
   a design goal** — see §4.
@@ -80,7 +80,7 @@ Evidence-based, **team-based** care; conservative, guideline-anchored decision s
 **Adopted into PureScore:**
 - Guideline-anchored bands and clinician decision-support content (Doc 02, Doc 10).
 - Team-based escalation: PureScore is one input to a care team, never the decision-maker.
-- Conservative communication standards for patient-facing language.
+- Conservative communication standards for member-facing language.
 
 ### 3.4 Others worth borrowing from
 - **Intermountain / Geisinger (ProvenCare):** standardized care pathways and outcome
@@ -108,7 +108,7 @@ measurable health improvement and disciplined portfolio risk management."* That 
 designs, with the legal and fairness landmines flagged in red.
 
 ## 5. What success looks like
-- Patients understand their score and act on it (adherence to nudges).
+- Members understand their score and act on it (adherence to nudges).
 - Red/critical states reach a clinician fast, with no false reassurance failures.
 - Scores are **calibrated** to real outcomes and **fair** across sex, age, race/ethnicity, and SES.
 - The score moves *before* hard events when an upstream burden accumulates (early warning).

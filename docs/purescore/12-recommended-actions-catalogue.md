@@ -27,7 +27,7 @@
 > cadence (README §5.6) before any production use.** Medication actions are surfaced **only when
 > the drug is prescribed** (`rx`); the engine never initiates or titrates therapy — it supports
 > **adherence**, **measurement**, and **clinician follow-up**. Doses shown are the *prescribed*
-> regimen the patient is to take, not a recommendation to start.
+> regimen the member is to take, not a recommendation to start.
 
 ---
 
@@ -95,7 +95,7 @@ South-Asian/Emirati cardiometabolic phenotype raise risk at lower BMI. Marker ho
 **Ramadan-safe glycemic plan (cross-cutting).** Pre-Ramadan risk stratification (IDF-DAR 2021)
 gates fasting eligibility: recent severe hypoglycemia, T1D, pregnancy, advanced CKD, or
 poorly-controlled T2D are **medically inadvisable to fast** → routed to clinician, never an
-autonomous "you may fast." For eligible patients the engine raises `T2D-CGM`, suhoor/iftar dose
+autonomous "you may fast." For eligible members the engine raises `T2D-CGM`, suhoor/iftar dose
 timing nudges, hydration, and a hypoglycemia break-fast rule (glucose <70 mg/dL ⇒ break fast).
 
 ---
@@ -111,8 +111,8 @@ Marker home: **BCM/MET**, with CV/HEP linkage.
 |----|-------|------|----------------|---------|----:|-----|-----|--------|----------|
 | OB-WAIST | MEASURE | measure waist circumference | ↑`cov_BCM`; ethnicity cutoff applied | BCM, MET | 0.10 | immediate | n/a IDF | none | **South-Asian/Arab: use ≥90/≥80 cm cutoffs (D18)** |
 | OB-DEFICIT | NUTR | modest sustained caloric deficit; high-protein | ↓`B_GLY`,`B_HEPF`; weight | MET, BCM, HEP | 0.45 | weeks–mo | 0.8 WHO/Endocrine Society 2015 | **disordered-eating hx → suppressed/reframed (Doc 11 §5.1); pregnancy/lactation no-deficit** | all |
-| OB-PROT | NUTR | protein 1.2–1.6 g/kg to preserve lean mass | fill `B_MUS` | BCM, MET | 0.35 | weeks | 0.7 Endocrine Society | **CKD ≥3b: capped/blocked (Doc 11 §5.1)** | **GLP-1/bariatric patients: muscle-preservation priority** |
-| OB-RES | ACT | 2–3× resistance/wk (muscle preservation) | fill `B_MUS`,`B_BON` | BCM, FIT, MET | 0.55 | weeks–mo | 0.75 ACSM/WHO | severe osteoporosis → supervised | rapid-weight-loss (GLP-1) patients prioritized |
+| OB-PROT | NUTR | protein 1.2–1.6 g/kg to preserve lean mass | fill `B_MUS` | BCM, MET | 0.35 | weeks | 0.7 Endocrine Society | **CKD ≥3b: capped/blocked (Doc 11 §5.1)** | **GLP-1/bariatric members: muscle-preservation priority** |
+| OB-RES | ACT | 2–3× resistance/wk (muscle preservation) | fill `B_MUS`,`B_BON` | BCM, FIT, MET | 0.55 | weeks–mo | 0.75 ACSM/WHO | severe osteoporosis → supervised | rapid-weight-loss (GLP-1) members prioritized |
 | OB-GLP1 | ADHERE | take prescribed anti-obesity GLP-1/dual agonist | weight; ↓`B_GLY` | MET, BCM, CV | 0.15 | weeks–mo | 0.9 Endocrine Society/WHO | rx only; pair OB-PROT/OB-RES vs lean-mass loss | all; Ramadan: weekly dosing meal-time independent |
 | OB-BARI | CLINICAL | bariatric/metabolic surgery referral | care-gap; durable weight/MET | BCM, MET, CV | 0.50 | immediate | 0.85 ASMBS/IFSO | BMI ≥35 w/ comorbidity or ≥40 (ethnicity-adjusted lower in Asians) | **clinician-gated; never autonomous** |
 
@@ -148,7 +148,7 @@ Marker home: **CV** (ApoB, LDL-C, Lp(a)).
 | LIP-DIET | NUTR | ↓saturated fat; +soluble fiber; +ω-3 food | ↓`B_ATH` inflow; ApoB `s_i` | CV, MET, →INF | 0.35 | weeks–mo | 0.7 ACC/AHA 2018 | anticoagulant → high-dose ω-3 caution | all |
 | LIP-STATIN | ADHERE | take prescribed statin daily | ↓ApoB `s_i` ⇒ ↓`B_ATH` inflow | CV | 0.10 | weeks (ApoB), years (`B_ATH`) | 0.95 ACC/AHA 2018 / ESC 2021 | rx only; **pregnancy contraindicated**; myalgia watch; check w/ G6PD? (no — statins safe) | all; Ramadan: evening dose unaffected |
 | LIP-EZE | ADHERE | take prescribed ezetimibe daily | ↓ApoB `s_i` | CV | 0.10 | weeks | 0.85 ESC 2021 | rx only | add-on when statin insufficient |
-| LIP-PCSK9 | ADHERE | inject prescribed PCSK9i per schedule | ↓ApoB strongly; ↓`B_ATH` | CV | 0.20 | weeks | 0.9 ESC 2021 | rx only; FH/very-high-risk | **FH and high-Lp(a) patients (lifestyle gated, D16)** |
+| LIP-PCSK9 | ADHERE | inject prescribed PCSK9i per schedule | ↓ApoB strongly; ↓`B_ATH` | CV | 0.20 | weeks | 0.9 ESC 2021 | rx only; FH/very-high-risk | **FH and high-Lp(a) members (lifestyle gated, D16)** |
 | LIP-FHCASC | SCREEN | cascade-screen first-degree relatives (FH) | care-gap; family lipid panel + genetics | CV (gap) | 0.40 | immediate | n/a ESC 2021 / EAS | index FH case | **high regional consanguinity → strong yield (D18)** |
 
 ---
@@ -177,7 +177,7 @@ Tracks the obesity/T2D burden; very prevalent regionally. Marker home: **HEP** (
 | id | class | dose | valve / target | pillars | E_a | τ_a | ε_a | safe_a | cohort_a |
 |----|-------|------|----------------|---------|----:|-----|-----|--------|----------|
 | NAFLD-WT | NUTR | 7–10% body-weight loss | ↓`B_HEPF`; ALT `s_i` | HEP, MET, BCM | 0.45 | weeks–mo | 0.85 AASLD 2023 | disordered-eating hx → reframe; pregnancy no-deficit | all |
-| NAFLD-FIB4 | MEASURE | compute FIB-4 (age, AST, ALT, platelets) | ↑`cov_HEP`; fibrosis risk-stratify | HEP (uncertainty) | 0.15 | immediate | n/a AASLD 2023 / EASL | **heavy-tailed → log handling (D13)**; high FIB-4 → hepatology | all metabolic patients |
+| NAFLD-FIB4 | MEASURE | compute FIB-4 (age, AST, ALT, platelets) | ↑`cov_HEP`; fibrosis risk-stratify | HEP (uncertainty) | 0.15 | immediate | n/a AASLD 2023 / EASL | **heavy-tailed → log handling (D13)**; high FIB-4 → hepatology | all metabolic members |
 | NAFLD-ALC | NUTR | minimize/avoid alcohol | ↓`B_HEPF` | HEP | 0.30 | weeks | 0.75 EASL/WHO | — | most UAE residents abstain; still screened |
 | NAFLD-MET | NUTR | optimize glycemia + lipids (see §1, §4) | ↓`B_HEPF`,`B_GLY` (κ) | HEP, MET, CV | 0.40 | weeks–mo | 0.7 AASLD 2023 | as per §1/§4 | all |
 
@@ -210,7 +210,7 @@ screening program). This is a **screening & safety context** (D18), never a pena
 | HGB-SCREEN | SCREEN | hemoglobinopathy screen (Hgb electrophoresis) | carrier status; HbA1c caveat | HEM (gap) | 0.30 | immediate | n/a WHO/MoHAP premarital | — | **high regional carrier rate; premarital program (D18)** |
 | HGB-A1C-FLAG | MEASURE | flag: HbA1c unreliable in hemoglobinopathy → use CGM/fructosamine | corrects MET `cov` | MET, HEM | 0.10 | immediate | n/a ADA 2024 | — | thalassemia/variant-Hgb carriers |
 | G6PD-SCREEN | SCREEN | G6PD assay (esp. before oxidant drugs) | carrier status; drug safety | HEM (gap) | 0.30 | immediate | n/a WHO | — | **high regional prevalence (D18)** |
-| G6PD-AVOID | ADHERE | **avoid G6PD-unsafe drugs/foods** (primaquine, dapsone, nitrofurantoin, sulfonamides, rasburicase, fava beans, high-dose vit C, naphthalene) | prevent hemolysis | HEM | 0.15 | immediate | 0.85 WHO | **hard safety filter on med/nudge library for G6PD-deficient patients** | G6PD-deficient cohort |
+| G6PD-AVOID | ADHERE | **avoid G6PD-unsafe drugs/foods** (primaquine, dapsone, nitrofurantoin, sulfonamides, rasburicase, fava beans, high-dose vit C, naphthalene) | prevent hemolysis | HEM | 0.15 | immediate | 0.85 WHO | **hard safety filter on med/nudge library for G6PD-deficient members** | G6PD-deficient cohort |
 
 ---
 
@@ -334,10 +334,10 @@ fabricated lifestyle fix (D16; Doc 11 §8 status).
 
 | id | class | dose | valve / target | pillars | E_a | τ_a | ε_a | safe_a | cohort_a |
 |----|-------|------|----------------|---------|----:|-----|-----|--------|----------|
-| RAM-RISK | CLINICAL | pre-Ramadan fasting risk stratification | gate fasting eligibility | (all) | 0.30 | immediate | n/a IDF-DAR 2021 | **high-risk (T1D, severe hypo hx, advanced CKD, pregnancy) → fasting medically inadvisable, clinician route** | diabetic/CKD/pregnant patients |
-| RAM-TIME | ADHERE | shift med timing to suhoor/iftar (clinician plan) | preserve adherence under fast | (drug pillar) | 0.15 | immediate | 0.7 IDF-DAR 2021 | **never auto-adjust insulin/SU dose** | fasting patients on rx |
+| RAM-RISK | CLINICAL | pre-Ramadan fasting risk stratification | gate fasting eligibility | (all) | 0.30 | immediate | n/a IDF-DAR 2021 | **high-risk (T1D, severe hypo hx, advanced CKD, pregnancy) → fasting medically inadvisable, clinician route** | diabetic/CKD/pregnant members |
+| RAM-TIME | ADHERE | shift med timing to suhoor/iftar (clinician plan) | preserve adherence under fast | (drug pillar) | 0.15 | immediate | 0.7 IDF-DAR 2021 | **never auto-adjust insulin/SU dose** | fasting members on rx |
 | RAM-HYPO | MEASURE | hypoglycemia/dehydration self-monitor; break-fast rule | safety; glucose `s_i` | MET, REN | 0.20 | immediate | 0.8 IDF-DAR 2021 | **glucose <70 mg/dL ⇒ break fast (binding); red lows escalate** | fasting diabetics |
-| RAM-HYDR | NUTR | hydrate across the eating window; limit caffeine/salt at suhoor | reduce dehydration/AKI risk | REN, CV | 0.20 | immediate | 0.6 WHO | CKD/diuretic/SGLT2i → high caution | fasting patients |
+| RAM-HYDR | NUTR | hydrate across the eating window; limit caffeine/salt at suhoor | reduce dehydration/AKI risk | REN, CV | 0.20 | immediate | 0.6 WHO | CKD/diuretic/SGLT2i → high caution | fasting members |
 
 ---
 
@@ -356,7 +356,7 @@ Implementing **D18** across this catalogue:
    widens to the least-penalizing validated band and **lowers the companion Confidence/
    Representativeness vector** (Doc 05 §4, §7; D7), exactly as for absent cohort data — it never
    substitutes a worse score.
-4. **Race-free renal function.** eGFR uses **CKD-EPI 2021 (race-free)** for every patient (§5;
+4. **Race-free renal function.** eGFR uses **CKD-EPI 2021 (race-free)** for every member (§5;
    README §5.5; Doc 05 §7) — no race coefficient, ever.
 5. **No protected-class proxy may worsen a score, price, or access** (README §5.5; Doc 19; Doc 16).
    Ethnicity adjusts *context and screening*, the same way representativeness adjusts *confidence*,

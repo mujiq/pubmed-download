@@ -114,7 +114,7 @@ Stage 2 personalizes *across people*; Stage 2b personalizes *across time for one
 score visibly tracks short-term action. Each marker carries a robust **personal baseline**
 `μ_i^p, σ_i^p` (empirical-Bayes, log-scaled for heavy-tailed markers — D13; cold-start shrinks to
 cohort — Doc 05 §5.1, Doc 15 ignition). The empirical-Bayes mean (the shrinkage that makes a
-new patient borrow the cohort until they have history — D6) is:
+new member borrow the cohort until they have history — D6) is:
 
 ```
  μ_i^p = (n_i /(n_i + k_i)) · x̄_i^personal  +  (k_i /(n_i + k_i)) · μ_i^cohort     # k_i = per-marker prior strength
@@ -166,7 +166,7 @@ Trajectory and Early-warning above; the full set is defined in **Doc 05 §4**:
 | # | Dimension | What it says | Re-enters score? |
 |---|-----------|--------------|------------------|
 | 1 | **Confidence** `Cf_k` | coverage × source-quality × stability | no (display + gating) |
-| 2 | **Data sufficiency** `Su_k` | % fresh patient data; flags INSUFFICIENT | no |
+| 2 | **Data sufficiency** `Su_k` | % fresh member data; flags INSUFFICIENT | no |
 | 3 | **Criticality** `Cr` | escalation tier + count of red/critical markers | via §4 cascade |
 | 4 | **Trajectory** `Tr_k` | slope of `S_k` over the window (↑ ↓ →) | no |
 | 5 | **Early-warning** `Ew_k` | tiered anomaly: none / Watch / Advisory / Alert (Doc 05 §5.3) | no |
@@ -297,9 +297,9 @@ urgent, routine}`.
 ```
 - `W_k^base`: default importance (longevity/all-cause-mortality contribution; CV, MET, FIT, MCS,
   SLP carry the largest defaults).
-- `m_k^cohort`: raises pillars central to the patient's conditions/meds (diabetic ⇒ MET, REN, CV
+- `m_k^cohort`: raises pillars central to the member's conditions/meds (diabetic ⇒ MET, REN, CV
   up; CKD ⇒ REN up; on statin ⇒ CV interpretation adjusts).
-- `m_k^goal`: raises pillars tied to the patient's stated goals (Doc 09/11).
+- `m_k^goal`: raises pillars tied to the member's stated goals (Doc 09/11).
 - `m_k^acute`: spikes during an acute event (Doc 09); reverts with hysteresis on recovery.
 
 #### 5.1.1 Where personalization enters the pipeline
@@ -379,8 +379,8 @@ Take resting HR (`rhr`, SLP/CV, **not** a critical marker), optimum `m = 55 bpm`
   a confirming measurement or sustained reservoir drainage (Doc 04 λ), so the headline doesn't
   oscillate on noise. Acute-mode entry/exit hysteresis is in Doc 09.
 
-### 6.1 Responsiveness & the patient feedback loop
-The score is engineered to **move with behaviour** so the patient gets feedback, while staying
+### 6.1 Responsiveness & the member feedback loop
+The score is engineered to **move with behaviour** so the member gets feedback, while staying
 clinically honest:
 1. **Every modifiable action has a non-zero, continuous `ΔPureScore`.** Because Stages 1–2b are
    smooth, the exact finite-difference recompute the nudge engine uses (Doc 11 §2.5) returns a real
@@ -394,7 +394,7 @@ clinically honest:
    (genetics, age, established disease) does **not** fake-improve from short-term effort — it shows
    as low **Modifiability** (Doc 05 §4) so the engine never sells false hope (D5/D16).
 4. **The loop:** measure → personal-baseline `z` (2b) → continuous score + companion trends →
-   top-5 easiest positive-`Δ` actions (Doc 11) → patient acts → next measurement moves `z` → score
+   top-5 easiest positive-`Δ` actions (Doc 11) → member acts → next measurement moves `z` → score
    and arrows update. The interactive demonstration of this loop is the `tech/` feedback-loop page.
 
 ### 6.2 Prose ↔ engine reconciliation (this spec **is** the shared scorer)

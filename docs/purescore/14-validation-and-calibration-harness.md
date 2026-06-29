@@ -56,7 +56,7 @@ process/consistency criterion.
 
 For harness development, threshold tuning, and edge-case coverage (the §2 persona catalogue), a
 **deterministic seeded generator** (the D9 substrate, generalized to a cohort) produces virtual
-patients with **known ground truth**, so detectors can be exercised before any real data exists.
+members with **known ground truth**, so detectors can be exercised before any real data exists.
 
 ```
  for each persona × marker:  series(t) = trend(persona) + AR(1) noise(σ_marker) + seeded events
@@ -74,7 +74,7 @@ patients with **known ground truth**, so detectors can be exercised before any r
 
 | Requirement | Spec |
 |---|---|
-| **Prospective longitudinal cohort** | repeated per-patient measurement over time in the *deployment* population; pre-registered protocol, pre-specified endpoints (Doc 13 §4.5) |
+| **Prospective longitudinal cohort** | repeated per-member measurement over time in the *deployment* population; pre-registered protocol, pre-specified endpoints (Doc 13 §4.5) |
 | **Outcome labels** | linked hard outcomes: all-cause/cause-specific mortality, incident MACE, T2D/CKD progression, hospitalization; event dates for time-to-event |
 | **Linkage** | record-linkage to EHR/claims/registry/vital-records, consented (Doc 16 §4); enables the survival loss of Doc 13 §3.1 |
 | **External + temporal split** | a second site and a *later* window than training (Doc 13 §4.5) — transported models decay |
@@ -158,24 +158,24 @@ Per tier (Watch / Advisory / Alert), at the operating point:
 | Sensitivity (recall) | high (internal queue absorbs noise) | moderate–high | high for true crossings |
 | Specificity | low ok (internal) | higher (multivariate/2-read confirmed) | highest |
 | **PPV @ realistic prevalence** | — | reported, not assumed | reported, not assumed |
-| Routed to | clinician queue (D2) | patient nudge | clinician, may escalate |
+| Routed to | clinician queue (D2) | member nudge | clinician, may escalate |
 
 > **PPV collapses at low prevalence — this is the Babylon lesson made quantitative.** With
 > sensitivity `Se`, specificity `Sp`, prevalence `π`:
 > `PPV = (Se·π) / (Se·π + (1−Sp)·(1−π))`
-> At `π = 0.5%`, even `Se = 0.95, Sp = 0.95` gives `PPV ≈ 8.7%` — **>91% of patient-facing alarms
+> At `π = 0.5%`, even `Se = 0.95, Sp = 0.95` gives `PPV ≈ 8.7%` — **>91% of member-facing alarms
 > are false**. PPV is therefore **reported at the deployment prevalence**, never at a convenient
-> balanced prevalence, and the Advisory→patient gate must clear a **minimum-PPV** bar. This is
+> balanced prevalence, and the Advisory→member gate must clear a **minimum-PPV** bar. This is
 > *exactly* why D2 keeps single-marker drift in the internal **Watch** queue and surfaces only
-> multivariate- or multi-read-**confirmed** signals to the patient — confirmation raises the
+> multivariate- or multi-read-**confirmed** signals to the member — confirmation raises the
 > effective `(1−Sp)` term's denominator and lifts PPV into a usable range.
 
 ### 5.3 Alarm budget / alarm-fatigue
 
-- **Alarm rate** measured as **patient-facing alarms per patient-month**; a hard **alarm-fatigue
-  budget** caps it (illustrative ≤ ~1 Advisory/patient-month median; Alert governed separately by
+- **Alarm rate** measured as **member-facing alarms per member-month**; a hard **alarm-fatigue
+  budget** caps it (illustrative ≤ ~1 Advisory/member-month median; Alert governed separately by
   clinical necessity, never budget-suppressed). Exceeding budget is a **release blocker** (F3).
-- Watch (internal) is **not** patient alarm volume but is monitored for clinician-queue load.
+- Watch (internal) is **not** member alarm volume but is monitored for clinician-queue load.
 - Budget is **never** met by suppressing a genuine Alert (README §5.4; never trade sensitivity for
   quiet) — only by raising the Advisory confirmation bar (§5.2).
 

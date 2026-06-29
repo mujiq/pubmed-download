@@ -6,7 +6,7 @@
 
 > Binding conventions: `README.md §3`. This document defines how PureScore converts the
 > explainability object (Doc 03 §7) and the reservoir dynamics (Doc 04) into a **daily action
-> plan**: the **top-5 easiest** actions for this patient today, each carrying an honest,
+> plan**: the **top-5 easiest** actions for this member today, each carrying an honest,
 > attributed **ΔPureScore** trickled down to pillars `S_k` and individual markers `s_i`.
 >
 > It consumes: the scored state (Doc 03), reservoirs `B_j(t)` and their `λ_j, κ, u_{kj}` (Doc 04),
@@ -15,7 +15,7 @@
 > (Doc 16). It is bound by the anti-Babylon principle (Doc 01 §3.1): **no overpromising, no dark
 > patterns, no triage-to-reassurance.**
 >
-> **§9 (delivery)** specifies how the selected action reaches the patient — channels, send-time,
+> **§9 (delivery)** specifies how the selected action reaches the member — channels, send-time,
 > quiet hours, frequency caps, consent and PHI-safe payloads — and how **safety-critical** alerts
 > (Doc 16) are delivered with guaranteed escalation, firewalled from best-effort engagement.
 
@@ -132,7 +132,7 @@ over every marker the action touches, with a second-order guard (§2.5) for larg
 
 A behavioural valve usually does **not** move a marker today; it changes a reservoir's inflow or
 drain, and the tank moves over `h` per the Doc 04 §3 state equation. Linearize the discrete
-dynamics around the patient's current reservoir vector `B(t)`:
+dynamics around the member's current reservoir vector `B(t)`:
 
 ```
  B(t+Δ) ≈ B(t) + Δ·[ f(B(t)) + valve_a ],     J = ∂f/∂B = (−Λ + K)      # Doc 04 Hurwitz Jacobian
@@ -178,7 +178,7 @@ and then through the **same** chain-rule tail (a)+(b) plus `∂R_k/∂B̃_k = ρ
 ### 2.4 Attribution (what the card must show)
 
 Because every term above is additive over pillars and markers, the engine emits the **same
-decomposition** the explainability object uses, so the patient sees where the points come from:
+decomposition** the explainability object uses, so the member sees where the points come from:
 
 ```
  ΔPureScore_a(h)  =  Σ_k  ΔS-credit_k(h)        # per-pillar credit (sums to the headline Δ)
@@ -209,7 +209,7 @@ State: MET `R_MET=0.41` (HbA1c 6.0% yellow, dominant), FIT `R_FIT=0.38` (steps 4
 - **Reservoir path (90 d):** valve fills `B_CRF` (asset). `e^{Jh}` propagates: `κ_{GLY,CRF}<0` so
   `B_GLY` drains too. `ΔB̃_FIT(90)`, `ΔB̃_MET(90)`, small `ΔB̃_CV(90)` all negative (risk down).
 - **Total:** `ΔPureScore_ACT-STEPS(90) ≈ +1.4`, attributed **FIT +0.7, MET +0.5, CV +0.2**.
-  Quoted to the patient: *"+1.4 over 90 days — fitness, blood sugar, and heart all benefit; HbA1c
+  Quoted to the member: *"+1.4 over 90 days — fitness, blood sugar, and heart all benefit; HbA1c
   est. −0.2%."* `ε_a=0.8`, `g_a(7d)≈0.15` ⇒ the 7-day card shows only **+0.2** — honest about latency.
 
 ---
@@ -217,7 +217,7 @@ State: MET `R_MET=0.41` (HbA1c 6.0% yellow, dominant), FIT `R_FIT=0.38` (steps 4
 ## 3. Ranking — an **ease-weighted** utility with safety and diversity
 
 The brief is *top-5 **easiest***. Ease/feasibility is weighted heavily; raw impact is necessary but
-deliberately not sufficient (a huge-impact action the patient won't do is worthless).
+deliberately not sufficient (a huge-impact action the member won't do is worthless).
 
 ### 3.1 Utility
 
@@ -228,15 +228,15 @@ For each safety-passing action (§5), define the daily utility
         └── impact ──┘        └adherence┘   └── ease ──┘
 ```
 
-- `h*` — the patient's planning horizon (default 30 d; goal-/cohort-set).
-- `p̂_a ∈ [0,1]` — **predicted adherence probability** for *this* patient (§3.2). This is what makes
+- `h*` — the member's planning horizon (default 30 d; goal-/cohort-set).
+- `p̂_a ∈ [0,1]` — **predicted adherence probability** for *this* member (§3.2). This is what makes
   the list "easiest *for you*."
 - `(1−E_a)^{η}` — explicit ease preference; `η > 1` (default 1.5) makes the list bias toward
   low-effort actions, satisfying the brief literally.
 - `α, β` default `1.0`; raising `β` and `η` over `α` is the *ease-first* posture. All versioned (§7).
 - `ν_a` — novelty/timing factor: small bonus for an action that closes the binding constraint or a
   care-gap, small penalty for one shown-and-ignored many times (anti-nag; §4.4). It **also carries a
-  goal-alignment bonus**: the patient's declared **GOAL stream** (Doc 07 §1, §7) sets `h*` and lifts
+  goal-alignment bonus**: the member's declared **GOAL stream** (Doc 07 §1, §7) sets `h*` and lifts
   actions that advance the goal (e.g. "lower HbA1c" → glycemic actions rank up), within the safety
   rails — the goal steers ranking but never overrides a critical or a contraindication (§1).
 
@@ -245,19 +245,19 @@ high-impact action nobody will do, nor a trivially-easy action that does nothing
 
 ### 3.2 Personalized adherence / feasibility model `p̂_a`
 
-`p̂_a = σ( θ·z_{p,a} )`, a per-patient logistic over features `z_{p,a}`:
+`p̂_a = σ( θ·z_{p,a} )`, a per-member logistic over features `z_{p,a}`:
 
 | Feature | Source |
 |---------|--------|
 | effort `E_a`, latency `τ_a` | action record |
 | **personal history with this action/class** — completion rate, streak length, recency | nudge feedback log (§6) |
-| similar-patient base rate (empirical-Bayes shrinkage to cohort) | Doc 13 |
+| similar-member base rate (empirical-Bayes shrinkage to cohort) | Doc 13 |
 | context fit — time-of-day, calendar load, current acute mode, weather/season for ACT | device/context |
 | friction — does it need a new device/purchase/appointment | action record |
 | momentum — current streak in the same `class_a`, habit-stacking opportunity | feedback log |
 
 Cold-start (no history): `p̂_a` falls back to the **cohort base rate** with wide uncertainty, and we
-shrink toward it (empirical Bayes, Doc 13). As the patient acts, the personal terms dominate.
+shrink toward it (empirical Bayes, Doc 13). As the member acts, the personal terms dominate.
 The model is **recalibrated** against realized completion (§6) — a real probability, not a guess.
 
 ### 3.3 Selection: greedy, diverse, safe (the actual top-5)
@@ -285,7 +285,7 @@ greedy submodular pick (a small facility-location / determinantal flavour):
 - **Positive-`Δ` guarantee.** Every action admitted to the top-5 must have a **strictly positive
   expected `ΔPureScore@h`** on the continuous score (Doc 03 §2b/§6.1) — selection filters out
   zero-impact actions (e.g. an already-optimal managed marker, D16). So *acting on the list always
-  moves the number up*; the patient gets immediate, honest feedback. If no positive-`Δ` modifiable
+  moves the number up*; the member gets immediate, honest feedback. If no positive-`Δ` modifiable
   action exists (everything green/at-optimum, or all remaining risk is fixed), the engine says so
   rather than inventing a nudge (Doc 05 Modifiability; D5).
 
@@ -307,7 +307,7 @@ real clinical change behind "you're improving vs your own bad week" (safety domi
 Each of the 5 cards shows:
 1. **Plain-language action + dose** ("Walk 1,500 more steps — about a 15-minute walk").
 2. **Impact, attributed and horizoned** ("+1.4 PureScore over 90 days · helps Fitness, Blood Sugar,
-   Heart") — the §2.4 decomposition in patient language, with the **7-day** number shown too so
+   Heart") — the §2.4 decomposition in member language, with the **7-day** number shown too so
    latency is never hidden.
 3. **Effort badge** (`E_a` → "tiny / small / moderate / big effort") and **latency badge**.
 4. **"Why this"** — the explainability trace: *which marker/reservoir/binding-constraint it targets*
@@ -323,14 +323,14 @@ Each of the 5 cards shows:
   day ≠ cured; the tank only drains under sustained input). Streaks here are **mechanistically true**,
   not a slot-machine.
 - Progress is shown as **realized reservoir drainage / score movement**, tying the streak to the
-  actual `B_j(t)` trajectory the patient is changing.
+  actual `B_j(t)` trajectory the member is changing.
 
 ### 4.3 Anti-Babylon honesty rules (binding — Doc 01 §3.1)
 
 - **No overpromising.** The quoted `ΔPureScore_a(h)` is the `ε_a`-discounted, exactly-recomputed,
   horizoned number (§2.3/§2.5). We never inflate, never quote a 90-day number as if it were today's.
 - **No dark patterns.** No artificial scarcity, no manufactured urgency, no guilt loops, no streak
-  held hostage. A missed day is reported neutrally; the patient may dismiss/snooze any nudge freely.
+  held hostage. A missed day is reported neutrally; the member may dismiss/snooze any nudge freely.
 - **No triage-to-reassurance.** A good nudge list **never** implies "you're fine." If anything in the
   state is red/critical, the card leads with escalation, not with tips (§5).
 - **Explainable or absent.** If an action's impact can't be traced through §2, it is not shown
@@ -350,7 +350,7 @@ Safety is a **hard pre-filter on `A` before ranking**, plus mode-reweighting and
 
 ### 5.1 Contraindication filter (precedes §3 entirely)
 
-For patient `p` with cohort `c(p)=(age, sex, D, Mx)`, action `a` is **eligible** only if `safe_a`
+For member `p` with cohort `c(p)=(age, sex, D, Mx)`, action `a` is **eligible** only if `safe_a`
 clears against `D`, `Mx`, and current acute flags. Worked guards:
 
 - **CKD (eGFR<45 / stage ≥3b):** `NUT-PROT` (protein load) and any potassium-raising nutrition nudge
@@ -401,7 +401,7 @@ The engine logs, for every surfaced action, a closed loop:
 ### 6.1 Two calibration targets
 
 1. **Adherence model (`p̂_a`).** Compare predicted vs realized completion; refit `θ` (§3.2) per
-   patient and pool to cohort (empirical Bayes, Doc 13). Brier score / calibration curve tracked.
+   member and pool to cohort (empirical Bayes, Doc 13). Brier score / calibration curve tracked.
 2. **Sensitivity / impact model.** Compare **predicted `ΔPureScore_a(h)`** against the **realized**
    change attributable to the action (de-confounded against other actions and natural drift using the
    reservoir state equations as the counterfactual baseline). Systematic over-prediction ⇒ shrink the
@@ -442,7 +442,7 @@ the reservoir parameters they ride on (`λ_j, κ, u_{kj}`) are **calibrated, not
 
 ## 8. End-to-end worked example — a daily card
 
-**Patient:** 52-y-old man, pre-diabetic (HbA1c 6.0%), sleep 5.8 h (chronic `B_SLD` high), steps
+**Member:** 52-y-old man, pre-diabetic (HbA1c 6.0%), sleep 5.8 h (chronic `B_SLD` high), steps
 4,800/day, ApoB imputed (low `cov_CV`), on no meds, no red-flags. Goal: "more energy, avoid diabetes."
 
 Engine run:
@@ -467,10 +467,10 @@ honest about horizon and uncertainty, no overpromise.
 
 ---
 
-## 9. Delivery engine — getting the selected nudge to the patient
+## 9. Delivery engine — getting the selected nudge to the member
 
 > §1–§8 decide *which* action to surface and *what* honest number to attach. This section defines
-> *how* it reaches the patient on a real mobile app — channels, timing, consent, privacy — and the
+> *how* it reaches the member on a real mobile app — channels, timing, consent, privacy — and the
 > firewall between best-effort **engagement** and guaranteed **safety-critical** delivery. It reuses
 > the adherence model (§3.2) and feedback loop (§6) and is bound by the anti-Babylon rules (§4.3).
 
@@ -485,9 +485,9 @@ Every outbound message is exactly one class; they never mix.
 | Quiet hours · caps · opt-out | **respected** | **bypassed** |
 | Channels | in-app + push (→ fallback) | **all reachable at once** |
 | Acknowledgement | not required | **required**; no ack within TTL → human escalation |
-| Patient can silence | yes (per-category, §9.6) | **no** (legal duty, not a toggle) |
+| Member can silence | yes (per-category, §9.6) | **no** (legal duty, not a toggle) |
 
-**Hard rules.** (1) Only a Doc 16 escalation tag mints a critical — the engine may **never** promote an engagement nudge to critical to bypass limits (a dark pattern). (2) A critical can **never** be suppressed by opt-out, quiet hours, or a cap. (3) Crisis *content/pathway* is owned by Doc 16; this section owns only its *delivery mechanics*. (4) **Dependents / household (Doc 07):** a dependent's safety-critical routes to the responsible caregiver/proxy per consent, in addition to the patient.
+**Hard rules.** (1) Only a Doc 16 escalation tag mints a critical — the engine may **never** promote an engagement nudge to critical to bypass limits (a dark pattern). (2) A critical can **never** be suppressed by opt-out, quiet hours, or a cap. (3) Crisis *content/pathway* is owned by Doc 16; this section owns only its *delivery mechanics*. (4) **Dependents / household (Doc 07):** a dependent's safety-critical routes to the responsible caregiver/proxy per consent, in addition to the member.
 
 ### 9.2 Channels & the fallback ladder
 
@@ -495,11 +495,11 @@ Every outbound message is exactly one class; they never mix.
 |---|---|---|---|
 | In-app inbox | system-of-record | every message, persisted | no OS permission; seen only on app open |
 | Push (APNs/FCM) | primary engagement | daily digest, time-sensitive criticals | needs OS permission; **best-effort, no delivery guarantee** |
-| SMS | fallback + critical | critical fan-out, push-off patients | telecom; PHI-safe only; STOP handling (§9.6) |
+| SMS | fallback + critical | critical fan-out, push-off members | telecom; PHI-safe only; STOP handling (§9.6) |
 | WhatsApp (Business API) | fallback + critical | MENA-prevalent reach | pre-approved PHI-safe templates; opt-in |
 | Email | records / digest | weekly digest, receipts, exports | not for time-critical |
 
-Per-patient, per-channel **reachability** = granted / denied / provisional / undetermined, plus deliverability health (token validity, recent SMS/WhatsApp success). Channel choice is a function of (class, priority, reachability).
+Per-member, per-channel **reachability** = granted / denied / provisional / undetermined, plus deliverability health (token validity, recent SMS/WhatsApp success). Channel choice is a function of (class, priority, reachability).
 
 - **Engagement ladder:** push (if granted) → else in-app inbox only. SMS/WhatsApp are **reserved for critical** (fatigue + cost), never used for ordinary nudges.
 - **Critical ladder:** in-app takeover **+** push **+** SMS **+** WhatsApp fired *together* (speed dominates); collect acks; no ack within `ack_TTL` → **human escalation** (care-team / on-call clinician, or the consented emergency contact) + audit (Doc 16). A critical is **never silently dropped** — total channel failure also escalates to a human. (Criticals are confirmation-gated upstream — Doc 05 §3.4 / Doc 16 — so fan-out is never triggered by unconfirmed noise.)
@@ -514,7 +514,7 @@ Per-patient, per-channel **reachability** = granted / denied / provisional / und
 
 ### 9.4 Quiet hours & Do-Not-Disturb
 
-Default engagement quiet window **21:00–07:00 local** (patient-configurable); OS DND/Focus respected where exposed; engagement due in quiet hours defers to the next window (or drops if stale). **Critical overrides** quiet hours and DND (iOS time-sensitive / critical-alert entitlement; Android high-importance) — a genuine emergency must wake the patient.
+Default engagement quiet window **21:00–07:00 local** (member-configurable); OS DND/Focus respected where exposed; engagement due in quiet hours defers to the next window (or drops if stale). **Critical overrides** quiet hours and DND (iOS time-sensitive / critical-alert entitlement; Android high-importance) — a genuine emergency must wake the member.
 
 ### 9.5 Frequency caps, arbitration & cross-channel dedup
 
@@ -525,8 +525,8 @@ Default engagement quiet window **21:00–07:00 local** (patient-configurable); 
 ### 9.6 Consent, opt-in & OS permissions (regulatory)
 
 - **Transactional vs marketing.** Safety-critical, appointment and result-ready messages are **transactional / duty-of-care** (UAE PDPL & GDPR vital-interest/contract) — not gated by marketing consent. Daily nudges, streaks, tips and re-engagement are **engagement** and need **explicit opt-in**.
-- **Granular categories** (patient toggles): *Safety alerts* (always on, not disableable), *Daily plan*, *Streaks & milestones*, *Care reminders*, *Weekly digest*, *Research/product* — each mapped to a class + legal basis.
-- **OS permission priming:** an in-context pre-prompt precedes the system push dialog; if push is denied, engagement degrades to the in-app inbox and **safety still reaches the patient** via SMS/WhatsApp.
+- **Granular categories** (member toggles): *Safety alerts* (always on, not disableable), *Daily plan*, *Streaks & milestones*, *Care reminders*, *Weekly digest*, *Research/product* — each mapped to a class + legal basis.
+- **OS permission priming:** an in-context pre-prompt precedes the system push dialog; if push is denied, engagement degrades to the in-app inbox and **safety still reaches the member** via SMS/WhatsApp.
 - **STOP / unsubscribe** (SMS/WhatsApp/email) disables **engagement on that channel only** and **never** safety-critical (separate legal basis) — disclosed at opt-in.
 - All consent & preference changes are **versioned and audited** (Doc 16).
 
@@ -534,7 +534,7 @@ Default engagement quiet window **21:00–07:00 local** (patient-configurable); 
 
 - **Default: no health specifics in any payload** — no marker, value or diagnosis. Generic teaser + deep-link only (*"Your PureScore plan is ready"*; critical: *"Urgent health alert — open PureScore now"*). The marker/value is **never** on a lock screen, watch or synced/mirrored surface.
 - Health detail is revealed **only after in-app authentication** (biometric/passcode) — delivery therefore depends on the on-device-security work (see *Production readiness — gaps*).
-- **Opt-in richer previews** let a patient consciously accept the lock-screen trade-off.
+- **Opt-in richer previews** let a member consciously accept the lock-screen trade-off.
 - SMS/WhatsApp/email bodies follow the same rule (PHI-free body, auth-gated deep-link); WhatsApp templates are pre-approved PHI-safe; all notification copy is reviewed so health detail can't leak.
 - Because payloads are PHI-safe, third-party channel processors (APNs/FCM, SMS, WhatsApp) **never handle PHI** — which also satisfies processor / data-residency constraints (PDPL/GDPR).
 
@@ -558,7 +558,7 @@ Default engagement quiet window **21:00–07:00 local** (patient-configurable); 
 
 ### 9.11 Reliability & safety guarantees
 
-- **Idempotency** keys prevent duplicate sends on retry; per-patient ordering; a durable outbox.
+- **Idempotency** keys prevent duplicate sends on retry; per-member ordering; a durable outbox.
 - **Retry / backoff** on transient channel failure, then the fallback ladder (§9.2).
 - **Criticals are guaranteed-attempt:** persisted until acknowledged; all-channel failure or no-ack-within-TTL → human escalation + audit (Doc 16). Never silently lost.
 - **Localization (Doc 18):** RTL/Arabic templates, locale formatting, culturally-appropriate timing.
@@ -579,7 +579,7 @@ All tunable and versioned; any change is a model-version bump (Doc 14) with an a
 
 ### 9.13 Worked example — one critical, one digest
 
-**02:10 local — K⁺ 6.4 mmol/L, confirmed (Doc 16 emergency).** Class = SAFETY-CRITICAL. Quiet hours (21:00–07:00) are **overridden**; in-app takeover **+** push (time-sensitive) **+** SMS **+** WhatsApp fire together, every payload PHI-safe: *"Urgent health alert — open PureScore now."* The patient taps at 02:14 → ack logged, routed (post-auth) to the Doc 16 crisis screen (*Call 999 / I'm safe / I need help*). Had no ack arrived by 02:25 (`ack_TTL` 15 min), the on-call clinician / care-team is paged and the event audited. No marker or value ever appeared on the lock screen.
+**02:10 local — K⁺ 6.4 mmol/L, confirmed (Doc 16 emergency).** Class = SAFETY-CRITICAL. Quiet hours (21:00–07:00) are **overridden**; in-app takeover **+** push (time-sensitive) **+** SMS **+** WhatsApp fire together, every payload PHI-safe: *"Urgent health alert — open PureScore now."* The member taps at 02:14 → ack logged, routed (post-auth) to the Doc 16 crisis screen (*Call 999 / I'm safe / I need help*). Had no ack arrived by 02:25 (`ack_TTL` 15 min), the on-call clinician / care-team is paged and the event audited. No marker or value ever appeared on the lock screen.
 
 **19:30 local (next day) — daily top-5 ready.** Class = ENGAGEMENT. One **digest** push (not five) at the send-time that maximises `p̂` (early evening, before the 21:00 quiet start), PHI-safe teaser *"Your PureScore plan is ready"* deep-linking to the plan. SMS/WhatsApp are **not** used. Had push been disabled, the digest would simply wait in the in-app inbox. Quick actions (*Done / Snooze / Dismiss*) feed the §6 loop.
 

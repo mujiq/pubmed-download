@@ -296,7 +296,7 @@ to **avoided expected cost** via the validated §2 model:
 - **Provider side:** capitation/quality blends, value-based contracts paying for closed care gaps
   and improved pillars (the nudge/care-plan engine, Docs 09/11, is the delivery mechanism).
 - **Plan side:** lower expected claims from a healthier book *is* the return; it is captured at
-  the **portfolio** level (§3), aligning insurer, provider, and patient toward the same `↑PureScore`.
+  the **portfolio** level (§3), aligning insurer, provider, and member toward the same `↑PureScore`.
 
 ### 5.3 How nudges/care plans lower cost ethically
 Docs 09/11 lower `Ĉ` by draining reservoirs (`dB̃/dt < 0`) and moving pillars toward green —

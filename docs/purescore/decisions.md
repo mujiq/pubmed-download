@@ -70,11 +70,11 @@ strip; diagram companion band.
 absorbs soft signals?
 **Options.**
 - A — High sensitivity, clinician-buffered (soft signals routed to a clinician queue, never the
-  patient).
+  member).
 - B ★ **Tiered Watch → Advisory → Alert** — graduated; only multivariate- or
-  multi-measurement-**confirmed** signals reach the patient; single-marker drift stays internal.
+  multi-measurement-**confirmed** signals reach the member; single-marker drift stays internal.
 - C — Conservative, confirmed-trend-only (fewer alarms, later detection).
-**Decision.** B. **Rationale.** Keeps sensitivity while protecting the patient from noise; gives
+**Decision.** B. **Rationale.** Keeps sensitivity while protecting the member from noise; gives
 data-error edge cases (hemolyzed K⁺, bad-contact SpO₂) a home (Watch + reconfirm). **Affects.**
 Doc 05 §5.3; calculator early-warning tiering; §3.4 confirmation logic.
 
@@ -88,7 +88,7 @@ confounds?
 - B — Counterfactual untreated-risk scoring (estimate latent risk without the drug).
 - C — Controlled = fully green (keep only disease weight).
 **Decision.** A. **Rationale.** Most accurate and transparent; credits adherence without implying
-"cured"; stops β-blockers corrupting fitness. Counterfactual (B) demotivates well-treated patients
+"cured"; stops β-blockers corrupting fitness. Counterfactual (B) demotivates well-treated members
 and needs per-drug effect models. **Affects.** Doc 05 §3.1–3.2; calculator `CONFOUNDS`/`MANAGES`
 tables, confidence-weighted aggregation, MNG/CNF tags.
 
@@ -106,12 +106,12 @@ dialysis, pediatrics) without alarming healthy elders or under-flagging real ris
 §3.3; calculator persona band overrides (elderly/dialysis/pregnancy), eGFR exclusion frame.
 
 ## D5 — Honest-and-motivating framing for fixed burden
-**Question.** How to stay honest about absolute risk yet motivating for patients with fixed/un-
+**Question.** How to stay honest about absolute risk yet motivating for members with fixed/un-
 fixable burden (genetics, age, irreversible damage, multimorbidity)?
 **Options.**
 - A ★ **Dual framing: absolute score + "progress to your attainable best" + competing-risk
   weighting** — keep the absolute truth; add a second coordinate grading effort against a
-  realistically-achievable ceiling; mute pillars irrelevant to the patient's prognosis.
+  realistically-achievable ceiling; mute pillars irrelevant to the member's prognosis.
 - B — Absolute only (lean on trajectory + modifiability).
 - C — Competing-risk weighting only, no personal ceiling.
 **Decision.** A. **Rationale.** Rewards controllable effort without lying about absolute risk;
@@ -131,7 +131,7 @@ consistent with Doc 13 shrinkage. **Affects.** Doc 05 §5.1; calculator personal
 (D9).
 
 ## D7 — Bias / skew / representativeness handling
-**Question.** When the patient is poorly represented by the reference cohort (OOD, small cell,
+**Question.** When the member is poorly represented by the reference cohort (OOD, small cell,
 heavy-tailed marker), what should happen?
 **Options.**
 - A ★ **Defensive** — low representativeness lowers Confidence AND, below a threshold, suppresses
@@ -274,7 +274,7 @@ Modifiability and Trajectory companion signals?
   fixed/genetic marker — e.g. FH ApoB), while **medication/clinical** actions can; the binding/worst
   pillar gets the `ν` bonus (Trajectory-aware); per-class diversity cap; safety/cohort caveats
   (CKD protein cap, pregnancy/lactation no-deficit, anticoagulant ω-3).
-- B — Pure impact ranking (ignore effort) — surfaces high-impact actions patients won't do.
+- B — Pure impact ranking (ignore effort) — surfaces high-impact actions members won't do.
 - C — Effort-only "easiest" (ignore impact) — trivial, low-yield actions.
 **Decision.** A. **Rationale.** Faithful to the Doc 11 spec; honest (no credit for moving an
 already-green or a genetically-fixed marker); when lifestyle is gated out on a fixed red, the engine
@@ -393,7 +393,7 @@ flags. **Affects.** Doc 07 (data streams & devices); the input-type taxonomy & r
 companion-vector confidence weighting; deck Data-&-Experience + Day-in-the-Life sections.
 
 ## D23 — Continuous personalized scoring & feedback loop *(user)*
-**Question.** Should PureScore move with short-term behaviour so the patient gets feedback, and how
+**Question.** Should PureScore move with short-term behaviour so the member gets feedback, and how
 do biomarkers/wearables/baselines feed that without becoming clinically dishonest?
 **Decision.** Make the score **continuous and personally responsive**, not discrete:
 - **No band jumps in the number.** Stage 1 is already `C⁰`/`C¹`-continuous; green/yellow/red are
@@ -626,7 +626,7 @@ dataflow pages have no scorer island (catalog tables / static DFD). *Follow-up:*
 catalogs (`PILLARS`, `MODIFIERS`, …) to load from their extracted JSON so the catalog axis is canonical too.
 
 ## D33 — Cohort-matched cold-start: impute missing LAB biomarkers from cohort medians *(user)*
-**Question.** A patient with no EHR/EMR (Patient360) lab data still needs a score. How do we score them in the
+**Question.** A member with no EHR/EMR (Patient360) lab data still needs a score. How do we score them in the
 absence of measured labs without faking certainty or hiding danger?
 **Options.**
 - A ★ **Cohort-median imputation for LAB markers only, with honest accuracy/completeness signalling.** When a
@@ -643,7 +643,7 @@ absence of measured labs without faking certainty or hiding danger?
   confidence jumps.
 - B — Impute *all* missing clinical inputs (labs + vitals + DEXA + wearables) from cohort medians. *Rejected:* over-
   reaches the "labs only" intent and silently fabricates wearable/PRO signals.
-- C — Refuse to score until labs exist (INSUFFICIENT only). *Rejected:* abandons the cold-start patient; the engine
+- C — Refuse to score until labs exist (INSUFFICIENT only). *Rejected:* abandons the cold-start member; the engine
   already supports neutral-prior imputation (Doc 06 §4.3) honestly.
 **Decision.** **A.** **Rationale.** Extends the existing per-marker median fallback (Doc 06 §4.3) into a formal,
 auditable cold-start path that is *safe both ways* — never optimistic (coverage cap + no clean-green), never alarmist
@@ -701,12 +701,12 @@ filter-search, coverage readout), `wiki_content.py` `build_purescore_uber()` (se
 Builds on **D32**, visualises **D33**.
 
 ## D35 — Notification & nudge delivery engine *(user)*
-**Question.** Doc 11 §1–§8 select *which* nudge to surface; nothing specified *how* it reaches the patient on a real mobile app, nor how a safety-critical alert (Doc 16) is delivered.
+**Question.** Doc 11 §1–§8 select *which* nudge to surface; nothing specified *how* it reaches the member on a real mobile app, nor how a safety-critical alert (Doc 16) is delivered.
 **Options.**
 - A ★ **Two-class delivery engine, added as Doc 11 §9.** A firewall between best-effort **engagement** (top-5 / streaks / digests) and guaranteed **safety-critical** (Doc 16 emergency/urgent). Tiered channels — in-app inbox + push for engagement; SMS + WhatsApp + email reserved for fallback/critical/records — with a fallback ladder. Engagement respects quiet hours, frequency caps and per-category opt-in; criticals bypass them, fan out across all reachable channels, require acknowledgement, and escalate to a human on no-ack TTL. **PHI-safe payloads by default** (generic teaser + auth-gated deep-link; no marker/value on lock screens), with opt-in richer previews. Send-time reuses the §3.2 adherence model; Ramadan / quiet-hours / timezone aware; measurement closes the §6 loop and is validated per Doc 14.
-- B — Single pipeline with a priority flag (criticals just skip quiet hours). *Rejected:* no guaranteed delivery / ack / human-escalation for emergencies; push-off patients unreachable.
+- B — Single pipeline with a priority flag (criticals just skip quiet hours). *Rejected:* no guaranteed delivery / ack / human-escalation for emergencies; push-off members unreachable.
 - C — Defer critical delivery to Doc 16, engagement only here. *Rejected:* leaves the actual critical delivery mechanics unspecified.
-**Decision.** **A.** **Rationale.** A patient app must (i) reach a patient in an emergency even with push disabled and outside hours, with acknowledgement and human fallback; and (ii) never leak PHI to lock screens or third-party channel vendors, nor use dark patterns on engagement. The two-class firewall delivers both while reusing the existing selection / adherence / feedback machinery. **Design notes.** Form: **extends Doc 11** (new §9.1–§9.13; the duplicate "§8 Implementation status" renumbered to §10). Channels: in-app + push + SMS + WhatsApp + email with a fallback ladder; criticals fan out and are confirmation-gated upstream (Doc 05 §3.4). Consent: transactional (duty-of-care) vs marketing (explicit opt-in); STOP never disables safety; dependents / household route to the consented caregiver (Doc 07). Privacy: PHI-safe payloads ⇒ channel vendors never process PHI (PDPL/GDPR processor / residency mitigation). Constants (quiet hours 21:00–07:00, push cap 2/day, ack_TTL 15 min / 4 h, re-engage 7 d→weekly→stop) are versioned. **Guardrails.** No engagement→critical promotion; criticals never coalesced / rate-limited / silenced; delivery A/B-tests confined to engagement, never safety; all numbers illustrative — build + validate before use. **Affects.** `11-daily-nudge-engine.md` (new §9, §10 renumber, title), `tech/build_wiki.py` (`SHORT`), `tech/wiki_content.py` (`SUMMARY`, nudge `MERMAID` delivery node, `build_production_gaps` row → *addressed*). Depends on Doc 16 (escalation), Doc 05 (confirmation), Doc 07 (streams/household), Doc 18 (localization), Doc 14 (validation SLOs).
+**Decision.** **A.** **Rationale.** A member app must (i) reach a member in an emergency even with push disabled and outside hours, with acknowledgement and human fallback; and (ii) never leak PHI to lock screens or third-party channel vendors, nor use dark patterns on engagement. The two-class firewall delivers both while reusing the existing selection / adherence / feedback machinery. **Design notes.** Form: **extends Doc 11** (new §9.1–§9.13; the duplicate "§8 Implementation status" renumbered to §10). Channels: in-app + push + SMS + WhatsApp + email with a fallback ladder; criticals fan out and are confirmation-gated upstream (Doc 05 §3.4). Consent: transactional (duty-of-care) vs marketing (explicit opt-in); STOP never disables safety; dependents / household route to the consented caregiver (Doc 07). Privacy: PHI-safe payloads ⇒ channel vendors never process PHI (PDPL/GDPR processor / residency mitigation). Constants (quiet hours 21:00–07:00, push cap 2/day, ack_TTL 15 min / 4 h, re-engage 7 d→weekly→stop) are versioned. **Guardrails.** No engagement→critical promotion; criticals never coalesced / rate-limited / silenced; delivery A/B-tests confined to engagement, never safety; all numbers illustrative — build + validate before use. **Affects.** `11-daily-nudge-engine.md` (new §9, §10 renumber, title), `tech/build_wiki.py` (`SHORT`), `tech/wiki_content.py` (`SUMMARY`, nudge `MERMAID` delivery node, `build_production_gaps` row → *addressed*). Depends on Doc 16 (escalation), Doc 05 (confirmation), Doc 07 (streams/household), Doc 18 (localization), Doc 14 (validation SLOs).
 
 ### Maintenance notes
 - New decisions append as `D24+`. When a decision changes, mark the old one `SUPERSEDED → Dn` and

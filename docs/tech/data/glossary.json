@@ -157,7 +157,7 @@
     "clinical"
    ],
    "status": "approved",
-   "ruling": "<b>Member</b> is the canonical term for the person the system serves (OOUX's primary object). Use <b>Member</b> in product and user-facing prose. <b>Patient</b> stays only in genuinely clinical framing and in fixed terms — <b>patient-reported outcome</b>, <b>patient safety</b>, in-/out-patient — which are NEVER renamed. Internal code identifiers (the <code>PatientState</code> class, <code>patient</code> data keys, <code>patient_app</code>) keep their names to avoid breaking the engine; this ruling records the mapping. 'User' = legacy/technical (UX, end-user, decision-log author) — leave as-is."
+   "ruling": "<b>Member</b> is canonical everywhere in prose and display (OOUX's primary object). The ONLY retained 'Patient' uses are fixed clinical nomenclature — <b>patient-reported outcome</b>, <b>patient safety</b>, <b>patient-centred</b>, in-/out-patient — and internal code identifiers (the <code>PatientState</code> class, <code>patient</code> data keys, <code>patient_app</code>), preserved so the engine doesn't break. 'User' is handled as a separate legacy/technical term (UX, end-user, decision-log author) — reconciled in a later pass."
   },
   {
    "id": 11,

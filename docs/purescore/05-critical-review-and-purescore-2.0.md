@@ -96,7 +96,7 @@ for acute danger:
 | Pediatric | **out of v0.1 scope** — requires percentile/Tanner frames; explicitly gated, not scored on adult bands | — |
 | **K⁺, SpO₂, glucose extremes, suicidality** | **never age-relaxed** | absolute |
 
-**Actionability / expected-benefit modifier.** For the frail/elderly/competing-risk patient, a
+**Actionability / expected-benefit modifier.** For the frail/elderly/competing-risk member, a
 truthful flag whose intervention has low expected benefit is **de-prioritized in nudges and in the
 `m_k^acute/goal` weighting** — the flag is shown and explained, not hidden. This prevents both
 alarmism and under-treatment.
@@ -130,7 +130,7 @@ computed per-pillar and rolled up.
 | Dim | Symbol | Definition (per pillar k, rolled up by `W_k`) | Range |
 |---|---|---|---|
 | **Confidence** | `Cf_k` | `cov_k · meanConf_k · stability_k` (coverage × source/recency quality × inverse volatility); `meanConf_k` carries the per-input trust flags & wearable tier (Doc 06 §2, Doc 07 §1–2) | 0–100 |
-| **Data sufficiency** | `Su_k` | weighted fraction of pillar backed by **fresh patient** data; `Su_k < τ_su` ⇒ **INSUFFICIENT** flag (score provisional) | 0–100 |
+| **Data sufficiency** | `Su_k` | weighted fraction of pillar backed by **fresh member** data; `Su_k < τ_su` ⇒ **INSUFFICIENT** flag (score provisional) | 0–100 |
 | **Criticality** | `Cr` | independent badge: `(max escalation tier, count of red/critical markers)` — *not* derivable from the number | tier+count |
 | **Trajectory / momentum** | `Tr_k` | robust slope of `S_k` over a window → ↑improving / →stable / ↓worsening + rate | signed |
 | **Early-warning** | `Ew_k` | tiered anomaly state from §5 (none / Watch / Advisory / Alert) | categorical |
@@ -185,7 +185,7 @@ The shift: **stop relying only on population-band levels; add personal baselines
 multivariate patterns** — because v0.1 gives *zero* signal until a marker crosses a threshold.
 
 ### 5.1 Personal baseline (empirical Bayes)
-Each marker's personal mean/variance shrinks from the cohort prior toward the patient as data
+Each marker's personal mean/variance shrinks from the cohort prior toward the member as data
 accumulates:
 
 ```
@@ -201,7 +201,7 @@ Doc 13 shrinkage.) This catches "your RHR 52→60, still green" before any band 
 score (Doc 03 §2b): better-than-baseline nudges PureScore up, worse-than-baseline trends it down —
 continuously, bounded by `κ_resp` and `band_clamp` so it never relaxes a clinical anchor or clears a
 critical. One signal, three surfaces: it moves **the number**, the **Trajectory** arrow (§5.2), and
-the **Early-warning** ladder (§5.3) — the substrate of the patient feedback loop (Doc 11 §3.4).
+the **Early-warning** ladder (§5.3) — the substrate of the member feedback loop (Doc 11 §3.4).
 
 ### 5.2 Motion & within-green gradient
 - **Trajectory**: robust slope + acceleration of each marker, pillar, and PureScore.
@@ -224,13 +224,13 @@ the **Early-warning** ladder (§5.3) — the substrate of the patient feedback l
  Alert    (clinician, may escalate):       clinical threshold crossed OR high D_M + corroboration
 ```
 
-The patient is **never** shown a raw single-marker wobble; soft signals sit in Watch until
+The member is **never** shown a raw single-marker wobble; soft signals sit in Watch until
 multivariate- or multi-measurement-**confirmed**, protecting against alarm fatigue while keeping
 sensitivity (β-blocker/cycle/athlete normal variation stays in Watch and resolves).
 
 ## 6. Dual framing — honest *and* motivating
 
-Worst-sensitive scoring (safe) means the headline won't move for patients with fixed burden, and
+Worst-sensitive scoring (safe) means the headline won't move for members with fixed burden, and
 multimorbid scores are demoralizing/non-actionable. So 2.0 shows **two coordinates**:
 
 1. **Absolute PureScore** — unchanged truth (with all context fixes above).
@@ -241,10 +241,10 @@ multimorbid scores are demoralizing/non-actionable. So 2.0 shows **two coordinat
  Progress = clamp( (PureScore − PureScore_floor) / (PureScore_max − PureScore_floor) , 0, 1 )
 ```
    "You're at 84% of what's achievable for you" rewards effort without lying about absolute risk.
-3. **Competing-risk / prognostic weighting** down-weights pillars irrelevant to the patient's
+3. **Competing-risk / prognostic weighting** down-weights pillars irrelevant to the member's
    dominant prognosis (don't optimize omega-3 in end-stage disease), reducing non-actionable noise.
 
-`Modifiability` (Mo, §4) is the connective tissue: it tells the patient and the nudge engine how
+`Modifiability` (Mo, §4) is the connective tissue: it tells the member and the nudge engine how
 much of the gap is theirs to close vs fixed — and ensures un-fixable risk (FH, age) is never
 framed as personal failure.
 
