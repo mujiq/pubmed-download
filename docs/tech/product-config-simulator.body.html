@@ -1,0 +1,90 @@
+<div class="crumbs"><a href="index.html">Home</a> &rsaquo; <a href="product-config-design.html">Config &amp; simulator</a> &rsaquo; Screen 2 · Cohort simulator</div>
+<h1>Cohort simulator <span class="small muted">&middot; before / after distribution diff</span></h1>
+<p class="lead">Screen 2 of the <a class="xref" href="product-config-design.html">configurable scoring design</a>. Adjust the candidate pillar weights and watch the <b>PureScore distribution shift across a cohort</b> — Δmean, band-flips and top movers — <b>before</b> anything is published.</p>
+<div class="callout note"><div class="ct">Interactive prototype</div>Runs a <b>seeded synthetic cohort of 2,000 members</b> through a <b>simplified linear scorer</b> (<code>Score = 100·(1 − Σ Wₖ·Rₖ)</code>), not the full γ/δ power-means or reservoir load. Band cuts (green ≥ 70 · amber 50–69 · red &lt; 50) are illustrative. The shape is faithful; the absolute numbers are not production values.</p></div>
+
+<style>
+.pcs-wrap{max-width:900px}
+.pcs-grid{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:start}
+@media(max-width:760px){.pcs-grid{grid-template-columns:1fr}}
+.pcs-card{border:1px solid #e2e8f1;border-radius:10px;padding:12px 14px;background:#fff}
+.pcs-h{font-size:13px;font-weight:700;color:#051c2c;margin:0 0 8px}
+.pcs-row{display:flex;align-items:center;gap:8px;padding:2px 0}
+.pcs-row span.l{flex:0 0 46px;font-size:12px;font-weight:600;color:#334155}
+.pcs-row input{flex:1 1 auto;accent-color:#2251ff;min-width:80px}
+.pcs-row span.v{flex:0 0 42px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px;color:#2251ff;font-weight:700}
+.pcs-stat{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0}
+.pcs-stat b{display:block;font-size:22px;color:#051c2c;line-height:1.1}
+.pcs-stat .d{font-size:12px;color:#8a95a5}
+.pcs-delta-up{color:#1e7a45}.pcs-delta-dn{color:#b23146}
+.pcs-mover{display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0}
+.pcs-mover .mb{flex:0 0 90px;height:9px;background:#eef2fb;border-radius:5px;overflow:hidden;position:relative}
+.pcs-mover .mb i{position:absolute;top:0;height:100%}
+.pcs-btn{font-size:12.5px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;margin-top:6px}
+.pcs-leg{font-size:11px;color:#8a95a5;margin-top:6px}
+.pcs-leg b.bf{color:#9aa6bd}.pcs-leg b.af{color:#2251ff}
+</style>
+<script src="assets/export-data.js"></script>
+<div class="pcs-wrap" id="pcsRoot"><p class="small muted">Loading…</p></div>
+<script>
+(function(){
+  var E = window.PURESCORE_EXPORT, root = document.getElementById("pcsRoot");
+  if(!E){ root.innerHTML='<p style="color:#b23146">export-data.js not loaded.</p>'; return; }
+  var P = E.pillars, K = P.length, N = 2000;
+  function mulberry32(a){ return function(){ a|=0;a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  // seeded synthetic cohort: latent risk + per-pillar noise (correlated, realistic spread)
+  var rng=mulberry32(20260629), COH=[];
+  for(var n=0;n<N;n++){ var h=rng(); var R=[]; for(var k=0;k<K;k++){ R.push(Math.max(0,Math.min(1, h*0.55+rng()*0.5-0.17))); } COH.push(R); }
+  var W0 = P.map(function(p){return p.base_weight||0;}); var s0=W0.reduce(function(a,b){return a+b;},0)||1; W0=W0.map(function(w){return w/s0;});
+  var Wc = W0.slice(); // candidate (editable)
+  function norm(W){ var s=W.reduce(function(a,b){return a+b;},0)||1; return W.map(function(w){return w/s;}); }
+  function scoreAll(W){ W=norm(W); return COH.map(function(R){ var s=0; for(var k=0;k<K;k++) s+=W[k]*R[k]; return Math.max(0,Math.min(100,100*(1-s))); }); }
+  function band(v){ return v>=70?"green":(v>=50?"amber":"red"); }
+  function mean(a){ return a.reduce(function(x,y){return x+y;},0)/a.length; }
+  function median(a){ var b=a.slice().sort(function(x,y){return x-y;}); return b[b.length>>1]; }
+  function hist(a){ var bins=new Array(20).fill(0); a.forEach(function(v){ var i=Math.min(19,Math.floor(v/5)); bins[i]++; }); return bins; }
+
+  function svgHist(b0,b1){
+    var W=560,H=150,pad=24, mx=Math.max.apply(null,b0.concat(b1))||1, bw=(W-pad)/20;
+    function bars(b,fill,off,wd){ return b.map(function(c,i){ var hh=(H-pad)*c/mx; return '<rect x="'+(pad+i*bw+off).toFixed(1)+'" y="'+(H-pad-hh).toFixed(1)+'" width="'+wd.toFixed(1)+'" height="'+hh.toFixed(1)+'" fill="'+fill+'"/>'; }).join(""); }
+    var ax='';
+    [0,25,50,75,100].forEach(function(t){ var x=pad+(t/5)*bw; ax+='<text x="'+x.toFixed(0)+'" y="'+(H-6)+'" font-size="9" fill="#8a95a5" text-anchor="middle">'+t+'</text>'; });
+    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px">'+bars(b0,"#cdd6e4",1,bw*0.92)+bars(b1,"#2251ff",bw*0.18,bw*0.62)+ax+'</svg>';
+  }
+
+  function recompute(){
+    var A=scoreAll(W0), B=scoreAll(Wc);
+    var m0=mean(A),m1=mean(B),md0=median(A),md1=median(B);
+    var bc0={green:0,amber:0,red:0},bc1={green:0,amber:0,red:0},flipUp=0,flipDn=0,toRed=0;
+    for(var i=0;i<N;i++){ var x=band(A[i]),y=band(B[i]); bc0[x]++; bc1[y]++; if(x!==y){ if(B[i]>A[i])flipUp++; else flipDn++; if(y==="red")toRed++; } }
+    var Wn0=norm(W0),Wnc=norm(Wc), mR=[]; for(var k=0;k<K;k++){ var s=0; for(var j=0;j<N;j++) s+=COH[j][k]; mR.push(s/N); }
+    var movers=P.map(function(p,k){ return {code:p.code, dW:(Wnc[k]-Wn0[k])*100, impact:Math.abs(Wnc[k]-Wn0[k])*mR[k]}; }).sort(function(a,b){return b.impact-a.impact;}).slice(0,5);
+    var dm=(m1-m0), dmc=dm>=0?"pcs-delta-up":"pcs-delta-dn";
+    document.getElementById("pcsOut").innerHTML =
+      svgHist(hist(A),hist(B))
+      + '<div class="pcs-leg"><b class="bf">▮ before</b> &nbsp; <b class="af">▮ after</b> &nbsp;·&nbsp; x-axis = PureScore</div>'
+      + '<div class="pcs-stat">'
+      + '<div><b>'+m0.toFixed(1)+' → '+m1.toFixed(1)+'</b><span class="d">mean PureScore <b class="'+dmc+'">('+(dm>=0?"+":"")+dm.toFixed(1)+')</b></span></div>'
+      + '<div><b>'+md0.toFixed(0)+' → '+md1.toFixed(0)+'</b><span class="d">median</span></div>'
+      + '<div><b>'+(flipDn/N*100).toFixed(1)+'%</b><span class="d">flip down · '+(toRed/N*100).toFixed(1)+'% → red</span></div>'
+      + '<div><b>'+(flipUp/N*100).toFixed(1)+'%</b><span class="d">flip up</span></div>'
+      + '</div>'
+      + '<div class="pcs-h">Top movers (weight Δ, by cohort impact)</div>'
+      + movers.map(function(mv){ var pos=mv.dW>=0, wpx=Math.min(50,Math.abs(mv.dW)*3); return '<div class="pcs-mover"><span style="flex:0 0 40px;font-weight:700">'+mv.code+'</span><span class="mb"><i style="'+(pos?"left:50%":"right:50%")+';width:'+wpx.toFixed(0)+'%;background:'+(pos?"#1e7a45":"#b23146")+'"></i></span><span style="color:'+(pos?"#1e7a45":"#b23146")+'">'+(pos?"+":"")+mv.dW.toFixed(1)+' pts</span></div>'; }).join("")
+      + '<div class="pcs-leg">Band mix → green '+bc0.green+'→'+bc1.green+' · amber '+bc0.amber+'→'+bc1.amber+' · red '+bc0.red+'→'+bc1.red+'</div>';
+  }
+
+  root.innerHTML = '<div class="pcs-grid"><div class="pcs-card"><div class="pcs-h">Candidate pillar weights</div><div id="pcsSliders"></div><button class="pcs-btn" id="pcsReset">Reset to canonical</button></div>'
+    + '<div class="pcs-card"><div class="pcs-h">Cohort impact (N = 2,000)</div><div id="pcsOut"></div></div></div>';
+  function renderSliders(){
+    document.getElementById("pcsSliders").innerHTML = P.map(function(p,k){
+      return '<div class="pcs-row"><span class="l" title="'+p.name+'">'+p.code+'</span><input type="range" min="0" max="30" step="0.5" value="'+(Wc[k]*100).toFixed(1)+'" data-k="'+k+'"><span class="v" id="pcsv'+k+'">'+(Wc[k]*100).toFixed(1)+'</span></div>';
+    }).join("");
+    document.querySelectorAll("#pcsSliders input").forEach(function(sl){
+      sl.addEventListener("input", function(){ var k=+sl.dataset.k; Wc[k]=(+sl.value)/100; document.getElementById("pcsv"+k).textContent=(+sl.value).toFixed(1); recompute(); });
+    });
+  }
+  renderSliders(); recompute();
+  document.addEventListener("click", function(e){ if(e.target&&e.target.id==="pcsReset"){ Wc=W0.slice(); renderSliders(); recompute(); } });
+})();
+</script>

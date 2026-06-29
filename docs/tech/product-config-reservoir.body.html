@@ -1,0 +1,61 @@
+<div class="crumbs"><a href="index.html">Home</a> &rsaquo; <a href="product-config-design.html">Config &amp; simulator</a> &rsaquo; Screen 3 · Reservoir config</div>
+<h1>Reservoir config <span class="small muted">&middot; connection matrix</span></h1>
+<p class="lead">Screen 3 of the <a class="xref" href="product-config-design.html">configurable scoring design</a>. The MONIAC layer — <b>knobs → reservoirs → pillars</b> plus reservoir↔reservoir <b>κ couplings</b> — edited as adjacency matrices: <b>one cell per connection</b> (blank = no link), so nothing can be silently missed. Live from <code>assets/export-data.js</code>.</p>
+<div class="callout note"><div class="ct">Interactive prototype</div>κ-coupling coefficients are the real canonical values; inflow gains are illustrative placeholders (true gains live in <code>reservoir-flows.json flows[]</code>). Edits are in-page only.</div>
+
+<style>
+.pcr-wrap{max-width:980px;color:#e8edf6}
+.pcr-h2{margin:24px 0 4px;font-size:15px;color:#fff}
+.pcr-sub{font-size:12px;color:#9aa6bd;margin:0 0 8px}
+.pcr-scroll{overflow-x:auto;border:1px solid #26314c;border-radius:8px;background:#fff}
+table.pcr{border-collapse:collapse;font-size:11px}
+table.pcr th,table.pcr td{border:1px solid #eef1f6;padding:2px;text-align:center;white-space:nowrap}
+table.pcr td{background:#fff;color:#1a2330}
+table.pcr thead th{background:#051c2c;color:#fff;font-weight:600;padding:5px 6px;position:sticky;top:0}
+table.pcr tbody th{background:#f4f7fb;color:#051c2c;font-weight:700;text-align:right;padding:3px 8px;position:sticky;left:0}
+table.pcr td.x{background:#fafbfd}
+.pcr-in{width:46px;border:1px solid #d7deea;border-radius:4px;text-align:center;font-size:11px;padding:2px;font-variant-numeric:tabular-nums;background:#fff;color:#1a2330}
+.pcr-pos{color:#1e7a45;font-weight:700}.pcr-neg{color:#b23146;font-weight:700}
+.pcr-feeds{border-collapse:collapse;font-size:12px;margin-top:4px}
+.pcr-feeds th,.pcr-feeds td{border-bottom:1px solid rgba(255,255,255,.08);padding:5px 12px;text-align:left;color:#e8edf6}
+.pcr-feeds th{color:#9aa6bd;font-weight:600}
+.pcr-pill{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px;background:#1c2740;color:#8ab4ff}
+.pcr-burden{background:#3a1620;color:#ff9aa9}.pcr-asset{background:#123524;color:#5fe0a0}
+</style>
+<script src="assets/export-data.js"></script>
+<div class="pcr-wrap" id="pcrRoot"><p class="small muted">Loading…</p></div>
+<script>
+(function(){
+  var E=window.PURESCORE_EXPORT, root=document.getElementById("pcrRoot");
+  if(!E){ root.innerHTML='<p style="color:#b23146">export-data.js not loaded.</p>'; return; }
+  var R=E.reservoirs, codes=R.map(function(r){return r.code;}), idx={}; codes.forEach(function(c,i){idx[c]=i;});
+
+  // parse κ: incoming_coupling_kappa "gly(+0.15), infl(+0.15)"  -> {targetCode: {srcCode: coef}}
+  var kap={}; R.forEach(function(r){ kap[r.code]={}; var s=r.incoming_coupling_kappa||""; var re=/([a-z]+)\(([+\-−]?[\d.]+)\)/gi,m; while((m=re.exec(s))){ var src=m[1].toUpperCase(); var v=parseFloat(m[2].replace("−","-")); kap[r.code][src]=v; } });
+  // parse inflows "apob 70->140; ldl ..." -> markers
+  var infl={}, mset={}; R.forEach(function(r){ var ms=(r.inflows||"").split(";").map(function(p){return p.trim().split(/\s+/)[0];}).filter(Boolean); infl[r.code]=ms; ms.forEach(function(m){mset[m]=1;}); });
+  var markers=Object.keys(mset).sort();
+
+  function inNum(val,cls){ return '<input class="pcr-in '+(cls||"")+'" value="'+(val===""||val==null?"":val)+'">'; }
+
+  // ---- A · κ coupling matrix (target rows × source cols) ----
+  var a='<div class="pcr-h2">A · κ coupling matrix <span class="pcr-sub" style="display:inline">reservoir → reservoir · cell = coefficient on the <b>target</b> (row), from the <b>source</b> (column)</span></div><div class="pcr-scroll"><table class="pcr"><thead><tr><th>target ↓ / src →</th>'+codes.map(function(c){return '<th>'+c+'</th>';}).join("")+'</tr></thead><tbody>';
+  R.forEach(function(r){ a+='<tr><th>'+r.code+'</th>'+codes.map(function(c){ var v=kap[r.code][c]; if(v==null) return '<td class="x"></td>'; var cls=v>=0?"pcr-pos":"pcr-neg"; return '<td>'+inNum((v>=0?"+":"")+v.toFixed(2),cls)+'</td>'; }).join("")+'</tr>'; });
+  a+='</tbody></table></div>';
+
+  // ---- B · inflow gains (marker rows × reservoir cols) ----
+  var b='<div class="pcr-h2">B · inflow gains <span class="pcr-sub" style="display:inline">input marker → reservoir · editable gain (illustrative placeholder 0.30)</span></div><div class="pcr-scroll"><table class="pcr"><thead><tr><th>marker ↓ / reservoir →</th>'+codes.map(function(c){return '<th>'+c+'</th>';}).join("")+'</tr></thead><tbody>';
+  markers.forEach(function(mk){ b+='<tr><th>'+mk+'</th>'+codes.map(function(c){ return (infl[c].indexOf(mk)>=0)? '<td>'+inNum("0.30")+'</td>':'<td class="x"></td>'; }).join("")+'</tr>'; });
+  b+='</tbody></table></div>';
+
+  // ---- C · feeds (reservoir → pillar, ρ cap) ----
+  var c='<div class="pcr-h2">C · feeds <span class="pcr-sub" style="display:inline">reservoir → pillar, with the ρₖ contribution cap</span></div><table class="pcr-feeds"><thead><tr><th>Reservoir</th><th>Polarity</th><th>Feeds pillar</th><th>Cap ρₖ</th><th>τ (days)</th></tr></thead><tbody>';
+  R.forEach(function(r){ var pol=(r.polarity||"").toLowerCase(); c+='<tr><td><b>'+r.code+'</b> '+r.name.replace(/^[A-Z]+ · /,"")+'</td><td><span class="pcr-pill '+(pol==="asset"?"pcr-asset":"pcr-burden")+'">'+(r.polarity||"")+'</span></td><td><span class="pcr-pill">'+(r.feeds_pillar||"").toUpperCase()+'</span></td><td>'+inNum((r.contribution_cap_rho_k!=null?(+r.contribution_cap_rho_k).toFixed(2):"0.20"))+'</td><td>'+inNum(r.tau_days!=null?r.tau_days:"")+'</td></tr>'; });
+  c+='</tbody></table>';
+
+  root.innerHTML=a+b+c+'<p class="pcr-sub" style="margin-top:14px">'+R.length+' reservoirs · '+markers.length+' inflow markers · '+R.reduce(function(s,r){return s+Object.keys(kap[r.code]).length;},0)+' κ couplings. Color: <span style="color:#5fe0a0;font-weight:700">+ amplifies</span> · <span style="color:#ff9aa9;font-weight:700">− buffers</span>.</p>';
+
+  // live +/- recolor on κ edits
+  root.addEventListener("input", function(e){ if(!e.target.classList.contains("pcr-in"))return; var v=parseFloat((e.target.value||"").replace("−","-")); e.target.classList.remove("pcr-pos","pcr-neg"); if(!isNaN(v)) e.target.classList.add(v>=0?"pcr-pos":"pcr-neg"); });
+})();
+</script>

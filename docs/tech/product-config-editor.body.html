@@ -1,0 +1,96 @@
+<div class="crumbs"><a href="index.html">Home</a> &rsaquo; <a href="product-config-design.html">Config &amp; simulator</a> &rsaquo; Screen 1 · Config editor</div>
+<h1>Config editor <span class="small muted">&middot; 100-point allocation sliders</span></h1>
+<p class="lead">Screen 1 of the <a class="xref" href="product-config-design.html">configurable scoring design</a>. Weights are a <b>budget that always totals 100%</b>: move one slider and the unlocked rest redistribute proportionally, so <code>Σ = 1</code> holds by construction. Live from the canonical data (<code>assets/export-data.js</code>).</p>
+<div class="callout note"><div class="ct">Interactive prototype</div>Illustrative UI over the real pillar/marker data. Edits are in-page only — nothing is published. The redistribution rule matches the <a class="xref" href="product-config-design.html#screen-1-pillar-input-config-100-point-allocation-sliders">design spec</a>.</div>
+
+<style>
+.pce-wrap{max-width:880px;color:#e8edf6}
+.pce-h2{margin:26px 0 6px;font-size:16px;color:#fff}
+.pce-sum{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:11px;margin-left:8px}
+.pce-ok{background:#123524;color:#5fe0a0;border:1px solid #2e6b48}
+.pce-bad{background:#3a1620;color:#ff9aa9;border:1px solid #7a3344}
+.pce-row{display:flex;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.pce-lab{flex:0 0 220px;font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pce-lab .pce-meta{font-weight:400;color:#9aa6bd;font-size:11px}
+.pce-sl{flex:1 1 auto;accent-color:#4f8cff;cursor:pointer;min-width:120px}
+.pce-pct{flex:0 0 56px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:#8ab4ff;font-size:13px}
+.pce-lk{flex:0 0 54px;font-size:11px;color:#9aa6bd;cursor:pointer;user-select:none}
+.pce-bar{flex:0 0 64px;height:8px;border-radius:4px;background:#1c2740;overflow:hidden}
+.pce-bar i{display:block;height:100%;background:linear-gradient(90deg,#4f8cff,#8ab4ff)}
+.pce-tools{display:flex;align-items:center;gap:10px;margin:8px 0}
+.pce-tools label{color:#9aa6bd}
+.pce-tools select,.pce-btn{font-size:13px;padding:6px 12px;border:1px solid #26314c;border-radius:8px;background:#10182a;color:#e8edf6;cursor:pointer}
+.pce-btn:hover,.pce-tools select:hover{border-color:#4f8cff}
+.pce-note{font-size:12px;color:#9aa6bd;margin-top:6px}
+</style>
+<script src="assets/export-data.js"></script>
+<div class="pce-wrap" id="pceRoot"><p class="small muted">Loading canonical data…</p></div>
+<script>
+(function(){
+  var E = window.PURESCORE_EXPORT;
+  var root = document.getElementById("pceRoot");
+  if(!E){ root.innerHTML = '<p class="pce-bad" style="padding:8px 12px">export-data.js not loaded.</p>'; return; }
+
+  /* reusable allocator: items=[{label,meta,pct,locked}] in a container; keeps Σ=100 on edit */
+  function Allocator(host, items, onChange){
+    function redo(k){
+      var lockedOther = items.reduce(function(s,it,i){ return s+((it.locked&&i!==k)?it.pct:0); },0);
+      var maxV = 100 - lockedOther;
+      if(items[k].pct>maxV) items[k].pct=maxV;
+      if(items[k].pct<0) items[k].pct=0;
+      var free = items.map(function(_,i){return i;}).filter(function(i){return i!==k && !items[i].locked;});
+      var R = 100 - items[k].pct - lockedOther, S = free.reduce(function(s,i){return s+items[i].pct;},0);
+      free.forEach(function(i){ items[i].pct = (S>0)? items[i].pct*R/S : R/free.length; });
+    }
+    function sum(){ return items.reduce(function(s,it){return s+it.pct;},0); }
+    function render(){
+      var sm = sum(), ok = Math.abs(sm-100)<0.05;
+      var h = '<div class="pce-h2">'+host.dataset.title+'<span class="pce-sum '+(ok?"pce-ok":"pce-bad")+'">Σ = '+sm.toFixed(1)+'% '+(ok?"✓":"✗")+'</span></div>';
+      items.forEach(function(it,i){
+        h += '<div class="pce-row">'
+          + '<span class="pce-lab" title="'+(it.label+(it.meta?" — "+it.meta:"")).replace(/"/g,"&quot;")+'">'+it.label+(it.meta?' <span class="pce-meta">'+it.meta+'</span>':'')+'</span>'
+          + '<input class="pce-sl" type="range" min="0" max="100" step="0.5" value="'+it.pct.toFixed(1)+'" data-i="'+i+'">'
+          + '<span class="pce-bar"><i style="width:'+Math.min(100,it.pct*2.5).toFixed(1)+'%"></i></span>'
+          + '<span class="pce-pct">'+it.pct.toFixed(1)+'%</span>'
+          + '<label class="pce-lk"><input type="checkbox" data-lock="'+i+'" '+(it.locked?"checked":"")+'> lock</label>'
+          + '</div>';
+      });
+      host.innerHTML = h;
+      host.querySelectorAll(".pce-sl").forEach(function(sl){
+        sl.addEventListener("input", function(){ var i=+sl.dataset.i; items[i].pct=+sl.value; redo(i); render(); onChange&&onChange(items); });
+      });
+      host.querySelectorAll("[data-lock]").forEach(function(cb){
+        cb.addEventListener("change", function(){ items[+cb.dataset.lock].locked=cb.checked; });
+      });
+    }
+    render();
+    return {items:items, render:render};
+  }
+
+  root.innerHTML = '<div id="pcePillars" data-title="Pillar budget — how the 12 pillars share the PureScore"></div>'
+    + '<div class="pce-tools"><label class="small muted">Within-pillar weights for</label>'
+    + '<select id="pcePick"></select>'
+    + '<button class="pce-btn" id="pceReset">Reset all</button></div>'
+    + '<div id="pceMarkers" data-title="Within-pillar budget"></div>'
+    + '<p class="pce-note">Within-pillar weights are shown normalised to 100%. Lock a slider to hold it while others redistribute.</p>';
+
+  function build(){
+    // pillar budget (base weights ×100, already Σ=1)
+    var pItems = E.pillars.map(function(p){ return {label:p.name, meta:p.code, pct:(p.base_weight||0)*100, locked:false}; });
+    Allocator(document.getElementById("pcePillars"), pItems);
+    // pillar picker
+    var sel = document.getElementById("pcePick");
+    sel.innerHTML = E.pillars.map(function(p){ return '<option value="'+p.code+'">'+p.code+' · '+p.name+'</option>'; }).join("");
+    function loadMarkers(code){
+      var ms = E.markers.filter(function(m){ return m.pillar===code; });
+      var tot = ms.reduce(function(s,m){ return s+(m.within_pillar_weight||0); },0) || 1;
+      var items = ms.map(function(m){ return {label:m.marker, meta:(m.within_pillar_weight||0).toFixed(2)+(m.safety_critical==="yes"?" · ⚠ safety":""), pct:(m.within_pillar_weight||0)/tot*100, locked:false}; });
+      Allocator(document.getElementById("pceMarkers"), items);
+    }
+    sel.addEventListener("change", function(){ loadMarkers(sel.value); });
+    loadMarkers(E.pillars[0].code);
+  }
+  document.getElementById; build();
+  document.addEventListener("click", function(e){ if(e.target && e.target.id==="pceReset") build(); });
+})();
+</script>
