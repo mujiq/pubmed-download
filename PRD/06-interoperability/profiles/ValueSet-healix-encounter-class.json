@@ -1,0 +1,59 @@
+{
+  "resourceType": "ValueSet",
+  "id": "healix-encounter-class",
+  "url": "https://fhir.healix.example.org/ValueSet/healix-encounter-class",
+  "identifier": [{"system": "https://ontology.healix.example.org/scheme/", "value": "encounter-class"}],
+  "version": "0.1.0",
+  "name": "HealixEncounterClass",
+  "title": "HEALIX Encounter Class",
+  "status": "draft",
+  "experimental": false,
+  "date": "2026-10-17",
+  "publisher": "HEALIX Terminology Stewardship",
+  "description": "Enterprise encounter class value set: the subset of HL7 v3 ActEncounterCode used across Cerner Millennium, scheduling and revenue-cycle sources. Required binding on Encounter.class in healix-encounter. Exported to the ontology Stage 1 as concept scheme <base>scheme/encounter-class and to EDW G8 ref_value_set_member. unmappedPolicy = quarantine.",
+  "immutable": false,
+  "purpose": "Classify encounters consistently for clinical, financial and operational analytics; target of ConceptMap cerner-encounter-type-to-healix.",
+  "extension": [
+    {"url": "https://fhir.healix.example.org/StructureDefinition/ext-unmapped-policy", "valueCode": "quarantine"},
+    {"url": "https://fhir.healix.example.org/StructureDefinition/ext-owning-group", "valueCode": "G2"}
+  ],
+  "compose": {
+    "include": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+        "concept": [
+          {"code": "AMB", "display": "ambulatory"},
+          {"code": "EMER", "display": "emergency"},
+          {"code": "FLD", "display": "field"},
+          {"code": "HH", "display": "home health"},
+          {"code": "IMP", "display": "inpatient encounter"},
+          {"code": "ACUTE", "display": "inpatient acute"},
+          {"code": "NONAC", "display": "inpatient non-acute"},
+          {"code": "OBSENC", "display": "observation encounter"},
+          {"code": "PRENC", "display": "pre-admission"},
+          {"code": "SS", "display": "short stay"},
+          {"code": "VR", "display": "virtual"}
+        ]
+      }
+    ]
+  },
+  "expansion": {
+    "identifier": "urn:uuid:3f1a7c2e-5b8d-4e6f-9a0b-1c2d3e4f5a6b",
+    "timestamp": "2026-10-17T00:00:00Z",
+    "total": 11,
+    "parameter": [{"name": "version", "valueUri": "http://terminology.hl7.org/CodeSystem/v3-ActCode|9.0.0"}],
+    "contains": [
+      {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB", "display": "ambulatory"},
+      {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "EMER", "display": "emergency"},
+      {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "FLD", "display": "field"},
+      {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "HH", "display": "home health"},
+      {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "IMP", "display": "inpatient encounter"},
+      {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "ACUTE", "display": "inpatient acute"},
+      {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "NONAC", "display": "inpatient non-acute"},
+      {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "OBSENC", "display": "observation encounter"},
+      {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "PRENC", "display": "pre-admission"},
+      {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "SS", "display": "short stay"},
+      {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "VR", "display": "virtual"}
+    ]
+  }
+}

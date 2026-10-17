@@ -1,0 +1,288 @@
+{
+  "resourceType": "ConceptMap",
+  "id": "cerner-encounter-type-to-healix",
+  "url": "https://fhir.healix.example.org/ConceptMap/cerner-encounter-type-to-healix",
+  "version": "0.1.0",
+  "name": "CernerEncounterTypeToHealixEncounterClass",
+  "title": "Cerner Millennium Encounter Type (code set 71) to HEALIX Encounter Class",
+  "status": "draft",
+  "experimental": false,
+  "date": "2026-10-17",
+  "publisher": "HEALIX Terminology Stewardship",
+  "description": "Translates Cerner Millennium ENCOUNTER.ENCNTR_TYPE_CD values (CODE_VALUE rows in code set 71) to the HEALIX enterprise encounter class (v3 ActEncounterCode subset). CODE_VALUE numbers are site-specific and illustrative; the Source Registry (module 03) supplies the live set and agent.inventory refreshes the source CodeSystem from CDC. Elements with no target are intentionally absent so that $translate returns no match and the record follows the value set unmappedPolicy (quarantine). Used by the PV1[Encounter] mapping (IOP-02 §5) and reversible for outbound ADT with the consumer's code table.",
+  "purpose": "Governed local-to-standard translation for Encounter.class (IOP-V2-012, IOP-TS-009).",
+  "sourceCanonical": "https://fhir.healix.example.org/ValueSet/cerner-code-set-71-all",
+  "targetCanonical": "https://fhir.healix.example.org/ValueSet/healix-encounter-class",
+  "group": [
+    {
+      "source": "https://fhir.healix.example.org/CodeSystem/cerner-code-set-71",
+      "sourceVersion": "2026-10-01",
+      "target": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+      "targetVersion": "9.0.0",
+      "element": [
+        {
+          "code": "309308",
+          "display": "Inpatient",
+          "target": [
+            {
+              "code": "IMP",
+              "display": "inpatient encounter",
+              "equivalence": "equivalent",
+              "comment": "CDF_MEANING INPATIENT"
+            }
+          ]
+        },
+        {
+          "code": "309309",
+          "display": "Inpatient Acute",
+          "target": [
+            {
+              "code": "ACUTE",
+              "display": "inpatient acute",
+              "equivalence": "equivalent"
+            }
+          ]
+        },
+        {
+          "code": "309310",
+          "display": "Inpatient Rehab",
+          "target": [
+            {
+              "code": "NONAC",
+              "display": "inpatient non-acute",
+              "equivalence": "wider",
+              "comment": "Rehabilitation, psychiatric and SNF-level inpatient types all map to non-acute; the specific type is retained in Encounter.type"
+            }
+          ]
+        },
+        {
+          "code": "309311",
+          "display": "Inpatient Behavioral Health",
+          "target": [
+            {
+              "code": "NONAC",
+              "display": "inpatient non-acute",
+              "equivalence": "wider"
+            }
+          ]
+        },
+        {
+          "code": "309312",
+          "display": "Newborn",
+          "target": [
+            {
+              "code": "IMP",
+              "display": "inpatient encounter",
+              "equivalence": "wider",
+              "comment": "Newborn admissions are inpatient; birth status carried on Patient and Encounter.type"
+            }
+          ]
+        },
+        {
+          "code": "309313",
+          "display": "Observation",
+          "target": [
+            {
+              "code": "OBSENC",
+              "display": "observation encounter",
+              "equivalence": "equivalent"
+            }
+          ]
+        },
+        {
+          "code": "309314",
+          "display": "Emergency",
+          "target": [
+            {
+              "code": "EMER",
+              "display": "emergency",
+              "equivalence": "equivalent"
+            }
+          ]
+        },
+        {
+          "code": "309315",
+          "display": "Outpatient",
+          "target": [
+            {
+              "code": "AMB",
+              "display": "ambulatory",
+              "equivalence": "equivalent"
+            }
+          ]
+        },
+        {
+          "code": "309316",
+          "display": "Outpatient in a Bed",
+          "target": [
+            {
+              "code": "SS",
+              "display": "short stay",
+              "equivalence": "inexact",
+              "comment": "Steward decision 2026-09: outpatient-in-a-bed treated as short stay for class; billing status remains outpatient on Account"
+            }
+          ]
+        },
+        {
+          "code": "309317",
+          "display": "Day Surgery",
+          "target": [
+            {
+              "code": "AMB",
+              "display": "ambulatory",
+              "equivalence": "wider"
+            }
+          ]
+        },
+        {
+          "code": "309318",
+          "display": "Recurring Outpatient",
+          "target": [
+            {
+              "code": "AMB",
+              "display": "ambulatory",
+              "equivalence": "wider",
+              "comment": "Series encounters (dialysis, infusion, therapy)"
+            }
+          ]
+        },
+        {
+          "code": "309319",
+          "display": "Clinic",
+          "target": [
+            {
+              "code": "AMB",
+              "display": "ambulatory",
+              "equivalence": "wider"
+            }
+          ]
+        },
+        {
+          "code": "309320",
+          "display": "Telehealth",
+          "target": [
+            {
+              "code": "VR",
+              "display": "virtual",
+              "equivalence": "equivalent"
+            }
+          ]
+        },
+        {
+          "code": "309321",
+          "display": "Home Health",
+          "target": [
+            {
+              "code": "HH",
+              "display": "home health",
+              "equivalence": "equivalent"
+            }
+          ]
+        },
+        {
+          "code": "309322",
+          "display": "Preadmit",
+          "target": [
+            {
+              "code": "PRENC",
+              "display": "pre-admission",
+              "equivalence": "equivalent"
+            }
+          ]
+        },
+        {
+          "code": "309323",
+          "display": "Pre-Registration",
+          "target": [
+            {
+              "code": "PRENC",
+              "display": "pre-admission",
+              "equivalence": "wider",
+              "comment": "Pre-registration of any class; class is re-evaluated on A01/A04"
+            }
+          ]
+        },
+        {
+          "code": "309324",
+          "display": "Field Visit",
+          "target": [
+            {
+              "code": "FLD",
+              "display": "field",
+              "equivalence": "equivalent",
+              "comment": "Community paramedicine, mobile clinic"
+            }
+          ]
+        },
+        {
+          "code": "309325",
+          "display": "Hospice",
+          "target": [
+            {
+              "code": "HH",
+              "display": "home health",
+              "equivalence": "inexact",
+              "comment": "Home hospice only; inpatient hospice uses code 309326"
+            }
+          ]
+        },
+        {
+          "code": "309326",
+          "display": "Inpatient Hospice",
+          "target": [
+            {
+              "code": "NONAC",
+              "display": "inpatient non-acute",
+              "equivalence": "wider"
+            }
+          ]
+        },
+        {
+          "code": "309327",
+          "display": "Research Visit",
+          "target": [
+            {
+              "code": "AMB",
+              "display": "ambulatory",
+              "equivalence": "wider",
+              "comment": "ResearchSubject link carries the research context (G7)"
+            }
+          ]
+        },
+        {
+          "code": "309328",
+          "display": "Employee Health",
+          "target": [
+            {
+              "code": "AMB",
+              "display": "ambulatory",
+              "equivalence": "wider"
+            }
+          ]
+        },
+        {
+          "code": "309329",
+          "display": "Specimen Only",
+          "target": [
+            {
+              "code": "AMB",
+              "display": "ambulatory",
+              "equivalence": "inexact",
+              "comment": "Lab-only registrations; no physical visit"
+            }
+          ]
+        },
+        {
+          "code": "309330",
+          "display": "Historical / Conversion",
+          "target": [
+            {
+              "equivalence": "unmatched",
+              "comment": "Legacy conversion encounters are not classifiable; records quarantine per unmappedPolicy until steward backfills from PV1-2"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
