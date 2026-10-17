@@ -1,0 +1,273 @@
+# HEALIX DQ rule pack — G4 Supply Chain & Operations
+# Validated by rule.schema.json; indexed in 02-rule-catalog.md §3.4
+pack: g4-supply
+version: 0.1.0
+group: G4
+owner: steward.supply
+description: Supply chain rules for Item, PurchaseOrder lines, Receipts and InventoryBalance from Oracle Fusion SCM (HEALIX-ERP Item, PurchaseOrderLine, Receipt and InventoryBalance profiles; SupplyDelivery where FHIR fits).
+rules:
+  - id: DQR-COMPLETENESS-ITEM-001
+    name: Item has number, description and primary UOM
+    description: Every Oracle SCM item must carry an item number, a description and a primary unit of measure (ItemShape sh:minCount 1). Items without a UOM cannot be ordered, received or valued.
+    dimension: completeness
+    group: G4
+    domain: supply
+    source_systems: [oracle_scm]
+    cde: [Item.identifier, Item.description, Item.primaryUOM]
+    targets:
+      - plane: stream
+        resource: Item
+        language: fhirpath
+        expression: "identifier.value.exists() and extension('https://ontology.healix.example.org/erp/StructureDefinition/description').value.exists() and extension('https://ontology.healix.example.org/erp/StructureDefinition/primaryUOM').value.exists()"
+      - plane: warehouse
+        table: edw_g4_supply.dim_item
+        language: sql
+        key_columns: [item_bk]
+        sql: SELECT item_bk FROM {{ ref('dim_item') }} WHERE is_current = 1 AND (item_number IS NULL OR description IS NULL OR primary_uom_cd IS NULL)
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.supply
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shapes/supply/ItemShape
+    remediation: {action: source_fix, hint: Item master incomplete in Oracle SCM Product Information Management; item master team to complete}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-UNIQUENESS-ITEM-002
+    name: Item number unique per inventory organization
+    description: An item number identifies one item within an inventory organization (owl:hasKey (inventoryOrg, itemNumber) on supply:Item). Duplicates split on-hand balances and PO history.
+    dimension: uniqueness
+    group: G4
+    domain: supply
+    source_systems: [oracle_scm]
+    cde: [Item.identifier]
+    targets:
+      - plane: warehouse
+        table: edw_g4_supply.dim_item
+        language: sql
+        key_columns: [inventory_org_sk, item_number]
+        sql: SELECT inventory_org_sk, item_number, COUNT(*) AS cnt FROM {{ ref('dim_item') }} WHERE is_current = 1 GROUP BY 1,2 HAVING COUNT(*) > 1
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.supply
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/supply/Item#key
+    remediation: {action: steward, hint: Item master steward merges duplicates in Oracle SCM; platform records survivorship with provenance}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-VALIDITY-ITEM-003
+    name: Clinical item GTIN / UDI-DI check digit valid
+    description: Items flagged as clinical supplies or implants that carry a GTIN-14 or UDI device identifier must pass the GS1 mod-10 check digit. Invalid identifiers break UDI capture and recall tracing.
+    dimension: validity
+    group: G4
+    domain: supply
+    source_systems: [oracle_scm]
+    cde: ['Item.identifier[GTIN]']
+    targets:
+      - plane: stream
+        resource: Item
+        language: fhirpath
+        expression: "identifier.where(system='https://www.gs1.org/gtin').all(value.matches('^[0-9]{8}$|^[0-9]{12,14}$') and %gs1_check(value))"
+      - plane: warehouse
+        table: edw_g4_supply.dim_item
+        language: sql
+        key_columns: [item_bk]
+        sql: SELECT item_bk FROM {{ ref('dim_item') }} WHERE is_current = 1 AND gtin IS NOT NULL AND {{ gs1_check('gtin') }} = 0
+    severity: major
+    threshold: {metric: pass_rate, min: 0.995, window: P1D}
+    owner: steward.supply
+    derivation: policy
+    derived_from: https://policy.healix.example.org/dq/identifiers#gtin
+    remediation: {action: auto_fix, fix_class: identifier_format, hint: Left-pad GTIN-12/13 to GTIN-14 and re-check; still invalid values to item master team, tool: identifier.normalise}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-VALIDITY-PO-001
+    name: PO line UOM in UCUM or Oracle UOM value set
+    description: Purchase order line unit of measure must be a member of the HEALIX unit value set (UCUM units plus governed Oracle UOM codes such as CS, BX, EA mapped to UCUM). Unknown UOMs break 3-way match and usage reconciliation.
+    dimension: validity
+    group: G4
+    domain: supply
+    source_systems: [oracle_scm]
+    cde: [PurchaseOrderLine.uom]
+    targets:
+      - plane: stream
+        resource: PurchaseOrderLine
+        language: fhirpath
+        expression: "extension('https://ontology.healix.example.org/erp/StructureDefinition/uom').value.memberOf('https://ontology.healix.example.org/vs/uom-ucum-oracle')"
+      - plane: warehouse
+        table: edw_g4_supply.fact_po_line
+        language: sql
+        key_columns: [po_line_bk]
+        sql: SELECT l.po_line_bk FROM {{ ref('fact_po_line') }} l LEFT JOIN {{ ref('ref_value_set_member') }} v ON v.value_set_url = 'https://ontology.healix.example.org/vs/uom-ucum-oracle' AND v.code = l.uom_cd WHERE v.code IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.supply
+    derivation: terminology
+    derived_from: https://ontology.healix.example.org/vs/uom-ucum-oracle
+    remediation: {action: auto_fix, fix_class: unit_normalisation, hint: Map Oracle UOM code to UCUM via unit ConceptMap; unmapped UOMs to item master team, tool: terminology.translate}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-CONSISTENCY-PO-002
+    name: PO line amount equals quantity times unit price
+    description: PurchaseOrderLine.amount must equal quantity multiplied by unit price within 0.01 in the PO currency (supply:lineAmountEqualsQtyPrice axiom).
+    dimension: consistency
+    group: G4
+    domain: supply
+    source_systems: [oracle_scm]
+    cde: [PurchaseOrderLine.amount]
+    targets:
+      - plane: stream
+        resource: PurchaseOrderLine
+        language: fhirpath
+        expression: "(extension('https://ontology.healix.example.org/erp/StructureDefinition/amount').value - extension('https://ontology.healix.example.org/erp/StructureDefinition/quantity').value * extension('https://ontology.healix.example.org/erp/StructureDefinition/unitPrice').value).abs() <= 0.01"
+      - plane: warehouse
+        table: edw_g4_supply.fact_po_line
+        language: sql
+        key_columns: [po_line_bk]
+        sql: SELECT po_line_bk FROM {{ ref('fact_po_line') }} WHERE ABS(line_amt - quantity * unit_price) > 0.01
+    severity: major
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.supply
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/supply/PurchaseOrderLine#amountEqualsQtyPrice
+    remediation: {action: source_fix, hint: Rounding or price-break defect in Oracle Purchasing; procurement to review line}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-INTEGRITY-PO-003
+    name: PO supplier resolves to an active supplier
+    description: PurchaseOrder.supplier must resolve to an Organization of type supplier with status active on the PO creation date (range of supply:orderedFrom).
+    dimension: integrity
+    group: G4
+    domain: supply
+    source_systems: [oracle_scm]
+    cde: [PurchaseOrder.supplier]
+    targets:
+      - plane: stream
+        resource: PurchaseOrder
+        language: fhirpath
+        expression: "%ref_exists(extension('https://ontology.healix.example.org/erp/StructureDefinition/supplier').value) and extension('https://ontology.healix.example.org/erp/StructureDefinition/supplier').value.resolve().active = true"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/supply/PurchaseOrderShape#supplier
+      - plane: warehouse
+        table: edw_g4_supply.fact_po_header
+        language: sql
+        key_columns: [po_bk]
+        sql: SELECT h.po_bk FROM {{ ref('fact_po_header') }} h LEFT JOIN {{ ref('dim_organization') }} s ON s.organization_sk = h.supplier_sk AND s.org_type_cd = 'supplier' AND s.is_active = 1 WHERE s.organization_sk IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.supply
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/supply/orderedFrom
+    remediation: {action: auto_fix, fix_class: reference_resolution, hint: Resolve via supplier master when a unique active site match exists; else supplier master team, tool: entity_resolution.lookup}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-TEMPORAL-PO-004
+    name: Need-by date not before order date
+    description: PurchaseOrderLine need-by date must be on or after the PO creation date (temporal axiom healix:endAfterStart on supply:PurchaseOrderLine demand interval).
+    dimension: temporal
+    group: G4
+    domain: supply
+    source_systems: [oracle_scm]
+    targets:
+      - plane: stream
+        resource: PurchaseOrderLine
+        language: fhirpath
+        expression: "extension('https://ontology.healix.example.org/erp/StructureDefinition/needByDate').value.empty() or extension('https://ontology.healix.example.org/erp/StructureDefinition/needByDate').value >= extension('https://ontology.healix.example.org/erp/StructureDefinition/orderDate').value"
+      - plane: warehouse
+        table: edw_g4_supply.fact_po_line
+        language: sql
+        key_columns: [po_line_bk]
+        sql: SELECT po_line_bk FROM {{ ref('fact_po_line') }} WHERE need_by_dt < order_dt
+    severity: minor
+    threshold: {metric: pass_rate, min: 0.98, window: P7D}
+    owner: steward.supply
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/supply/PurchaseOrderLine#needByAfterOrder
+    remediation: {action: accept, hint: Usually back-dated emergency orders; accept with annotation unless systematic}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-INTEGRITY-RECEIPT-001
+    name: Receipt line references an open PO line for the same item
+    description: Every receiving transaction must reference an existing PO line whose item matches and whose status allows receipt (open or partially received). Orphan receipts break 3-way match and inventory valuation.
+    dimension: integrity
+    group: G4
+    domain: supply
+    source_systems: [oracle_scm]
+    cde: [Receipt.poLine]
+    targets:
+      - plane: stream
+        resource: Receipt
+        language: fhirpath
+        expression: "%ref_exists(extension('https://ontology.healix.example.org/erp/StructureDefinition/poLine').value)"
+      - plane: warehouse
+        table: edw_g4_supply.fact_receipt_line
+        language: sql
+        key_columns: [receipt_line_bk]
+        sql: SELECT r.receipt_line_bk FROM {{ ref('fact_receipt_line') }} r LEFT JOIN {{ ref('fact_po_line') }} l ON l.po_line_sk = r.po_line_sk AND l.item_sk = r.item_sk AND l.line_status_cd IN ('OPEN','PARTIAL') WHERE l.po_line_sk IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.supply
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/supply/Receipt#poLine
+    remediation: {action: auto_fix, fix_class: late_arrival_wait, hint: Hold up to 24 h for PO line to arrive from BICC extract; still orphaned receipts to receiving supervisor, tool: entity_resolution.lookup}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-ACCURACY-INVENTORY-001
+    name: On-hand quantity not negative
+    description: On-hand quantity per item, sub-inventory, locator and lot must be greater than or equal to zero. Negative balances indicate issue transactions before receipts or unit-of-measure errors.
+    dimension: accuracy
+    group: G4
+    domain: supply
+    source_systems: [oracle_scm]
+    cde: [InventoryBalance.onHandQuantity]
+    targets:
+      - plane: stream
+        resource: InventoryBalance
+        language: fhirpath
+        expression: "extension('https://ontology.healix.example.org/erp/StructureDefinition/onHandQuantity').value >= 0"
+      - plane: warehouse
+        table: edw_g4_supply.fact_inventory_balance
+        language: sql
+        key_columns: [item_sk, subinventory_cd, locator_id, lot_number]
+        sql: SELECT item_sk, subinventory_cd, locator_id, lot_number FROM {{ ref('fact_inventory_balance') }} WHERE is_current = 1 AND on_hand_qty < 0
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.supply
+    derivation: policy
+    derived_from: https://policy.healix.example.org/supply/inventory-controls
+    remediation: {action: source_fix, hint: Negative on-hand in Oracle Inventory; materials management to cycle-count and adjust}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-TIMELINESS-INVENTORY-002
+    name: Inventory snapshot age within 24 hours
+    description: The most recent on-hand snapshot for every inventory organization must be no older than 24 hours (BICC extract SLA). Stale snapshots make stock-out and usage reconciliation unreliable.
+    dimension: timeliness
+    group: G4
+    domain: supply
+    source_systems: [oracle_scm]
+    cde: [InventoryBalance.snapshotTime]
+    targets:
+      - plane: warehouse
+        table: edw_g4_supply.fact_inventory_balance
+        language: sql
+        key_columns: [inventory_org_sk]
+        sql: SELECT inventory_org_sk, MAX(snapshot_ts) AS last_snapshot FROM {{ ref('fact_inventory_balance') }} GROUP BY inventory_org_sk HAVING MAX(snapshot_ts) < CURRENT_TIMESTAMP - INTERVAL '24' HOUR
+        schedule: daily
+    severity: major
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.supply
+    derivation: policy
+    derived_from: https://policy.healix.example.org/sla/bicc-inventory
+    remediation: {action: source_fix, hint: BICC inventory extract did not run or failed; integration SRE to re-run extract}
+    version: 1.0.0
+    status: active
+    tags: [sla]

@@ -1,0 +1,343 @@
+# HEALIX DQ rule pack — G1 Party & Identity
+# Validated by rule.schema.json; indexed in 02-rule-catalog.md §3.1
+pack: g1-party
+version: 0.1.0
+group: G1
+owner: steward.party
+description: Identity backbone rules for Patient, Practitioner, Organization (supplier/payer) and Location from Cerner Millennium, Oracle Fusion SCM/HCM, EMPI and credentialing.
+rules:
+  - id: DQR-COMPLETENESS-PATIENT-001
+    name: Patient birthDate present
+    description: Every canonical Patient must carry a birthDate. Derived from PatientShape sh:minCount 1 on fhir:Patient.birthDate; required for dosing, age-based rules and matching.
+    dimension: completeness
+    group: G1
+    domain: party
+    source_systems: [cerner]
+    cde: [Patient.birthDate]
+    targets:
+      - plane: stream
+        resource: Patient
+        language: fhirpath
+        expression: "birthDate.exists()"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/party/PatientShape#birthDate
+      - plane: warehouse
+        table: edw_g1_party.dim_patient
+        language: sql
+        key_columns: [patient_bk]
+        sql: SELECT patient_bk FROM {{ ref('dim_patient') }} WHERE is_current = 1 AND birth_date IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: PT1H}
+    owner: steward.party
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shapes/party/PatientShape#birthDate
+    remediation: {action: source_fix, hint: Birth date missing in Cerner PERSON; route to registration/HIM for correction, policy_ref: https://policy.healix.example.org/dq/patient-demographics}
+    version: 1.0.0
+    status: active
+    tags: [us-core, cde]
+    tests:
+      - {fixture: fixtures/g1/patient-with-birthdate.json, expect: pass}
+      - {fixture: fixtures/g1/patient-no-birthdate.json, expect: fail}
+
+  - id: DQR-COMPLETENESS-PATIENT-002
+    name: Patient MRN identifier with assigner present
+    description: Every Patient must have at least one identifier of type MR (v2-0203) whose assigner resolves to the issuing facility Organization. Missing MRN breaks EMPI linkage and all downstream joins.
+    dimension: completeness
+    group: G1
+    domain: party
+    source_systems: [cerner, empi]
+    cde: ['Patient.identifier[MRN]', Patient.identifier.assigner]
+    targets:
+      - plane: stream
+        resource: Patient
+        language: fhirpath
+        expression: "identifier.where(type.coding.where(system='http://terminology.hl7.org/CodeSystem/v2-0203' and code='MR').exists() and value.exists() and assigner.exists()).exists()"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/party/PatientShape#mrn
+      - plane: warehouse
+        table: edw_g1_party.dim_patient
+        language: sql
+        key_columns: [patient_bk]
+        sql: SELECT p.patient_bk FROM {{ ref('dim_patient') }} p LEFT JOIN {{ ref('bridge_patient_identifier') }} i ON i.patient_sk = p.patient_sk AND i.identifier_type_cd = 'MR' AND i.assigner_org_sk IS NOT NULL WHERE p.is_current = 1 AND i.patient_sk IS NULL
+    severity: blocker
+    quarantine: true
+    threshold: {metric: pass_rate, min: 0.9999, window: PT1H}
+    owner: steward.party
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shapes/party/PatientShape#mrn
+    remediation: {action: source_fix, hint: No MRN alias on Cerner PERSON_ALIAS or assigner facility unmapped; HIM must assign MRN or source_mapper must map alias pool to facility, policy_ref: https://policy.healix.example.org/dq/patient-identity}
+    version: 1.0.0
+    status: active
+    tags: [cde, empi]
+    tests:
+      - {fixture: fixtures/g1/patient-with-mrn.json, expect: pass}
+      - {fixture: fixtures/g1/patient-mrn-no-assigner.json, expect: fail}
+
+  - id: DQR-VALIDITY-PATIENT-003
+    name: Patient gender in administrative-gender value set
+    description: Patient.gender must be a member of http://hl7.org/fhir/ValueSet/administrative-gender (required binding in US Core Patient). Cerner SEX_CD is mapped through ConceptMap healix/cm/cerner-sex-to-admin-gender.
+    dimension: validity
+    group: G1
+    domain: party
+    source_systems: [cerner]
+    cde: [Patient.gender]
+    targets:
+      - plane: stream
+        resource: Patient
+        language: fhirpath
+        expression: "gender.empty() or gender.memberOf('http://hl7.org/fhir/ValueSet/administrative-gender')"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/party/PatientShape#gender
+      - plane: warehouse
+        table: edw_g1_party.dim_patient
+        language: sql
+        key_columns: [patient_bk]
+        sql: SELECT patient_bk FROM {{ ref('dim_patient') }} WHERE is_current = 1 AND gender_cd IS NOT NULL AND gender_cd NOT IN ({{ vs_members('http://hl7.org/fhir/ValueSet/administrative-gender') }})
+    severity: major
+    threshold: {metric: pass_rate, min: 0.99, window: P1D}
+    owner: steward.party
+    derivation: terminology
+    derived_from: http://hl7.org/fhir/ValueSet/administrative-gender
+    remediation: {action: auto_fix, fix_class: code_remap, hint: Translate local SEX_CD via ConceptMap cerner-sex-to-admin-gender; unmapped codes go to terminology steward, tool: terminology.translate}
+    version: 1.0.0
+    status: active
+    tags: [us-core]
+
+  - id: DQR-CONSISTENCY-PATIENT-004
+    name: Deceased date not before birth date
+    description: When Patient.deceasedDateTime is present it must be on or after birthDate (temporal axiom healix:endAfterStart on party:Person lifespan).
+    dimension: consistency
+    group: G1
+    domain: party
+    source_systems: [cerner]
+    cde: [Patient.birthDate]
+    targets:
+      - plane: stream
+        resource: Patient
+        language: fhirpath
+        expression: "deceased.empty() or deceased is boolean or birthDate.empty() or (deceased as dateTime) >= birthDate"
+      - plane: warehouse
+        table: edw_g1_party.dim_patient
+        language: sql
+        key_columns: [patient_bk]
+        sql: SELECT patient_bk FROM {{ ref('dim_patient') }} WHERE is_current = 1 AND deceased_dt_tm IS NOT NULL AND CAST(deceased_dt_tm AS DATE) < birth_date
+    severity: major
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.party
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/party/Person#lifespanEndAfterStart
+    remediation: {action: source_fix, hint: Deceased date precedes birth date in Cerner PERSON; HIM to correct, policy_ref: https://policy.healix.example.org/dq/patient-demographics}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-INTEGRITY-PATIENT-005
+    name: Patient managingOrganization resolves
+    description: Patient.managingOrganization, when present, must resolve to an Organization in the entity-resolution index (range of party:managedBy). Dangling references break facility attribution.
+    dimension: integrity
+    group: G1
+    domain: party
+    source_systems: [cerner]
+    targets:
+      - plane: stream
+        resource: Patient
+        language: fhirpath
+        expression: "managingOrganization.empty() or %ref_exists(managingOrganization)"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/party/PatientShape#managingOrganization
+      - plane: warehouse
+        table: edw_g1_party.dim_patient
+        language: sql
+        key_columns: [patient_bk]
+        sql: SELECT p.patient_bk FROM {{ ref('dim_patient') }} p LEFT JOIN {{ ref('dim_organization') }} o ON o.organization_sk = p.managing_org_sk WHERE p.is_current = 1 AND p.managing_org_sk IS NOT NULL AND o.organization_sk IS NULL
+    severity: major
+    threshold: {metric: pass_rate, min: 0.995, window: P1D}
+    owner: steward.party
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/party/managedBy
+    remediation: {action: auto_fix, fix_class: reference_resolution, hint: Resolve via organization master when a unique match exists; otherwise hold for late arrival up to 24 h, tool: entity_resolution.lookup}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-TEMPORAL-PATIENT-001
+    name: Birth date plausible
+    description: birthDate must not be in the future and the implied age at event time must not exceed 130 years. Catches century errors and default dates such as 1900-01-01 used as placeholders.
+    dimension: temporal
+    group: G1
+    domain: party
+    source_systems: [cerner]
+    cde: [Patient.birthDate]
+    targets:
+      - plane: stream
+        resource: Patient
+        language: fhirpath
+        expression: "birthDate.empty() or (birthDate <= %now.toDate() and birthDate > (%now - 130 years).toDate())"
+      - plane: warehouse
+        table: edw_g1_party.dim_patient
+        language: sql
+        key_columns: [patient_bk]
+        sql: SELECT patient_bk FROM {{ ref('dim_patient') }} WHERE is_current = 1 AND (birth_date > CURRENT_DATE OR birth_date < ADD_MONTHS(CURRENT_DATE, -130*12))
+    severity: major
+    threshold: {metric: pass_rate, min: 0.9995, window: P1D}
+    owner: steward.party
+    derivation: policy
+    derived_from: https://policy.healix.example.org/dq/patient-demographics#plausible-age
+    remediation: {action: steward, hint: Verify against registration documents; accept with exception for verified centenarians}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-UNIQUENESS-PATIENT-001
+    name: One active MRN per patient per facility
+    description: Within a facility a patient has exactly one active MRN and an active MRN identifies exactly one patient (owl:hasKey (assigner, value) on party:MedicalRecordNumber). Violations indicate duplicate registrations or overlay errors and are routed to the EMPI queue.
+    dimension: uniqueness
+    group: G1
+    domain: party
+    source_systems: [cerner, empi]
+    cde: ['Patient.identifier[MRN]']
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/party/Patient
+        sparql: |
+          PREFIX party: <https://ontology.healix.example.org/party/>
+          SELECT ?focus (CONCAT('MRN ', STR(?v), ' shared with ', STR(?other)) AS ?detail) WHERE {
+            ?focus a party:Patient ; party:hasIdentifier ?id1 .
+            ?other a party:Patient ; party:hasIdentifier ?id2 .
+            FILTER(?focus != ?other)
+            ?id1 a party:MedicalRecordNumber ; party:assigner ?f ; party:value ?v ; party:status "active" .
+            ?id2 a party:MedicalRecordNumber ; party:assigner ?f ; party:value ?v ; party:status "active" .
+          }
+      - plane: warehouse
+        table: edw_g1_party.bridge_patient_identifier
+        language: sql
+        key_columns: [assigner_org_sk, identifier_value]
+        sql: SELECT assigner_org_sk, identifier_value, COUNT(DISTINCT patient_sk) AS patient_cnt FROM {{ ref('bridge_patient_identifier') }} WHERE identifier_type_cd = 'MR' AND status_cd = 'active' GROUP BY 1,2 HAVING COUNT(DISTINCT patient_sk) > 1
+    severity: blocker
+    quarantine: false
+    issue_grain: record
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.party
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/party/MedicalRecordNumber#key
+    remediation: {action: steward, hint: Open EMPI merge/overlay task with match evidence; merge recorded as Linkage plus provenance-annotated owl:sameAs, policy_ref: https://policy.healix.example.org/empi/merge}
+    version: 1.0.0
+    status: active
+    tags: [cde, empi]
+
+  - id: DQR-VALIDITY-PRACTITIONER-001
+    name: NPI format and check digit
+    description: Practitioner NPI identifiers must be 10 digits and pass the Luhn check with the 80840 prefix as defined by CMS. Invalid NPIs cause claim rejections and attribution errors.
+    dimension: validity
+    group: G1
+    domain: party
+    source_systems: [cerner, credentialing]
+    cde: ['Practitioner.identifier[NPI]']
+    targets:
+      - plane: stream
+        resource: Practitioner
+        language: fhirpath
+        expression: "identifier.where(system='http://hl7.org/fhir/sid/us-npi').all(value.matches('^[0-9]{10}$') and %luhn80840(value))"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/party/PractitionerShape#npi
+      - plane: warehouse
+        table: edw_g1_party.dim_practitioner
+        language: sql
+        key_columns: [practitioner_bk]
+        sql: SELECT practitioner_bk FROM {{ ref('dim_practitioner') }} WHERE is_current = 1 AND npi IS NOT NULL AND (NOT REGEXP_SIMILAR(npi, '^[0-9]{10}$') OR {{ luhn_80840('npi') }} = 0)
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.party
+    derivation: policy
+    derived_from: https://policy.healix.example.org/dq/identifiers#npi
+    remediation: {action: auto_fix, fix_class: identifier_format, hint: Strip whitespace and hyphens and set system; if check digit still fails raise to medical staff office, tool: identifier.normalise}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-UNIQUENESS-PRACTITIONER-002
+    name: One practitioner per NPI
+    description: An NPI identifies exactly one Practitioner across Cerner PRSNL, credentialing and HCM-sourced records (owl:hasKey on party:Practitioner via NPI). Duplicates fragment attribution and productivity reporting.
+    dimension: uniqueness
+    group: G1
+    domain: party
+    source_systems: [cerner, credentialing, oracle_hcm]
+    cde: ['Practitioner.identifier[NPI]']
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/party/Practitioner
+        sparql: |
+          PREFIX party: <https://ontology.healix.example.org/party/>
+          SELECT ?focus (STR(?npi) AS ?detail) WHERE {
+            ?focus a party:Practitioner ; party:npi ?npi .
+            ?other a party:Practitioner ; party:npi ?npi .
+            FILTER(?focus != ?other)
+          }
+      - plane: warehouse
+        table: edw_g1_party.dim_practitioner
+        language: sql
+        key_columns: [npi]
+        sql: SELECT npi, COUNT(*) AS cnt FROM {{ ref('dim_practitioner') }} WHERE is_current = 1 AND npi IS NOT NULL GROUP BY npi HAVING COUNT(*) > 1
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.party
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/party/Practitioner#npiKey
+    remediation: {action: steward, hint: Provider master steward links duplicates; survivor chosen by credentialing record, policy_ref: https://policy.healix.example.org/provider-master/merge}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-VALIDITY-ORGANIZATION-001
+    name: Supplier tax identifier format
+    description: Oracle Fusion SCM supplier Organizations must carry a taxpayer id matching the EIN pattern NN-NNNNNNN (or a masked SSN for individual suppliers) in identifier[system=urn:oid:2.16.840.1.113883.4.4].
+    dimension: validity
+    group: G1
+    domain: party
+    source_systems: [oracle_scm]
+    cde: ['Organization.identifier[EIN]']
+    targets:
+      - plane: stream
+        resource: Organization
+        language: fhirpath
+        expression: "type.coding.where(code='supplier').empty() or identifier.where(system='urn:oid:2.16.840.1.113883.4.4').all(value.matches('^([0-9]{2}-[0-9]{7}|XXX-XX-[0-9]{4})$'))"
+      - plane: warehouse
+        table: edw_g1_party.dim_organization
+        language: sql
+        key_columns: [organization_bk]
+        sql: SELECT organization_bk FROM {{ ref('dim_organization') }} WHERE is_current = 1 AND org_type_cd = 'supplier' AND tax_id IS NOT NULL AND NOT REGEXP_SIMILAR(tax_id, '^([0-9]{2}-[0-9]{7}|XXX-XX-[0-9]{4})$')
+    severity: major
+    threshold: {metric: pass_rate, min: 0.99, window: P1D}
+    owner: steward.party
+    derivation: policy
+    derived_from: https://policy.healix.example.org/dq/identifiers#ein
+    remediation: {action: auto_fix, fix_class: identifier_format, hint: Insert hyphen for 9-digit EIN; anything else to supplier master team in Oracle SCM, tool: identifier.normalise}
+    version: 1.0.0
+    status: active
+    tags: [sox]
+
+  - id: DQR-COMPLETENESS-LOCATION-001
+    name: Bed location has physical type and parent
+    description: Cerner bed Locations must declare physicalType=bd and partOf a room or nursing unit Location so census and ADT can roll up (LocationShape for healix:Bed).
+    dimension: completeness
+    group: G1
+    domain: party
+    source_systems: [cerner]
+    targets:
+      - plane: stream
+        resource: Location
+        language: fhirpath
+        expression: "physicalType.coding.where(code='bd').empty() or partOf.exists()"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/party/BedLocationShape
+    severity: minor
+    threshold: {metric: pass_rate, min: 0.98, window: P7D}
+    owner: steward.party
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shapes/party/BedLocationShape
+    remediation: {action: source_fix, hint: Cerner location hierarchy missing parent for bed; facilities management to update LOCATION_GROUP}
+    version: 1.0.0
+    status: active

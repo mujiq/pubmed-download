@@ -1,0 +1,301 @@
+# HEALIX DQ rule pack — G5 Workforce
+# Validated by rule.schema.json; indexed in 02-rule-catalog.md §3.5
+pack: g5-workforce
+version: 0.1.0
+group: G5
+owner: steward.workforce
+description: Workforce rules for Worker, Assignment, Position, Licence/Credential and Timecard from Oracle Fusion HCM, credentialing and timekeeping (HEALIX-ERP Worker, Assignment, Position, Licence, Timecard profiles; PractitionerRole where FHIR fits).
+rules:
+  - id: DQR-COMPLETENESS-WORKER-001
+    name: Worker has person number, legal name and hire date
+    description: Every HCM worker must carry a person number, a legal name and a hire date (WorkerShape sh:minCount 1). Missing values break identity linkage to Cerner practitioners and payroll allocation.
+    dimension: completeness
+    group: G5
+    domain: workforce
+    source_systems: [oracle_hcm]
+    cde: [Worker.personNumber, Worker.legalName, Worker.hireDate]
+    targets:
+      - plane: stream
+        resource: Worker
+        language: fhirpath
+        expression: "identifier.where(system='https://ontology.healix.example.org/erp/identifier/person-number').value.exists() and name.where(use='official').family.exists() and extension('https://ontology.healix.example.org/erp/StructureDefinition/hireDate').value.exists()"
+      - plane: warehouse
+        table: edw_g5_workforce.dim_worker
+        language: sql
+        key_columns: [worker_bk]
+        sql: SELECT worker_bk FROM {{ ref('dim_worker') }} WHERE is_current = 1 AND (person_number IS NULL OR legal_last_name IS NULL OR hire_dt IS NULL)
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.workforce
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shapes/workforce/WorkerShape
+    remediation: {action: source_fix, hint: Incomplete person record in Oracle HCM; HR data team to complete}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-UNIQUENESS-WORKER-002
+    name: One worker per person number; national id unique per legislation
+    description: Person number is unique across workers, and a national identifier (for example SSN) is unique within its legislation code (owl:hasKey on workforce:Worker). Duplicates cause double payroll and access provisioning errors.
+    dimension: uniqueness
+    group: G5
+    domain: workforce
+    source_systems: [oracle_hcm]
+    cde: [Worker.personNumber]
+    targets:
+      - plane: warehouse
+        table: edw_g5_workforce.dim_worker
+        language: sql
+        key_columns: [person_number]
+        sql: SELECT person_number, COUNT(*) AS cnt FROM {{ ref('dim_worker') }} WHERE is_current = 1 GROUP BY person_number HAVING COUNT(*) > 1 UNION ALL SELECT national_id_hash, COUNT(*) FROM {{ ref('dim_worker') }} WHERE is_current = 1 AND national_id_hash IS NOT NULL GROUP BY legislation_cd, national_id_hash HAVING COUNT(*) > 1
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.workforce
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/workforce/Worker#key
+    remediation: {action: steward, hint: HR data steward merges duplicate person records in HCM; platform links with provenance, policy_ref: https://policy.healix.example.org/hr/person-merge}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-TEMPORAL-ASSIGNMENT-001
+    name: No overlapping primary assignments per worker
+    description: A worker has at most one primary assignment at any instant; valid-time intervals of primary assignments must not overlap (temporal axiom healix:nonOverlapping on workforce:hasPrimaryAssignment). Overlaps corrupt FTE, cost allocation and manager hierarchies.
+    dimension: temporal
+    group: G5
+    domain: workforce
+    source_systems: [oracle_hcm]
+    cde: [Assignment.effectiveStart, Assignment.effectiveEnd, Assignment.primaryFlag]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/workforce/Worker
+        sparql: |
+          PREFIX workforce: <https://ontology.healix.example.org/workforce/>
+          PREFIX healix: <https://ontology.healix.example.org/core/>
+          PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+          SELECT ?focus (CONCAT(STR(?a1), ' overlaps ', STR(?a2)) AS ?detail) WHERE {
+            ?focus a workforce:Worker .
+            << ?focus workforce:hasPrimaryAssignment ?a1 >> healix:validFrom ?f1 ; healix:validTo ?t1 .
+            << ?focus workforce:hasPrimaryAssignment ?a2 >> healix:validFrom ?f2 ; healix:validTo ?t2 .
+            FILTER(STR(?a1) < STR(?a2)
+              && ?f1 < COALESCE(?t2, "9999-12-31T00:00:00Z"^^xsd:dateTime)
+              && ?f2 < COALESCE(?t1, "9999-12-31T00:00:00Z"^^xsd:dateTime))
+          }
+      - plane: warehouse
+        table: edw_g5_workforce.hist_assignment
+        language: sql
+        key_columns: [worker_bk, assignment_bk]
+        sql: SELECT a.worker_bk, a.assignment_bk FROM {{ ref('hist_assignment') }} a JOIN {{ ref('hist_assignment') }} b ON a.worker_sk = b.worker_sk AND a.assignment_bk < b.assignment_bk AND a.primary_flag = 'Y' AND b.primary_flag = 'Y' AND a.effective_start_dt < COALESCE(b.effective_end_dt, DATE '9999-12-31') AND b.effective_start_dt < COALESCE(a.effective_end_dt, DATE '9999-12-31') WHERE a.superseded_at IS NULL AND b.superseded_at IS NULL
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.workforce
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/workforce/hasPrimaryAssignment#nonOverlapping
+    remediation: {action: steward, hint: HR steward corrects assignment effective dates in HCM; later assignment stays tagged until corrected}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-INTEGRITY-ASSIGNMENT-002
+    name: Assignment position resolves to an active position
+    description: Assignment.position must resolve to a Position that is active for the assignment's effective period (range of workforce:fillsPosition). Dangling positions break org hierarchy and budget checks.
+    dimension: integrity
+    group: G5
+    domain: workforce
+    source_systems: [oracle_hcm]
+    cde: [Assignment.position]
+    targets:
+      - plane: stream
+        resource: Assignment
+        language: fhirpath
+        expression: "%ref_exists(extension('https://ontology.healix.example.org/erp/StructureDefinition/position').value)"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/workforce/AssignmentShape#position
+      - plane: warehouse
+        table: edw_g5_workforce.hist_assignment
+        language: sql
+        key_columns: [assignment_bk]
+        sql: SELECT a.assignment_bk FROM {{ ref('hist_assignment') }} a LEFT JOIN {{ ref('dim_position') }} p ON p.position_sk = a.position_sk AND p.status_cd = 'ACTIVE' AND a.effective_start_dt BETWEEN p.effective_start_dt AND COALESCE(p.effective_end_dt, DATE '9999-12-31') WHERE a.superseded_at IS NULL AND a.position_sk IS NOT NULL AND p.position_sk IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.workforce
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/workforce/fillsPosition
+    remediation: {action: auto_fix, fix_class: late_arrival_wait, hint: Hold for Position extract up to 24 h; still unresolved to HR position control, tool: entity_resolution.lookup}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-CONSISTENCY-ASSIGNMENT-003
+    name: Assignment start not before hire date
+    description: Assignment.effectiveStart must be on or after the worker's hire date (workforce:assignmentWithinEmployment axiom).
+    dimension: consistency
+    group: G5
+    domain: workforce
+    source_systems: [oracle_hcm]
+    cde: [Assignment.effectiveStart]
+    targets:
+      - plane: stream
+        resource: Assignment
+        language: fhirpath
+        expression: "extension('https://ontology.healix.example.org/erp/StructureDefinition/effectiveStart').value >= %resolve_worker(extension('https://ontology.healix.example.org/erp/StructureDefinition/worker').value).hireDate"
+      - plane: warehouse
+        table: edw_g5_workforce.hist_assignment
+        language: sql
+        key_columns: [assignment_bk]
+        sql: SELECT a.assignment_bk FROM {{ ref('hist_assignment') }} a JOIN {{ ref('dim_worker') }} w ON w.worker_sk = a.worker_sk AND w.is_current = 1 WHERE a.superseded_at IS NULL AND a.effective_start_dt < w.hire_dt
+    severity: major
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.workforce
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/workforce/Assignment#withinEmployment
+    remediation: {action: source_fix, hint: Hire date or assignment start wrong in HCM; HR data team to correct}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-COMPLETENESS-POSITION-001
+    name: Position has job, department and FTE
+    description: Every Position must carry a job, a department and an FTE value (PositionShape). Positions without these cannot be budgeted or rolled into the organisation hierarchy.
+    dimension: completeness
+    group: G5
+    domain: workforce
+    source_systems: [oracle_hcm]
+    cde: [Position.job, Position.department, Position.fte]
+    targets:
+      - plane: stream
+        resource: Position
+        language: fhirpath
+        expression: "extension('https://ontology.healix.example.org/erp/StructureDefinition/job').value.exists() and extension('https://ontology.healix.example.org/erp/StructureDefinition/department').value.exists() and extension('https://ontology.healix.example.org/erp/StructureDefinition/fte').value.exists()"
+      - plane: warehouse
+        table: edw_g5_workforce.dim_position
+        language: sql
+        key_columns: [position_bk]
+        sql: SELECT position_bk FROM {{ ref('dim_position') }} WHERE is_current = 1 AND (job_sk IS NULL OR department_sk IS NULL OR fte IS NULL)
+    severity: major
+    threshold: {metric: pass_rate, min: 0.99, window: P1D}
+    owner: steward.workforce
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shapes/workforce/PositionShape
+    remediation: {action: source_fix, hint: Position incomplete in HCM position management; HR position control to complete}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-TIMELINESS-LICENCE-001
+    name: Active clinical assignment has an unexpired licence
+    description: A worker in an assignment whose job requires licensure (nurse, physician, pharmacist, therapist per job-licensure matrix) must have at least one licence of the required type with expiry date in the future. An expired licence on an active clinical assignment is a regulatory blocker.
+    dimension: timeliness
+    group: G5
+    domain: workforce
+    source_systems: [oracle_hcm, credentialing]
+    cde: [Licence.expiryDate, Assignment.job]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/workforce/Assignment
+        sparql: |
+          PREFIX workforce: <https://ontology.healix.example.org/workforce/>
+          PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+          SELECT ?focus (STR(?job) AS ?detail) WHERE {
+            ?focus a workforce:Assignment ; workforce:status "ACTIVE" ; workforce:job ?job ; workforce:worker ?w .
+            ?job workforce:requiresLicenceType ?lt .
+            FILTER NOT EXISTS {
+              ?w workforce:holdsLicence ?lic . ?lic workforce:licenceType ?lt ; workforce:expiryDate ?exp .
+              FILTER(?exp >= NOW())
+            }
+          }
+      - plane: warehouse
+        table: edw_g5_workforce.hist_assignment
+        language: sql
+        key_columns: [assignment_bk]
+        sql: SELECT a.assignment_bk FROM {{ ref('hist_assignment') }} a JOIN {{ ref('ref_job_licence_requirement') }} r ON r.job_sk = a.job_sk WHERE a.superseded_at IS NULL AND a.status_cd = 'ACTIVE' AND NOT EXISTS (SELECT 1 FROM {{ ref('fact_licence') }} l WHERE l.worker_sk = a.worker_sk AND l.licence_type_cd = r.licence_type_cd AND l.expiry_dt >= CURRENT_DATE)
+        schedule: daily
+    severity: blocker
+    quarantine: false
+    issue_grain: record
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.workforce
+    derivation: policy
+    derived_from: https://policy.healix.example.org/compliance/licensure
+    remediation: {action: source_fix, hint: Licence expired or not recorded; medical staff office or HR to update credentialing and HCM, policy_ref: https://policy.healix.example.org/compliance/licensure}
+    version: 1.0.0
+    status: active
+    tags: [compliance, cde]
+
+  - id: DQR-VALIDITY-LICENCE-002
+    name: Licence type in NUCC or state-board value set
+    description: Licence.type must be a member of the HEALIX licence-type value set (NUCC provider taxonomy codes plus governed state-board licence categories).
+    dimension: validity
+    group: G5
+    domain: workforce
+    source_systems: [oracle_hcm, credentialing]
+    cde: [Licence.type]
+    targets:
+      - plane: stream
+        resource: Licence
+        language: fhirpath
+        expression: "extension('https://ontology.healix.example.org/erp/StructureDefinition/licenceType').value.memberOf('https://ontology.healix.example.org/vs/licence-type')"
+      - plane: warehouse
+        table: edw_g5_workforce.fact_licence
+        language: sql
+        key_columns: [licence_bk]
+        sql: SELECT l.licence_bk FROM {{ ref('fact_licence') }} l LEFT JOIN {{ ref('ref_value_set_member') }} v ON v.value_set_url = 'https://ontology.healix.example.org/vs/licence-type' AND v.code = l.licence_type_cd WHERE v.code IS NULL
+    severity: major
+    threshold: {metric: pass_rate, min: 0.99, window: P1D}
+    owner: steward.workforce
+    derivation: terminology
+    derived_from: https://ontology.healix.example.org/vs/licence-type
+    remediation: {action: auto_fix, fix_class: code_remap, hint: Translate HCM or credentialing licence code via ConceptMap; unmapped to terminology steward, tool: terminology.translate}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-TEMPORAL-LICENCE-003
+    name: Licence issue date not after expiry date
+    description: Licence.issueDate must be on or before Licence.expiryDate (temporal axiom healix:endAfterStart on workforce:Licence).
+    dimension: temporal
+    group: G5
+    domain: workforce
+    source_systems: [oracle_hcm, credentialing]
+    cde: [Licence.expiryDate]
+    targets:
+      - plane: stream
+        resource: Licence
+        language: fhirpath
+        expression: "extension('https://ontology.healix.example.org/erp/StructureDefinition/expiryDate').value.empty() or extension('https://ontology.healix.example.org/erp/StructureDefinition/issueDate').value <= extension('https://ontology.healix.example.org/erp/StructureDefinition/expiryDate').value"
+      - plane: warehouse
+        table: edw_g5_workforce.fact_licence
+        language: sql
+        key_columns: [licence_bk]
+        sql: SELECT licence_bk FROM {{ ref('fact_licence') }} WHERE expiry_dt IS NOT NULL AND issue_dt > expiry_dt
+    severity: major
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.workforce
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/workforce/Licence#endAfterStart
+    remediation: {action: source_fix, hint: Date entry error in credentialing or HCM; medical staff office to correct}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-ACCURACY-TIMECARD-001
+    name: Shift hours within 0 to 24
+    description: Each timecard entry's reported hours must be between 0 and 24 inclusive and pay hours must not be negative. Values outside indicate clock errors or unit mistakes (minutes entered as hours).
+    dimension: accuracy
+    group: G5
+    domain: workforce
+    source_systems: [timekeeping]
+    cde: [Timecard.hours]
+    targets:
+      - plane: stream
+        resource: Timecard
+        language: fhirpath
+        expression: "extension('https://ontology.healix.example.org/erp/StructureDefinition/hours').value >= 0 and extension('https://ontology.healix.example.org/erp/StructureDefinition/hours').value <= 24"
+      - plane: warehouse
+        table: edw_g5_workforce.fact_timecard
+        language: sql
+        key_columns: [timecard_entry_bk]
+        sql: SELECT timecard_entry_bk FROM {{ ref('fact_timecard') }} WHERE reported_hours < 0 OR reported_hours > 24 OR pay_hours < 0
+    severity: major
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.workforce
+    derivation: policy
+    derived_from: https://policy.healix.example.org/hr/timekeeping-controls
+    remediation: {action: source_fix, hint: Timekeeping punch error; payroll to correct before pay run}
+    version: 1.0.0
+    status: active
