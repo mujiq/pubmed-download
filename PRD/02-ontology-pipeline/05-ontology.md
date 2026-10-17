@@ -5,10 +5,8 @@ doc_id: ONT-05
 version: 0.1.0
 status: draft
 owners: [Lead Ontologist, Enterprise Ontology Team, Clinical Informatics]
-depends_on: [ONT-04, ARC-01, IOP-FHIR-00, TKG-TIME-002]
-last_updated: 2026-10-17
----
-
+depends_on: [ONT-04, ARC-01, IOP-01, TKG-01]
+last_updated: 2026-10-17---
 # Stage 4 — Ontology
 
 ## 1. Purpose

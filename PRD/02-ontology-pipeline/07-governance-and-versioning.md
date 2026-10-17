@@ -5,10 +5,8 @@ doc_id: ONT-07
 version: 0.1.0
 status: draft
 owners: [Ontology Governance Board, Enterprise Ontology Team, Data Platform]
-depends_on: [ONT-00, ARC-01, AGT-ORCH-005, GOV-PHI-001]
-last_updated: 2026-10-17
----
-
+depends_on: [ONT-00, ARC-01, AGT-03, GOV-01]
+last_updated: 2026-10-17---
 # Ontology Governance, Registry API and Versioning
 
 ## 1. Purpose

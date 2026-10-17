@@ -5,10 +5,8 @@ doc_id: ONT-01
 version: 0.1.0
 status: draft
 owners: [Data Governance Lead, Enterprise Ontology Team]
-depends_on: [ARC-01, SRC-00, GOV-PHI-001]
-last_updated: 2026-10-17
----
-
+depends_on: [ARC-01, SRC-00, GOV-01]
+last_updated: 2026-10-17---
 # Stage 0 — Metadata and Inventory
 
 ## 1. Purpose and the metadata-first principle

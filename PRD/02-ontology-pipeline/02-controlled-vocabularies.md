@@ -5,10 +5,8 @@ doc_id: ONT-02
 version: 0.1.0
 status: draft
 owners: [Terminology Stewards (G1–G9), Enterprise Ontology Team]
-depends_on: [ONT-01, ARC-01, IOP-TS-00]
-last_updated: 2026-10-17
----
-
+depends_on: [ONT-01, ARC-01, IOP-04]
+last_updated: 2026-10-17---
 # Stage 1 — Controlled Vocabularies
 
 ## 1. Purpose

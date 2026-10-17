@@ -5,10 +5,8 @@ doc_id: ONT-06
 version: 0.1.0
 status: draft
 owners: [KG Product Owner, Enterprise Ontology Team, Data Platform]
-depends_on: [ONT-05, TKG-TIME-002, STR-TOP-010, IOP-FHIR-00, EDW-00]
-last_updated: 2026-10-17
----
-
+depends_on: [ONT-05, TKG-01, STR-02, IOP-01, EDW-00]
+last_updated: 2026-10-17---
 # Stage 5 — Knowledge Graph Instantiation
 
 ## 1. Purpose

@@ -5,10 +5,8 @@ doc_id: ONT-04
 version: 0.1.0
 status: draft
 owners: [Enterprise Taxonomist, Clinical Informatics, Terminology Stewards]
-depends_on: [ONT-03, IOP-TS-00]
-last_updated: 2026-10-17
----
-
+depends_on: [ONT-03, IOP-04]
+last_updated: 2026-10-17---
 # Stage 3 — Thesaurus
 
 ## 1. Purpose
