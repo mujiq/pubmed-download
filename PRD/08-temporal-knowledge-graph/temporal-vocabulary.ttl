@@ -340,7 +340,7 @@ healix:BatchGraph
 healix:phiClassMax
     a owl:DatatypeProperty , owl:FunctionalProperty ;
     rdfs:label "maximum PHI class"@en ;
-    rdfs:comment "Highest PHI classification (module 11) present in a batch graph; drives named-graph ACLs (TKG-STORE-008)."@en ;
+    rdfs:comment "Most restrictive module 11 hc-phi-class tag (Table 3-A string, e.g. \"phi:clinical\") present in a batch graph; drives named-graph ACLs (TKG-STORE-008)."@en ;
     rdfs:domain healix:BatchGraph ;
     rdfs:range xsd:string .
 

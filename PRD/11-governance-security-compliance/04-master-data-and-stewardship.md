@@ -124,7 +124,7 @@ dataset: V500.ENCOUNTER            # or HL7 v2 ADT^A01..A08
 owner: { role: HIM Director, contact: him-director@example.org }
 steward_group: G2
 delivery: { mode: cdc, cadence: continuous, latency_slo_p95_s: 5 }
-schema_ref: hc.std.cerner.encounter.cdc.v1-value@3
+schema_ref: hc.std.cerner.cdc.encounter.typed.v1-value@3
 phi_class_max: phi:direct
 fields:
   - { name: ENCNTR_ID, type: number, nullable: false, phi_class: phi:direct, business_key: true }

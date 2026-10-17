@@ -39,7 +39,7 @@ CREATE TABLE edw_g2_clinical.dim_encounter_class (
 );
 -- TD: UNIQUE PRIMARY INDEX (encounter_class_sk)
 COMMENT ON TABLE edw_g2_clinical.dim_encounter_class IS 'https://ontology.healix.example.org/clinical/EncounterClass';
-COMMENT ON COLUMN edw_g2_clinical.dim_encounter_class.code IS 'none | https://ontology.healix.example.org/clinical/encounterClass';
+COMMENT ON COLUMN edw_g2_clinical.dim_encounter_class.code IS 'public | https://ontology.healix.example.org/clinical/encounterClass';
 
 CREATE TABLE edw_g2_clinical.dim_encounter_type (
     encounter_type_sk       BIGINT        NOT NULL,
@@ -226,9 +226,14 @@ CREATE TABLE edw_g2_clinical.fact_encounter (
     -- bitemporal block
     valid_from              TIMESTAMP     NOT NULL,
     valid_to                TIMESTAMP,
-    recorded_at             TIMESTAMP     NOT NULL,
+    recorded_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_at           TIMESTAMP,
+    change_kind             CHAR(12),                     -- TKG-01 C6/C10: why this version was closed; NULL while current, NOT NULL when superseded_at is set (new-version / correction / retraction / merge / unmerge)
     change_reason_code      VARCHAR(30),
+    event_time              TIMESTAMP     NOT NULL,       -- TKG-01 C7: hc-event-time of the producing record (UTC)
+    source_time             TIMESTAMP,                    -- TKG-01 C7: hc-source-time, the source system clock (UTC)
+    decision_time           TIMESTAMP,                    -- TKG-01 C8: when the real-world decision was taken; NULL = not available
+    source_tz               VARCHAR(64),                  -- TKG-01 C12: IANA zone of the source timestamps (storage is UTC)
     -- technical block
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -284,19 +289,24 @@ CREATE TABLE edw_g2_clinical.fact_encounter (
 CREATE UNIQUE INDEX ux_fact_encounter_bk ON edw_g2_clinical.fact_encounter (encounter_bk, valid_from);
 CREATE INDEX ix_fact_encounter_patient ON edw_g2_clinical.fact_encounter (patient_sk, admit_date_sk);
 COMMENT ON TABLE edw_g2_clinical.fact_encounter IS 'https://ontology.healix.example.org/clinical/Encounter';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.encounter_bk IS 'none | https://ontology.healix.example.org/clinical/encounterIdentifier';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.patient_sk IS 'none | https://ontology.healix.example.org/clinical/subject';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.encounter_class_sk IS 'none | https://ontology.healix.example.org/clinical/encounterClass';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.attending_practitioner_sk IS 'none | https://ontology.healix.example.org/clinical/attendingPractitioner';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.admit_ts IS 'phi_quasi | https://ontology.healix.example.org/clinical/admitDateTime';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.discharge_ts IS 'phi_quasi | https://ontology.healix.example.org/clinical/dischargeDateTime';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.length_of_stay_days IS 'none | https://ontology.healix.example.org/clinical/lengthOfStayDays';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.drg_code_sk IS 'phi_quasi | https://ontology.healix.example.org/clinical/diagnosisRelatedGroup';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.source_encounter_id IS 'phi_direct | https://ontology.healix.example.org/clinical/sourceEncounterIdentifier';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.valid_from IS 'none | https://ontology.healix.example.org/time/validFrom';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.recorded_at IS 'none | https://ontology.healix.example.org/time/recordedAt';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.superseded_at IS 'none | https://ontology.healix.example.org/time/supersededAt';
-COMMENT ON COLUMN edw_g2_clinical.fact_encounter.prov_activity_iri IS 'none | http://www.w3.org/ns/prov#wasGeneratedBy';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.encounter_bk IS 'phi:direct | https://ontology.healix.example.org/clinical/encounterIdentifier';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.patient_sk IS 'internal | https://ontology.healix.example.org/clinical/subject';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.encounter_class_sk IS 'phi:clinical | https://ontology.healix.example.org/clinical/encounterClass';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.attending_practitioner_sk IS 'phi:clinical | https://ontology.healix.example.org/clinical/attendingPractitioner';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.admit_ts IS 'phi:quasi | https://ontology.healix.example.org/clinical/admitDateTime';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.discharge_ts IS 'phi:quasi | https://ontology.healix.example.org/clinical/dischargeDateTime';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.length_of_stay_days IS 'phi:clinical | https://ontology.healix.example.org/clinical/lengthOfStayDays';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.drg_code_sk IS 'phi:quasi | https://ontology.healix.example.org/clinical/diagnosisRelatedGroup';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.source_encounter_id IS 'phi:direct | https://ontology.healix.example.org/clinical/sourceEncounterIdentifier';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.valid_from IS 'internal | https://ontology.healix.example.org/time/validFrom';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.recorded_at IS 'internal | https://ontology.healix.example.org/time/recordedAt';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.superseded_at IS 'internal | https://ontology.healix.example.org/time/supersededAt';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.change_kind IS 'internal | https://ontology.healix.example.org/time/changeKind';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.event_time IS 'internal | https://ontology.healix.example.org/time/eventTime';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.source_time IS 'internal | https://ontology.healix.example.org/time/sourceTime';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.decision_time IS 'internal | https://ontology.healix.example.org/time/decisionTime';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.source_tz IS 'internal | https://ontology.healix.example.org/time/sourceTimeZone';
+COMMENT ON COLUMN edw_g2_clinical.fact_encounter.prov_activity_iri IS 'internal | http://www.w3.org/ns/prov#wasGeneratedBy';
 
 -- ===========================================================================
 -- fact_diagnosis (transaction): one row per condition assertion (FHIR Condition)
@@ -324,15 +334,20 @@ CREATE TABLE edw_g2_clinical.fact_diagnosis (
     asserted_ts             TIMESTAMP,
     poa_code                CHAR(1),                  -- present on admission: Y / N / U / W / 1
     is_chronic_flag         CHAR(1)       NOT NULL DEFAULT 'U',
-    sensitive_category_code VARCHAR(30),              -- derived from dim_code.sensitive_category_code (phi_sensitive)
+    sensitive_category_code VARCHAR(30),              -- derived from dim_code.sensitive_category_code (drives the phi:sensitive-category/* tag, module 11 §3)
     source_diagnosis_id     VARCHAR(64),
     orphan_flag             CHAR(1)       NOT NULL DEFAULT 'N',
     -- bitemporal block
     valid_from              TIMESTAMP     NOT NULL,
     valid_to                TIMESTAMP,
-    recorded_at             TIMESTAMP     NOT NULL,
+    recorded_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_at           TIMESTAMP,
+    change_kind             CHAR(12),                     -- TKG-01 C6/C10: why this version was closed; NULL while current, NOT NULL when superseded_at is set (new-version / correction / retraction / merge / unmerge)
     change_reason_code      VARCHAR(30),
+    event_time              TIMESTAMP     NOT NULL,       -- TKG-01 C7: hc-event-time of the producing record (UTC)
+    source_time             TIMESTAMP,                    -- TKG-01 C7: hc-source-time, the source system clock (UTC)
+    decision_time           TIMESTAMP,                    -- TKG-01 C8: when the real-world decision was taken; NULL = not available
+    source_tz               VARCHAR(64),                  -- TKG-01 C12: IANA zone of the source timestamps (storage is UTC)
     -- technical block
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -374,10 +389,10 @@ CREATE UNIQUE INDEX ux_fact_diagnosis_bk ON edw_g2_clinical.fact_diagnosis (diag
 CREATE INDEX ix_fact_diagnosis_encounter ON edw_g2_clinical.fact_diagnosis (encounter_bk);
 CREATE INDEX ix_fact_diagnosis_code ON edw_g2_clinical.fact_diagnosis (diagnosis_code_sk, asserted_date_sk);
 COMMENT ON TABLE edw_g2_clinical.fact_diagnosis IS 'https://ontology.healix.example.org/clinical/Condition';
-COMMENT ON COLUMN edw_g2_clinical.fact_diagnosis.diagnosis_code_sk IS 'phi_sensitive | https://ontology.healix.example.org/clinical/conditionCode';
-COMMENT ON COLUMN edw_g2_clinical.fact_diagnosis.onset_ts IS 'phi_quasi | https://ontology.healix.example.org/clinical/onsetDateTime';
-COMMENT ON COLUMN edw_g2_clinical.fact_diagnosis.poa_code IS 'none | https://ontology.healix.example.org/clinical/presentOnAdmission';
-COMMENT ON COLUMN edw_g2_clinical.fact_diagnosis.sensitive_category_code IS 'none | https://ontology.healix.example.org/governance/sensitiveCategory';
+COMMENT ON COLUMN edw_g2_clinical.fact_diagnosis.diagnosis_code_sk IS 'phi:sensitive-category | https://ontology.healix.example.org/clinical/conditionCode';
+COMMENT ON COLUMN edw_g2_clinical.fact_diagnosis.onset_ts IS 'phi:quasi | https://ontology.healix.example.org/clinical/onsetDateTime';
+COMMENT ON COLUMN edw_g2_clinical.fact_diagnosis.poa_code IS 'phi:clinical | https://ontology.healix.example.org/clinical/presentOnAdmission';
+COMMENT ON COLUMN edw_g2_clinical.fact_diagnosis.sensitive_category_code IS 'phi:clinical | https://ontology.healix.example.org/governance/sensitiveCategory';
 
 -- ===========================================================================
 -- bridge_encounter_diagnosis: encounter × diagnosis × rank (EDW-G2-002, EDW-LOG-015)
@@ -395,9 +410,14 @@ CREATE TABLE edw_g2_clinical.bridge_encounter_diagnosis (
     -- bitemporal block
     valid_from              TIMESTAMP     NOT NULL,
     valid_to                TIMESTAMP,
-    recorded_at             TIMESTAMP     NOT NULL,
+    recorded_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_at           TIMESTAMP,
+    change_kind             CHAR(12),                     -- TKG-01 C6/C10: why this version was closed; NULL while current, NOT NULL when superseded_at is set (new-version / correction / retraction / merge / unmerge)
     change_reason_code      VARCHAR(30),
+    event_time              TIMESTAMP     NOT NULL,       -- TKG-01 C7: hc-event-time of the producing record (UTC)
+    source_time             TIMESTAMP,                    -- TKG-01 C7: hc-source-time, the source system clock (UTC)
+    decision_time           TIMESTAMP,                    -- TKG-01 C8: when the real-world decision was taken; NULL = not available
+    source_tz               VARCHAR(64),                  -- TKG-01 C12: IANA zone of the source timestamps (storage is UTC)
     -- technical block
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -416,8 +436,8 @@ CREATE TABLE edw_g2_clinical.bridge_encounter_diagnosis (
 CREATE INDEX ix_bridge_enc_dx_encounter ON edw_g2_clinical.bridge_encounter_diagnosis (encounter_sk, diagnosis_rank);
 CREATE INDEX ix_bridge_enc_dx_diagnosis ON edw_g2_clinical.bridge_encounter_diagnosis (diagnosis_sk);
 COMMENT ON TABLE edw_g2_clinical.bridge_encounter_diagnosis IS 'https://ontology.healix.example.org/clinical/EncounterDiagnosis';
-COMMENT ON COLUMN edw_g2_clinical.bridge_encounter_diagnosis.diagnosis_rank IS 'none | https://ontology.healix.example.org/clinical/diagnosisRank';
-COMMENT ON COLUMN edw_g2_clinical.bridge_encounter_diagnosis.is_principal_flag IS 'none | https://ontology.healix.example.org/clinical/isPrincipalDiagnosis';
+COMMENT ON COLUMN edw_g2_clinical.bridge_encounter_diagnosis.diagnosis_rank IS 'phi:clinical | https://ontology.healix.example.org/clinical/diagnosisRank';
+COMMENT ON COLUMN edw_g2_clinical.bridge_encounter_diagnosis.is_principal_flag IS 'phi:clinical | https://ontology.healix.example.org/clinical/isPrincipalDiagnosis';
 
 -- ===========================================================================
 -- edw_g2_diagnostics · value-set dimensions
@@ -518,9 +538,14 @@ CREATE TABLE edw_g2_diagnostics.fact_observation_result (
     -- bitemporal block
     valid_from              TIMESTAMP     NOT NULL,
     valid_to                TIMESTAMP,
-    recorded_at             TIMESTAMP     NOT NULL,
+    recorded_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_at           TIMESTAMP,
+    change_kind             CHAR(12),                     -- TKG-01 C6/C10: why this version was closed; NULL while current, NOT NULL when superseded_at is set (new-version / correction / retraction / merge / unmerge)
     change_reason_code      VARCHAR(30),
+    event_time              TIMESTAMP     NOT NULL,       -- TKG-01 C7: hc-event-time of the producing record (UTC)
+    source_time             TIMESTAMP,                    -- TKG-01 C7: hc-source-time, the source system clock (UTC)
+    decision_time           TIMESTAMP,                    -- TKG-01 C8: when the real-world decision was taken; NULL = not available
+    source_tz               VARCHAR(64),                  -- TKG-01 C12: IANA zone of the source timestamps (storage is UTC)
     -- technical block
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -567,16 +592,16 @@ CREATE UNIQUE INDEX ux_fact_obs_result_bk ON edw_g2_diagnostics.fact_observation
 CREATE INDEX ix_fact_obs_result_patient ON edw_g2_diagnostics.fact_observation_result (patient_sk, observation_code_sk, effective_date_sk);
 CREATE INDEX ix_fact_obs_result_encounter ON edw_g2_diagnostics.fact_observation_result (encounter_bk);
 COMMENT ON TABLE edw_g2_diagnostics.fact_observation_result IS 'https://ontology.healix.example.org/clinical/Observation';
-COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.observation_bk IS 'none | https://ontology.healix.example.org/clinical/observationIdentifier';
-COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.observation_code_sk IS 'none | https://ontology.healix.example.org/clinical/observationCode';
-COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.effective_ts IS 'phi_quasi | https://ontology.healix.example.org/clinical/effectiveDateTime';
-COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.value_numeric IS 'none | https://ontology.healix.example.org/clinical/valueQuantity';
-COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.ucum_unit_sk IS 'none | https://ontology.healix.example.org/clinical/valueUnit';
-COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.value_numeric_src IS 'none | https://ontology.healix.example.org/clinical/sourceValueQuantity';
-COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.value_code_sk IS 'none | https://ontology.healix.example.org/clinical/valueCodeableConcept';
-COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.value_text IS 'phi_sensitive | https://ontology.healix.example.org/clinical/valueString';
-COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.abnormal_flag_sk IS 'none | https://ontology.healix.example.org/clinical/interpretation';
-COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.prov_activity_iri IS 'none | http://www.w3.org/ns/prov#wasGeneratedBy';
+COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.observation_bk IS 'phi:direct | https://ontology.healix.example.org/clinical/observationIdentifier';
+COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.observation_code_sk IS 'phi:clinical | https://ontology.healix.example.org/clinical/observationCode';
+COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.effective_ts IS 'phi:quasi | https://ontology.healix.example.org/clinical/effectiveDateTime';
+COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.value_numeric IS 'phi:clinical | https://ontology.healix.example.org/clinical/valueQuantity';
+COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.ucum_unit_sk IS 'phi:clinical | https://ontology.healix.example.org/clinical/valueUnit';
+COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.value_numeric_src IS 'phi:clinical | https://ontology.healix.example.org/clinical/sourceValueQuantity';
+COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.value_code_sk IS 'phi:clinical | https://ontology.healix.example.org/clinical/valueCodeableConcept';
+COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.value_text IS 'phi:sensitive-category | https://ontology.healix.example.org/clinical/valueString';
+COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.abnormal_flag_sk IS 'phi:clinical | https://ontology.healix.example.org/clinical/interpretation';
+COMMENT ON COLUMN edw_g2_diagnostics.fact_observation_result.prov_activity_iri IS 'internal | http://www.w3.org/ns/prov#wasGeneratedBy';
 
 -- ===========================================================================
 -- edw_g2_medication · value-set dimensions
@@ -694,9 +719,14 @@ CREATE TABLE edw_g2_medication.fact_medication_order (
     -- bitemporal block
     valid_from              TIMESTAMP     NOT NULL,
     valid_to                TIMESTAMP,
-    recorded_at             TIMESTAMP     NOT NULL,
+    recorded_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_at           TIMESTAMP,
+    change_kind             CHAR(12),                     -- TKG-01 C6/C10: why this version was closed; NULL while current, NOT NULL when superseded_at is set (new-version / correction / retraction / merge / unmerge)
     change_reason_code      VARCHAR(30),
+    event_time              TIMESTAMP     NOT NULL,       -- TKG-01 C7: hc-event-time of the producing record (UTC)
+    source_time             TIMESTAMP,                    -- TKG-01 C7: hc-source-time, the source system clock (UTC)
+    decision_time           TIMESTAMP,                    -- TKG-01 C8: when the real-world decision was taken; NULL = not available
+    source_tz               VARCHAR(64),                  -- TKG-01 C12: IANA zone of the source timestamps (storage is UTC)
     -- technical block
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -744,8 +774,8 @@ CREATE UNIQUE INDEX ux_fact_medication_order_bk ON edw_g2_medication.fact_medica
 CREATE INDEX ix_fact_medication_order_enc ON edw_g2_medication.fact_medication_order (encounter_bk);
 CREATE INDEX ix_fact_medication_order_item ON edw_g2_medication.fact_medication_order (item_sk, authored_date_sk);
 COMMENT ON TABLE edw_g2_medication.fact_medication_order IS 'https://ontology.healix.example.org/clinical/MedicationRequest';
-COMMENT ON COLUMN edw_g2_medication.fact_medication_order.medication_code_sk IS 'phi_sensitive | https://ontology.healix.example.org/clinical/medicationCode';
-COMMENT ON COLUMN edw_g2_medication.fact_medication_order.item_sk IS 'none | https://ontology.healix.example.org/clinical/medicationProduct';
-COMMENT ON COLUMN edw_g2_medication.fact_medication_order.authored_ts IS 'phi_quasi | https://ontology.healix.example.org/clinical/authoredOn';
-COMMENT ON COLUMN edw_g2_medication.fact_medication_order.dose_quantity IS 'none | https://ontology.healix.example.org/clinical/doseQuantity';
-COMMENT ON COLUMN edw_g2_medication.fact_medication_order.prov_activity_iri IS 'none | http://www.w3.org/ns/prov#wasGeneratedBy';
+COMMENT ON COLUMN edw_g2_medication.fact_medication_order.medication_code_sk IS 'phi:sensitive-category | https://ontology.healix.example.org/clinical/medicationCode';
+COMMENT ON COLUMN edw_g2_medication.fact_medication_order.item_sk IS 'phi:clinical | https://ontology.healix.example.org/clinical/medicationProduct';
+COMMENT ON COLUMN edw_g2_medication.fact_medication_order.authored_ts IS 'phi:quasi | https://ontology.healix.example.org/clinical/authoredOn';
+COMMENT ON COLUMN edw_g2_medication.fact_medication_order.dose_quantity IS 'phi:clinical | https://ontology.healix.example.org/clinical/doseQuantity';
+COMMENT ON COLUMN edw_g2_medication.fact_medication_order.prov_activity_iri IS 'internal | http://www.w3.org/ns/prov#wasGeneratedBy';

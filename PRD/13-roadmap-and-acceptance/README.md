@@ -22,7 +22,7 @@ risk register, all of which `agent.orchestrator` and `agent.release_manager` rea
 | In scope | Out of scope |
 |----------|--------------|
 | Phased delivery plan (Phase 0–4) with entry/exit criteria, dependencies, team shape and duration assumptions | Detailed sprint plans, staffing names, vendor commercial terms |
-| Acceptance criteria per module (02–12), traced to goals G-01..G-06 and NFRs ARC-NFR-001..007 | Unit-test specifications (owned by each module) |
+| Acceptance criteria per module (02–12 and 14), the module 15 adversarial review gate, traced to goals G-01..G-06 and NFRs ARC-NFR-001..007 | Unit-test specifications (owned by each module) |
 | Test approach: conformance suites, golden datasets, synthetic FHIR bundles, SHACL/OWL checks, DQ backtests, agent evaluation suite, performance tests | Test-tool vendor selection |
 | Go-live checklist and promotion gates | Operational runbooks (module 12) |
 | Risk register, open questions and decisions needed, with proposed defaults | Enterprise risk management outside the HEALIX programme |
@@ -40,7 +40,7 @@ risk register, all of which `agent.orchestrator` and `agent.release_manager` rea
 
 1. **Thin vertical slice first.** The first production-shaped increment is **one Cerner ADT feed** (A01/A02/A03/A04/A08
    admit, transfer, discharge, register, update) carried end-to-end: MLLP → `hc.raw.cerner.adt.hl7v2.v1` →
-   `hc.std.cerner.adt.v1` → `hc.canonical.party.patient.fhir.v1` + `hc.canonical.clinical.encounter.fhir.v1` →
+   `hc.std.cerner.adt.hl7v2-parsed.v1` → `hc.canonical.party.patient.fhir.v1` + `hc.canonical.clinical.encounter.fhir.v1` →
    `hc.dq.*` → temporal knowledge graph (G1/G2 named graphs) → EDW (`edw_g1_party.dim_patient`,
    `edw_g2_clinical.fact_encounter`). Agents participate from day one but only at **L1/L2**:
    `agent.source_mapper` and `agent.vocabulary_curator` propose, `agent.evaluator` scores, humans approve. The slice
@@ -61,16 +61,22 @@ risk register, all of which `agent.orchestrator` and `agent.release_manager` rea
    criteria for the thin slice, so no later phase inherits an unclassified data flow.
 7. **Executable specs gate promotion.** A module is promoted only when its machine-readable artefacts (topic catalog,
    DDL, SHACL, DQ rule packs, agent manifests) validate in CI; prose alone never satisfies an exit criterion.
+8. **Memory and self-improvement are shadow-first.** The module 14 memory stack ships in Phase 0 with its PHI firewall
+   and write log, but healing playbooks run `shadow → assisted → autonomous` and prompt/policy changes reach `prod`
+   only through evaluated canaries (ADR-08, ADR-09); autonomy of the learning loop is graduated like any agent.
+9. **Every gate is adversarially reviewed.** The module 15 findings register is opened at M0 and a red-team re-test of
+   the release scope is a go-live checklist item; no milestone or `prod` release passes with an open `critical` or
+   unmitigated `high` finding (RMP-ACC-140..143).
 
 ## 4. Phase overview
 
-| Phase | Name | Headline outcome | Groups | Ontology stages | Agent autonomy ceiling | Indicative duration |
-|-------|------|------------------|--------|-----------------|------------------------|---------------------|
-| 0 | Foundations | Platform, registries, conventions, G8 reference data, terminology server live in `dev`/`test` | G8, G9 (platform-generated) | Stage 0 (inventory) for Cerner | L1 | 13 weeks |
-| 1 | Clinical core | Cerner ADT/ORU/ORM → G1/G2 canonical FHIR, DQ stream plane, KG + EDW for G1/G2 | G1, G2 | Stages 0–2 for G1/G2 | L2 | 26 weeks (thin slice at week 10) |
-| 2 | Finance & Supply | Oracle Fusion ERP/SCM, RCM/X12 → G3/G4; cross-system reconciliation DQ | G3, G4 | Stages 3–4 for G1/G2; Stages 0–2 for G3/G4 | L2 (L3 for `agent.inventory`, `agent.dq_monitor`, `agent.kg_builder`) | 26 weeks |
-| 3 | Workforce, Pop Health, Research | Oracle HCM → G5; derived G6/G7; Stage 5 full KG across groups | G5, G6, G7 | Stages 3–5 for G3/G4; Stage 5 across all groups | L3 for most agents | 26 weeks |
-| 4 | Autonomy & scale | Auto-approval expansion, outbound interoperability to partners, FHIR R5 profile track | All | Continuous | L3/L4 per policy | 26 weeks, then steady state |
+| Phase | Name | Headline outcome | Groups | Ontology stages | Agent autonomy ceiling | Memory & self-improvement (module 14) / adversarial review (module 15) | Indicative duration |
+|-------|------|------------------|--------|-----------------|------------------------|------------------------------------------------------------------------|---------------------|
+| 0 | Foundations | Platform, registries, conventions, G8 reference data, terminology server live in `dev`/`test` | G8, G9 (platform-generated) | Stage 0 (inventory) for Cerner | L1 | Memory stack deployed with PHI firewall, write log and C1/C3 caches; all playbooks `shadow` / findings register and threat model opened | 13 weeks |
+| 1 | Clinical core | Cerner ADT/ORU/ORM → G1/G2 canonical FHIR, DQ stream plane, KG + EDW for G1/G2 | G1, G2 | Stages 0–2 for G1/G2 | L2 | M1 memory (Mem0 + Graphiti episodes) live for L2 agents; C1–C3 caches; self-healer `shadow → assisted` on ingestion faults / red-team of the thin slice; gate at M1 and M1.5 | 26 weeks (thin slice at week 10) |
+| 2 | Finance & Supply | Oracle Fusion ERP/SCM, RCM/X12 → G3/G4; cross-system reconciliation DQ | G3, G4 | Stages 3–4 for G1/G2; Stages 0–2 for G3/G4 | L2 (L3 for `agent.inventory`, `agent.dq_monitor`, `agent.kg_builder`) | First `autonomous` playbooks; C2 semantic cache; consolidation; improvement canaries in `uat` only / red-team of finance and X12 flows; gate at M2 | 26 weeks |
+| 3 | Workforce, Pop Health, Research | Oracle HCM → G5; derived G6/G7; Stage 5 full KG across groups | G5, G6, G7 | Stages 3–5 for G3/G4; Stage 5 across all groups | L3 for most agents | Improvement canaries in `prod`; playbook learning from incidents (depth ≤ 2) / red-team of HCM, research and Part 2 flows; gate at M3 | 26 weeks |
+| 4 | Autonomy & scale | Auto-approval expansion, outbound interoperability to partners, FHIR R5 profile track | All | Continuous | L3/L4 per policy | Steady-state recursive learning under MEM-06 trust tiers; quarterly memory-lift ablation and kill-switch drills / annual red-team and pen-test; gate at M4 and every release | 26 weeks, then steady state |
 
 ```mermaid
 gantt
@@ -118,6 +124,8 @@ gantt
 | Agent evaluation suite definition | module 10 | Autonomy graduation criteria | module 10 policy files |
 | SLO tables | module 12 | Go-live checklist | module 12 release runbooks |
 | PHI policy | module 11 | Risk register with owners | Programme steering committee |
+| Memory, cache and healing SLOs (S23–S25), rebuild and canary drill evidence, playbook graduation records | module 14 | Module 14 acceptance criteria and phase scope (RMP-ACC-130..137) | module 14 policy files; autonomy board |
+| Findings register, red-team plan, legacy/tech-debt outlier log | module 15 | Adversarial review gate in every milestone and go-live checklist (RMP-ACC-140..143) | `agent.release_manager`, DGC, Privacy & Security Officer |
 
 ## 7. Requirement ID scheme in this module
 

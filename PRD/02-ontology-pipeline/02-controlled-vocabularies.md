@@ -6,7 +6,8 @@ version: 0.1.0
 status: draft
 owners: [Terminology Stewards (G1–G9), Enterprise Ontology Team]
 depends_on: [ONT-01, ARC-01, IOP-04]
-last_updated: 2026-10-17---
+last_updated: 2026-10-17
+---
 # Stage 1 — Controlled Vocabularies
 
 ## 1. Purpose
@@ -52,7 +53,7 @@ SKOS schemes (module 06), never authored independently.
 | `skos:hiddenLabel` | 0..n | Misspellings, legacy displays, raw Cerner `DISPLAY_KEY` (upper-case no-space form), used for search only |
 | `skos:definition` | exactly 1 per language | Genus–differentia form; ≥ 15 words; MUST NOT be the label restated |
 | `skos:scopeNote` | 0..n | Usage boundaries, e.g. "Do not use for observation-only ED visits; see *Emergency observation*" |
-| `skos:example` | 0..n | Non-PHI examples only |
+| `skos:example` | 0..n | Examples classed `internal` or `public` only |
 | `skos:historyNote`, `skos:changeNote` | 0..n | Populated by the registry on every CR |
 | `skos:notation` | 0..n, typed | `"72^EMERGENCY"^^cerner:CodeValueMeaning`, `"EMER"^^hl7:ActCode`, `"INVOICE_TYPE:STANDARD"^^ofusion:Lookup` |
 | `healix:bindingStatus` | 1 | `bound`, `local-only`, `pending`, `unbindable` |
@@ -176,7 +177,7 @@ Harvesting rules:
 | **ONT-CV-005** | P0 | test | Every concept harvested from a coded source element MUST carry a typed `skos:notation` for each contributing source code (Cerner `CODE_SET^MEANING` or `CODE_VALUE`, Oracle `LOOKUP_TYPE:LOOKUP_CODE`, HL7 table value). |
 | **ONT-CV-006** | P0 | test | Every concept MUST have `healix:bindingStatus`; a `bound` status MUST be backed by an `skos:exactMatch` or `skos:closeMatch` that the Terminology Service validated (`$validate-code` result = true) at the pinned code-system version. |
 | **ONT-CV-007** | P0 | test | Concepts derived from inactive source codes MUST be marked `owl:deprecated true` with `healix:validTo`, and MUST NOT be deleted. |
-| **ONT-CV-008** | P0 | inspection | `agent.vocabulary_curator` MUST NOT harvest terms from elements with `phi_class` in {`direct-identifier`, `quasi-identifier`} or from free-text elements. |
+| **ONT-CV-008** | P0 | inspection | `agent.vocabulary_curator` MUST NOT harvest terms from elements with `phi_class` in {`phi:direct`, `phi:quasi`} or from free-text elements. |
 | **ONT-CV-009** | P1 | test | A concept bound to SNOMED CT or CPT MUST carry `healix:licenceRequired true`, and registry exports for consumers without the licence flag MUST omit the binding. |
 | **ONT-CV-010** | P1 | test | Agent-drafted definitions MUST carry `healix:definitionSource = agent-draft` and MUST NOT be auto-approved regardless of evaluator score. |
 | **ONT-CV-011** | P1 | test | Candidate terms clustered as duplicates (string similarity ≥ 0.92 or identical `CDF_MEANING` within one `CODE_SET`) MUST be presented as a single merge proposal, not as separate concepts. |

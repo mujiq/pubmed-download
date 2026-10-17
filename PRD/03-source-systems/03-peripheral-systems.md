@@ -327,7 +327,8 @@ groups, DQ risks, requirements. Vendor product names are examples; the registry 
   cross-source person identity; where none exists, module 08 entity resolution fills the role and this interface
   is the platform's own.
 - **Resources:** `Patient` (golden record with `identifier` per source and `link` to source-level patients),
-  `Person` (cross-domain linkage when needed), person-merge/unmerge events (`hc.std.party.person-merge.v1`),
+  `Person` (cross-domain linkage when needed), person-merge/unmerge events (ingested as ER evidence from the source
+  ADT `std` topics, e.g. `hc.std.cerner.adt.hl7v2-parsed.v1`; resulting link/unlink events on `hc.kg.er.link.v1`, module 08 TKG-03 §6),
   match-decision records (score, tier, rule set, reviewer) stored in G9.
 - **Code systems:** identifier type codes (HL7 0203: MR, SS, DL, PPN, MB), assigning-authority OIDs for every MRN
   pool, match-tier vocabulary (auto-link, review, no-link).

@@ -52,7 +52,7 @@ Every identifier assertion is bitemporal (TKG-01): an MRN that is retired after 
 ### 2.2 SSN last-4 policy
 
 - Full SSN is **never** loaded into the graph. The ingestion processor replaces it with `party:ssnLast4` (string,
-  `PHI-DIRECT`) and a keyed HMAC-SHA-256 of the full value (`party:ssnHash`, key held in KMS, rotated annually with
+  `phi:direct`) and a keyed HMAC-SHA-256 of the full value (`party:ssnHash`, key held in KMS, rotated annually with
   re-hash job) used only for blocking/matching.
 - Last-4 is used as a **blocking key component** and a **comparison field** (agreement weight capped so last-4 alone
   can never auto-link).

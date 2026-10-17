@@ -187,7 +187,7 @@ and the per-agent `graduation` block. Rubric ids are defined in AGT-05 §4.3; PG
   downstream consumers → `edw_ddl` CRs (logical change + forward and compensating migration), dry-run report.
 - **Tools.** `edw-metadata` (`propose_ddl`, `ddl_dry_run`, `naming_lint`), `ontology-registry` (read),
   `sql-sandbox` (masked), `lineage.impact_analysis`, `git`.
-- **Autonomy.** **L1 — always human-approved.** Ceiling L2 for additive non-PHI changes after ≥ 150 approvals /
+- **Autonomy.** **L1 — always human-approved.** Ceiling L2 for additive changes to `internal`/`public`-classed columns after ≥ 150 approvals /
   180 days, zero failed migrations, PRD revision.
 - **Risk classes.** `medium`, `high`, `phi_affecting`.
 - **Rubrics.** RUB-DDL-01, RUB-DDL-02, RUB-EVD-01, RUB-PHI-01.
@@ -313,7 +313,7 @@ and the per-agent `graduation` block. Rubric ids are defined in AGT-05 §4.3; PG
 1. **Stage 0 — discovery.** The nightly `agent.inventory` crawl sees a new row in Cerner `CODE_VALUE` for code
    set 71 (Encounter Type): code 309308, display "Observation Unit". It updates element
    `src.cerner.code_value.cs71` and emits `new_element_registered`. `agent.privacy_guardian` classifies the element
-   as non-PHI metadata.
+   as `internal` metadata.
 2. **Stage 1 — vocabulary.** `agent.vocabulary_curator` profiles masked encounters (1,842 in 7 days, 3
    facilities), finds no covering concept in scheme `encounter-class`, confirms SNOMED CT 448951000 via `$lookup`,
    and creates the vocabulary CR shown in AGT-03 §2.2. Evaluator: 0.95, all checks pass; privacy: cleared; policy

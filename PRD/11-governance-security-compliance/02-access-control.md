@@ -39,7 +39,8 @@ segmentation. The PHI classes and purpose-of-use codes it relies on are defined 
 
 Group membership and attributes (role, facility, department, licence) are provisioned from Oracle HCM (workforce)
 and the credentialing system (clinical privileges) into the IdP via SCIM; HEALIX never maintains a shadow directory.
-Joiner/mover/leaver events arrive on `hc.canonical.workforce.practitionerrole.fhir.v1` and MUST deprovision within
+Joiner/mover/leaver events arrive on `hc.canonical.workforce.assignment.fhir-ext.v1` (HCM assignments) and
+`hc.canonical.party.practitionerrole.fhir.v1` (clinical privileges) and MUST deprovision within
 24 hours of termination (immediate for involuntary).
 
 ## 3. Authorisation model: RBAC + ABAC
@@ -192,7 +193,7 @@ flowchart LR
 | Data class / store | Key class | Mechanism | Rotation |
 |--------------------|-----------|-----------|----------|
 | Kafka at rest (PHI topics) | `kafka-phi` | Broker volume encryption (AES-256) **plus** envelope encryption of `phi:direct` fields in `raw`/`std` using a Connect SMT with per-source DEKs | KEK yearly; DEK 90 days |
-| Kafka at rest (non-PHI) | `kafka-std` | Volume encryption | Yearly |
+| Kafka at rest (`internal`, `public`, `confidential:*` topics) | `kafka-std` | Volume encryption | Yearly |
 | Graph store | `kg-phi` | Storage encryption; separate KEK per environment | Yearly |
 | EDW | `edw-phi` | Transparent data encryption with CMK; column-level encryption for `phi:direct` identifiers (`ssn`, `mrn`) | Yearly; column keys 1 year |
 | Token vault | `tok-prod`, `tok-nonprod` | HSM-backed; FF1 and HMAC keys; split-knowledge for export | 1 year; non-prod keys never reusable in prod |

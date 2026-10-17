@@ -44,7 +44,7 @@ Out of scope (owned elsewhere): field-level mapping specifications and FHIR prof
 | STR-03 | [`03-schema-registry.md`](03-schema-registry.md) | Formats per layer, subjects, compatibility, evolution, envelope and headers, linting | `STR-SR-001`–`018` |
 | STR-04 | [`04-cdc-and-connectors.md`](04-cdc-and-connectors.md) | Source and sink connector catalog, DLQ, exactly-once, monitoring | `STR-CDC-001`–`022`, `STR-OPS-006`–`010` |
 | STR-05 | [`05-stream-processing.md`](05-stream-processing.md) | Processor catalog, event time, state, exactly-once, idempotency, replay, scaling | `STR-PROC-001`–`020`, `STR-OPS-011`–`015` |
-| — | [`topics.yaml`](topics.yaml) | Machine-readable topic catalog (193 topics) | validated by `topics.schema.json` |
+| — | [`topics.yaml`](topics.yaml) | Machine-readable topic catalog (219 topics) | validated by `topics.schema.json` |
 | — | [`topics.schema.json`](topics.schema.json) | JSON Schema 2020-12 for the catalog | — |
 
 ## 3. Streaming architecture
@@ -133,7 +133,9 @@ Layer semantics (authoritative in `01-architecture-overview.md` §2, refined her
 4. **Event time, not arrival time.** Every record carries `hc-event-time` and `hc-source-time`; processors use
    watermarks and never drop late data; the temporal splitter turns these into valid and transaction time for module 08.
 5. **PHI-aware by construction.** Every topic carries a `phi_class`; ACLs, mirroring, masking and archive policy are
-   derived from it; `agent.privacy_guardian` reviews every topic, schema or connector change touching `phi` data.
+   derived from it; `phi_class` values are the module 11 data-classification tags (`phi:direct`, `phi:clinical`,
+   `phi:quasi`, `pii:workforce`, `confidential:*`, `internal`, `public`, `deidentified:*`, `pseudonymised`);
+   `agent.privacy_guardian` reviews every topic, schema or connector change touching `phi:*` data.
 6. **Standards on the wire.** Inbound HL7 v2 and X12 are preserved verbatim in `raw`; everything canonical is FHIR R4;
    outbound legacy consumers receive HL7 v2 generated from canonical resources, never from `raw` pass-through.
 7. **Declared, not clicked.** Topics, schemas, connectors and processors are declared in Git (`topics.yaml`, schema
@@ -186,4 +188,4 @@ P0 requirements in this module and their verification artefacts (CONVENTIONS §6
 | OQ-07-01 | Confluent Cluster Linking vs. MirrorMaker 2 for the DR link (licence vs. offset-preservation) | Data Platform | Phase 1 design review |
 | OQ-07-02 | Whether the Millennium Oracle replica permits supplemental logging on all whitelisted tables (vendor support statement) | Integration Engineering | Phase 1 |
 | OQ-07-03 | Protobuf for high-volume device observations in `std` (compactness) vs. single Avro format per layer | Data Platform | Phase 2 |
-| OQ-07-04 | Field-level encryption (client-side) for `phi` topics in addition to at-rest encryption | Privacy & Security | Phase 1 |
+| OQ-07-04 | Field-level encryption (client-side) for `phi:direct` topics in addition to at-rest encryption | Privacy & Security | Phase 1 |

@@ -127,7 +127,7 @@ For every aligned triple `(s, p, o)` the splitter:
   "sourceTimeZone": "America/Chicago",
   "changeKind": "correction",
   "supersedes": "01J8Q6Z3M9K2V7XW4R5T6Y8ABC:sha256:a1b2…",     // assertionId being closed, if any
-  "phiClass": "PHI-CLINICAL",
+  "phiClass": "phi:clinical",
   "source": { "topic": "hc.canonical.clinical.condition.fhir.v1", "partition": 7, "offset": 9912387,
               "system": "cerner-fhir", "resourceVersion": "3" }
 }

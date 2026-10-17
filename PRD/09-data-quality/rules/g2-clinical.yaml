@@ -371,3 +371,102 @@ rules:
     version: 1.0.0
     status: active
     tags: [sla]
+
+  - id: DQR-TIMELINESS-ENCOUNTER-001
+    name: In-progress encounter without discharge for more than 30 days (ghost admit)
+    description: An inpatient or observation Encounter still in-progress more than 30 days after period.start with no discharge is almost always a Cerner encounter that was never closed (ENCOUNTER.DISCH_DT_TM null, module 03 §9 ghost admits). Ghost admits inflate census and length of stay, hold beds in the bed-management view and delay final billing. The rule is a liveness observation (no quarantine); each open encounter is a steward worklist item.
+    dimension: timeliness
+    group: G2
+    domain: clinical
+    source_systems: [cerner]
+    targets:
+      - plane: stream
+        resource: Encounter
+        language: fhirpath
+        expression: "(status = 'in-progress' and class.code in ('IMP' | 'OBSENC' | 'ACUTE' | 'NONAC')).not() or period.start.empty() or period.start > (%now - 30 days)"
+        stateful: true
+      - plane: warehouse
+        table: edw_g2_clinical.fact_encounter
+        grain: current encounter version
+        language: sql
+        key_columns: [encounter_bk]
+        schedule: daily
+        sql: SELECT e.encounter_bk FROM {{ ref('fact_encounter') }} e JOIN {{ ref('dim_encounter_class') }} c ON c.encounter_class_sk = e.encounter_class_sk WHERE e.superseded_at IS NULL AND e.valid_to IS NULL AND e.discharge_ts IS NULL AND c.encounter_class_code IN ('IMP', 'OBSENC', 'ACUTE', 'NONAC') AND e.admit_ts < CURRENT_TIMESTAMP - INTERVAL '30' DAY
+    severity: minor
+    threshold: {metric: fail_count, max: 50, window: P1D}
+    owner: steward.clinical
+    derivation: policy
+    derived_from: https://policy.healix.example.org/dq/encounter-lifecycle
+    remediation:
+      action: steward
+      hint: HIM/registration confirms the real discharge in Cerner (ADT A03) or cancels the encounter (A11); the canonical Encounter is corrected by the source event, never closed in the platform.
+      policy_ref: https://policy.healix.example.org/dq/encounter-lifecycle
+    version: 1.0.0
+    status: active
+    tags: [liveness, census]
+
+  - id: DQR-TIMELINESS-ENCOUNTER-002
+    name: Encounter change canonicalised within 5 seconds (p95)
+    description: Data contract dc.cerner.encounter.v2 (GOV-04 §4) commits Cerner encounter CDC/ADT changes to a p95 latency of 5 s from source commit (hc-source-time) to the canonical Encounter record (hc-event-time), the ARC-NFR-001 budget for HL7 v2 and CDC sources. DQR-TIMELINESS-ADT-001 is the coarser 5-minute operational SLA for ADT trigger events; this rule measures the contract SLO on every Encounter version. Breach is a contract incident for the HIM data owner and the integration team.
+    dimension: timeliness
+    group: G2
+    domain: clinical
+    source_systems: [cerner]
+    cde: [Encounter.period, Encounter.status]
+    targets:
+      - plane: stream
+        resource: Encounter
+        language: fhirpath
+        expression: "%header('hc-source-time').empty() or (%header('hc-event-time') - %header('hc-source-time')) <= 5 seconds"
+      - plane: warehouse
+        table: edw_g2_clinical.fact_encounter
+        grain: one row per encounter version
+        language: sql
+        key_columns: [encounter_bk, recorded_at]
+        schedule: both
+        sql: SELECT encounter_bk, recorded_at FROM {{ ref('fact_encounter') }} WHERE source_time IS NOT NULL AND source_time >= {{ window_start }} AND event_time > source_time + INTERVAL '5' SECOND
+    severity: major
+    threshold: {metric: pass_rate, min: 0.95, window: PT1H}
+    owner: steward.clinical
+    derivation: policy
+    derived_from: https://policy.healix.example.org/contracts/dc.cerner.encounter.v2
+    remediation:
+      action: source_fix
+      hint: Interface engine, CDC connector or canonicaliser backlog; SRE inspects consumer lag on hc.raw.cerner.* and hc.std.cerner.cdc.encounter.typed.v1 and the canonicaliser checkpoint age (OPS-03 SLIs).
+      policy_ref: https://policy.healix.example.org/contracts/dc.cerner.encounter.v2
+    version: 1.0.0
+    status: active
+    tags: [sla, data-contract]
+
+  - id: DQR-TIMELINESS-SKEW-001
+    name: Source clock skew - source time ahead of platform event time
+    description: Clock skew between Cerner facility nodes, DST transitions and local times emitted without an offset (module 03 §9) show up as a source timestamp (hc-source-time, EVENT_END_DT_TM/UPDT_DT_TM) that is later than the platform's event time by more than the 5-minute NTP tolerance. Skewed timestamps corrupt valid-time derivation and every latency rule, so the offset is repaired from the facility's IANA zone and the source is flagged.
+    dimension: timeliness
+    group: G2
+    domain: clinical
+    source_systems: [cerner]
+    targets:
+      - plane: stream
+        resource: Encounter
+        language: fhirpath
+        expression: "%header('hc-source-time').empty() or (%header('hc-source-time') - %header('hc-event-time')) <= 5 minutes"
+      - plane: warehouse
+        table: edw_g2_clinical.fact_encounter
+        grain: one row per encounter version
+        language: sql
+        key_columns: [encounter_bk, recorded_at]
+        schedule: on_load
+        sql: SELECT encounter_bk, recorded_at FROM {{ ref('fact_encounter') }} WHERE source_time IS NOT NULL AND recorded_at >= {{ window_start }} AND source_time > event_time + INTERVAL '5' MINUTE
+    severity: major
+    threshold: {metric: pass_rate, min: 0.999, window: PT1H}
+    owner: steward.clinical
+    derivation: policy
+    derived_from: https://policy.healix.example.org/dq/timestamp-normalisation
+    remediation:
+      action: auto_fix
+      fix_class: timestamp_repair
+      hint: Apply the known facility offset (Cerner LOCATION time zone, module 03) to the source timestamp, store UTC with source_tz set and republish under a correction activity; open a source-fix request to the Cerner interface team when a single facility node skews repeatedly.
+      policy_ref: https://policy.healix.example.org/dq/timestamp-normalisation
+    version: 1.0.0
+    status: active
+    tags: [clock-skew, dst]

@@ -87,7 +87,8 @@ record for HEALIX canonical data.
   **primary-key extract** detect hard deletes and purges.
 - Output: zipped CSV per PVO in UCM (`fin_ucm_extract` account, illustrative) or OCI Object Storage, with
   `MANIFEST.MF` listing files, row counts and MD5. The poller validates the manifest before publishing each file
-  row-by-row to `hc.raw.fusion.<pvo-slug>.bicc.v1` with the file hash and row number as idempotency key.
+  row-by-row to `hc.raw.fusion.<module>.<pvo-slug>.bicc.v1` (pattern; catalog instances such as `hc.raw.fusion.ap.invoice.bicc.v1`,
+  `hc.raw.fusion.hcm.worker.bicc.v1`) with the file hash and row number as idempotency key.
 - Schedules: Finance every 30 min during business hours and hourly otherwise; HCM hourly; Inventory on-hand every
   15 min; reference data daily. Period-close and payroll-run windows get an additional triggered run via OIC.
 - Effective-dated HCM objects (`_F` tables: `EFFECTIVE_START_DATE`/`EFFECTIVE_END_DATE`) and multi-row assignments
@@ -111,13 +112,16 @@ Subscribed events (illustrative): ERP `InvoiceApproved`, `PaymentCreated`, `Jour
 `PurchaseOrderApproved`, `ReceiptCreated`; HCM Atom feeds / HCM events `WorkerCreated`, `WorkerTerminated`,
 `AssignmentChanged`, `PositionChanged`; SCM `ItemCreated`, `ItemAttributeChanged`. OIC wraps each in a CloudEvents
 envelope and POSTs to HEALIX with OAuth2 and an HMAC signature. Events carry keys only; the poller fetches the full
-object via REST on receipt (`hc.raw.fusion.events.cloudevents.v1`).
+object via REST on receipt and publishes it to a `raw`-layer Fusion topic with a `rest` format suffix (**proposed**; no
+event-driven Fusion topics exist in `07-streaming-platform/topics.yaml` yet, so each requires a topic CR via
+`hc.ops.agent.changerequest.v1` before activation; until then the BICC `.bicc.v1` topics in §3.2 are the only Fusion raw feeds).
 
 ### 3.4 OTBI and Fusion Analytics Warehouse (optional)
 
 OTBI analyses (`/analytics-ws`) are used by `agent.dq_monitor` for **reconciliation counts and control totals**
 (GL balances by period, AP invoice totals, headcount by department). FAW, if licensed, may feed pre-aggregated
-facts to `hc.raw.fusion.faw.*` for G3/G5 KPIs, labelled `derived` in provenance and never used for G1 master data.
+facts to a `raw`-layer FAW topic family (**proposed**; no FAW topics are in the module 07 catalog today and each requires a topic CR) for G3/G5 KPIs,
+labelled `derived` in provenance and never used for G1 master data.
 
 ## 4. Key reference data
 
@@ -160,16 +164,19 @@ conversion (module 08) apply uniformly. Module 06 owns the definitions; this doc
 ## 6. PHI/PII classification (employee and financial data)
 
 Fusion holds no clinical PHI, but HCM holds **sensitive employee PII** and ERP holds **confidential financial** data.
+Classification values are module 11 tags (`hc-phi-class`, GOV-01 §3); the module 11 taxonomy has no sub-tags for
+workforce data, so the minimisation rule — not the tag — distinguishes special-category attributes.
 
 | Data | Classification | Minimisation rule |
 |------|---------------|-------------------|
-| National identifier (SSN/SIN), DOB, home address, personal phone/email, bank account, marital status, disability, ethnicity, religion, union membership (`PER_NATIONAL_IDENTIFIERS`, `PER_ADDRESSES_F`, `PER_PERSON_BANK_ACCOUNTS`) | PII-SENSITIVE | Not extracted except hashed national id for EMPI/worker matching; never on canonical topics |
-| Compensation, salary, individual payroll results (`CMP_SALARY`, `PAY_RUN_RESULTS`) | PII-SENSITIVE / FINANCIAL | Aggregated to cost centre × period × earnings category before `std`; individual rows prohibited (`SRC-OFC-015`) |
-| Worker name, person number, job, position, department, work location, work email, licences, NPI | PII | Allowed in canonical `Practitioner`/`Worker`; work contact only |
-| Absence reasons (medical), occupational health records | PII-SENSITIVE | Absence type only; reason text and medical certificates excluded |
-| Supplier bank details, tax ids | FINANCIAL-RESTRICTED | Tax id hashed; bank details excluded |
-| GL, AP, AR, PO amounts | FINANCIAL | Role-restricted topics (`finance` domain ACLs) |
-| Reference data (COA, lookups, calendars, currencies, legal entities) | OPERATIONAL/PUBLIC | Freely replicated |
+| National identifier (SSN/SIN), DOB, home address, personal phone/email, bank account, marital status, disability, ethnicity, religion, union membership (`PER_NATIONAL_IDENTIFIERS`, `PER_ADDRESSES_F`, `PER_PERSON_BANK_ACCOUNTS`) | `pii:workforce` (special-category attributes; GDPR overlay GOV-01 §9) | Not extracted except hashed national id for EMPI/worker matching; never on canonical topics |
+| Compensation, salary, individual payroll results (`CMP_SALARY`, `PAY_RUN_RESULTS`) | `pii:workforce` (individual rows); `confidential:financial` once aggregated | Aggregated to cost centre × period × earnings category before `std`; individual rows prohibited (`SRC-OFC-015`) |
+| Worker name, person number, job, position, department, work location, work email, licences, NPI | `pii:workforce` | Allowed in canonical `Practitioner`/`Worker`; work contact only |
+| Absence reasons (medical), occupational health records | `pii:workforce` (health-related); a worker's occupational-health record as a patient is `phi:clinical` and is never extracted from HCM | Absence type only; reason text and medical certificates excluded |
+| Supplier bank details, tax ids | `confidential:financial` | Tax id hashed; bank details excluded |
+| GL, AP, AR, PO amounts | `confidential:financial` | Role-restricted topics (`finance` domain ACLs) |
+| Reference data (COA, lookups, calendars, currencies) | `internal` | Freely replicated |
+| Legal entities, business units (organisation directory) | `public` | Freely replicated |
 
 Employees who are also patients: linkage between the HCM Worker and a Cerner Patient is **not** performed in
 HEALIX except inside the EMPI/entity-resolution service under module 08/11 policy; the canonical streams carry
@@ -207,7 +214,7 @@ separate identifiers.
 ## 9. Requirements
 
 > **SRC-OFC-001** (P0, test) — Every PVO in the registered BICC offerings MUST be extracted incrementally by
-> `LAST_UPDATE_DATE` with a configurable overlap window and published to `hc.raw.fusion.<pvo-slug>.bicc.v1` with
+> `LAST_UPDATE_DATE` with a configurable overlap window and published to its `hc.raw.fusion.<module>.<pvo-slug>.bicc.v1` catalog topic with
 > manifest validation (row count and checksum) before any row is published.
 
 > **SRC-OFC-002** (P0, test) — A daily primary-key extract MUST be diffed against the compacted `std` state to

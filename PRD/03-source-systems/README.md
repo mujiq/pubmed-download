@@ -93,8 +93,11 @@ registry cannot have a topic in the topic catalog (module 07) nor a mapping spec
    `ENCOUNTER.ENCNTR_ID`, `PO_HEADERS_ALL.PO_HEADER_ID`) used for idempotency, compaction and entity resolution.
 3. **Local codes are first-class.** Every source code system (Cerner code sets, Fusion lookup types, LIS test
    codes) is registered as a `CodeSystem` with a stable URI so Stage 1 of the Ontology Pipeline can harvest it.
-4. **PHI classification travels with the element.** Each data element carries a classification (`PHI`, `PII`,
-   `PHI-SENSITIVE`, `FINANCIAL`, `OPERATIONAL`, `PUBLIC`) consumed by module 11 masking policy.
+4. **PHI classification travels with the element.** Each data element carries a classification drawn from the
+   module 11 taxonomy (GOV-01 §3, the `hc-phi-class` value set): `phi:direct`, `phi:quasi`, `phi:clinical`,
+   `phi:sensitive-category/{sud,hiv,mental-health,reproductive,genetic}`, `pii:workforce`, `confidential:financial`,
+   `confidential:operational`, `internal`, `public`, `deidentified:safe-harbor`, `deidentified:expert`,
+   `pseudonymised`. The value is consumed by module 11 masking policy; unclassified elements default to `phi:direct`.
 5. **Prefer vendor-supported channels; keep a fallback.** Vendor APIs and CDC are primary; CCL/SQL/file extracts
    are fallbacks declared in the registry with the reason they exist.
 
@@ -148,8 +151,8 @@ source:
         conformance_profile: profiles/hl7v2/cerner-adt-2.5.1.xml
       ordering_key: PID-3[MRN] + PV1-19
       idempotency_key: MSH-10
-      topics: { raw: hc.raw.cerner.adt.hl7v2.v1, std: hc.std.cerner.adt.hl7v2.v1 }
-      phi_class: PHI
+      topics: { raw: hc.raw.cerner.adt.hl7v2.v1, std: hc.std.cerner.adt.hl7v2-parsed.v1 }
+      phi_class: phi:direct                    # module 11 tag; most restrictive class carried (PID names, SSN)
       volume: { per_day_typical: 450000, per_day_peak: 900000 }
       latency_sla: { p95_seconds_to_canonical: 5 }
       schedule: continuous
@@ -167,8 +170,8 @@ source:
         optimistic_lock_column: UPDT_CNT
       ordering_key: table primary key
       idempotency_key: SCN + table + pk
-      topics: { raw: hc.raw.cerner.{table}.cdc.v1, std: hc.std.cerner.{table}.cdc.v1 }
-      phi_class: PHI
+      topics: { raw: hc.raw.cerner.cdc.<table>.avro.v1, std: hc.std.cerner.cdc.<table>.typed.v1 }   # pattern: one catalog topic per table, e.g. hc.raw.cerner.cdc.encounter.avro.v1
+      phi_class: phi:direct                    # PERSON/ENCOUNTER carry direct identifiers; PRSNL is pii:workforce, CODE_VALUE/ORGANIZATION internal
       latency_sla: { p95_seconds_to_canonical: 5 }
       status: active
   code_systems:
@@ -192,7 +195,7 @@ A **data element record** (one per column, HL7 field, FHIR element or file colum
   code_system_ref: "urn:healix:cs:cerner:code-value|71"   # code set 71 = Encounter Type (illustrative)
   nullable: false
   business_key_part: false
-  phi_class: PHI
+  phi_class: phi:clinical                       # module 11 tag (GOV-01 §3): coded clinical attribute of an identifiable patient
   criticality: critical                         # critical | important | informational (drives DQ thresholds)
   description: "Encounter type as configured locally; feeds Encounter.class and Encounter.type"
   steward_notes: "Site adds new code values at go-lives; harvest weekly"
@@ -211,8 +214,8 @@ A **data element record** (one per column, HL7 field, FHIR element or file colum
 | `stewardship.*` | yes | Role or team references resolvable in module 11 directory; a named person is not allowed |
 | `interfaces[].pattern` | yes | One of the taxonomy codes in §4.5 |
 | `interfaces[].ordering_key` / `idempotency_key` | yes | Expression over the raw payload; module 07 uses it for partitioning and exactly-once |
-| `interfaces[].topics.raw` / `.std` | yes | Must follow `hc.<layer>.<domain>.<entity>.<format>.v<N>`; `domain` for raw is the source slug (`cerner`, `fusion`, `lis`, …) |
-| `interfaces[].phi_class` | yes | Highest classification of any element carried |
+| `interfaces[].topics.raw` / `.std` | yes | Must follow `hc.<layer>.<domain>.<entity>.<format>.v<N>`; `domain` for raw and std is the source slug (`cerner`, `fusion`, `lis`, …); every concrete name MUST exist in `07-streaming-platform/topics.yaml` (placeholders such as `<table>` denote a per-table family of catalog topics) |
+| `interfaces[].phi_class` | yes | Most restrictive module 11 tag (`hc-phi-class` value, GOV-01 §3) of any element carried; equals the `phi_class` of the interface's topics in `topics.yaml` |
 | `interfaces[].latency_sla` | yes | Must be ≤ `ARC-NFR-001` for the pattern class |
 | `code_systems[].uri` | yes if any coded element | Registered in the Terminology Service as a `CodeSystem` (module 06) before mapping approval |
 | `data_elements_ref` | yes | Every element referenced by a mapping spec must exist here |
@@ -259,7 +262,7 @@ Every pattern lands in `hc.raw.*` with headers `hc-source-id`, `hc-interface-id`
 | 1 | Discover candidate (schema crawl, API capability statement, interface spec) | `agent.inventory` | discovery report |
 | 2 | Classify system class, system-of-record scope, overlaps with existing sources | `agent.inventory` + steward | registry draft |
 | 3 | Profile elements (types, nulls, cardinality, sample values, code distributions) in non-prod with masking | `agent.inventory` | `profiles/*.json` |
-| 4 | Auto-classify PHI/PII per element; privacy review of classification | `agent.privacy_guardian` | PHI matrix signed |
+| 4 | Auto-classify each element with a module 11 tag (`hc-phi-class` value); privacy review of classification | `agent.privacy_guardian` | PHI matrix signed |
 | 5 | Register local code systems in Terminology Service | `agent.terminology_steward` | `CodeSystem` resources |
 | 6 | Choose extraction pattern; document fallback; estimate volume and latency | Integration Engineer | interface record |
 | 7 | Allocate topics and schema subjects; register Avro/JSON schemas | module 07 | topic catalog PR |
@@ -294,7 +297,7 @@ Every pattern lands in `hc.raw.*` with headers `hc-source-id`, `hc-interface-id`
 > (fields in §4.3) in CI before merge.
 
 > **SRC-REG-003** (P0, inspection) — Every data element referenced by a mapping spec (SRC-04) MUST exist in the
-> element catalog with `phi_class`, `semantic_type` and `criticality` populated.
+> element catalog with `phi_class` (a module 11 tag, GOV-01 §3), `semantic_type` and `criticality` populated.
 
 > **SRC-REG-004** (P0, test) — Every coded element MUST reference a `code_system_ref` whose URI is registered as a
 > FHIR `CodeSystem` in the Terminology Service before the owning interface can become `active`.

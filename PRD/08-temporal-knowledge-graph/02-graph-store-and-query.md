@@ -345,13 +345,16 @@ otherwise, and enforces the ACL token of the caller (§7).
 
 ## 7. Access control at named-graph level
 
-Module 11 classifies every ontology property with a PHI class: `PHI-DIRECT` (identifiers, names, addresses),
-`PHI-CLINICAL` (conditions, meds, notes), `PHI-FINANCIAL`, `WORKFORCE-SENSITIVE`, `NON-PHI`. The store enforces:
+Module 11 classifies every ontology property with an `hc-phi-class` tag from the Table 3-A taxonomy (GOV-01 §3):
+`phi:direct` (identifiers, names, addresses), `phi:quasi` (dates, ZIP3, demographics), `phi:clinical` (conditions,
+meds, notes), `phi:sensitive-category/*` (SUD, HIV, mental health, reproductive, genetic), `pii:workforce`,
+`confidential:financial`, `confidential:operational`, `internal` and `public`. Clearance is ordered over that set as
+defined by module 11; the store enforces:
 
 | Mechanism | Rule |
 |---|---|
-| **Graph-level ACL** | Each batch graph carries `healix:phiClassMax` (highest class present). A principal MAY read a graph only if its role's clearance ≥ `phiClassMax`. Current-view graphs are split per class: `graph/current/G2` (clinical, PHI) vs `graph/current/G2-deid` (de-identified projection, Safe Harbor, maintained by module 11 jobs) |
-| **Property-level masking** | For roles with `PHI-CLINICAL` but not `PHI-DIRECT` (e.g. researchers), the facade rewrites queries to exclude `PHI-DIRECT` properties and substitutes the EMPI pseudonym IRI |
+| **Graph-level ACL** | Each batch graph carries `healix:phiClassMax` (the most restrictive module 11 tag present, e.g. `"phi:clinical"`). A principal MAY read a graph only if its role's clearance ≥ `phiClassMax`. Current-view graphs are split per class: `graph/current/G2` (`phi:clinical`, with `phi:sensitive-category/*` segmented) vs `graph/current/G2-deid` (`deidentified:safe-harbor` projection maintained by module 11 jobs) |
+| **Property-level masking** | For roles cleared for `phi:clinical` but not `phi:direct` (e.g. researchers), the facade rewrites queries to exclude `phi:direct` properties and substitutes the EMPI pseudonym IRI |
 | **Purpose binding** | Every query carries a `purpose` claim (treatment, operations, research, audit); PROV records the purpose with the query audit event (`G9 AuditEvent`) |
 | **Minimum necessary** | Default `LIMIT` and projection caps; wildcard `SELECT *` over PHI graphs is rejected for non-audit roles |
 | **Break-glass** | Emergency clinical access logs to `hc.ops.audit.break-glass.v1` and notifies the privacy office |
@@ -365,7 +368,7 @@ Module 11 classifies every ontology property with a PHI class: `PHI-DIRECT` (ide
 2. All §5 queries return the documented results on the acceptance dataset.
 3. 10 B-triple synthetic load (generator in module 12) completes with the SLOs below.
 4. SHACL rejection of a load violating TKG-TIME-001/002.
-5. ACL test: `PHI-DIRECT` graph unreadable by research role via SPARQL, GraphQL and export.
+5. ACL test: `phi:direct` graphs unreadable by the research role via SPARQL, GraphQL and export.
 
 ### 8.2 SLOs (p95 unless stated; measured on the production-shape dataset)
 
@@ -437,7 +440,7 @@ Module 11 classifies every ontology property with a PHI class: `PHI-DIRECT` (ide
 > **TKG-QUERY-004** (P0, test) — Queries with defaulted temporal arguments MUST be compiled against current-view
 > graphs; queries with explicit temporal arguments MUST be compiled against annotation patterns on batch graphs.
 
-> **TKG-QUERY-005** (P0, test) — The facade MUST rewrite queries for roles lacking `PHI-DIRECT` clearance to exclude
+> **TKG-QUERY-005** (P0, test) — The facade MUST rewrite queries for roles lacking `phi:direct` clearance to exclude
 > direct identifiers and substitute the pseudonymous EMPI IRI.
 
 > **TKG-QUERY-006** (P1, test) — Every entity type MUST expose a `history(field, from, to)` operation returning

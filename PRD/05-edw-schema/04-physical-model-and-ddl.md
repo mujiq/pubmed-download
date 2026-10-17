@@ -73,7 +73,7 @@ defaults unless `physical_options.yaml` overrides.
 | `hist_dim_*` | NUPI on `*_bk` | `RANGE_N(CAST(recorded_at AS DATE) BETWEEN DATE '2015-01-01' AND DATE '2040-12-31' EACH INTERVAL '1' MONTH)` | NUSI `(*_sk)` | BLOCKCOMPRESSION | `*_bk`, `recorded_at`, `superseded_at`, PARTITION |
 | Transaction fact (`fact_observation_result`, `fact_claim_line`, `fact_gl_journal_line`) | NUPI on **`patient_sk`** for patient-centric facts (co-locates patient joins), `claim_number` for claim lines, `journal_header_bk` for GL lines | `RANGE_N` on event date (`effective_date_sk`, `service_from_date_sk`, `accounting_date_sk`) `EACH INTERVAL '1' MONTH`, plus sub-partition on `superseded_at IS NULL` via `CASE_N` | join index to `dim_date` optional; NUSI on `*_bk` | BLOCKCOMPRESSION; MVC on `*_sk` with < 256 distinct | `patient_sk`, every `*_sk` FK, PARTITION, `(*_bk)` |
 | Accumulating snapshot (`fact_encounter`, `fact_claim_header`) | NUPI `patient_sk` | `RANGE_N` on start date (`admit_date_sk`) monthly | USI `*_bk` | BLOCKCOMPRESSION | FKs, PARTITION |
-| Periodic snapshot (`fact_inventory_balance_daily`, `fact_dq_score_daily`) | NUPI on entity key (`item_sk`) | `RANGE_N` on `snapshot_date_sk` **daily** for ≤ 2 years then monthly (`EACH INTERVAL '1' DAY` with range split) | — | BLOCKCOMPRESSION | entity key, PARTITION |
+| Periodic snapshot (`fact_inventory_balance_daily`, `fact_dq_score_daily`, `agg_dq_result_day`, `fact_dq_profile`) | NUPI on entity key (`item_sk`) | `RANGE_N` on `snapshot_date_sk` **daily** for ≤ 2 years then monthly (`EACH INTERVAL '1' DAY` with range split) | — | BLOCKCOMPRESSION | entity key, PARTITION |
 | Bridge | NUPI on parent fact key (`encounter_bk`) | `RANGE_N` on parent event date where available | NUSI on child key | MVC | both keys |
 | Reference (`ref_concept`, `ref_value_set_member`) | NUPI `code_system_version_sk` + `code` | none | USI `(code_system_sk, code, version)`; NUSI `concept_iri` | MVC | all keys |
 | Staging (`stg_*`) | NUPI `(topic, partition_no)` | `RANGE_N` on `event_date` daily, 90-day sliding | — | BLOCKCOMPRESSION | PARTITION |
@@ -204,18 +204,18 @@ with each release) and publishes the same to G9 `dim_data_element`.
       "columns": [
         {
           "name": "encounter_sk", "type": "BIGINT", "nullable": false, "role": "surrogate_key",
-          "phi_class": "none", "ontology_property_iri": null, "ontology_class_iri": "https://ontology.healix.example.org/clinical/Encounter"
+          "phi_class": "internal", "ontology_property_iri": null, "ontology_class_iri": "https://ontology.healix.example.org/clinical/Encounter"
         },
         {
           "name": "admit_ts", "type": "TIMESTAMP", "nullable": true, "role": "milestone",
-          "phi_class": "phi_quasi",
+          "phi_class": "phi:quasi",
           "ontology_property_iri": "https://ontology.healix.example.org/clinical/admitDateTime",
           "source_fhir_path": "Encounter.period.start", "nullable_reason": "milestone-not-reached"
         },
         {
           "name": "encounter_class_sk", "type": "BIGINT", "nullable": false, "role": "foreign_key",
           "references": {"schema": "edw_g2_clinical", "table": "dim_encounter_class", "column": "encounter_class_sk"},
-          "phi_class": "none",
+          "phi_class": "phi:clinical",
           "ontology_property_iri": "https://ontology.healix.example.org/clinical/encounterClass",
           "value_set_iri": "https://ontology.healix.example.org/scheme/encounter-class",
           "code_system_uri": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
@@ -223,7 +223,7 @@ with each release) and publishes the same to G9 `dim_data_element`.
         },
         {
           "name": "prov_activity_iri", "type": "VARCHAR(512)", "nullable": false, "role": "technical",
-          "phi_class": "none", "ontology_property_iri": "http://www.w3.org/ns/prov#wasGeneratedBy"
+          "phi_class": "internal", "ontology_property_iri": "http://www.w3.org/ns/prov#wasGeneratedBy"
         }
       ],
       "constraints": [
@@ -237,7 +237,7 @@ with each release) and publishes the same to G9 `dim_data_element`.
 ```
 
 JSON Schema for this document lives at `ddl/dictionary/schema.json` (generated with the first release). Key
-constraints: `columns[].role` ∈ the enumeration in `03-logical-model.md` §5; `phi_class` required; `ontology_property_iri`
+constraints: `columns[].role` ∈ the enumeration in `03-logical-model.md` §5; `phi_class` required and ∈ the module-11 taxonomy (`03-logical-model.md` §6); `ontology_property_iri`
 required unless `role ∈ {technical, bitemporal, surrogate_key}`.
 
 > **EDW-DICT-001** (P0, test) — A data dictionary JSON MUST be generated for every presentation schema on every DDL
@@ -261,7 +261,7 @@ Generated views, one family per fact:
 |------|---------|
 | `v_<fact>` | fact joined to current dimension rows, codes resolved to preferred labels from `dim_code` |
 | `v_<fact>_asof(valid_ts, recorded_ts)` | table function (or parameterised view where TF unsupported) applying bitemporal predicates (`06-history-and-bitemporality.md` §4) |
-| `v_deid_<fact>` | de-identified projection: `phi_direct` dropped, `phi_quasi` generalised (year of birth, 3-digit ZIP, date-shifted), `phi_sensitive` filtered by consent |
+| `v_deid_<fact>` | `deidentified:safe-harbor` projection: `phi:direct` dropped, `phi:quasi` generalised (year of birth, 3-digit ZIP, date-shifted), `phi:sensitive-category/*` rows filtered by consent, `pii:workforce` dropped; output tagged `deidentified:safe-harbor` |
 | `v_<dim>_current` | current version of a dimension |
 | `v_<dim>_hierarchy` | flattened hierarchy for BI tools |
 

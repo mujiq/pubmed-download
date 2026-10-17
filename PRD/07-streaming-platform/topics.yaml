@@ -2,7 +2,8 @@
 # Schema: topics.schema.json (JSON Schema 2020-12). Validation command: see 02-topic-catalog.md section 8.
 # Naming: hc.<layer>.<domain>[.<subdomain>].<entity>.<event-or-format>.v<N>  (CONVENTIONS.md section 3).
 # Generated from the catalog definition; edit via a change request (hc.ops.agent.changerequest.v1), not by hand.
-catalog_version: 0.1.0
+# phi_class values are the module 11 taxonomy (hc-phi-class header values); a topic carries the most restrictive class of its records.
+catalog_version: 0.3.0
 last_updated: "2026-10-17"
 owner: Data Platform (module 07)
 defaults:
@@ -31,7 +32,8 @@ defaults:
     kg: FULL
     edw: FULL
     ops: BACKWARD
-  phi_classes: [phi, phi-limited, de-identified, pii, non-phi]
+  # phi_classes = module 11 data-classification taxonomy (11-governance-security-compliance/01-hipaa-phi-and-privacy.md section 3)
+  phi_classes: ["phi:direct", "phi:sensitive-category", "phi:sensitive-category/sud", "phi:sensitive-category/hiv", "phi:sensitive-category/mental-health", "phi:sensitive-category/reproductive", "phi:sensitive-category/genetic", "phi:clinical", "phi:quasi", "pseudonymised", "pii:workforce", "confidential:financial", "confidential:operational", "deidentified:expert", "deidentified:safe-harbor", "internal", "public"]
   key_formats: [string, avro]
   value_formats: [avro, avro-envelope, fhir-json, fhir-ext-json, json, protobuf]
 topics:
@@ -48,7 +50,7 @@ topics:
     compatibility: BACKWARD
     partitions: 24
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.mllp-cerner"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Admit/discharge/transfer, registration, merge and update events as received over MLLP. Immutable as-received bytes/rows with provenance headers."
@@ -65,7 +67,7 @@ topics:
     compatibility: BACKWARD
     partitions: 24
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Admit/discharge/transfer, registration, merge and update events as received over MLLP. HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -82,7 +84,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.mllp-cerner"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: General, lab and pharmacy order messages (ORM^O01, OMG^O19, OMP^O09). Immutable as-received bytes/rows with provenance headers."
@@ -99,7 +101,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: General, lab and pharmacy order messages (ORM^O01, OMG^O19, OMP^O09). HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -116,7 +118,7 @@ topics:
     compatibility: BACKWARD
     partitions: 24
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.mllp-cerner"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Observation results (labs, vitals, microbiology) originating in Millennium. Immutable as-received bytes/rows with provenance headers."
@@ -133,7 +135,7 @@ topics:
     compatibility: BACKWARD
     partitions: 24
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Observation results (labs, vitals, microbiology) originating in Millennium. HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -150,7 +152,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.mllp-cerner"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Scheduling notifications (book, modify, cancel, no-show). Immutable as-received bytes/rows with provenance headers."
@@ -167,7 +169,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Scheduling notifications (book, modify, cancel, no-show). HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -184,7 +186,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.mllp-cerner"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Clinical document notifications with embedded or referenced content. Immutable as-received bytes/rows with provenance headers."
@@ -201,7 +203,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Clinical document notifications with embedded or referenced content. HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -218,7 +220,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.mllp-cerner"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Detailed financial transactions (charges, credits). Immutable as-received bytes/rows with provenance headers."
@@ -235,7 +237,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Detailed financial transactions (charges, credits). HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -252,7 +254,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.mllp-cerner"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Pharmacy encoded orders (RDE^O11) and administrations (RAS^O17). Immutable as-received bytes/rows with provenance headers."
@@ -269,7 +271,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Pharmacy encoded orders (RDE^O11) and administrations (RAS^O17). HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -286,7 +288,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.mllp-cerner"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Immunization administered/historical records. Immutable as-received bytes/rows with provenance headers."
@@ -303,7 +305,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Immunization administered/historical records. HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -320,7 +322,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["connect.mllp-cerner"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Master file notifications for practitioners, locations and observation definitions. Immutable as-received bytes/rows with provenance headers."
@@ -337,7 +339,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Master file notifications for practitioners, locations and observation definitions. HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -354,7 +356,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.debezium-millennium"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Row-level CDC of PERSON and PERSON_ALIAS (MRN, SSN alias types). Immutable as-received bytes/rows with provenance headers."
@@ -371,7 +373,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Row-level CDC of PERSON and PERSON_ALIAS (MRN, SSN alias types). Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -388,7 +390,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.debezium-millennium"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Row-level CDC of ENCOUNTER, ENCNTR_ALIAS, ENCNTR_LOC_HIST. Immutable as-received bytes/rows with provenance headers."
@@ -405,7 +407,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Row-level CDC of ENCOUNTER, ENCNTR_ALIAS, ENCNTR_LOC_HIST. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -422,7 +424,7 @@ topics:
     compatibility: BACKWARD
     partitions: 24
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.debezium-millennium"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Row-level CDC of CLINICAL_EVENT and its blob/coded/string/date extension tables. Immutable as-received bytes/rows with provenance headers."
@@ -439,7 +441,7 @@ topics:
     compatibility: BACKWARD
     partitions: 24
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Row-level CDC of CLINICAL_EVENT and its blob/coded/string/date extension tables. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -456,7 +458,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.debezium-millennium"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Row-level CDC of ORDERS, ORDER_ACTION, ORDER_DETAIL. Immutable as-received bytes/rows with provenance headers."
@@ -473,7 +475,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Row-level CDC of ORDERS, ORDER_ACTION, ORDER_DETAIL. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -490,7 +492,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.debezium-millennium"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Row-level CDC of encounter and problem-list diagnoses. Immutable as-received bytes/rows with provenance headers."
@@ -507,7 +509,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Row-level CDC of encounter and problem-list diagnoses. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -524,7 +526,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.debezium-millennium"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Row-level CDC of coded procedures. Immutable as-received bytes/rows with provenance headers."
@@ -541,7 +543,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Row-level CDC of coded procedures. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -558,7 +560,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.debezium-millennium"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Row-level CDC of allergies and reactions. Immutable as-received bytes/rows with provenance headers."
@@ -575,7 +577,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Row-level CDC of allergies and reactions. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -592,7 +594,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["connect.debezium-millennium"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Row-level CDC of personnel (practitioner) records and NPI/DEA aliases. Immutable as-received bytes/rows with provenance headers."
@@ -609,7 +611,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Row-level CDC of personnel (practitioner) records and NPI/DEA aliases. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -626,7 +628,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["connect.debezium-millennium"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Row-level CDC of organizations (payers, employers, facilities). Immutable as-received bytes/rows with provenance headers."
@@ -643,7 +645,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Row-level CDC of organizations (payers, employers, facilities). Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -660,7 +662,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["connect.debezium-millennium"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Row-level CDC of Millennium code sets (reference data). Immutable as-received bytes/rows with provenance headers."
@@ -677,7 +679,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Row-level CDC of Millennium code sets (reference data). Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -694,7 +696,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.fhir-bulk-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Bulk FHIR NDJSON lines per resource type for gap-fill and reconciliation. Immutable as-received bytes/rows with provenance headers."
@@ -711,7 +713,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Bulk FHIR NDJSON lines per resource type for gap-fill and reconciliation. FHIR R4 JSON validated for syntax and base-spec conformance; profile validation happens in canonical."
@@ -728,7 +730,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["connect.bicc-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: General ledger journal lines (posted and unposted). Immutable as-received bytes/rows with provenance headers."
@@ -745,7 +747,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: General ledger journal lines (posted and unposted). Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -762,7 +764,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["connect.bicc-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Chart-of-accounts code combinations (ledger, segments, cost centre). Immutable as-received bytes/rows with provenance headers."
@@ -779,7 +781,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Chart-of-accounts code combinations (ledger, segments, cost centre). Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -796,7 +798,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["connect.bicc-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Payables invoices and lines. Immutable as-received bytes/rows with provenance headers."
@@ -813,7 +815,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Payables invoices and lines. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -830,7 +832,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["connect.bicc-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Purchase order headers and lines (flattened). Immutable as-received bytes/rows with provenance headers."
@@ -847,7 +849,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Purchase order headers and lines (flattened). Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -864,7 +866,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["connect.bicc-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Receiving transactions against purchase orders. Immutable as-received bytes/rows with provenance headers."
@@ -881,7 +883,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Receiving transactions against purchase orders. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -898,7 +900,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["connect.bicc-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Item master including UNSPSC, GTIN and par attributes. Immutable as-received bytes/rows with provenance headers."
@@ -915,7 +917,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Item master including UNSPSC, GTIN and par attributes. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -932,7 +934,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: confidential:operational
     producers: ["connect.bicc-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: On-hand quantities per item, organization, subinventory and locator. Immutable as-received bytes/rows with provenance headers."
@@ -949,7 +951,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: confidential:operational
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: On-hand quantities per item, organization, subinventory and locator. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -966,7 +968,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["connect.bicc-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Supplier master and supplier sites. Immutable as-received bytes/rows with provenance headers."
@@ -983,7 +985,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Supplier master and supplier sites. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -1000,7 +1002,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["connect.bicc-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Worker (employee/contingent) person records. Immutable as-received bytes/rows with provenance headers."
@@ -1017,7 +1019,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Worker (employee/contingent) person records. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -1034,7 +1036,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["connect.bicc-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Worker assignments (job, grade, department, manager, FTE). Immutable as-received bytes/rows with provenance headers."
@@ -1051,7 +1053,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Worker assignments (job, grade, department, manager, FTE). Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -1068,7 +1070,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["connect.bicc-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Positions, headcount and position hierarchy. Immutable as-received bytes/rows with provenance headers."
@@ -1085,7 +1087,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Positions, headcount and position hierarchy. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -1102,7 +1104,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["connect.bicc-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Fixed assets, books and locations. Immutable as-received bytes/rows with provenance headers."
@@ -1119,7 +1121,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Fixed assets, books and locations. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -1136,7 +1138,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.mllp-lis"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Laboratory results from the laboratory information system. Immutable as-received bytes/rows with provenance headers."
@@ -1153,7 +1155,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Laboratory results from the laboratory information system. HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -1170,7 +1172,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.mllp-ris"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Radiology reports (preliminary/final) from the RIS. Immutable as-received bytes/rows with provenance headers."
@@ -1187,7 +1189,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Radiology reports (preliminary/final) from the RIS. HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -1204,7 +1206,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.pacs-dicomweb-poller"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Imaging study metadata (no pixel data). Immutable as-received bytes/rows with provenance headers."
@@ -1221,7 +1223,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Imaging study metadata (no pixel data). Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -1238,7 +1240,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.mllp-pharmacy"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Dispense events from the pharmacy system/ADC. Immutable as-received bytes/rows with provenance headers."
@@ -1255,7 +1257,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Dispense events from the pharmacy system/ADC. HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -1272,7 +1274,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.x12-sftp-as2"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Professional and institutional claim transactions as submitted. Immutable as-received bytes/rows with provenance headers."
@@ -1289,7 +1291,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Professional and institutional claim transactions as submitted. X12 transaction parsed into the typed Avro loop/segment model."
@@ -1306,7 +1308,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.x12-sftp-as2"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Electronic remittance advice. Immutable as-received bytes/rows with provenance headers."
@@ -1323,7 +1325,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Electronic remittance advice. X12 transaction parsed into the typed Avro loop/segment model."
@@ -1340,7 +1342,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.x12-sftp-as2"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Claim acknowledgement and status. Immutable as-received bytes/rows with provenance headers."
@@ -1357,7 +1359,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Claim acknowledgement and status. X12 transaction parsed into the typed Avro loop/segment model."
@@ -1374,7 +1376,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.x12-sftp-as2"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Eligibility and benefit responses. Immutable as-received bytes/rows with provenance headers."
@@ -1391,7 +1393,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Eligibility and benefit responses. X12 transaction parsed into the typed Avro loop/segment model."
@@ -1408,7 +1410,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.x12-sftp-as2"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Prior authorization responses. Immutable as-received bytes/rows with provenance headers."
@@ -1425,7 +1427,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Prior authorization responses. X12 transaction parsed into the typed Avro loop/segment model."
@@ -1442,7 +1444,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.sftp-file"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Monthly member attribution rosters (CSV). Immutable as-received bytes/rows with provenance headers."
@@ -1459,7 +1461,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Monthly member attribution rosters (CSV). CSV rows parsed into typed Avro records with header-driven column binding."
@@ -1476,7 +1478,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.hie-ihe-xds"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Inbound C-CDA documents (CCD, discharge summary, referral note). Immutable as-received bytes/rows with provenance headers."
@@ -1493,7 +1495,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Inbound C-CDA documents (CCD, discharge summary, referral note). Document parsed into a typed Avro section/entry model."
@@ -1510,7 +1512,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.mllp-hie"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Encounter notifications for attributed patients seen elsewhere. Immutable as-received bytes/rows with provenance headers."
@@ -1527,7 +1529,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Encounter notifications for attributed patients seen elsewhere. HL7 v2 parsed into the Avro segment/field model with structural validation verdict."
@@ -1544,7 +1546,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.fhir-subscription-bridge"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Patient-reported outcomes and intake forms. Immutable as-received bytes/rows with provenance headers."
@@ -1561,7 +1563,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Patient-reported outcomes and intake forms. FHIR R4 JSON validated for syntax and base-spec conformance; profile validation happens in canonical."
@@ -1578,7 +1580,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.device-gateway"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Bedside monitor, infusion pump and ventilator observations. Immutable as-received bytes/rows with provenance headers."
@@ -1595,7 +1597,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Bedside monitor, infusion pump and ventilator observations. Typed Avro rows (CDC/extract) with schema-registered types, before/after images and op code."
@@ -1612,7 +1614,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["connect.sftp-file"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Licences, board certifications and privileges. Immutable as-received bytes/rows with provenance headers."
@@ -1629,7 +1631,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Licences, board certifications and privileges. CSV rows parsed into typed Avro records with header-driven column binding."
@@ -1646,7 +1648,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["connect.sftp-file"]
     consumers: ["proc.parser", "sink.archive"]
     description: "RAW: Approved timecards and shifts. Immutable as-received bytes/rows with provenance headers."
@@ -1663,7 +1665,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 1209600000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.parser"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator"]
     description: "STD: Approved timecards and shifts. CSV rows parsed into typed Avro records with header-driven column binding."
@@ -1679,7 +1681,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.hl7v2-outbound"]
     consumers: ["connect.mllp-outbound", "sink.archive"]
     description: "OUTBOUND: Outbound ADT feed generated from canonical Encounter/Patient for legacy consumers."
@@ -1695,7 +1697,7 @@ topics:
     compatibility: BACKWARD
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.hl7v2-outbound"]
     consumers: ["connect.mllp-outbound", "sink.archive"]
     description: "OUTBOUND: Outbound ORU^R01 generated from canonical Observation/DiagnosticReport."
@@ -1711,7 +1713,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.canonicaliser", "proc.enricher"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive", "proc.hl7v2-outbound"]
     description: "CANONICAL (Patient (US Core)): Enterprise patient after EMPI linkage. Event topic: one record per resource version."
@@ -1727,7 +1729,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     cleanup_policy: compact
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.snapshot-compactor"]
     consumers: ["proc.enricher", "proc.canonicaliser", "sink.kg-sparql", "sink.edw"]
     description: "CANONICAL SNAPSHOT (Patient (US Core)): latest resource version per key; tombstone on merge/delete."
@@ -1743,7 +1745,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Practitioner (US Core)): Clinicians from Millennium PRSNL, HCM and credentialing. Event topic: one record per resource version."
@@ -1759,7 +1761,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     cleanup_policy: compact
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.snapshot-compactor"]
     consumers: ["proc.enricher", "proc.canonicaliser", "sink.kg-sparql", "sink.edw"]
     description: "CANONICAL SNAPSHOT (Practitioner (US Core)): latest resource version per key; tombstone on merge/delete."
@@ -1775,7 +1777,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (PractitionerRole (US Core)): Roles, specialties and locations per practitioner. Event topic: one record per resource version."
@@ -1791,7 +1793,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: public
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Organization (US Core)): Facilities, departments, payers, suppliers. Event topic: one record per resource version."
@@ -1807,7 +1809,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     cleanup_policy: compact
-    phi_class: non-phi
+    phi_class: public
     producers: ["proc.snapshot-compactor"]
     consumers: ["proc.enricher", "proc.canonicaliser", "sink.kg-sparql", "sink.edw"]
     description: "CANONICAL SNAPSHOT (Organization (US Core)): latest resource version per key; tombstone on merge/delete."
@@ -1823,7 +1825,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Location (US Core)): Buildings, units, rooms, beds, storerooms. Event topic: one record per resource version."
@@ -1839,7 +1841,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     cleanup_policy: compact
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.snapshot-compactor"]
     consumers: ["proc.enricher", "proc.canonicaliser", "sink.kg-sparql", "sink.edw"]
     description: "CANONICAL SNAPSHOT (Location (US Core)): latest resource version per key; tombstone on merge/delete."
@@ -1855,7 +1857,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (RelatedPerson): Guarantors, next of kin, caregivers. Event topic: one record per resource version."
@@ -1871,7 +1873,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 24
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive", "proc.hl7v2-outbound"]
     description: "CANONICAL (Encounter (US Core)): Encounters with class, status, locations and participants. Event topic: one record per resource version."
@@ -1887,7 +1889,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 24
     cleanup_policy: compact
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.snapshot-compactor"]
     consumers: ["proc.enricher", "proc.canonicaliser", "sink.kg-sparql", "sink.edw"]
     description: "CANONICAL SNAPSHOT (Encounter (US Core)): latest resource version per key; tombstone on merge/delete."
@@ -1903,7 +1905,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Condition (US Core)): Problems and encounter diagnoses. Event topic: one record per resource version."
@@ -1919,7 +1921,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Procedure (US Core)): Performed procedures (CPT/ICD-10-PCS/SNOMED). Event topic: one record per resource version."
@@ -1935,7 +1937,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 48
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive", "proc.hl7v2-outbound"]
     description: "CANONICAL (Observation (US Core Lab/Vitals)): Labs, vitals, device observations. Event topic: one record per resource version."
@@ -1951,7 +1953,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive", "proc.hl7v2-outbound"]
     description: "CANONICAL (DiagnosticReport (US Core)): Lab panels and imaging/pathology reports. Event topic: one record per resource version."
@@ -1967,7 +1969,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (ServiceRequest (US Core)): Orders and referrals. Event topic: one record per resource version."
@@ -1983,7 +1985,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (MedicationRequest (US Core)): Prescriptions and inpatient medication orders. Event topic: one record per resource version."
@@ -1999,7 +2001,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (MedicationDispense): Pharmacy dispenses. Event topic: one record per resource version."
@@ -2015,7 +2017,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (MedicationAdministration): Barcode medication administrations. Event topic: one record per resource version."
@@ -2031,7 +2033,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (AllergyIntolerance (US Core)): Allergies and intolerances. Event topic: one record per resource version."
@@ -2047,7 +2049,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Immunization (US Core)): Administered and historical immunizations. Event topic: one record per resource version."
@@ -2063,7 +2065,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (DocumentReference (US Core)): Clinical notes and C-CDA documents (content by reference). Event topic: one record per resource version."
@@ -2079,7 +2081,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Specimen): Specimens linked to orders and results. Event topic: one record per resource version."
@@ -2095,7 +2097,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (ImagingStudy): Imaging study metadata. Event topic: one record per resource version."
@@ -2111,7 +2113,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Account): Patient and guarantor accounts. Event topic: one record per resource version."
@@ -2127,7 +2129,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     cleanup_policy: compact
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.snapshot-compactor"]
     consumers: ["proc.enricher", "proc.canonicaliser", "sink.kg-sparql", "sink.edw"]
     description: "CANONICAL SNAPSHOT (Account): latest resource version per key; tombstone on merge/delete."
@@ -2143,7 +2145,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (ChargeItem): Charges and credits from DFT and ERP billing. Event topic: one record per resource version."
@@ -2159,7 +2161,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Claim): Submitted claims (from 837 and RCM). Event topic: one record per resource version."
@@ -2175,7 +2177,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (ClaimResponse): Adjudication results (277/835 derived). Event topic: one record per resource version."
@@ -2191,7 +2193,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (PaymentReconciliation): Remittance payments and adjustments. Event topic: one record per resource version."
@@ -2207,7 +2209,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Coverage (US Core)): Insurance coverage and eligibility results. Event topic: one record per resource version."
@@ -2223,7 +2225,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     cleanup_policy: compact
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.snapshot-compactor"]
     consumers: ["proc.enricher", "proc.canonicaliser", "sink.kg-sparql", "sink.edw"]
     description: "CANONICAL SNAPSHOT (Coverage (US Core)): latest resource version per key; tombstone on merge/delete."
@@ -2239,7 +2241,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi-limited
+    phi_class: phi:quasi
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Invoice): Patient statements and ERP AP/AR invoices. Event topic: one record per resource version."
@@ -2255,7 +2257,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (HEALIX-ERP GLJournalLine): General ledger journal lines. Event topic: one record per resource version."
@@ -2271,7 +2273,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (HEALIX-ERP FixedAsset): Capital assets and depreciation books. Event topic: one record per resource version."
@@ -2287,7 +2289,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (HEALIX-ERP Item): Item master. Event topic: one record per resource version."
@@ -2303,7 +2305,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     cleanup_policy: compact
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.snapshot-compactor"]
     consumers: ["proc.enricher", "proc.canonicaliser", "sink.kg-sparql", "sink.edw"]
     description: "CANONICAL SNAPSHOT (HEALIX-ERP Item): latest resource version per key; tombstone on merge/delete."
@@ -2319,7 +2321,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: confidential:operational
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (HEALIX-ERP InventoryBalance): On-hand balances per item and location. Event topic: one record per resource version."
@@ -2335,7 +2337,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: confidential:financial
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (HEALIX-ERP PurchaseOrderLine): Purchase order lines and receipts. Event topic: one record per resource version."
@@ -2351,7 +2353,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: confidential:operational
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (SupplyRequest): Replenishment and par requests. Event topic: one record per resource version."
@@ -2367,7 +2369,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi-limited
+    phi_class: phi:quasi
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (SupplyDelivery): Deliveries to locations or patients. Event topic: one record per resource version."
@@ -2383,7 +2385,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 12
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Appointment): Scheduled appointments (from SIU). Event topic: one record per resource version."
@@ -2399,7 +2401,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: confidential:operational
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Schedule/Slot): Schedules and slots per location/practitioner. Event topic: one record per resource version."
@@ -2415,7 +2417,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (HEALIX-ERP Worker): Workers from Oracle HCM. Event topic: one record per resource version."
@@ -2431,7 +2433,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     cleanup_policy: compact
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.snapshot-compactor"]
     consumers: ["proc.enricher", "proc.canonicaliser", "sink.kg-sparql", "sink.edw"]
     description: "CANONICAL SNAPSHOT (HEALIX-ERP Worker): latest resource version per key; tombstone on merge/delete."
@@ -2447,7 +2449,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (HEALIX-ERP Assignment): Assignments (job, department, FTE, manager). Event topic: one record per resource version."
@@ -2463,7 +2465,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (HEALIX-ERP Position): Positions and hierarchy. Event topic: one record per resource version."
@@ -2479,7 +2481,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (HEALIX-ERP Credential): Licences, certifications, privileges. Event topic: one record per resource version."
@@ -2495,7 +2497,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (HEALIX-ERP Timecard): Approved shifts and hours. Event topic: one record per resource version."
@@ -2511,7 +2513,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: phi-limited
+    phi_class: phi:quasi
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (MeasureReport): Quality measure results per population/period. Event topic: one record per resource version."
@@ -2527,7 +2529,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Observation (SDOH Clinical Care)): Social determinants screening observations. Event topic: one record per resource version."
@@ -2543,7 +2545,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (HEALIX CareGap): Open/closed care gaps per patient and measure. Event topic: one record per resource version."
@@ -2559,7 +2561,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (HEALIX Attribution): Payer/program attribution per patient. Event topic: one record per resource version."
@@ -2575,7 +2577,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (ResearchStudy): Studies and protocols. Event topic: one record per resource version."
@@ -2591,7 +2593,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (ResearchSubject): Enrolled subjects. Event topic: one record per resource version."
@@ -2607,7 +2609,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.canonicaliser"]
     consumers: ["proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector", "sink.archive"]
     description: "CANONICAL (Consent): Research and privacy consents. Event topic: one record per resource version."
@@ -2623,7 +2625,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     cleanup_policy: compact
-    phi_class: non-phi
+    phi_class: public
     producers: ["svc.terminology-publisher"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector"]
     description: "CANONICAL (CodeSystem): Code systems published by the Terminology Service. Compacted: latest version per key is the authoritative snapshot."
@@ -2639,7 +2641,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     cleanup_policy: compact
-    phi_class: non-phi
+    phi_class: public
     producers: ["svc.terminology-publisher"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector"]
     description: "CANONICAL (ValueSet): Enterprise value sets (expansions by reference). Compacted: latest version per key is the authoritative snapshot."
@@ -2655,10 +2657,26 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     cleanup_policy: compact
-    phi_class: non-phi
+    phi_class: public
     producers: ["svc.terminology-publisher"]
     consumers: ["proc.canonicaliser", "proc.dq-evaluator", "proc.temporal-splitter", "proc.edw-projector"]
     description: "CANONICAL (ConceptMap): Source-to-enterprise concept maps. Compacted: latest version per key is the authoritative snapshot."
+  - name: hc.canonical.governance.provenance.fhir.v1
+    layer: "canonical"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "anchor resource key (<resource-type>/<logical-id>) of the resource version the Provenance targets"
+    key_format: string
+    value_format: fhir-json
+    schema_subject: hc.canonical.governance.provenance.fhir.v1-value
+    compatibility: BACKWARD_TRANSITIVE
+    partitions: 12
+    retention_ms: 7776000000
+    phi_class: phi:quasi
+    producers: ["proc.canonicaliser"]
+    consumers: ["sink.kg-sparql", "sink.edw", "svc.lineage", "agent.privacy_guardian"]
+    description: "CANONICAL (Provenance, G9): one healix-provenance Provenance per canonical resource version (agent, activity, mapping and TS release ids, source record coordinates), fanned out from the Bundle by the canonical router (module 06 IOP-01 section 6). Targets are resource references only, no payload copy."
   - name: hc.dq.result.v1
     layer: "dq"
     domain: "governance"
@@ -2671,7 +2689,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 24
     retention_ms: 7776000000
-    phi_class: phi-limited
+    phi_class: phi:quasi
     producers: ["proc.dq-evaluator"]
     consumers: ["sink.edw", "sink.kg-sparql", "agent.dq_monitor"]
     description: "DQ: one result per (rule, record): verdict, score, dimension, rule version, evaluated key and topic/offset pointer. No payload copy."
@@ -2687,7 +2705,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     retention_ms: 7776000000
-    phi_class: phi-limited
+    phi_class: phi:quasi
     producers: ["proc.dq-evaluator", "agent.dq_monitor"]
     consumers: ["agent.remediator", "sink.edw", "agent.orchestrator"]
     description: "DQ: aggregated issues (anomaly, drift, threshold breach) with remediation ticket lifecycle events."
@@ -2703,7 +2721,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     cleanup_policy: compact
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.dq-evaluator"]
     consumers: ["sink.edw", "agent.dq_monitor"]
     description: "DQ: compacted per-scope composite DQ index and dimension scores for the latest period."
@@ -2719,10 +2737,10 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 3
     cleanup_policy: compact
-    phi_class: non-phi
+    phi_class: internal
     producers: ["ci.gitops", "agent.release_manager"]
     consumers: ["proc.dq-evaluator"]
-    description: "DQ: compacted active rule pack versions broadcast to evaluators (rule id -> version, threshold, status)."
+    description: "DQ: compacted activation state per rule id (active/suspended/retired, blocking threshold, pack version) derived from hc.ops.dq.rulepack.v1 releases; the compiled rule bodies travel on the rulepack control topic."
   - name: hc.dq.quarantine.party.v1
     layer: "dq"
     domain: "party"
@@ -2735,7 +2753,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.dq-evaluator"]
     consumers: ["agent.remediator", "sink.archive", "sink.edw"]
     description: "DQ QUARANTINE (G1): canonical records that failed a blocking rule, wrapped with failing rule ids and remediation state."
@@ -2751,7 +2769,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.dq-evaluator"]
     consumers: ["agent.remediator", "sink.archive", "sink.edw"]
     description: "DQ QUARANTINE (G2): canonical records that failed a blocking rule, wrapped with failing rule ids and remediation state."
@@ -2767,7 +2785,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.dq-evaluator"]
     consumers: ["agent.remediator", "sink.archive", "sink.edw"]
     description: "DQ QUARANTINE (G3): canonical records that failed a blocking rule, wrapped with failing rule ids and remediation state."
@@ -2783,7 +2801,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: phi:clinical
     producers: ["proc.dq-evaluator"]
     consumers: ["agent.remediator", "sink.archive", "sink.edw"]
     description: "DQ QUARANTINE (G4): canonical records that failed a blocking rule, wrapped with failing rule ids and remediation state."
@@ -2799,7 +2817,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.dq-evaluator"]
     consumers: ["agent.remediator", "sink.archive", "sink.edw"]
     description: "DQ QUARANTINE (G5): canonical records that failed a blocking rule, wrapped with failing rule ids and remediation state."
@@ -2815,7 +2833,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.dq-evaluator"]
     consumers: ["agent.remediator", "sink.archive", "sink.edw"]
     description: "DQ QUARANTINE (G6): canonical records that failed a blocking rule, wrapped with failing rule ids and remediation state."
@@ -2831,7 +2849,7 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.dq-evaluator"]
     consumers: ["agent.remediator", "sink.archive", "sink.edw"]
     description: "DQ QUARANTINE (G7): canonical records that failed a blocking rule, wrapped with failing rule ids and remediation state."
@@ -2847,10 +2865,170 @@ topics:
     compatibility: BACKWARD_TRANSITIVE
     partitions: 6
     retention_ms: 7776000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.dq-evaluator"]
     consumers: ["agent.remediator", "sink.archive", "sink.edw"]
     description: "DQ QUARANTINE (G8): canonical records that failed a blocking rule, wrapped with failing rule ids and remediation state."
+  - name: hc.dq.validation.v1
+    layer: "dq"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "same key as the validated canonical record"
+    key_format: string
+    value_format: fhir-json
+    schema_subject: hc.dq.validation.v1-value
+    compatibility: BACKWARD_TRANSITIVE
+    partitions: 24
+    retention_ms: 7776000000
+    phi_class: phi:quasi
+    producers: ["proc.canonicaliser"]
+    consumers: ["sink.edw", "sink.kg-sparql", "agent.dq_monitor"]
+    description: "DQ: one FHIR OperationOutcome (profile healix-validation-outcome) per validated canonical record, pass or fail, with the validated resource reference and the validator, IG, TS release and SHACL shape versions used (module 06 IOP-05 section 2.1). Stage verdicts are additionally mirrored as hc.dq.result.v1 rows keyed by the IOP-* code; no payload copy."
+  - name: hc.dq.quarantine.governance.v1
+    layer: "dq"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "same key as the quarantined canonical record"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.dq.quarantine.governance.v1-value
+    compatibility: BACKWARD_TRANSITIVE
+    partitions: 3
+    retention_ms: 7776000000
+    phi_class: phi:direct
+    producers: ["proc.canonicaliser", "proc.dq-evaluator"]
+    consumers: ["agent.privacy_guardian", "sink.archive"]
+    description: "DQ QUARANTINE (G9, restricted ACL): records failing a privacy (PRIV) validation rule - prohibited identifier present, unclassified Z-field, purpose-of-use missing - wrapped with failing rule ids and remediation state. Readable only by agent.privacy_guardian and the privacy office; never visible to general DQ consumers (module 06 IOP-VAL-013)."
+  - name: hc.dq.passed.party.v1
+    layer: "dq"
+    domain: "party"
+    group: "G1"
+    owner: "G1 Party & Identity stewards"
+    key: "same key as the evaluated canonical record"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.dq.passed.party.v1-value
+    compatibility: BACKWARD_TRANSITIVE
+    partitions: 12
+    retention_ms: 7776000000
+    phi_class: phi:direct
+    producers: ["proc.dq-evaluator"]
+    consumers: ["proc.temporal-splitter", "proc.edw-projector", "sink.kg-sparql", "sink.edw"]
+    description: "DQ PASSED (G1): canonical records that passed all blocking rules, wrapped in the DQ envelope and forwarded to the KG and EDW sinks with headers hc-dq-status (pass, fail-critical, fail-major, fail-minor) and hc-dq-failed-rules (module 09 DQ-03 section 3.2)."
+  - name: hc.dq.passed.clinical.v1
+    layer: "dq"
+    domain: "clinical"
+    group: "G2"
+    owner: "G2 Clinical data stewards"
+    key: "same key as the evaluated canonical record"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.dq.passed.clinical.v1-value
+    compatibility: BACKWARD_TRANSITIVE
+    partitions: 48
+    retention_ms: 7776000000
+    phi_class: phi:clinical
+    producers: ["proc.dq-evaluator"]
+    consumers: ["proc.temporal-splitter", "proc.edw-projector", "sink.kg-sparql", "sink.edw"]
+    description: "DQ PASSED (G2): canonical records that passed all blocking rules, wrapped in the DQ envelope and forwarded to the KG and EDW sinks with headers hc-dq-status (pass, fail-critical, fail-major, fail-minor) and hc-dq-failed-rules (module 09 DQ-03 section 3.2)."
+  - name: hc.dq.passed.finance.v1
+    layer: "dq"
+    domain: "finance"
+    group: "G3"
+    owner: "G3 Revenue Cycle & Finance stewards"
+    key: "same key as the evaluated canonical record"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.dq.passed.finance.v1-value
+    compatibility: BACKWARD_TRANSITIVE
+    partitions: 12
+    retention_ms: 7776000000
+    phi_class: phi:direct
+    producers: ["proc.dq-evaluator"]
+    consumers: ["proc.temporal-splitter", "proc.edw-projector", "sink.kg-sparql", "sink.edw"]
+    description: "DQ PASSED (G3): canonical records that passed all blocking rules, wrapped in the DQ envelope and forwarded to the KG and EDW sinks with headers hc-dq-status (pass, fail-critical, fail-major, fail-minor) and hc-dq-failed-rules (module 09 DQ-03 section 3.2)."
+  - name: hc.dq.passed.supply.v1
+    layer: "dq"
+    domain: "supply"
+    group: "G4"
+    owner: "G4 Supply Chain & Operations stewards"
+    key: "same key as the evaluated canonical record"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.dq.passed.supply.v1-value
+    compatibility: BACKWARD_TRANSITIVE
+    partitions: 12
+    retention_ms: 7776000000
+    phi_class: phi:clinical
+    producers: ["proc.dq-evaluator"]
+    consumers: ["proc.temporal-splitter", "proc.edw-projector", "sink.kg-sparql", "sink.edw"]
+    description: "DQ PASSED (G4): canonical records that passed all blocking rules, wrapped in the DQ envelope and forwarded to the KG and EDW sinks with headers hc-dq-status (pass, fail-critical, fail-major, fail-minor) and hc-dq-failed-rules (module 09 DQ-03 section 3.2)."
+  - name: hc.dq.passed.workforce.v1
+    layer: "dq"
+    domain: "workforce"
+    group: "G5"
+    owner: "G5 Workforce stewards"
+    key: "same key as the evaluated canonical record"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.dq.passed.workforce.v1-value
+    compatibility: BACKWARD_TRANSITIVE
+    partitions: 6
+    retention_ms: 7776000000
+    phi_class: pii:workforce
+    producers: ["proc.dq-evaluator"]
+    consumers: ["proc.temporal-splitter", "proc.edw-projector", "sink.kg-sparql", "sink.edw"]
+    description: "DQ PASSED (G5): canonical records that passed all blocking rules, wrapped in the DQ envelope and forwarded to the KG and EDW sinks with headers hc-dq-status (pass, fail-critical, fail-major, fail-minor) and hc-dq-failed-rules (module 09 DQ-03 section 3.2)."
+  - name: hc.dq.passed.pophealth.v1
+    layer: "dq"
+    domain: "pophealth"
+    group: "G6"
+    owner: "G6 Population Health stewards"
+    key: "same key as the evaluated canonical record"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.dq.passed.pophealth.v1-value
+    compatibility: BACKWARD_TRANSITIVE
+    partitions: 6
+    retention_ms: 7776000000
+    phi_class: phi:direct
+    producers: ["proc.dq-evaluator"]
+    consumers: ["proc.temporal-splitter", "proc.edw-projector", "sink.kg-sparql", "sink.edw"]
+    description: "DQ PASSED (G6): canonical records that passed all blocking rules, wrapped in the DQ envelope and forwarded to the KG and EDW sinks with headers hc-dq-status (pass, fail-critical, fail-major, fail-minor) and hc-dq-failed-rules (module 09 DQ-03 section 3.2)."
+  - name: hc.dq.passed.research.v1
+    layer: "dq"
+    domain: "research"
+    group: "G7"
+    owner: "G7 Research & Analytics stewards"
+    key: "same key as the evaluated canonical record"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.dq.passed.research.v1-value
+    compatibility: BACKWARD_TRANSITIVE
+    partitions: 3
+    retention_ms: 7776000000
+    phi_class: phi:direct
+    producers: ["proc.dq-evaluator"]
+    consumers: ["proc.temporal-splitter", "proc.edw-projector", "sink.kg-sparql", "sink.edw"]
+    description: "DQ PASSED (G7): canonical records that passed all blocking rules, wrapped in the DQ envelope and forwarded to the KG and EDW sinks with headers hc-dq-status (pass, fail-critical, fail-major, fail-minor) and hc-dq-failed-rules (module 09 DQ-03 section 3.2)."
+  - name: hc.dq.passed.reference.v1
+    layer: "dq"
+    domain: "reference"
+    group: "G8"
+    owner: "G8 Reference & Terminology stewards"
+    key: "same key as the evaluated canonical record"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.dq.passed.reference.v1-value
+    compatibility: BACKWARD_TRANSITIVE
+    partitions: 3
+    retention_ms: 7776000000
+    phi_class: public
+    producers: ["proc.dq-evaluator"]
+    consumers: ["proc.temporal-splitter", "proc.edw-projector", "sink.kg-sparql", "sink.edw"]
+    description: "DQ PASSED (G8): canonical records that passed all blocking rules, wrapped in the DQ envelope and forwarded to the KG and EDW sinks with headers hc-dq-status (pass, fail-critical, fail-major, fail-minor) and hc-dq-failed-rules (module 09 DQ-03 section 3.2)."
   - name: hc.kg.assertion.v1
     layer: "kg"
     domain: "governance"
@@ -2863,7 +3041,7 @@ topics:
     compatibility: FULL
     partitions: 24
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.temporal-splitter"]
     consumers: ["sink.kg-sparql"]
     description: "KG: bitemporal RDF-star assertion batches (triples + valid_from/valid_to + recorded_at + prov_activity_iri) ready for SPARQL UPDATE."
@@ -2879,7 +3057,7 @@ topics:
     compatibility: FULL
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.temporal-splitter"]
     consumers: ["sink.kg-sparql"]
     description: "KG: retractions closing valid or transaction time on previously asserted statements (never physical deletes)."
@@ -2895,10 +3073,42 @@ topics:
     compatibility: FULL
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["sink.kg-sparql"]
     consumers: ["agent.kg_builder", "proc.reconciler", "sink.edw"]
     description: "KG: load receipts per named graph batch (counts, SHACL report pointer, commit time) for reconciliation with EDW."
+  - name: hc.kg.dlq.v1
+    layer: "kg"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "source_topic|business_key"
+    key_format: string
+    value_format: avro-envelope
+    schema_subject: hc.kg.dlq.v1-value
+    compatibility: FULL
+    partitions: 6
+    retention_ms: 2592000000
+    phi_class: phi:direct
+    producers: ["proc.temporal-splitter", "sink.kg-sparql"]
+    consumers: ["agent.remediator", "agent.kg_builder", "sre.oncall", "sink.archive"]
+    description: "KG DLQ: resources that failed FHIR-to-RDF conversion, SHACL sh:Violation or SPARQL UPDATE commit, with reason (CONVERSION, SHACL, COMMIT), the validation report and the original record bytes (module 08 TKG-04 sections 4 and 8)."
+  - name: hc.kg.er.link.v1
+    layer: "kg"
+    domain: "party"
+    group: "G1"
+    owner: "G1 Party & Identity stewards"
+    key: "source_record_iri"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.kg.er.link.v1-value
+    compatibility: FULL
+    partitions: 12
+    retention_ms: 2592000000
+    phi_class: phi:direct
+    producers: ["agent.entity_resolver", "svc.empi"]
+    consumers: ["proc.temporal-splitter", "sink.kg-sparql", "sink.edw", "proc.enricher"]
+    description: "KG ER LINK: entity-resolution link, re-score, unlink and golden-split events between source person records and golden records (healix:linkedTo with confidence, evidence pointer, valid/transaction time) consumed by the kg-splitter and the dim_*_xref projection (module 08 TKG-03 section 6)."
   - name: hc.edw.cdc.g1.v1
     layer: "edw"
     domain: "party"
@@ -2911,7 +3121,7 @@ topics:
     compatibility: FULL
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.edw-projector"]
     consumers: ["sink.edw"]
     description: "EDW CDC (G1 Party & Identity): row-shaped upsert/close events for edw_g1_* tables with bitemporal columns and surrogate-key lookups resolved."
@@ -2927,7 +3137,7 @@ topics:
     compatibility: FULL
     partitions: 24
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:clinical
     producers: ["proc.edw-projector"]
     consumers: ["sink.edw"]
     description: "EDW CDC (G2 Clinical Care): row-shaped upsert/close events for edw_g2_* tables with bitemporal columns and surrogate-key lookups resolved."
@@ -2943,7 +3153,7 @@ topics:
     compatibility: FULL
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.edw-projector"]
     consumers: ["sink.edw"]
     description: "EDW CDC (G3 Revenue Cycle & Finance): row-shaped upsert/close events for edw_g3_* tables with bitemporal columns and surrogate-key lookups resolved."
@@ -2959,7 +3169,7 @@ topics:
     compatibility: FULL
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi-limited
+    phi_class: phi:quasi
     producers: ["proc.edw-projector"]
     consumers: ["sink.edw"]
     description: "EDW CDC (G4 Supply Chain & Operations): row-shaped upsert/close events for edw_g4_* tables with bitemporal columns and surrogate-key lookups resolved."
@@ -2975,7 +3185,7 @@ topics:
     compatibility: FULL
     partitions: 12
     retention_ms: 1209600000
-    phi_class: pii
+    phi_class: pii:workforce
     producers: ["proc.edw-projector"]
     consumers: ["sink.edw"]
     description: "EDW CDC (G5 Workforce): row-shaped upsert/close events for edw_g5_* tables with bitemporal columns and surrogate-key lookups resolved."
@@ -2991,7 +3201,7 @@ topics:
     compatibility: FULL
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.edw-projector"]
     consumers: ["sink.edw"]
     description: "EDW CDC (G6 Population Health & Quality): row-shaped upsert/close events for edw_g6_* tables with bitemporal columns and surrogate-key lookups resolved."
@@ -3007,7 +3217,7 @@ topics:
     compatibility: FULL
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.edw-projector"]
     consumers: ["sink.edw"]
     description: "EDW CDC (G7 Research & Analytics): row-shaped upsert/close events for edw_g7_* tables with bitemporal columns and surrogate-key lookups resolved."
@@ -3023,7 +3233,7 @@ topics:
     compatibility: FULL
     partitions: 12
     retention_ms: 1209600000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.edw-projector"]
     consumers: ["sink.edw"]
     description: "EDW CDC (G8 Reference & Terminology): row-shaped upsert/close events for edw_g8_* tables with bitemporal columns and surrogate-key lookups resolved."
@@ -3039,7 +3249,7 @@ topics:
     compatibility: FULL
     partitions: 12
     retention_ms: 1209600000
-    phi_class: phi-limited
+    phi_class: phi:quasi
     producers: ["proc.edw-projector"]
     consumers: ["sink.edw"]
     description: "EDW CDC (G9 Metadata, Quality & Governance): row-shaped upsert/close events for edw_g9_* tables with bitemporal columns and surrogate-key lookups resolved."
@@ -3055,7 +3265,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 604800000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.*", "connect.*", "sink.*", "agent.*"]
     consumers: ["svc.lineage", "sink.kg-sparql"]
     description: "OPS: OpenLineage RunEvent JSON (START/COMPLETE/FAIL) for every job run; projected to PROV-O in the KG."
@@ -3071,7 +3281,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["agent.*"]
     consumers: ["agent.orchestrator", "agent.evaluator", "agent.privacy_guardian", "sink.edw"]
     description: "OPS: Typed change requests (vocabulary, mapping, schema, DQ rule, topic) emitted by agents; schema owned by module 10."
@@ -3087,7 +3297,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["agent.evaluator", "agent.privacy_guardian"]
     consumers: ["agent.orchestrator", "agent.release_manager", "sink.edw"]
     description: "OPS: Evaluator scores, rubric results and veto decisions per change request."
@@ -3103,7 +3313,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi-limited
+    phi_class: phi:quasi
     producers: ["proc.*", "connect.*", "sink.*", "agent.*", "api.*"]
     consumers: ["sink.audit-worm", "agent.privacy_guardian"]
     description: "OPS: FHIR AuditEvent-shaped records for PHI access, config change and admin actions; sunk to immutable storage within 60 s."
@@ -3119,7 +3329,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["connect.*"]
     consumers: ["agent.dq_monitor", "sre.oncall", "sink.archive"]
     description: "OPS: Dead letters from Kafka Connect source/sink tasks with error headers and original record bytes."
@@ -3135,7 +3345,7 @@ topics:
     compatibility: BACKWARD
     partitions: 6
     retention_ms: 2592000000
-    phi_class: phi
+    phi_class: phi:direct
     producers: ["proc.*"]
     consumers: ["agent.dq_monitor", "agent.source_mapper", "sre.oncall", "sink.archive"]
     description: "OPS: Dead letters from stream processors (unparseable, unmappable, schema-incompatible) with stack/diagnostic headers."
@@ -3151,7 +3361,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["connect.bicc-poller"]
     consumers: ["connect.bicc-poller", "agent.inventory"]
     description: "OPS: BICC extract manifests (PVO, files, row counts, watermark) used for exactly-once file processing and completeness checks."
@@ -3167,7 +3377,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["agent.orchestrator", "sre.oncall"]
     consumers: ["proc.replay-controller", "sink.edw"]
     description: "OPS: Replay/backfill requests and their state transitions (requested, approved, running, completed)."
@@ -3183,7 +3393,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 2592000000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["ci.gitops"]
     consumers: ["agent.release_manager", "agent.schema_architect", "agent.source_mapper"]
     description: "OPS: Schema Registry subject version events emitted by the GitOps pipeline (registered, deprecated, compatibility changed)."
@@ -3199,7 +3409,7 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 604800000
-    phi_class: phi-limited
+    phi_class: phi:quasi
     producers: ["connect.mllp-outbound"]
     consumers: ["proc.hl7v2-outbound", "agent.dq_monitor"]
     description: "OPS: ACK/NAK outcomes for outbound HL7 v2 messages (MSA-1, MSA-3, retries)."
@@ -3215,7 +3425,215 @@ topics:
     compatibility: BACKWARD
     partitions: 3
     retention_ms: 604800000
-    phi_class: non-phi
+    phi_class: internal
     producers: ["proc.*"]
     consumers: ["sre.oncall", "proc.replay-controller"]
     description: "OPS: Watermark and checkpoint progress per processor and partition for lag and late-data dashboards."
+  - name: hc.ops.dq.rulepack.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "rule_id"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.ops.dq.rulepack.v1-value
+    compatibility: BACKWARD
+    partitions: 3
+    cleanup_policy: compact
+    phi_class: internal
+    producers: ["svc.dq-rule-compiler", "ci.gitops"]
+    consumers: ["proc.dq-evaluator", "sink.kg-sparql", "sink.edw", "agent.dq_author", "agent.dq_monitor"]
+    description: "OPS: Compacted DQ control topic: compiled rule per rule_id (pack_version, rule_version, plane bundles, thresholds); tombstone = retired. Planes hot-reload from it (module 09 DQ-03 sections 2 and 3.3)."
+  - name: hc.ops.kg-edw-reconciliation.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "group|entity_type|recorded_day"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.ops.kg-edw-reconciliation.v1-value
+    compatibility: BACKWARD
+    partitions: 3
+    retention_ms: 7776000000
+    phi_class: phi:quasi
+    producers: ["proc.reconciler"]
+    consumers: ["agent.dq_monitor", "agent.kg_builder", "sink.edw", "sink.kg-sparql"]
+    description: "OPS: Nightly and on-demand KG vs EDW reconciliation results per (group, entity type, recorded day): counts, content hashes, ER link counts, retraction counts and differing business keys (capped at 1,000); mismatches open DQR-CONSISTENCY-KG-EDW-001 issues (module 08 TKG-04 section 7.2)."
+  - name: hc.ops.audit.break-glass.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "correlation_id"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.ops.audit.break-glass.v1-value
+    compatibility: BACKWARD
+    partitions: 3
+    retention_ms: 2592000000
+    phi_class: phi:quasi
+    producers: ["api.*", "svc.graph-facade", "sink.kg-sparql", "sink.edw"]
+    consumers: ["sink.audit-worm", "agent.privacy_guardian", "sre.oncall"]
+    description: "OPS: Emergency (break-glass) access events: operator, purpose of use, scope, time box and the records touched by reference; notifies the privacy office and is sunk to immutable storage within 60 s (module 08 TKG-02 section 7, module 11)."
+  - name: hc.ops.agent.trigger.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "dedup_key (event_type|subject)"
+    key_format: string
+    value_format: json
+    schema_subject: hc.ops.agent.trigger.v1-value
+    compatibility: BACKWARD
+    partitions: 6
+    retention_ms: 604800000
+    phi_class: internal
+    producers: ["proc.*", "agent.*", "svc.*", "ci.gitops"]
+    consumers: ["agent.orchestrator", "agent.*"]
+    description: "OPS: Normalised agent-facing events (event_type: new_source_discovered, schema_drift, unmapped_code, dq_anomaly, ontology_release ...) with per-type debounce key; the orchestrator deduplicates and derives workflow ids from the key (module 10 AGT-01 section 4.1)."
+  - name: hc.ops.agent.decision.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "decision_id"
+    key_format: string
+    value_format: json
+    schema_subject: hc.ops.agent.decision.v1-value
+    compatibility: BACKWARD
+    partitions: 6
+    retention_ms: 220752000000
+    phi_class: internal
+    producers: ["agent.orchestrator", "agent.*"]
+    consumers: ["agent.evaluator", "agent.privacy_guardian", "svc.memory-api", "sink.edw", "sink.audit-worm"]
+    description: "OPS: Append-only episodic decision log: every consequential agent decision (propose, approve, apply, rollback, budget stop) with CR id, target, prompt and model version, trace id and PHI-scan verdict; 7-year retention, PHI-free by construction (module 10 AGT-06 section 1.2)."
+  - name: hc.ops.heal.incident.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "incident_id"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.ops.heal.incident.v1-value
+    compatibility: BACKWARD
+    partitions: 3
+    retention_ms: 2592000000
+    phi_class: internal
+    producers: ["agent.self_healer", "agent.orchestrator", "svc.alertmanager"]
+    consumers: ["agent.self_healer", "agent.evaluator", "agent.memory_curator", "sink.edw", "sre.oncall"]
+    description: "OPS: Self-healing incident lifecycle: detected, diagnosed, playbook selected, acting, verified, resolved or escalated, with symptom fingerprint and blast-radius budget; mirrored to fact_healing_incident (module 14)."
+  - name: hc.ops.heal.action.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "incident_id|step"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.ops.heal.action.v1-value
+    compatibility: BACKWARD
+    partitions: 3
+    retention_ms: 2592000000
+    phi_class: internal
+    producers: ["agent.self_healer"]
+    consumers: ["agent.evaluator", "agent.memory_curator", "sink.edw", "sre.oncall"]
+    description: "OPS: Self-healing playbook actions per incident step: action kind, target, blast-radius check result, outcome and rollback pointer; every action is PROV-O linked to its incident (module 14)."
+  - name: hc.ops.agent.memory.episode.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "record_id"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.ops.agent.memory.episode.v1-value
+    compatibility: BACKWARD
+    partitions: 6
+    cleanup_policy: compact
+    phi_class: internal
+    producers: ["svc.memory-api"]
+    consumers: ["svc.memory-graphiti", "svc.memory-mem0", "agent.memory_curator", "sink.edw"]
+    description: "OPS: Compacted event-sourced agent memory write log (episodes, reflections, corrections, tombstones) emitted by the Memory API write-gate after PHI and injection scans; Mem0 and Graphiti are derived projections rebuilt from it (module 14 MEM-01 section 8)."
+  - name: hc.ops.agent.policy.release.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "agent_id|artifact_id"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.ops.agent.policy.release.v1-value
+    compatibility: BACKWARD
+    partitions: 3
+    cleanup_policy: compact
+    phi_class: internal
+    producers: ["agent.release_manager", "ci.gitops"]
+    consumers: ["agent.*", "svc.memory-api", "svc.agent-runtime", "sink.edw"]
+    description: "OPS: Compacted release events for agent prompts, policies, playbooks and rubrics (artifact id, version, signed tag, autonomy level); source of cache invalidation and of the procedural-memory index (module 14 MEM-04/05)."
+  - name: hc.ops.registry.release.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "version_iri"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.ops.registry.release.v1-value
+    compatibility: FULL
+    partitions: 3
+    cleanup_policy: compact
+    phi_class: internal
+    producers: ["svc.ontology-registry", "ci.gitops"]
+    consumers: ["agent.*", "svc.terminology-publisher", "svc.dq-rule-compiler", "sink.kg-sparql", "proc.edw-projector", "svc.cache-invalidator", "sink.edw"]
+    description: "OPS: Compacted ontology registry release events (version IRI, SemVer, diff reference, breaking flag, affected consumers) emitted on every applied release so modules 05, 06, 08 and 09 regenerate R2RML, re-sync the Terminology Service and re-derive DQ shapes (module 02 ONT-GOV-007)."
+  - name: hc.ops.improve.canary.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "candidate_id"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.ops.improve.canary.v1-value
+    compatibility: BACKWARD
+    partitions: 3
+    retention_ms: 2592000000
+    phi_class: internal
+    producers: ["agent.improver", "svc.canary-controller"]
+    consumers: ["agent.evaluator", "agent.memory_curator", "agent.release_manager", "sink.edw", "sre.oncall"]
+    description: "OPS: Improvement-candidate canary lifecycle (proposed, canary 5 %, canary 25 %, promoted, rolled back) with evaluation scores, guard results and rollback pointer for the improvement-candidate-v1 workflow; mirrored to G9 facts (module 14 MEM-05)."
+  - name: hc.ops.cache.invalidate.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "namespace|version_tag"
+    key_format: string
+    value_format: json
+    schema_subject: hc.ops.cache.invalidate.v1-value
+    compatibility: BACKWARD
+    partitions: 3
+    retention_ms: 604800000
+    phi_class: internal
+    producers: ["agent.release_manager", "svc.ontology-registry", "svc.dq-rule-compiler", "ci.gitops"]
+    consumers: ["svc.cache-invalidator", "svc.agent-runtime", "svc.graph-facade", "agent.*"]
+    description: "OPS: Cache invalidation commands per cache namespace (C0-C4) and version tag, emitted on ontology, policy, rule-pack and mapping releases; consumers purge the namespace and re-warm (module 14 MEM-03 cache policy)."
+  - name: hc.ops.connector.file.manifest.v1
+    layer: "ops"
+    domain: "governance"
+    group: "G9"
+    owner: "G9 Metadata, Quality & Governance (Data Platform)"
+    key: "source|file_id"
+    key_format: string
+    value_format: avro
+    schema_subject: hc.ops.connector.file.manifest.v1-value
+    compatibility: BACKWARD
+    partitions: 3
+    retention_ms: 2592000000
+    phi_class: internal
+    producers: ["connect.sftp-file", "connect.fhir-bulk-poller"]
+    consumers: ["connect.sftp-file", "agent.inventory", "proc.canonicaliser", "agent.dq_monitor"]
+    description: "OPS: Bulk file manifests for non-BICC file sources (payer attribution, credentialing, timekeeping, SDOH, registries, C-CDA batches): source, object-store URI, schema version, row count and SHA-256; used for exactly-once file processing and completeness checks (module 06 IOP-03 section 8)."

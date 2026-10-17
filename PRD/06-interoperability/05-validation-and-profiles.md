@@ -27,7 +27,7 @@ flowchart LR
   S2 -->|pass| S3[Stage 3 · Terminology · $validate-code on every bound element · release-pinned]
   S3 -->|pass| S4[Stage 4 · Business rules · FHIR RDF → SHACL shapes from ontology Stage 4 · cross-resource]
   S4 -->|pass| OUT[(hc.canonical.<domain>.<resource>.fhir.v1)]
-  S1 -->|fail| Q[(hc.dq.<domain>.<resource>.quarantine.v1)]
+  S1 -->|fail| Q[(hc.dq.quarantine.<domain>.v1)]
   S2 -->|fail| Q
   S3 -->|fail| Q
   S4 -->|fail| Q
@@ -35,7 +35,7 @@ flowchart LR
   S2 -->|warn| OUT
   S3 -->|warn| OUT
   Q --> DQ[DQ engine · module 09 · remediation · agent.remediator]
-  OUT --> RES[(hc.dq.<domain>.<resource>.validation.v1 · per-record result)]
+  OUT --> RES[(hc.dq.validation.v1 · per-record OperationOutcome)]
   Q --> RES
 ```
 
@@ -52,7 +52,8 @@ release, evaluation ≤ 20 ms p99 per resource, result serialised as a FHIR `Ope
 
 ### 2.1 Validation result record
 
-Every validated record (pass or fail) emits one result to `hc.dq.<domain>.<resource>.validation.v1`:
+Every validated record (pass or fail) emits one result to `hc.dq.validation.v1` (module 07 catalog, DQ layer; keyed
+by the validated record's key; stage verdicts are additionally mirrored as `hc.dq.result.v1` rows keyed by the `IOP-*` code):
 
 ```json
 {
@@ -139,21 +140,23 @@ Error codes live in `https://fhir.healix.example.org/CodeSystem/healix-interop-e
 
 | Area | Code range | Examples | Default disposition | Routed to |
 |------|------------|----------|---------------------|-----------|
-| `PARSE` | 001–049 | `IOP-E-PARSE-001` malformed MLLP frame; `-002` MSH unparseable; `-010` CDA schema error; `-020` X12 SNIP 1 syntax; `-030` DICOM dictionary unknown VR | Reject at `raw`/`std`; record kept on `hc.raw.<src>.rejected.*` | `hc.dq.interop.parse.quarantine.v1` |
-| `STRUCT` | 050–099 | `IOP-E-STRUCT-051` unknown resourceType; `-052` cardinality violation; `-053` invalid primitive; `-060` Bundle fullUrl duplicate; `-061` unresolvable reference | Quarantine | `hc.dq.<domain>.<resource>.quarantine.v1` |
+| `PARSE` | 001–049 | `IOP-E-PARSE-001` malformed MLLP frame; `-002` MSH unparseable; `-010` CDA schema error; `-020` X12 SNIP 1 syntax; `-030` DICOM dictionary unknown VR | Reject at `raw`/`std`; record kept on `hc.ops.dlq.connect.v1` (listener rejects) or `hc.ops.dlq.processor.v1` (parser rejects) | typed issue on `hc.dq.issue.v1` (no canonical record exists to quarantine) |
+| `STRUCT` | 050–099 | `IOP-E-STRUCT-051` unknown resourceType; `-052` cardinality violation; `-053` invalid primitive; `-060` Bundle fullUrl duplicate; `-061` unresolvable reference | Quarantine | `hc.dq.quarantine.<domain>.v1` |
 | `PROF` | 100–149 | `IOP-E-PROF-101` slice min not met (e.g. MRN identifier missing); `-102` fixed value mismatch; `-103` invariant failed; `IOP-W-PROF-002` mustSupport absent | Quarantine (E) / publish with warning (W) | same |
-| `TERM` | 150–199 | `IOP-E-TERM-001` unknown code system; `-002` code not in required value set; `-003` no ConceptMap translation; `-004` retired code on required binding; `-009` TS unavailable after retries; `IOP-W-TERM-005` display mismatch; `IOP-W-TERM-006` extensible unmapped passthrough | Per value set `unmappedPolicy` | same, plus `hc.dq.reference.unmapped-code.v1` for stewards |
-| `REF` | 200–249 | `IOP-E-REF-001` subject not resolvable in EMPI; `-002` encounter referenced but unknown; `-003` device observation without patient association; `IOP-W-REF-004` practitioner NPI unknown | Quarantine with hold-and-retry (24 h) for late-arriving referents | `hc.dq.<domain>.<resource>.quarantine.v1` with `hc-retry-until` header |
+| `TERM` | 150–199 | `IOP-E-TERM-001` unknown code system; `-002` code not in required value set; `-003` no ConceptMap translation; `-004` retired code on required binding; `-009` TS unavailable after retries; `IOP-W-TERM-005` display mismatch; `IOP-W-TERM-006` extensible unmapped passthrough | Per value set `unmappedPolicy` | same, plus a steward issue (`remediation-hint = steward-map-code`) on `hc.dq.issue.v1` |
+| `REF` | 200–249 | `IOP-E-REF-001` subject not resolvable in EMPI; `-002` encounter referenced but unknown; `-003` device observation without patient association; `IOP-W-REF-004` practitioner NPI unknown | Quarantine with hold-and-retry (24 h) for late-arriving referents | `hc.dq.quarantine.<domain>.v1` with `hc-retry-until` header |
 | `RULE` | 250–299 | `IOP-E-RULE-251` SHACL violation (shape IRI in details); `-252` 835 balancing failure; `-253` GL line debits ≠ credits; `IOP-W-RULE-260` observation outside encounter period | Quarantine (Violation) / warning | same |
-| `PRIV` | 300–349 | `IOP-E-PRIV-301` prohibited identifier (SSN) present; `-302` unclassified Z-field; `-303` purpose-of-use missing on export | Quarantine, alert `agent.privacy_guardian`, never publish | `hc.dq.governance.privacy.quarantine.v1` (restricted ACL) |
-| `DUP` | 350–399 | `IOP-I-DUP-351` duplicate message control id; `IOP-E-DUP-352` same control id, different payload | Info / quarantine | `hc.dq.interop.duplicate.v1` |
-| `SIZE` | 400–449 | `IOP-E-SIZE-401` record > 1 MiB after externalisation; `-402` file > 10 GiB unsplit | Quarantine | `hc.dq.interop.size.quarantine.v1` |
+| `PRIV` | 300–349 | `IOP-E-PRIV-301` prohibited identifier (SSN) present; `-302` unclassified Z-field; `-303` purpose-of-use missing on export | Quarantine, alert `agent.privacy_guardian`, never publish | `hc.dq.quarantine.governance.v1` (restricted ACL, G9; module 07 catalog §6.3) |
+| `DUP` | 350–399 | `IOP-I-DUP-351` duplicate message control id; `IOP-E-DUP-352` same control id, different payload | Info (metric only) / reject at the listener (`AR`), record kept on `hc.ops.dlq.connect.v1` | typed issue on `hc.dq.issue.v1` |
+| `SIZE` | 400–449 | `IOP-E-SIZE-401` record > 1 MiB after externalisation; `-402` file > 10 GiB unsplit | Quarantine | `hc.dq.quarantine.<domain>.v1` |
 
 Quarantine record contract (consumed by module 09): the original `std` record reference (topic, partition, offset),
 the attempted canonical resource (as produced), the `OperationOutcome`, the mapping version, the TS release id, and a
 `remediation-hint` (`retry-after-release`, `await-referent`, `steward-map-code`, `fix-source`, `privacy-review`).
-Quarantine topics use the `hc.dq.<domain>.<resource>.quarantine.v1` naming so module 09 rule packs and dashboards align
-with canonical topics one-to-one.
+Quarantine topics use the module 07 `hc.dq.quarantine.<domain>.v1` naming (one topic per Kafka domain, keyed by the
+canonical record key, as catalogued in `07/topics.yaml`) so module 09 rule packs, `agent.remediator` and dashboards share
+a single quarantine contract per domain; the error area and the canonical topic of the failed record travel inside the
+quarantine record, not in the topic name.
 
 ## 7. Metrics
 
@@ -191,7 +194,7 @@ mirrored into G9 (`fact_validation_result`) so the DQ composite index (module 09
 > pinned SHACL shape graph; `sh:Violation` MUST quarantine, `sh:Warning` MUST publish with a recorded warning.
 
 > **IOP-VAL-006** (P1, test) — Every validation, pass or fail, MUST emit an `OperationOutcome` conforming to
-> `healix-validation-outcome` on `hc.dq.<domain>.<resource>.validation.v1` with the validated resource reference and
+> `healix-validation-outcome` on `hc.dq.validation.v1` with the validated resource reference and
 > the release identifiers used.
 
 > **IOP-VAL-007** (P0, test) — Total validation latency MUST be ≤ 100 ms p99 per resource at ARC-NFR-002 throughput.
@@ -208,11 +211,11 @@ mirrored into G9 (`fact_validation_result`) so the DQ composite index (module 09
 > **IOP-VAL-011** (P1, test) — The FHIR facade MUST pass the Inferno US Core 6.1 server test kit and its published
 > `CapabilityStatement` MUST match observed behaviour, verified nightly in `test`.
 
-> **IOP-VAL-012** (P0, test) — Records failing any stage MUST be routed to `hc.dq.<domain>.<resource>.quarantine.v1`
+> **IOP-VAL-012** (P0, test) — Records failing any stage MUST be routed to `hc.dq.quarantine.<domain>.v1`
 > with an error code from `healix-interop-error`, the `std` record coordinates, the attempted resource, the
 > `OperationOutcome`, mapping version, TS release id and a remediation hint.
 
-> **IOP-VAL-013** (P0, test) — `PRIV` errors MUST route to a restricted-ACL quarantine topic, alert
+> **IOP-VAL-013** (P0, test) — `PRIV` errors MUST route to the restricted-ACL `hc.dq.quarantine.governance.v1` topic, alert
 > `agent.privacy_guardian`, and MUST NOT be visible to general DQ consumers.
 
 > **IOP-VAL-014** (P1, test) — `REF` quarantines MUST be retried automatically for up to 24 h as referents arrive; the

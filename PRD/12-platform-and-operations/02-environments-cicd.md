@@ -22,7 +22,7 @@ non-production data strategy and release management.
 | Environment | Purpose | Data | Cluster | Who may deploy | Change source |
 |-------------|---------|------|---------|----------------|---------------|
 | `dev` | Engineer and agent iteration; feature branches | **Synthetic** only (Synthea-derived FHIR, synthetic HL7 v2, synthetic ERP/HCM) | Shared non-prod cluster, namespace prefix `dev-` | Any engineer; agents in sandbox | Any branch via preview environments |
-| `test` | Automated integration and regression; agent evaluation suite | Synthetic + **replayed de-identified** fixtures (`deidentified:safe-harbor`) | Shared non-prod cluster, prefix `test-` | CI only | `main` after merge |
+| `test` | Automated integration and regression; agent evaluation suite | Synthetic + **replayed `deidentified:safe-harbor`** fixtures | Shared non-prod cluster, prefix `test-` | CI only | `main` after merge |
 | `uat` | Steward and business validation; performance tests at 50 % scale; DR drills | **De-identified/pseudonymised** copy of prod (`pseudonymised`, non-prod token keys) refreshed weekly | Dedicated cluster | Release manager via GitOps | Release candidate tags `vX.Y.Z-rc.N` |
 | `prod` | Live platform | Real PHI | Dedicated cluster + warm standby (OPS-01) | GitOps only; no human `kubectl` write | Signed release tags `vX.Y.Z` |
 
@@ -83,14 +83,14 @@ release tags. Failure in any `blocking` stage fails the PR.
 
 | # | Stage | Artefacts | Tooling | Blocking | Typical duration |
 |---|-------|-----------|---------|----------|------------------|
-| 1 | `lint-yaml-json` | `topics.yaml`, agent manifests, rule packs, contracts, OpenLineage/AuditEvent schemas | JSON Schema validation (`ajv`), `yamllint`, custom linters for CONVENTIONS §3 naming and requirement-ID format | Yes | 1 min |
+| 1 | `lint-yaml-json` | `topics.yaml`, agent manifests, rule packs, contracts, OpenLineage/AuditEvent schemas, module 14 `memory-schema.yaml`, `cache-policy.yaml` and `healing-playbooks/*.yaml` | JSON Schema validation (`ajv`), `yamllint`, custom linters for CONVENTIONS §3 naming and requirement-ID format; module 14 silent-invalidator lint (MEM-03 §3.2) and playbook `limits`/`guards` fixed-point check | Yes | 1 min |
 | 2 | `sql-parse-migrate` | `ddl/*.sql`, dbt models | Dialect-aware parser (Teradata + portable); dry-run migration against ephemeral DB; forward-only and idempotency checks (CONVENTIONS §5) | Yes | 5 min |
 | 3 | `owl-reasoning` | `ontology/*.ttl/.owl` | HermiT/ELK consistency and satisfiability; profile check (OWL 2 DL/EL); SKOS integrity (no cycles, unique prefLabel per scheme) | Yes | 5–15 min |
 | 4 | `shacl` | `shapes/*.ttl` + test instance data | SHACL validation (pySHACL / TopBraid); shape coverage report (every class has a shape) | Yes | 3 min |
 | 5 | `fhir-validator` | `profiles/*.json`, example resources, canonical fixtures | HL7 FHIR Validator with US Core 6.1 and HEALIX IGs; terminology checks against test Terminology Server | Yes | 5 min |
 | 6 | `classification-tags` | DDL, ontology, topics, contracts | Every column/property/topic has exactly one classification tag matching the register (GOV-PHI-002, GOV-ACC-007); masking policies generated and diffed | Yes | 2 min |
 | 7 | `mapping-tests` | HL7 v2 → FHIR, CDC → FHIR, FHIR → RDF, FHIR → EDW mappings | Golden-file tests on synthetic messages; round-trip checks; lineage facet generation | Yes | 10 min |
-| 8 | `dq-backtests` | `rules/*.yaml` | Replay rule pack over the last 30 days of de-identified `test` fixtures; compare breach counts to baseline; flag rules whose breach rate changes > 20 % without an approved threshold CR | Yes for `P0` rules | 15 min |
+| 8 | `dq-backtests` | `rules/*.yaml` | Replay rule pack over the last 30 days of `deidentified:safe-harbor` `test` fixtures; compare breach counts to baseline; flag rules whose breach rate changes > 20 % without an approved threshold CR | Yes for `P0` rules | 15 min |
 | 9 | `agent-eval` | `agents/*.yaml`, prompts, tool definitions, policies | Module 10 evaluation suite: rubric scoring, negative tests (tool denial, PHI leak attempts), regression on historical CRs; thresholds from module 13 | Yes | 30–60 min |
 | 10 | `security` | Everything | SAST, dependency and container CVE scan (fail on critical), IaC policy (Conftest/OPA for OPS-01 rules), secret scanning (GOV-ACC-014), SBOM generation, signature verification | Yes | 10 min |
 | 11 | `contract-drift` | `contracts/*.yaml` vs registered schemas | Schema Registry compatibility (`BACKWARD_TRANSITIVE`/`FULL` per CONVENTIONS §5) and contract field classification match (GOV-MDM-008) | Yes | 2 min |
@@ -121,7 +121,7 @@ Emergency changes bypass soak time but never bypass CI stages 1–7, 10 or Priva
 | Environment | Source of data | Transform | Residual PHI permitted | Refresh |
 |-------------|----------------|-----------|------------------------|---------|
 | `dev` | Synthetic generators (Synthea for FHIR/HL7 v2; synthetic ERP/HCM/SCM generator seeded from Oracle Fusion metadata only) | None needed | None | On demand |
-| `test` | Synthetic + de-identified fixtures curated from prod via Safe Harbor (GOV-01 §6.1) | Safe Harbor + date shift; free-text redaction | None (`deidentified:safe-harbor`) | Monthly fixture release |
+| `test` | Synthetic + `deidentified:safe-harbor` fixtures curated from prod (GOV-01 §6.1) | Safe Harbor + date shift; free-text redaction | None (`deidentified:safe-harbor`) | Monthly fixture release |
 | `uat` | Full prod copy | Pseudonymisation: FF1 identifiers with `tok-nonprod` keys, synthetic names/addresses/contacts, consistent date shift per patient, free-text redaction; `phi:sensitive-category/*` records dropped unless the test plan needs them (then pseudonymised and flagged) | `pseudonymised` only; zero `phi:direct` | Weekly, automated |
 | `prod` | Live | — | Real PHI | — |
 
@@ -142,6 +142,7 @@ topics, graph and EDW is preserved by deterministic tokens (GOV-PHI-013) so end-
 | DQ rule packs | SemVer per pack; rule-level `since` | Threshold change ⇒ patch; new `P0` rule ⇒ minor | Stage 8 |
 | EDW DDL | Sequential, forward-only migrations `V<yyyymmddHHMM>__<name>.sql` with compensating migration | Column drop only after ≥ 1 release of deprecation and zero lineage consumers (GOV-03) | Stage 2 |
 | Agent manifests and prompts | SemVer; prompt hash recorded in PROV | Tool allowlist widening ⇒ `phi-affecting` CR | Stage 9 |
+| Healing playbooks, cache policy, memory schema (module 14) | SemVer; playbook `status` ladder `shadow → assisted → autonomous → retired`; release events on `hc.ops.agent.policy.release.v1` | Status promotion or any `limits`/`guards` change ⇒ `playbook`/`policy` CR with approved evidence; breaking schema change ⇒ new `vN` | Stage 1 + Stage 9 |
 | Platform release (umbrella) | `vX.Y.Z` tag spanning all repos with a lock file of artefact digests | — | Stage 12 |
 
 Release notes are generated by `agent.release_manager` from CR metadata and include: requirement IDs touched,
@@ -187,7 +188,7 @@ migrations roll forward with the compensating migration.
 > **OPS-ENV-012** (P0, test) — Argo CD MUST verify artefact signatures before sync and MUST refuse unsigned or
 > untrusted artefacts.
 
-> **OPS-ENV-013** (P0, test) — `dev` and `test` MUST contain only synthetic or Safe Harbor de-identified data; `uat`
+> **OPS-ENV-013** (P0, test) — `dev` and `test` MUST contain only synthetic or `deidentified:safe-harbor` data; `uat`
 > MUST contain only pseudonymised data with non-prod token keys; the daily PHI scanner MUST block promotion on any
 > finding.
 

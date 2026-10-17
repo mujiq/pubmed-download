@@ -58,8 +58,8 @@ CREATE TABLE edw_g3_finance.dim_cost_center (
 -- TD: CREATE SET TABLE edw_g3_finance.dim_cost_center, FALLBACK (...) UNIQUE PRIMARY INDEX (cost_center_sk)
 CREATE UNIQUE INDEX ux_dim_cost_center_bk ON edw_g3_finance.dim_cost_center (cost_center_bk, valid_from);
 COMMENT ON TABLE edw_g3_finance.dim_cost_center IS 'https://ontology.healix.example.org/finance/CostCenter';
-COMMENT ON COLUMN edw_g3_finance.dim_cost_center.cost_center_code IS 'none | https://ontology.healix.example.org/finance/costCenterCode';
-COMMENT ON COLUMN edw_g3_finance.dim_cost_center.parent_cost_center_sk IS 'none | https://ontology.healix.example.org/finance/costCenterPartOf';
+COMMENT ON COLUMN edw_g3_finance.dim_cost_center.cost_center_code IS 'internal | https://ontology.healix.example.org/finance/costCenterCode';
+COMMENT ON COLUMN edw_g3_finance.dim_cost_center.parent_cost_center_sk IS 'internal | https://ontology.healix.example.org/finance/costCenterPartOf';
 
 -- ---------------------------------------------------------------------------
 -- dim_gl_account (Type 2): natural account with roll-up hierarchy
@@ -100,8 +100,8 @@ CREATE TABLE edw_g3_finance.dim_gl_account (
 -- TD: UNIQUE PRIMARY INDEX (gl_account_sk)
 CREATE UNIQUE INDEX ux_dim_gl_account_bk ON edw_g3_finance.dim_gl_account (gl_account_bk, valid_from);
 COMMENT ON TABLE edw_g3_finance.dim_gl_account IS 'https://ontology.healix.example.org/finance/GeneralLedgerAccount';
-COMMENT ON COLUMN edw_g3_finance.dim_gl_account.natural_account_code IS 'none | https://ontology.healix.example.org/finance/naturalAccountCode';
-COMMENT ON COLUMN edw_g3_finance.dim_gl_account.account_type_code IS 'none | https://ontology.healix.example.org/finance/accountType';
+COMMENT ON COLUMN edw_g3_finance.dim_gl_account.natural_account_code IS 'internal | https://ontology.healix.example.org/finance/naturalAccountCode';
+COMMENT ON COLUMN edw_g3_finance.dim_gl_account.account_type_code IS 'internal | https://ontology.healix.example.org/finance/accountType';
 
 -- ---------------------------------------------------------------------------
 -- dim_ledger (Type 1)
@@ -197,9 +197,14 @@ CREATE TABLE edw_g3_finance.fact_gl_journal_line (
     -- bitemporal block
     valid_from              TIMESTAMP     NOT NULL,
     valid_to                TIMESTAMP,
-    recorded_at             TIMESTAMP     NOT NULL,
+    recorded_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_at           TIMESTAMP,
+    change_kind             CHAR(12),                     -- TKG-01 C6/C10: why this version was closed; NULL while current, NOT NULL when superseded_at is set (new-version / correction / retraction / merge / unmerge)
     change_reason_code      VARCHAR(30),
+    event_time              TIMESTAMP     NOT NULL,       -- TKG-01 C7: hc-event-time of the producing record (UTC)
+    source_time             TIMESTAMP,                    -- TKG-01 C7: hc-source-time, the source system clock (UTC)
+    decision_time           TIMESTAMP,                    -- TKG-01 C8: when the real-world decision was taken; NULL = not available
+    source_tz               VARCHAR(64),                  -- TKG-01 C12: IANA zone of the source timestamps (storage is UTC)
     -- technical block
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -237,11 +242,11 @@ CREATE UNIQUE INDEX ux_fact_gl_journal_line_bk ON edw_g3_finance.fact_gl_journal
 CREATE INDEX ix_fact_gl_journal_line_hdr ON edw_g3_finance.fact_gl_journal_line (journal_header_bk);
 CREATE INDEX ix_fact_gl_journal_line_ref ON edw_g3_finance.fact_gl_journal_line (reference_document_type, reference_document_bk);
 COMMENT ON TABLE edw_g3_finance.fact_gl_journal_line IS 'https://ontology.healix.example.org/finance/GeneralLedgerJournalLine';
-COMMENT ON COLUMN edw_g3_finance.fact_gl_journal_line.debit_ledger_amount IS 'none | https://ontology.healix.example.org/finance/debitLedgerAmount';
-COMMENT ON COLUMN edw_g3_finance.fact_gl_journal_line.credit_ledger_amount IS 'none | https://ontology.healix.example.org/finance/creditLedgerAmount';
-COMMENT ON COLUMN edw_g3_finance.fact_gl_journal_line.accounting_date IS 'none | https://ontology.healix.example.org/finance/accountingDate';
-COMMENT ON COLUMN edw_g3_finance.fact_gl_journal_line.reference_document_bk IS 'none | https://ontology.healix.example.org/finance/accountsFor';
-COMMENT ON COLUMN edw_g3_finance.fact_gl_journal_line.prov_activity_iri IS 'none | http://www.w3.org/ns/prov#wasGeneratedBy';
+COMMENT ON COLUMN edw_g3_finance.fact_gl_journal_line.debit_ledger_amount IS 'confidential:financial | https://ontology.healix.example.org/finance/debitLedgerAmount';
+COMMENT ON COLUMN edw_g3_finance.fact_gl_journal_line.credit_ledger_amount IS 'confidential:financial | https://ontology.healix.example.org/finance/creditLedgerAmount';
+COMMENT ON COLUMN edw_g3_finance.fact_gl_journal_line.accounting_date IS 'confidential:financial | https://ontology.healix.example.org/finance/accountingDate';
+COMMENT ON COLUMN edw_g3_finance.fact_gl_journal_line.reference_document_bk IS 'confidential:financial | https://ontology.healix.example.org/finance/accountsFor';
+COMMENT ON COLUMN edw_g3_finance.fact_gl_journal_line.prov_activity_iri IS 'internal | http://www.w3.org/ns/prov#wasGeneratedBy';
 
 -- ===========================================================================
 -- edw_g3_revenue
@@ -285,7 +290,7 @@ CREATE TABLE edw_g3_revenue.dim_payer_plan (
 -- TD: UNIQUE PRIMARY INDEX (payer_plan_sk)
 CREATE UNIQUE INDEX ux_dim_payer_plan_bk ON edw_g3_revenue.dim_payer_plan (payer_plan_bk, valid_from);
 COMMENT ON TABLE edw_g3_revenue.dim_payer_plan IS 'https://ontology.healix.example.org/finance/PayerPlan';
-COMMENT ON COLUMN edw_g3_revenue.dim_payer_plan.payer_sk IS 'none | https://ontology.healix.example.org/finance/offeredByPayer';
+COMMENT ON COLUMN edw_g3_revenue.dim_payer_plan.payer_sk IS 'internal | https://ontology.healix.example.org/finance/offeredByPayer';
 
 -- ---------------------------------------------------------------------------
 -- Value-set dimensions (Type 1, bound to dim_code)
@@ -374,9 +379,14 @@ CREATE TABLE edw_g3_revenue.fact_charge (
     -- bitemporal block
     valid_from              TIMESTAMP     NOT NULL,
     valid_to                TIMESTAMP,
-    recorded_at             TIMESTAMP     NOT NULL,
+    recorded_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_at           TIMESTAMP,
+    change_kind             CHAR(12),                     -- TKG-01 C6/C10: why this version was closed; NULL while current, NOT NULL when superseded_at is set (new-version / correction / retraction / merge / unmerge)
     change_reason_code      VARCHAR(30),
+    event_time              TIMESTAMP     NOT NULL,       -- TKG-01 C7: hc-event-time of the producing record (UTC)
+    source_time             TIMESTAMP,                    -- TKG-01 C7: hc-source-time, the source system clock (UTC)
+    decision_time           TIMESTAMP,                    -- TKG-01 C8: when the real-world decision was taken; NULL = not available
+    source_tz               VARCHAR(64),                  -- TKG-01 C12: IANA zone of the source timestamps (storage is UTC)
     -- technical block
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -417,10 +427,10 @@ CREATE TABLE edw_g3_revenue.fact_charge (
 CREATE UNIQUE INDEX ux_fact_charge_bk ON edw_g3_revenue.fact_charge (charge_bk, valid_from);
 CREATE INDEX ix_fact_charge_encounter ON edw_g3_revenue.fact_charge (encounter_bk);
 COMMENT ON TABLE edw_g3_revenue.fact_charge IS 'https://ontology.healix.example.org/finance/ChargeItem';
-COMMENT ON COLUMN edw_g3_revenue.fact_charge.encounter_bk IS 'none | https://ontology.healix.example.org/finance/encounter';
-COMMENT ON COLUMN edw_g3_revenue.fact_charge.extended_amount IS 'none | https://ontology.healix.example.org/finance/chargeAmount';
-COMMENT ON COLUMN edw_g3_revenue.fact_charge.cost_center_sk IS 'none | https://ontology.healix.example.org/finance/attributedToCostCenter';
-COMMENT ON COLUMN edw_g3_revenue.fact_charge.service_date_sk IS 'phi_quasi | https://ontology.healix.example.org/finance/serviceDate';
+COMMENT ON COLUMN edw_g3_revenue.fact_charge.encounter_bk IS 'phi:direct | https://ontology.healix.example.org/finance/encounter';
+COMMENT ON COLUMN edw_g3_revenue.fact_charge.extended_amount IS 'phi:clinical | https://ontology.healix.example.org/finance/chargeAmount';
+COMMENT ON COLUMN edw_g3_revenue.fact_charge.cost_center_sk IS 'internal | https://ontology.healix.example.org/finance/attributedToCostCenter';
+COMMENT ON COLUMN edw_g3_revenue.fact_charge.service_date_sk IS 'phi:quasi | https://ontology.healix.example.org/finance/serviceDate';
 
 -- ---------------------------------------------------------------------------
 -- fact_claim_header (accumulating snapshot): one row per claim version
@@ -466,9 +476,14 @@ CREATE TABLE edw_g3_revenue.fact_claim_header (
     -- bitemporal block
     valid_from              TIMESTAMP     NOT NULL,
     valid_to                TIMESTAMP,
-    recorded_at             TIMESTAMP     NOT NULL,
+    recorded_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_at           TIMESTAMP,
+    change_kind             CHAR(12),                     -- TKG-01 C6/C10: why this version was closed; NULL while current, NOT NULL when superseded_at is set (new-version / correction / retraction / merge / unmerge)
     change_reason_code      VARCHAR(30),
+    event_time              TIMESTAMP     NOT NULL,       -- TKG-01 C7: hc-event-time of the producing record (UTC)
+    source_time             TIMESTAMP,                    -- TKG-01 C7: hc-source-time, the source system clock (UTC)
+    decision_time           TIMESTAMP,                    -- TKG-01 C8: when the real-world decision was taken; NULL = not available
+    source_tz               VARCHAR(64),                  -- TKG-01 C12: IANA zone of the source timestamps (storage is UTC)
     -- technical block
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -519,9 +534,9 @@ CREATE TABLE edw_g3_revenue.fact_claim_header (
 CREATE UNIQUE INDEX ux_fact_claim_header_bk ON edw_g3_revenue.fact_claim_header (claim_bk, valid_from);
 CREATE INDEX ix_fact_claim_header_number ON edw_g3_revenue.fact_claim_header (claim_number);
 COMMENT ON TABLE edw_g3_revenue.fact_claim_header IS 'https://ontology.healix.example.org/finance/Claim';
-COMMENT ON COLUMN edw_g3_revenue.fact_claim_header.claim_number IS 'phi_quasi | https://ontology.healix.example.org/finance/claimNumber';
-COMMENT ON COLUMN edw_g3_revenue.fact_claim_header.total_paid_amount IS 'none | https://ontology.healix.example.org/finance/totalPaidAmount';
-COMMENT ON COLUMN edw_g3_revenue.fact_claim_header.drg_code_sk IS 'phi_quasi | https://ontology.healix.example.org/clinical/diagnosisRelatedGroup';
+COMMENT ON COLUMN edw_g3_revenue.fact_claim_header.claim_number IS 'phi:direct | https://ontology.healix.example.org/finance/claimNumber';
+COMMENT ON COLUMN edw_g3_revenue.fact_claim_header.total_paid_amount IS 'phi:clinical | https://ontology.healix.example.org/finance/totalPaidAmount';
+COMMENT ON COLUMN edw_g3_revenue.fact_claim_header.drg_code_sk IS 'phi:quasi | https://ontology.healix.example.org/clinical/diagnosisRelatedGroup';
 
 -- ---------------------------------------------------------------------------
 -- fact_claim_line (transaction) · 03-logical-model.md §9.5 · EDW-G3-001
@@ -567,9 +582,14 @@ CREATE TABLE edw_g3_revenue.fact_claim_line (
     -- bitemporal block
     valid_from              TIMESTAMP     NOT NULL,
     valid_to                TIMESTAMP,
-    recorded_at             TIMESTAMP     NOT NULL,
+    recorded_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_at           TIMESTAMP,
+    change_kind             CHAR(12),                     -- TKG-01 C6/C10: why this version was closed; NULL while current, NOT NULL when superseded_at is set (new-version / correction / retraction / merge / unmerge)
     change_reason_code      VARCHAR(30),
+    event_time              TIMESTAMP     NOT NULL,       -- TKG-01 C7: hc-event-time of the producing record (UTC)
+    source_time             TIMESTAMP,                    -- TKG-01 C7: hc-source-time, the source system clock (UTC)
+    decision_time           TIMESTAMP,                    -- TKG-01 C8: when the real-world decision was taken; NULL = not available
+    source_tz               VARCHAR(64),                  -- TKG-01 C12: IANA zone of the source timestamps (storage is UTC)
     -- technical block
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -613,13 +633,13 @@ CREATE UNIQUE INDEX ux_fact_claim_line_bk ON edw_g3_revenue.fact_claim_line (cla
 CREATE INDEX ix_fact_claim_line_number ON edw_g3_revenue.fact_claim_line (claim_number, line_number);
 CREATE INDEX ix_fact_claim_line_patient ON edw_g3_revenue.fact_claim_line (patient_sk, service_from_date_sk);
 COMMENT ON TABLE edw_g3_revenue.fact_claim_line IS 'https://ontology.healix.example.org/finance/ClaimLine';
-COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.claim_number IS 'phi_quasi | https://ontology.healix.example.org/finance/claimNumber';
-COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.procedure_code_sk IS 'none | https://ontology.healix.example.org/finance/procedureCode';
-COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.billed_amount IS 'none | https://ontology.healix.example.org/finance/billedAmount';
-COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.allowed_amount IS 'none | https://ontology.healix.example.org/finance/allowedAmount';
-COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.paid_amount IS 'none | https://ontology.healix.example.org/finance/paidAmount';
-COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.service_from_date_sk IS 'phi_quasi | https://ontology.healix.example.org/finance/serviceFromDate';
-COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.prov_activity_iri IS 'none | http://www.w3.org/ns/prov#wasGeneratedBy';
+COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.claim_number IS 'phi:direct | https://ontology.healix.example.org/finance/claimNumber';
+COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.procedure_code_sk IS 'phi:clinical | https://ontology.healix.example.org/finance/procedureCode';
+COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.billed_amount IS 'phi:clinical | https://ontology.healix.example.org/finance/billedAmount';
+COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.allowed_amount IS 'phi:clinical | https://ontology.healix.example.org/finance/allowedAmount';
+COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.paid_amount IS 'phi:clinical | https://ontology.healix.example.org/finance/paidAmount';
+COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.service_from_date_sk IS 'phi:quasi | https://ontology.healix.example.org/finance/serviceFromDate';
+COMMENT ON COLUMN edw_g3_revenue.fact_claim_line.prov_activity_iri IS 'internal | http://www.w3.org/ns/prov#wasGeneratedBy';
 
 -- ---------------------------------------------------------------------------
 -- bridge_claim_diagnosis: claim × diagnosis code × pointer
@@ -636,9 +656,14 @@ CREATE TABLE edw_g3_revenue.bridge_claim_diagnosis (
     -- bitemporal block
     valid_from              TIMESTAMP     NOT NULL,
     valid_to                TIMESTAMP,
-    recorded_at             TIMESTAMP     NOT NULL,
+    recorded_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_at           TIMESTAMP,
+    change_kind             CHAR(12),                     -- TKG-01 C6/C10: why this version was closed; NULL while current, NOT NULL when superseded_at is set (new-version / correction / retraction / merge / unmerge)
     change_reason_code      VARCHAR(30),
+    event_time              TIMESTAMP     NOT NULL,       -- TKG-01 C7: hc-event-time of the producing record (UTC)
+    source_time             TIMESTAMP,                    -- TKG-01 C7: hc-source-time, the source system clock (UTC)
+    decision_time           TIMESTAMP,                    -- TKG-01 C8: when the real-world decision was taken; NULL = not available
+    source_tz               VARCHAR(64),                  -- TKG-01 C12: IANA zone of the source timestamps (storage is UTC)
     -- technical block
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -655,4 +680,4 @@ CREATE TABLE edw_g3_revenue.bridge_claim_diagnosis (
 -- TD: PRIMARY INDEX (claim_bk)
 CREATE INDEX ix_bridge_claim_diagnosis_claim ON edw_g3_revenue.bridge_claim_diagnosis (claim_header_sk, diagnosis_pointer);
 COMMENT ON TABLE edw_g3_revenue.bridge_claim_diagnosis IS 'https://ontology.healix.example.org/finance/ClaimDiagnosis';
-COMMENT ON COLUMN edw_g3_revenue.bridge_claim_diagnosis.diagnosis_pointer IS 'none | https://ontology.healix.example.org/finance/diagnosisPointer';
+COMMENT ON COLUMN edw_g3_revenue.bridge_claim_diagnosis.diagnosis_pointer IS 'internal | https://ontology.healix.example.org/finance/diagnosisPointer';

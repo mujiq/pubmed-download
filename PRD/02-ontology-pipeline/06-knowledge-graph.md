@@ -6,7 +6,8 @@ version: 0.1.0
 status: draft
 owners: [KG Product Owner, Enterprise Ontology Team, Data Platform]
 depends_on: [ONT-05, TKG-01, STR-02, IOP-01, EDW-00]
-last_updated: 2026-10-17---
+last_updated: 2026-10-17
+---
 # Stage 5 — Knowledge Graph Instantiation
 
 ## 1. Purpose
@@ -32,8 +33,8 @@ flowchart LR
   F2R & R2R & RML --> STG[Staging graph<br/>per batch]
   STG --> SH{SHACL validation}
   SH -->|conforms| TKG[(Temporal KG<br/>named graphs · RDF-star · PROV-O)]
-  SH -->|violations| Q[(hc.dq.quarantine.kg.*)] --> S0[Stage 0/1 feedback]
-  TKG --> KGT[(hc.kg.* change events)]
+  SH -->|violations| Q[(hc.kg.dlq.v1)] --> S0[Stage 0/1 feedback]
+  TKG --> KGT[(hc.kg.assertion.v1 · hc.kg.retraction.v1)]
 ```
 
 | Path | Source | Technology | Used for | Owner |
@@ -121,9 +122,10 @@ engine refuses records whose provenance bundle is missing.
 3. **Test** each mapping against fixture records (golden FHIR bundles per profile from module 06; sample EDW rows)
    and the SHACL shapes; a mapping that produces any `sh:Violation` on fixtures is rejected.
 4. **Deploy** as Flink jobs (path A, streaming) and scheduled R2RML/RML batch jobs (paths B/C), publishing
-   `hc.kg.<domain>.<entity>.rdf.v1` change events (N-Quads payload, Schema Registry `FULL` compatibility).
+   assertion and retraction batches to `hc.kg.assertion.v1` / `hc.kg.retraction.v1` (RDF-star assertion payload per module 08
+   TKG-01, Schema Registry `FULL` compatibility) and load receipts to `hc.kg.load-receipt.v1`.
 5. **Reconcile** nightly: count and checksum business keys per class in KG vs EDW (`ADR-07`); publish the variance
-   to `hc.ops.kg.reconciliation.v1` and open a CR when variance exceeds 0.1 %.
+   to `hc.ops.kg-edw-reconciliation.v1` and open a CR when variance exceeds 0.1 %.
 
 Autonomy: L3 — the agent deploys mapping changes that pass fixtures and SHACL without human approval, except when the
 ontology version changes major (`vYYYY.MM.0` with breaking diff) or when a mapping touches PHI-classified elements
@@ -157,7 +159,7 @@ ontology version changes major (`vYYYY.MM.0` with breaking diff) or when a mappi
 | **ONT-KG-010** | P1 | test | Mapping artefacts (lift rules, R2RML, RML) MUST be versioned in Git, registered as `prov:Plan`, and referenced from every load activity by commit SHA. |
 | **ONT-KG-011** | P1 | test | Path A streaming load MUST sustain the platform throughput target (ARC-NFR-002) with p95 canonical→KG latency ≤ 60 s. |
 | **ONT-KG-012** | P1 | test | Entity-resolution merges MUST retain the merged IRI with `healix:mergedInto` and MUST NOT delete or rewrite historical assertions. |
-| **ONT-KG-013** | P2 | demo | `hc.kg.*` change events SHOULD allow a downstream consumer to rebuild any instance graph from Kafka alone within the retention window. |
+| **ONT-KG-013** | P2 | demo | `hc.kg.assertion.v1` / `hc.kg.retraction.v1` events SHOULD allow a downstream consumer to rebuild any instance graph from Kafka alone within the retention window. |
 
 ## 9. Exit criteria
 

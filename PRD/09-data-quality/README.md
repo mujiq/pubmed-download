@@ -47,12 +47,12 @@ canonicalisation (module 06), ontology consistency checking itself (module 02), 
 |--------|------|---------|
 | DQ-00 | `README.md` | This overview, architecture, lifecycle, requirement index |
 | DQ-01 | [`01-dq-framework.md`](01-dq-framework.md) | Ten dimensions with healthcare definitions, CDE catalogue by group, rule derivation sources, severity classes and routing, roles |
-| DQ-02 | [`02-rule-catalog.md`](02-rule-catalog.md) | YAML rule DSL, 98-rule first-release catalogue across G1–G9 and cross-system reconciliation |
+| DQ-02 | [`02-rule-catalog.md`](02-rule-catalog.md) | YAML rule DSL, 117-rule first-release catalogue across G1–G9, the bitemporal/provenance contract and cross-system reconciliation |
 | DQ-03 | [`03-dq-pipelines.md`](03-dq-pipelines.md) | Stream, graph and warehouse planes; result and issue schemas; cross-plane reconciliation; profiling and drift |
 | DQ-04 | [`04-scorecards-and-slas.md`](04-scorecards-and-slas.md) | Composite DQ index, scorecards per group/source/steward, thresholds, alerting, SLAs, trend reporting |
 | DQ-05 | [`05-remediation-workflows.md`](05-remediation-workflows.md) | Remediation taxonomy, workflow states, SLAs, audit trail, feedback loop into rules and ontology |
 | — | [`rules/rule.schema.json`](rules/rule.schema.json) | JSON Schema (Draft 2020-12) for the rule DSL |
-| — | [`rules/*.yaml`](rules/) | Rule packs: `g1-party`, `g2-clinical`, `g3-finance`, `g4-supply`, `g5-workforce`, `cross-system-reconciliation` (64 rules) |
+| — | [`rules/*.yaml`](rules/) | Rule packs: `g1-party`, `g2-clinical`, `g3-finance`, `g4-supply`, `g5-workforce`, `temporal-and-provenance`, `cross-system-reconciliation` (83 rules) |
 
 ## 3. DQ architecture
 
@@ -193,6 +193,7 @@ Priorities: P0 launch-blocking, P1 first release, P2 later. Verification: test, 
 | DQ-RULE-010 | P1 | test | Value-set expansion version pinned and recorded |
 | DQ-RULE-011 | P2 | demo | Catalogue tables regenerable from packs |
 | DQ-RULE-012 | P0 | inspection | No PHI literals in rules or fixtures |
+| DQ-RULE-013 | P0 | test | TKG-01 §9 clauses C1–C6/C9 covered by active `temporal-and-provenance` rules, templated over every bitemporal table |
 
 ### DQ-03 Pipelines (`DQ-PIPE`)
 
@@ -250,7 +251,7 @@ Priorities: P0 launch-blocking, P1 first release, P2 later. Verification: test, 
 | DQ-REM-013 | P0 | inspection | PHI only inside entitled remediation workspace |
 | DQ-REM-014 | P2 | demo | Bulk steward-assisted fix per issue with per-record evaluation |
 
-**Totals:** 67 requirements (P0 42 · P1 20 · P2 5).
+**Totals:** 68 requirements (P0 43 · P1 20 · P2 5).
 
 ## 9. Definition of done for this module
 

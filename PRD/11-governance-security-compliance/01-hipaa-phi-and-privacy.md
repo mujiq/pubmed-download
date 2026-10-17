@@ -60,14 +60,67 @@ Ages over 89 and all elements of dates except year are treated as identifier 3 a
 
 ## 3. PHI classification taxonomy
 
-The taxonomy is a SKOS concept scheme `<base>scheme/data-classification` (G8/G9) and is the sole legal value set
-for (a) the Kafka header `hc-phi-class`, (b) EDW column tags, (c) KG property annotations and (d) the agent tool
-policy engine. Values are hierarchical; a record or column inherits the **most restrictive** tag of its elements.
+> **Single source of truth.** This section is the **only** normative definition of the HEALIX data-classification
+> value set. Every other module cites it by reference (`GOV-01 §3`, Table 3-A) and MUST NOT redefine, extend or alias
+> it. The same literal strings are used, byte for byte, in:
+>
+> | Where the value appears | Artefact / field | Owning module |
+> |-------------------------|------------------|---------------|
+> | Kafka record header | `hc-phi-class` (single most-restrictive tag) and the tag list in `hc-phi-tags` (§3.1, STR-03 §4) | 07 |
+> | Topic catalog | `topics[].phi_class` and the enumeration `defaults.phi_classes` in `07-streaming-platform/topics.yaml` (STR-TOP-008) | 07 |
+> | EDW column tags | `phi_class` metadata attribute of every column, `edw_g9_governance.ref_data_element_classification.tag`, and the column comment `'<phi_class> \| <ontology_property_iri>'` (EDW-LOG-030) | 05 |
+> | Data contracts and mapping specs | `phi_class` / `phi_class_max` fields of source contracts (module 03) and of `std` → FHIR mapping specs (module 06) | 03, 06 |
+> | DQ artefacts | `phi_class` fields of DQ rule packs, `hc.dq.result.v1`, `hc.dq.issue.v1` and quarantine records (`hc.dq.quarantine.<domain>.v1`) | 09 |
+> | Knowledge graph | `healix:dataClassification` annotation on OWL data properties and named graphs; FHIR `meta.security` derivation (§3.1) | 08, 06 |
+> | Telemetry | OpenTelemetry attribute `healix.phi_class` (OPS-03 §2) | 12 |
+> | Agent memory and caches | `phi_class` ceilings in `14-memory-and-self-improvement/memory-schema.yaml` and `cache-policy.yaml`; write-gate PHI firewall | 14 |
+> | Agent tool policy | `phi_access` / classification attributes evaluated by the MCP tool gateway PEP (GOV-02) | 10, 11 |
+>
+> CI stage `classification-tags` (OPS-02 §4) rejects any value outside Table 3-A and diffs every derived enumeration
+> against it (GOV-PHI-025). A change to the value set is a `phi-affecting` CR (GOV-00 §2.2) that bumps this document's
+> major version and `topics.yaml` `catalog_version` in the same release.
+
+The taxonomy is a SKOS concept scheme `<base>scheme/data-classification` (G8/G9). Values are hierarchical; a record or
+column inherits the **most restrictive** tag of its elements. Tags are lowercase, use `:` between family and member and
+`/` for a sub-category, and are compared as exact strings (a policy that applies to all sub-categories says so
+explicitly with `phi:sensitive-category/*`).
+
+### 3.0 Canonical value set (Table 3-A, normative)
+
+| # | Canonical value (`hc-phi-class`) | Family | Parent | PHI under HIPAA? | Permitted in non-prod (OPS-02 §6)? | Permitted in agent memory / caches (module 14)? |
+|---|----------------------------------|--------|--------|------------------|------------------------------------|-------------------------------------------------|
+| 1 | `phi:direct` | PHI | — | Yes | No | No |
+| 2 | `phi:quasi` | PHI | — | Yes | Only generalised or pseudonymised | No |
+| 3 | `phi:clinical` | PHI | — | Yes | Only as `deidentified:*` or `pseudonymised` | No |
+| 4 | `phi:sensitive-category` | PHI | — | Yes (specially protected) | No | No |
+| 5 | `phi:sensitive-category/sud` | PHI | `phi:sensitive-category` | Yes (42 CFR Part 2) | No | No |
+| 6 | `phi:sensitive-category/hiv` | PHI | `phi:sensitive-category` | Yes | No | No |
+| 7 | `phi:sensitive-category/mental-health` | PHI | `phi:sensitive-category` | Yes | No | No |
+| 8 | `phi:sensitive-category/reproductive` | PHI | `phi:sensitive-category` | Yes | No | No |
+| 9 | `phi:sensitive-category/genetic` | PHI | `phi:sensitive-category` | Yes | No | No |
+| 10 | `pii:workforce` | Personal data (not PHI) | — | No (GDPR / CCPA personal data) | Pseudonymised only | Steward preferences only: hashed subject, consent flag (MEM-01) |
+| 11 | `confidential:financial` | Confidential | — | No | Yes (masked where contractual) | No |
+| 12 | `confidential:operational` | Confidential | — | No | Yes | Yes |
+| 13 | `internal` | Internal | — | No | Yes | Yes — default ceiling for memory and cache tiers |
+| 14 | `public` | Public | — | No | Yes | Yes |
+| 15 | `deidentified:safe-harbor` | Deidentified | — | No (§164.514(b)(2)) | Yes (`test`) | Aggregates only, count suppression < 11 |
+| 16 | `deidentified:expert` | Deidentified | — | No (§164.514(b)(1)); DSA-bound | Yes (`uat`, under DSA) | No |
+| 17 | `pseudonymised` | PHI (tokenised) | — | **Yes** — still PHI | Yes (`uat`, non-prod token keys) | No — GOV-PHI-013 tokens are not a licence to store |
+
+Rules for citing the set: (1) the 17 strings above are exhaustive — `non-phi`, `none`, `n/a`, `unknown`, `low`/`high`
+and similar aliases are **not** values; an artefact that needs "contains no PHI" uses `internal` (or `public` /
+`confidential:*` as appropriate) and an artefact without a classification is rejected (fail-closed to `phi:direct`,
+§3.2); (2) `phi:sensitive-category` without a sub-category is permitted only on container-level artefacts (topics,
+named graphs, schemas) whose records each carry the sub-category tag; (3) every enumeration of these values outside this
+document (`topics.yaml` `defaults.phi_classes`, the schema field tag `hc.phi-class` of STR-03 LINT-SR-05, module 05/09/14 schemas, OPS-03 conventions) is generated from Table 3-A
+and diffed in CI, never hand-edited.
+
+**Definitions and default handling**
 
 | Tag (`hc-phi-class` value) | Definition | Examples | Default handling |
 |----------------------------|------------|----------|------------------|
 | `phi:direct` | Directly identifies an individual (HIPAA identifiers 1–2, 4–18) | MRN, name, SSN, member ID | Encrypted at rest with PHI key class; masked or tokenised outside `prod` and for agents; access requires purpose of use in TPO or authorised set |
-| `phi:quasi` | Does not identify alone but does in combination (identifier 3, ZIP3, sex, race, rare diagnosis) | Birth date, admit date, 3-digit ZIP | Generalised in de-identified outputs; k-anonymity check before release |
+| `phi:quasi` | Does not identify alone but does in combination (identifier 3, ZIP3, sex, race, rare diagnosis) | Birth date, admit date, 3-digit ZIP | Generalised in `deidentified:*` outputs; k-anonymity check before release |
 | `phi:clinical` | Health information about an identified or identifiable individual that is not itself an identifier | Diagnosis codes, lab values, medications | Treated as PHI; may be released with `phi:direct` removed only under §6 |
 | `phi:sensitive-category` | Specially protected categories requiring segmentation and consent | Sub-tags below | Segmented named graphs and row-level policies; consent gate mandatory; re-disclosure notice |
 | `phi:sensitive-category/sud` | 42 CFR Part 2 substance use disorder records from Part 2 programs | SUD treatment encounters, MAT medications | Part 2 consent required; `hc-part2-flag=true`; excluded from HIE push without consent |
@@ -142,7 +195,7 @@ Consent is a first-class G9 entity modelled as FHIR R4 `Consent` (scope `patient
 | Consent / directive type | Source | Gates |
 |--------------------------|--------|-------|
 | HIE opt-out / opt-in | Cerner consent module, HIE registry | Suppresses publication of the patient's resources to partner-facing `hc.canonical.*` mirrors and outbound FHIR Bulk Data |
-| 42 CFR Part 2 consent | Part 2 program consent forms | Required for any flow of `phi:sensitive-category/sud` beyond the originating program; routes to `hc.canonical.clinical.*.part2.v1` segmented topics |
+| 42 CFR Part 2 consent | Part 2 program consent forms | Required for any flow of `phi:sensitive-category/sud` beyond the originating program; Part 2 records stay on the standard `hc.canonical.clinical.<entity>.fhir.v1` topics but are segmented **per record** by `hc-phi-class=phi:sensitive-category/sud` + `hc-part2-flag=true` headers (STR-01 §3.3: no separately named Part 2 topics exist in `topics.yaml`), into Part 2 named graphs in the KG and row-level-secured EDW partitions; consumers without a matching `Consent` never receive them |
 | Research consent | Research systems (G7) | Required for identifiable `HRESCH`; de-identified extracts allowed without |
 | Restriction requests (§164.522) | HIM | Row-level deny on specific encounters |
 | Confidential communications | Patient portal | Masks contact channels in outbound messaging |
@@ -240,8 +293,10 @@ Rules are parameterised by the ABAC attribute `facility` and the patient's state
 > **GOV-PHI-004** (P0, test) — The 18 identifier patterns in §2 MUST be detected automatically with recall ≥ 0.98 on the
 > annotated classification test set; precision ≥ 0.90.
 
-> **GOV-PHI-005** (P0, test) — `phi:sensitive-category/*` records MUST be routed to segmented topics, named graphs and
-> row-level-secured tables, never co-mingled with default clinical partitions.
+> **GOV-PHI-005** (P0, test) — `phi:sensitive-category/*` records MUST be segmented from default clinical data: on Kafka
+> by per-record `hc-phi-class`/`hc-phi-tags` headers and the consent gate (a dedicated segmented topic MAY be used only
+> when registered in `topics.yaml`), in the KG by segmented named graphs and in the EDW by row-level-secured tables;
+> they MUST never be served from default clinical partitions or views.
 
 > **GOV-PHI-006** (P0, test) — Psychotherapy notes MUST be excluded from all canonical, KG and EDW flows.
 
@@ -298,12 +353,17 @@ Rules are parameterised by the ABAC attribute `facility` and the patient's state
 > **GOV-PHI-024** (P2, test) — Reproductive-health records MUST require an attestation of permitted purpose before
 > any non-TPO disclosure.
 
+> **GOV-PHI-025** (P0, test) — Every enumeration of classification values outside this document (`topics.yaml`
+> `defaults.phi_classes`, EDW `phi_class` column metadata, module 03/06 contract and mapping fields, module 09 DQ
+> schemas, module 14 memory and cache policy ceilings, OPS-03 `healix.phi_class`) MUST equal Table 3-A exactly; CI MUST
+> fail on any value, alias or omission that differs.
+
 ## 11. Traceability
 
 | Requirement | Verified by | Related |
 |-------------|-------------|---------|
 | GOV-PHI-001, 005, 010 | Header guard integration tests (module 07) | ARC-NFR-003, STR-* |
-| GOV-PHI-002 | CI tag linter (OPS-02) | EDW-*, TKG-* |
+| GOV-PHI-002, 025 | CI tag linter and Table 3-A enumeration diff (OPS-02 stage `classification-tags`) | EDW-LOG-030, STR-TOP-008, TKG-*, MEM-CACHE-001 |
 | GOV-PHI-007, 008 | ABAC policy tests (GOV-02) | GOV-ACC-* |
 | GOV-PHI-011, 013 | Non-prod PHI scanner (OPS-02) | OPS-ENV-* |
 | GOV-PHI-012, 017, 021 | Agent eval suite (module 10) | AGT-* |

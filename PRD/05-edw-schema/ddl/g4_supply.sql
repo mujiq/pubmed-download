@@ -54,8 +54,8 @@ CREATE TABLE edw_g4_supply.dim_supplier (
 -- TD: UNIQUE PRIMARY INDEX (supplier_sk)
 CREATE UNIQUE INDEX ux_dim_supplier_bk ON edw_g4_supply.dim_supplier (supplier_bk, valid_from);
 COMMENT ON TABLE edw_g4_supply.dim_supplier IS 'https://ontology.healix.example.org/supply/Supplier';
-COMMENT ON COLUMN edw_g4_supply.dim_supplier.supplier_number IS 'none | https://ontology.healix.example.org/supply/supplierNumber';
-COMMENT ON COLUMN edw_g4_supply.dim_supplier.duns_number IS 'none | https://ontology.healix.example.org/supply/dunsNumber';
+COMMENT ON COLUMN edw_g4_supply.dim_supplier.supplier_number IS 'internal | https://ontology.healix.example.org/supply/supplierNumber';
+COMMENT ON COLUMN edw_g4_supply.dim_supplier.duns_number IS 'internal | https://ontology.healix.example.org/supply/dunsNumber';
 
 -- ---------------------------------------------------------------------------
 -- dim_item (conformed, Type 2) · 05-conformed-dimensions.md §7 · EDW-CONF-011
@@ -146,12 +146,12 @@ CREATE UNIQUE INDEX ux_dim_item_bk ON edw_g4_supply.dim_item (item_bk, valid_fro
 CREATE INDEX ix_dim_item_ndc ON edw_g4_supply.dim_item (ndc_code);
 CREATE INDEX ix_dim_item_gtin ON edw_g4_supply.dim_item (gtin);
 COMMENT ON TABLE edw_g4_supply.dim_item IS 'https://ontology.healix.example.org/supply/Item';
-COMMENT ON COLUMN edw_g4_supply.dim_item.item_bk IS 'none | https://ontology.healix.example.org/supply/itemIdentifier';
-COMMENT ON COLUMN edw_g4_supply.dim_item.gtin IS 'none | https://ontology.healix.example.org/supply/gtin';
-COMMENT ON COLUMN edw_g4_supply.dim_item.udi_device_identifier IS 'none | https://ontology.healix.example.org/supply/udiDeviceIdentifier';
-COMMENT ON COLUMN edw_g4_supply.dim_item.ndc_code IS 'none | https://ontology.healix.example.org/supply/ndcCode';
-COMMENT ON COLUMN edw_g4_supply.dim_item.rxnorm_code_sk IS 'none | https://ontology.healix.example.org/supply/rxnormConcept';
-COMMENT ON COLUMN edw_g4_supply.dim_item.unspsc_code_sk IS 'none | https://ontology.healix.example.org/supply/unspscCategory';
+COMMENT ON COLUMN edw_g4_supply.dim_item.item_bk IS 'internal | https://ontology.healix.example.org/supply/itemIdentifier';
+COMMENT ON COLUMN edw_g4_supply.dim_item.gtin IS 'internal | https://ontology.healix.example.org/supply/gtin';
+COMMENT ON COLUMN edw_g4_supply.dim_item.udi_device_identifier IS 'internal | https://ontology.healix.example.org/supply/udiDeviceIdentifier';
+COMMENT ON COLUMN edw_g4_supply.dim_item.ndc_code IS 'internal | https://ontology.healix.example.org/supply/ndcCode';
+COMMENT ON COLUMN edw_g4_supply.dim_item.rxnorm_code_sk IS 'internal | https://ontology.healix.example.org/supply/rxnormConcept';
+COMMENT ON COLUMN edw_g4_supply.dim_item.unspsc_code_sk IS 'internal | https://ontology.healix.example.org/supply/unspscCategory';
 
 INSERT INTO edw_g4_supply.dim_item
     (item_sk, item_bk, item_description, item_type_code, rxnorm_code_sk, cvx_code_sk, hcpcs_code_sk, unspsc_code_sk,
@@ -210,9 +210,14 @@ CREATE TABLE edw_g4_supply.fact_purchase_order_line (
     -- bitemporal block
     valid_from              TIMESTAMP     NOT NULL,
     valid_to                TIMESTAMP,
-    recorded_at             TIMESTAMP     NOT NULL,
+    recorded_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_at           TIMESTAMP,
+    change_kind             CHAR(12),                     -- TKG-01 C6/C10: why this version was closed; NULL while current, NOT NULL when superseded_at is set (new-version / correction / retraction / merge / unmerge)
     change_reason_code      VARCHAR(30),
+    event_time              TIMESTAMP     NOT NULL,       -- TKG-01 C7: hc-event-time of the producing record (UTC)
+    source_time             TIMESTAMP,                    -- TKG-01 C7: hc-source-time, the source system clock (UTC)
+    decision_time           TIMESTAMP,                    -- TKG-01 C8: when the real-world decision was taken; NULL = not available
+    source_tz               VARCHAR(64),                  -- TKG-01 C12: IANA zone of the source timestamps (storage is UTC)
     -- technical block
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -251,10 +256,10 @@ CREATE TABLE edw_g4_supply.fact_purchase_order_line (
 CREATE UNIQUE INDEX ux_fact_po_line_bk ON edw_g4_supply.fact_purchase_order_line (po_line_bk, valid_from);
 CREATE INDEX ix_fact_po_line_item ON edw_g4_supply.fact_purchase_order_line (item_sk, ordered_date_sk);
 COMMENT ON TABLE edw_g4_supply.fact_purchase_order_line IS 'https://ontology.healix.example.org/supply/PurchaseOrderLine';
-COMMENT ON COLUMN edw_g4_supply.fact_purchase_order_line.quantity_ordered IS 'none | https://ontology.healix.example.org/supply/quantityOrdered';
-COMMENT ON COLUMN edw_g4_supply.fact_purchase_order_line.quantity_received IS 'none | https://ontology.healix.example.org/supply/quantityReceived';
-COMMENT ON COLUMN edw_g4_supply.fact_purchase_order_line.extended_amount IS 'none | https://ontology.healix.example.org/supply/purchaseAmount';
-COMMENT ON COLUMN edw_g4_supply.fact_purchase_order_line.prov_activity_iri IS 'none | http://www.w3.org/ns/prov#wasGeneratedBy';
+COMMENT ON COLUMN edw_g4_supply.fact_purchase_order_line.quantity_ordered IS 'confidential:financial | https://ontology.healix.example.org/supply/quantityOrdered';
+COMMENT ON COLUMN edw_g4_supply.fact_purchase_order_line.quantity_received IS 'confidential:financial | https://ontology.healix.example.org/supply/quantityReceived';
+COMMENT ON COLUMN edw_g4_supply.fact_purchase_order_line.extended_amount IS 'confidential:financial | https://ontology.healix.example.org/supply/purchaseAmount';
+COMMENT ON COLUMN edw_g4_supply.fact_purchase_order_line.prov_activity_iri IS 'internal | http://www.w3.org/ns/prov#wasGeneratedBy';
 
 -- ---------------------------------------------------------------------------
 -- fact_inventory_balance_daily (periodic snapshot) · EDW-G4-001
@@ -288,9 +293,14 @@ CREATE TABLE edw_g4_supply.fact_inventory_balance_daily (
     -- bitemporal block (valid_from = snapshot instant)
     valid_from              TIMESTAMP     NOT NULL,
     valid_to                TIMESTAMP,
-    recorded_at             TIMESTAMP     NOT NULL,
+    recorded_at             TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     superseded_at           TIMESTAMP,
+    change_kind             CHAR(12),                     -- TKG-01 C6/C10: why this version was closed; NULL while current, NOT NULL when superseded_at is set (new-version / correction / retraction / merge / unmerge)
     change_reason_code      VARCHAR(30),
+    event_time              TIMESTAMP     NOT NULL,       -- TKG-01 C7: hc-event-time of the producing record (UTC)
+    source_time             TIMESTAMP,                    -- TKG-01 C7: hc-source-time, the source system clock (UTC)
+    decision_time           TIMESTAMP,                    -- TKG-01 C8: when the real-world decision was taken; NULL = not available
+    source_tz               VARCHAR(64),                  -- TKG-01 C12: IANA zone of the source timestamps (storage is UTC)
     -- technical block
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -319,9 +329,9 @@ CREATE TABLE edw_g4_supply.fact_inventory_balance_daily (
 -- TD: COLLECT STATISTICS COLUMN (item_sk), COLUMN (location_sk), COLUMN (snapshot_date_sk), COLUMN (PARTITION) ON edw_g4_supply.fact_inventory_balance_daily;
 CREATE UNIQUE INDEX ux_fact_inv_bal_grain ON edw_g4_supply.fact_inventory_balance_daily (snapshot_date_sk, item_sk, location_sk, valid_from);
 COMMENT ON TABLE edw_g4_supply.fact_inventory_balance_daily IS 'https://ontology.healix.example.org/supply/InventoryBalance';
-COMMENT ON COLUMN edw_g4_supply.fact_inventory_balance_daily.on_hand_qty IS 'none | https://ontology.healix.example.org/supply/onHandQuantity';
-COMMENT ON COLUMN edw_g4_supply.fact_inventory_balance_daily.on_hand_value_amount IS 'none | https://ontology.healix.example.org/supply/onHandValue';
-COMMENT ON COLUMN edw_g4_supply.fact_inventory_balance_daily.snapshot_date IS 'none | https://ontology.healix.example.org/supply/snapshotDate';
+COMMENT ON COLUMN edw_g4_supply.fact_inventory_balance_daily.on_hand_qty IS 'confidential:operational | https://ontology.healix.example.org/supply/onHandQuantity';
+COMMENT ON COLUMN edw_g4_supply.fact_inventory_balance_daily.on_hand_value_amount IS 'confidential:operational | https://ontology.healix.example.org/supply/onHandValue';
+COMMENT ON COLUMN edw_g4_supply.fact_inventory_balance_daily.snapshot_date IS 'internal | https://ontology.healix.example.org/supply/snapshotDate';
 
 -- ---------------------------------------------------------------------------
 -- Close the G3 → G4 cycle: item references from revenue facts
