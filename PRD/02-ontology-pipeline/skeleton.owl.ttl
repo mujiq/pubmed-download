@@ -1,0 +1,352 @@
+# HEALIX Ontology Pipeline — Stage 4 OWL 2 DL core module skeleton
+# IRI: https://ontology.healix.example.org/ontology/core
+# Group modules (g1-party … g9-governance) import this module; see 05-ontology.md §2.
+# Design: OWL for meaning (open world); SHACL (skeleton.shacl.ttl) for conformance (closed world).
+
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix time:    <http://www.w3.org/2006/time#> .
+@prefix fhir:    <http://hl7.org/fhir/> .
+@prefix sct:     <http://snomed.info/id/> .
+@prefix healix:  <https://ontology.healix.example.org/core/> .
+@prefix ont:     <https://ontology.healix.example.org/ontology/> .
+@prefix grp:     <https://ontology.healix.example.org/group/> .
+
+###############################################################################
+# Ontology header
+###############################################################################
+
+ont:core a owl:Ontology ;
+    owl:versionIRI <https://ontology.healix.example.org/ontology/core/v2026.11.0> ;
+    owl:versionInfo "v2026.11.0" ;
+    dcterms:title "HEALIX Core Ontology"@en ;
+    dcterms:description "Upper-level and shared patterns for the HEALIX enterprise healthcare ontology: entity, event, party, role, identifier, coded value, quantity, and hooks for provenance and bitemporal annotation. Group modules G1–G9 import this module."@en ;
+    dcterms:publisher healix:OntologyGovernanceBoard ;
+    dcterms:created "2026-10-17"^^xsd:date ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    rdfs:comment "OWL 2 DL. External vocabularies (PROV-O, SKOS, OWL-Time, FHIR RDF, SNOMED CT) are referenced by IRI and not imported, to keep the module small and licence-safe."@en .
+
+# Import structure (declared on the group modules, shown here for reference).
+ont:g1-party        a owl:Ontology ; owl:imports ont:core .
+ont:g2-clinical     a owl:Ontology ; owl:imports ont:core , ont:g1-party , ont:g8-reference .
+ont:g3-finance      a owl:Ontology ; owl:imports ont:core , ont:g1-party , ont:g2-clinical , ont:g8-reference .
+ont:g4-supply       a owl:Ontology ; owl:imports ont:core , ont:g1-party , ont:g8-reference .
+ont:g5-workforce    a owl:Ontology ; owl:imports ont:core , ont:g1-party , ont:g8-reference .
+ont:g6-pophealth    a owl:Ontology ; owl:imports ont:core , ont:g1-party , ont:g2-clinical .
+ont:g7-research     a owl:Ontology ; owl:imports ont:core , ont:g1-party , ont:g2-clinical .
+ont:g8-reference    a owl:Ontology ; owl:imports ont:core .
+ont:g9-governance   a owl:Ontology ; owl:imports ont:core , ont:g8-reference .
+ont:enterprise      a owl:Ontology ;
+    owl:imports ont:g1-party , ont:g2-clinical , ont:g3-finance , ont:g4-supply , ont:g5-workforce ,
+                ont:g6-pophealth , ont:g7-research , ont:g8-reference , ont:g9-governance .
+
+###############################################################################
+# Annotation properties
+###############################################################################
+
+healix:group a owl:AnnotationProperty ;
+    rdfs:label "subject-area group"@en ;
+    rdfs:comment "Subject-area group G1–G9 (ARC-01 §4) that owns the class or property."@en .
+
+healix:derivedFromConcept a owl:AnnotationProperty ;
+    rdfs:label "derived from concept"@en ;
+    rdfs:comment "The SKOS concept (Stage 1–3) from which this class was promoted."@en .
+
+healix:fhirResource a owl:AnnotationProperty ;
+    rdfs:label "FHIR resource"@en ;
+    rdfs:comment "FHIR R4 resource type that this class corresponds to."@en .
+
+healix:fhirPath a owl:AnnotationProperty ;
+    rdfs:label "FHIR path"@en .
+
+healix:edwBinding a owl:AnnotationProperty ;
+    rdfs:label "EDW binding"@en ;
+    rdfs:comment "EDW table or table.column (module 05) that materialises this class or property."@en .
+
+healix:promotedFromCategory a owl:AnnotationProperty ;
+    rdfs:label "promoted from relation category"@en ;
+    rdfs:comment "Stage 3 relation category from which this object property was promoted."@en .
+
+healix:derivedFromAxiom a owl:AnnotationProperty ;
+    rdfs:label "derived from axiom"@en .
+
+###############################################################################
+# Classes
+###############################################################################
+
+healix:Entity a owl:Class ;
+    rdfs:label "Entity"@en ;
+    skos:definition "Any identifiable thing about which the enterprise records facts: a continuant such as a person, organisation, location or item, or an occurrent such as an encounter or transaction."@en ;
+    healix:group grp:core ;
+    healix:edwBinding "conformed dimensions and fact tables (all groups)" .
+
+healix:Event a owl:Class ;
+    rdfs:subClassOf healix:Entity ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty healix:hasStatus ; owl:someValuesFrom healix:CodedValue ] ;
+    rdfs:label "Event"@en ;
+    skos:definition "An occurrent entity that happens at an instant or over an interval, has participants and a status, and is the unit of recording for clinical, financial and operational activity."@en ;
+    healix:group grp:core ;
+    healix:edwBinding "fact_*" .
+
+healix:Party a owl:Class ;
+    rdfs:subClassOf healix:Entity ;
+    rdfs:label "Party"@en ;
+    skos:definition "A person or an organisation that can bear roles such as patient, practitioner, employee, supplier or payer, and to which identifiers are assigned."@en ;
+    healix:group grp:G1 ;
+    owl:equivalentClass [ a owl:Class ; owl:unionOf ( healix:Person healix:Organization ) ] .
+
+healix:Person a owl:Class ;
+    rdfs:subClassOf healix:Party ;
+    rdfs:subClassOf prov:Agent ;
+    owl:disjointWith healix:Organization ;
+    rdfs:label "Person"@en ;
+    skos:definition "A human being known to the enterprise in any capacity; a single person may bear a patient role, a practitioner role and an employee role concurrently or over time."@en ;
+    healix:group grp:G1 ;
+    healix:fhirResource fhir:Person ;
+    healix:edwBinding "edw_g1_party.dim_person" .
+
+healix:Organization a owl:Class ;
+    rdfs:subClassOf healix:Party ;
+    rdfs:subClassOf prov:Agent ;
+    rdfs:label "Organization"@en ;
+    skos:definition "A formally constituted group of people or a legal entity, such as a hospital, department, payer, supplier, or Oracle Fusion business unit, that acts with collective responsibility."@en ;
+    healix:group grp:G1 ;
+    healix:fhirResource fhir:Organization ;
+    healix:edwBinding "edw_g1_party.dim_organization" .
+
+healix:Role a owl:Class ;
+    rdfs:subClassOf healix:Entity ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty healix:roleOf ; owl:someValuesFrom healix:Party ] ;
+    rdfs:label "Role"@en ;
+    skos:definition "A time-bounded capacity in which a party participates in events, such as patient, practitioner, employee, supplier or payer; roles separate what a party is from what a party does."@en ;
+    healix:group grp:G1 .
+
+healix:PatientRole a owl:Class ;
+    rdfs:subClassOf healix:Role ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty healix:roleOf ; owl:someValuesFrom healix:Person ] ;
+    owl:disjointWith healix:PractitionerRole ;
+    rdfs:label "Patient role"@en ;
+    skos:definition "The role borne by a person who receives or is registered to receive healthcare services from the enterprise, identified in Cerner Millennium by a medical record number."@en ;
+    healix:group grp:G1 ;
+    healix:fhirResource fhir:Patient ;
+    healix:edwBinding "edw_g1_party.dim_patient" .
+
+healix:PractitionerRole a owl:Class ;
+    rdfs:subClassOf healix:Role ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty healix:roleOf ; owl:someValuesFrom healix:Person ] ;
+    rdfs:label "Practitioner role"@en ;
+    skos:definition "The role borne by a person who is directly or indirectly involved in the provision of healthcare, typically identified by a National Provider Identifier and a NUCC specialty."@en ;
+    healix:group grp:G1 ;
+    healix:fhirResource fhir:Practitioner ;
+    healix:edwBinding "edw_g1_party.dim_practitioner" .
+
+healix:Location a owl:Class ;
+    rdfs:subClassOf healix:Entity ;
+    rdfs:label "Location"@en ;
+    skos:definition "A physical or virtual place where services are provided, resources are stocked or events occur, such as a facility, building, unit, room, bed or warehouse."@en ;
+    healix:group grp:G1 ;
+    healix:fhirResource fhir:Location ;
+    healix:edwBinding "edw_g1_party.dim_location" .
+
+healix:Identifier a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty healix:identifierSystem ; owl:cardinality "1"^^xsd:nonNegativeInteger ] ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty healix:identifierValue ; owl:cardinality "1"^^xsd:nonNegativeInteger ] ;
+    rdfs:label "Identifier"@en ;
+    skos:definition "A business identifier for an entity consisting of a value within an identifying system, such as a medical record number, financial number, NPI, EIN, Oracle person number or supplier number."@en ;
+    healix:group grp:core .
+
+healix:CodedValue a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty healix:concept ; owl:maxCardinality "1"^^xsd:nonNegativeInteger ] ;
+    rdfs:label "Coded value"@en ;
+    skos:definition "A code from a code system, with optional display text and version, resolved where possible to a HEALIX SKOS concept; the single representation for FHIR Coding, HL7 v2 CWE, Cerner CODE_VALUE and Oracle Fusion lookup codes."@en ;
+    healix:group grp:G8 .
+
+healix:Quantity a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty healix:value ; owl:cardinality "1"^^xsd:nonNegativeInteger ] ;
+    rdfs:label "Quantity"@en ;
+    skos:definition "A measured or counted amount expressed as a decimal value with a unit of measure drawn from UCUM or, for money, an ISO 4217 currency."@en ;
+    healix:group grp:core .
+
+healix:Encounter a owl:Class ;
+    rdfs:subClassOf healix:Event ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty healix:hasSubject ; owl:someValuesFrom healix:PatientRole ] ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty healix:hasClass ; owl:someValuesFrom healix:CodedValue ] ;
+    rdfs:label "Encounter"@en ;
+    skos:definition "An interaction between a patient and healthcare providers for the purpose of providing services or assessing health status, bounded by an arrival and a departure or discharge."@en ;
+    healix:group grp:G2 ;
+    healix:fhirResource fhir:Encounter ;
+    healix:derivedFromConcept <https://ontology.healix.example.org/concept/fhir-family/encounter> ;
+    healix:edwBinding "edw_g2_clinical.fact_encounter" .
+
+healix:Observation a owl:Class ;
+    rdfs:subClassOf healix:Event ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty healix:hasSubject ; owl:someValuesFrom healix:PatientRole ] ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty healix:hasValue ; owl:maxCardinality "1"^^xsd:nonNegativeInteger ] ;
+    owl:disjointWith healix:Encounter ;
+    rdfs:label "Observation"@en ;
+    skos:definition "A measurement, assertion or simple finding about a patient, specimen or device made at a point in time, such as a laboratory result, vital sign or social-history statement."@en ;
+    healix:group grp:G2 ;
+    healix:fhirResource fhir:Observation ;
+    healix:edwBinding "edw_g2_clinical.fact_observation" .
+
+###############################################################################
+# Object properties
+###############################################################################
+
+healix:hasIdentifier a owl:ObjectProperty ;
+    rdfs:domain healix:Entity ;
+    rdfs:range healix:Identifier ;
+    rdfs:label "has identifier"@en ;
+    rdfs:comment "Uniqueness per identifier system is enforced by SHACL, not OWL, to keep group modules in the EL profile."@en .
+
+healix:hasCode a owl:ObjectProperty ;
+    rdfs:domain healix:Entity ;
+    rdfs:range healix:CodedValue ;
+    rdfs:label "has code"@en .
+
+healix:hasStatus a owl:ObjectProperty ;
+    rdfs:subPropertyOf healix:hasCode ;
+    rdfs:domain healix:Event ;
+    rdfs:range healix:CodedValue ;
+    rdfs:label "has status"@en .
+
+healix:hasClass a owl:ObjectProperty ;
+    rdfs:subPropertyOf healix:hasCode ;
+    rdfs:domain healix:Encounter ;
+    rdfs:range healix:CodedValue ;
+    rdfs:label "has encounter class"@en ;
+    healix:fhirPath "Encounter.class" .
+
+healix:bearsRole a owl:ObjectProperty ;
+    owl:inverseOf healix:roleOf ;
+    rdfs:domain healix:Party ;
+    rdfs:range healix:Role ;
+    rdfs:label "bears role"@en .
+
+healix:roleOf a owl:ObjectProperty ;
+    rdfs:domain healix:Role ;
+    rdfs:range healix:Party ;
+    rdfs:label "role of"@en .
+
+healix:hasSubject a owl:ObjectProperty ;
+    rdfs:domain healix:Event ;
+    rdfs:range healix:Entity ;
+    rdfs:label "has subject"@en ;
+    healix:fhirPath "Encounter.subject | Observation.subject" .
+
+healix:performedBy a owl:ObjectProperty ;
+    rdfs:domain healix:Event ;
+    rdfs:range prov:Agent ;
+    rdfs:label "performed by"@en .
+
+healix:atLocation a owl:ObjectProperty ;
+    rdfs:domain healix:Event ;
+    rdfs:range healix:Location ;
+    rdfs:label "at location"@en .
+
+healix:partOf a owl:ObjectProperty , owl:TransitiveProperty , owl:IrreflexiveProperty ;
+    rdfs:domain healix:Location ;
+    rdfs:range healix:Location ;
+    rdfs:label "part of"@en .
+
+healix:partOfEncounter a owl:ObjectProperty ;
+    rdfs:domain healix:Event ;
+    rdfs:range healix:Encounter ;
+    rdfs:label "part of encounter"@en ;
+    healix:fhirPath "Observation.encounter" .
+
+healix:hasValue a owl:ObjectProperty ;
+    rdfs:domain healix:Observation ;
+    rdfs:range [ a owl:Class ; owl:unionOf ( healix:Quantity healix:CodedValue ) ] ;
+    rdfs:label "has value"@en ;
+    healix:fhirPath "Observation.value[x]" .
+
+healix:concept a owl:ObjectProperty ;
+    rdfs:domain healix:CodedValue ;
+    rdfs:range skos:Concept ;
+    rdfs:label "resolved concept"@en .
+
+healix:unit a owl:ObjectProperty ;
+    rdfs:domain healix:Quantity ;
+    rdfs:range skos:Concept ;
+    rdfs:label "unit (UCUM or ISO 4217 concept)"@en .
+
+healix:isMeasurementOf a owl:ObjectProperty ;
+    rdfs:domain healix:Observation ;
+    rdfs:range healix:Event ;
+    rdfs:label "is measurement of"@en ;
+    healix:promotedFromCategory healix:measures .
+
+healix:wasGeneratedBy a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasGeneratedBy ;
+    rdfs:domain healix:Entity ;
+    rdfs:range prov:Activity ;
+    rdfs:label "was generated by (load activity)"@en .
+
+###############################################################################
+# Datatype properties
+###############################################################################
+
+healix:identifierSystem a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain healix:Identifier ;
+    rdfs:range xsd:anyURI ;
+    rdfs:label "identifier system"@en .
+
+healix:identifierValue a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain healix:Identifier ;
+    rdfs:range xsd:string ;
+    rdfs:label "identifier value"@en .
+
+healix:code a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain healix:CodedValue ;
+    rdfs:range xsd:string ;
+    rdfs:label "code"@en .
+
+healix:codeSystem a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain healix:CodedValue ;
+    rdfs:range xsd:anyURI ;
+    rdfs:label "code system"@en .
+
+healix:codeSystemVersion a owl:DatatypeProperty ;
+    rdfs:domain healix:CodedValue ;
+    rdfs:range xsd:string ;
+    rdfs:label "code system version"@en .
+
+healix:display a owl:DatatypeProperty ;
+    rdfs:domain healix:CodedValue ;
+    rdfs:range xsd:string ;
+    rdfs:label "display"@en .
+
+healix:value a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain healix:Quantity ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "value"@en .
+
+healix:occurredAt a owl:DatatypeProperty ;
+    rdfs:domain healix:Event ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "occurred at"@en .
+
+healix:periodStart a owl:DatatypeProperty ;
+    rdfs:domain healix:Event ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "period start"@en ;
+    healix:fhirPath "Encounter.period.start" .
+
+healix:periodEnd a owl:DatatypeProperty ;
+    rdfs:domain healix:Event ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "period end"@en ;
+    healix:fhirPath "Encounter.period.end" .
+
+# Bitemporal hooks: declared here so module 08 can use them on assertions (RDF-star);
+# they are NOT asserted as class-level properties on any HEALIX class (ONT-OWL-009).
+healix:validFrom     a owl:DatatypeProperty ; rdfs:range xsd:dateTime ; rdfs:label "valid from"@en .
+healix:validTo       a owl:DatatypeProperty ; rdfs:range xsd:dateTime ; rdfs:label "valid to"@en .
+healix:recordedAt    a owl:DatatypeProperty ; rdfs:range xsd:dateTime ; rdfs:label "recorded at (transaction time)"@en .
+healix:supersededAt  a owl:DatatypeProperty ; rdfs:range xsd:dateTime ; rdfs:label "superseded at (transaction time)"@en .
