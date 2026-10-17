@@ -1,0 +1,909 @@
+# playbook_id: PBK-SINK-001
+# module: 14-memory-and-self-improvement
+# artefact: healing playbook (validated by healing-playbooks/playbook.schema.json; rules MEM-HEAL-036…050 in 04-self-healing.md)
+# status: shadow — recommend-only until graduated via a `playbook` CR (MEM-HEAL-012, MEM-HEAL-037, MEM-HEAL-044)
+#
+# Heals the knowledge-graph sink (`sink.kg-sparql`, module 08 TKG-04): SHACL batch failures, a graph store that stops
+# committing SPARQL UPDATE batches (missing `hc.kg.load-receipt.v1`), DLQ growth on `hc.kg.dlq.v1` and KG–EDW
+# reconciliation drift. "Heal the pipe, never the data": this playbook may retry, isolate a batch by ULID, re-drive a
+# batch, pin the FHIR-to-HEALIX alignment to the previously *released* mapping version, split or pause part of the
+# sink, and pause/rebuild the derived current view. It never writes a free-form SPARQL UPDATE (AGT-04 §2.6), never
+# produces to `hc.canonical.*`/`hc.kg.*`/`hc.edw.*` (GOV-ACC-011), never mutates or deletes an assertion
+# (TKG-INGEST-012: retractions close, never delete), never drops or edits `hc.kg.dlq.v1` records (TKG-INGEST-018) and
+# never copies one side of a KG–EDW mismatch onto the other (TKG-INGEST-014). Graph-store failover itself is module 12's
+# DR runbook (OPS-04 §4, OPS-DR-005) and is only *referenced* here: when the store is unreachable this playbook escalates.
+#
+# No tier of memory (M0–M4 as used by this module) and no cache tier (C0–C4) may hold content whose `hc-phi-class` is
+# anything but `non-phi`/`internal` (steward preferences: `pii:workforce` with consent flag). This includes the C0
+# provider prompt cache: pseudonymised PHI is not permitted. `hc.kg.dlq.v1` carries `phi:direct` payloads (original
+# record bytes + validation report); this playbook reads only its envelope headers (reason, source topic, batch ULID,
+# shape IRI, counts) through the masking proxy and records nothing but ids, IRIs, versions, counts and offsets.
+
+id: PBK-SINK-001
+name: KG sink load failure, SHACL batch failure, DLQ backlog and reconciliation drift recovery
+version: 0.1.0
+status: shadow
+owners:
+  - Store engineering
+  - Platform SRE
+  - Agent Platform
+fault_classes:
+  - FLT-SINK-001   # SHACL batch failure (alignment mapping vs ontology release mismatch)
+  - FLT-SINK-002   # graph store unavailable / load receipt missing
+  - FLT-SINK-003   # KG DLQ growth (temporal skew, unresolvable IRIs, poison events)
+  - FLT-SINK-005   # KG–EDW reconciliation mismatch (replay on one sink only, late retraction)
+severity_default: S2           # OPS-00 §7 SEV2 (SLO breach affecting clinical consumers: S9 KG load latency); S3 for DLQ-growth-only and reconciliation-only incidents (see decision_tree)
+risk_class: high               # one ladder-L2 action (A6 pause sink partitions) ⇒ `playbook` CR risk high (MEM-A3 §2)
+autonomy_required: L3          # ARC-01 §5 autonomy level of agent.self_healer (not the healing ladder)
+mttd_target_s: 900
+mttr_target_s: 3600
+
+scope:
+  environments: [dev, test, uat, prod]
+  source_systems: ["*"]        # every source reaches the KG through canonical → kg.*; the failing batch names its `<source>` segment
+  interfaces:
+    - sink.kg-sparql           # TKG-04 §1: one sink instance per Kafka partition set; SPARQL UPDATE per batch (TKG-STORE-003)
+    - proc.temporal-splitter   # TKG-04 §3–§4: alignment + SHACL + temporal splitting that feeds hc.kg.assertion.v1 / hc.kg.retraction.v1
+    - proc.reconciler          # TKG-04 §7.2 nightly / on-demand KG–EDW reconciliation
+  groups: [G1, G2, G3, G4, G5, G6, G7, G8, G9]
+  facilities: ["*"]            # KG batches are keyed by source and group, not facility; facility is carried for ticket routing only
+
+# -----------------------------------------------------------------------------------------------------------------
+# Triggers — evaluated by the healing engine (Temporal) from module 12 signals and KG governance topics; the
+# self_healer never queries the store for detection. Every trigger has ≥ 1 chaos test (MEM-HEAL-041).
+# -----------------------------------------------------------------------------------------------------------------
+triggers:
+  - signal: kg.load_receipt_missing
+    description: "No `hc.kg.load-receipt.v1` record for a sink instance that has consumed assertions in the last 15 min (TKG-INGEST-009 - every batch emits one receipt)"
+    source_module: 08-temporal-knowledge-graph
+    topic: hc.kg.load-receipt.v1
+    metric: healix.kg.sink.seconds_since_last_receipt{sink_instance}
+    comparator: absent_for
+    threshold: 900
+    window_s: 900
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-SINK-002
+  - signal: kg.shacl_violation_rate
+    description: "Share of resources routed to `hc.kg.dlq.v1` with `reason = SHACL` over all resources aligned in the window (TKG-INGEST-004)"
+    source_module: 08-temporal-knowledge-graph
+    topic: hc.kg.dlq.v1
+    metric: healix.kg.splitter.shacl_violation_ratio{source,group}
+    comparator: ">"
+    threshold: 0.05                              # 5 % of aligned resources
+    window_s: 300
+    min_occurrences: 1
+    for_s: 300
+    fault_class: FLT-SINK-001
+  - signal: kg.dlq_growth
+    description: "`hc.kg.dlq.v1` daily rate above the TKG-INGEST-018 alert line (0.5 %/day) or absolute growth > 500 records in 15 min for one (source_topic, reason)"
+    source_module: 07-streaming-platform
+    topic: hc.kg.dlq.v1
+    metric: healix.kg.dlq.records_total{source_topic,reason} rate(900s)
+    comparator: ">"
+    threshold: "max(500, 0.005 * daily_input(source_topic))"
+    window_s: 900
+    min_occurrences: 1
+    for_s: 600
+    fault_class: FLT-SINK-003
+  - signal: kg.sink_error_rate
+    description: "Sink SPARQL UPDATE commits failing (store 5xx, timeout, STORE_REJECT) above 1 % — the OPS-03 §4.2 `KGLoadStalled` error-rate arm"
+    source_module: 12-platform-and-operations
+    alert: KGLoadStalled
+    metric: healix.kg.sink.commit_errors_total{sink_instance,status=~"5..|timeout|reject"} / healix.kg.sink.commits_total
+    comparator: ">"
+    threshold: 0.01
+    window_s: 300
+    min_occurrences: 1
+    for_s: 300
+    fault_class: FLT-SINK-002
+  - signal: kg.load_latency_stalled
+    description: "S9 KG load latency p99 > 10 min for 15 min — the OPS-03 §4.2 `KGLoadStalled` latency arm (OPS-SLO-005)"
+    source_module: 12-platform-and-operations
+    alert: KGLoadStalled
+    sli: S9
+    metric: histogram_quantile(0.99, healix.kg.load_latency_seconds{sink_instance})
+    comparator: ">"
+    threshold: 600
+    window_s: 900
+    min_occurrences: 1
+    for_s: 900
+    fault_class: FLT-SINK-002
+  - signal: kg.reconciliation_mismatch
+    description: "Nightly or on-demand KG–EDW reconciliation (TKG-04 §7.2) matched < 99.99 % for a (group, entity type, recorded day) — OPS-03 §4.2 `ReconciliationMismatch`, S13 (OPS-SLO-010)"
+    source_module: 08-temporal-knowledge-graph
+    topic: hc.ops.kg-edw-reconciliation.v1
+    alert: ReconciliationMismatch
+    sli: S13
+    metric: healix.kg.reconciliation.matched_ratio{group,entity_type,recorded_day}
+    comparator: "<"
+    threshold: 0.9999
+    window_s: 86400
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-SINK-005
+
+dedupe_key: "${env}|sink.kg-sparql|${trigger.labels.sink_instance | default(trigger.labels.source)}|${trigger.labels.group | default('*')}"
+correlation_window_s: 1800     # a missing receipt, an error-rate spike and a DLQ burst from the same batch are one incident
+
+# -----------------------------------------------------------------------------------------------------------------
+# Preconditions — any failure either skips the run (recommend-only annotation) or escalates straight to humans.
+# -----------------------------------------------------------------------------------------------------------------
+preconditions:
+  - check: graph_store_reachable
+    tool: {server: graph-query, operation: sparql_ask}
+    params: {query: "ASK { GRAPH <https://ontology.healix.example.org/graph/prov> { ?a a <https://ontology.healix.example.org/IngestionBatch> } }", timeout_s: 10}
+    expect: "result in [true, false]"            # any answer = store answering; error/timeout = store down
+    on_fail: escalate                 # store unavailable/failover is module 12's DR runbook (OPS-04 §4, OPS-DR-005); never attempted here
+  - check: store_not_in_failover_or_restore
+    tool: {server: observability, operation: query_metric}
+    params: {query: "healix.kg.store.failover_in_progress{env='${env}'} or healix.kg.store.pitr_restore_in_progress{env='${env}'}"}
+    expect: "value == 0"
+    on_fail: escalate
+  - check: not_in_change_freeze_window
+    tool: {server: observability, operation: freeze_calendar_check}
+    params: {scope: ["release", "ontology-release", "fusion-quarterly-update", "millennium-code-upgrade"]}
+    expect: "frozen == false"
+    on_fail: skip                     # MEM-HEAL-010: observe/annotate (A0, A9 read-only parts) only during freeze windows
+  - check: no_kill_switch
+    tool: {server: cr-engine, operation: kill_switch_status}
+    params: {scopes: ["platform", "environment:${env}", "agent:agent.self_healer", "module14:healing", "playbook:PBK-SINK-001"]}
+    expect: "all_released == true"
+    on_fail: skip
+  - check: sink_not_oscillating
+    tool: {server: observability, operation: query_metric}
+    params: {query: "healix.kg.sink.restarts_total{sink_instance='${trigger.labels.sink_instance}'} increase(3600s)"}
+    expect: "value < 3"               # MEM-HEAL-011 oscillation guard
+    on_fail: escalate
+  - check: single_sink_target_in_scope
+    tool: {server: observability, operation: query_metric}
+    params: {query: "count(healix.kg.sink.commit_errors_total{status=~'5..|timeout|reject'} > 0) by (sink_instance)"}
+    expect: "value <= 1 or trigger.signal in ['kg.reconciliation_mismatch', 'kg.dlq_growth']"   # every sink failing at once = store-wide fault → humans + DR runbook
+    on_fail: escalate
+  - check: no_other_playbook_on_partition_set
+    tool: {server: playbook-runner, operation: active_runs}
+    params: {target_expr: "partition_set == '${trigger.labels.sink_instance}'"}
+    expect: "runs | length == 0"      # MEM-HEAL-021 one playbook per target; PBK-DQ-001 waits on the same partitions (conflict matrix)
+    on_fail: skip
+
+# -----------------------------------------------------------------------------------------------------------------
+# Diagnosis — read-only (MEM-HEAL-045). Produces symptoms/hypotheses recorded on the incident and in Graphiti.
+# All store reads are against `graph/prov` and batch-graph metadata (`internal`), never against PHI-classified graphs.
+# -----------------------------------------------------------------------------------------------------------------
+diagnosis:
+  - step: store_health
+    tool: {server: observability, operation: query_metric}
+    params:
+      query: >-
+        healix.kg.store.up{env='${env}'}, healix.kg.store.disk_free_ratio{env='${env}'},
+        healix.kg.store.compaction_in_progress{env='${env}'}, healix.kg.store.open_transactions{env='${env}'},
+        healix.kg.store.query_p95_seconds{env='${env}'}
+    read_only: true
+    timeout_s: 15
+    record_as: store_state           # disk-full, compaction and transaction pile-up are FLT-SINK-002 root causes (MEM-04 §2)
+  - step: last_receipt_and_offsets
+    tool: {server: kafka-admin, operation: sample_records}
+    params:
+      topic: hc.kg.load-receipt.v1
+      partition_key_prefix: "${trigger.labels.sink_instance}"
+      tail: 1
+      fields: [key, headers.hc-event-time, value.batch_ulid, value.assertion_count, value.commit_time, value.shacl_report_pointer, value.offset_range]
+    read_only: true
+    timeout_s: 15
+    record_as: last_receipt          # batch ULID + committed offset range of the last successful SPARQL UPDATE (TKG-INGEST-008)
+  - step: sink_consumer_lag
+    tool: {server: kafka-admin, operation: get_consumer_lag}
+    params: {group: "sink.kg-sparql", topics: [hc.kg.assertion.v1, hc.kg.retraction.v1], partitions: "${trigger.labels.partition_set}"}
+    read_only: true
+    timeout_s: 15
+    record_as: symptom               # backlog size decides whether re-drive fits the ≤ 500k records budget
+  - step: failing_batch_prov
+    tool: {server: graph-query, operation: sparql_select}
+    params:
+      query: >-
+        SELECT ?batch ?activity ?started ?ended ?count ?mapping ?ontology ?shacl ?splitter ?offsets WHERE {
+          GRAPH <https://ontology.healix.example.org/graph/prov> {
+            ?batch a <https://ontology.healix.example.org/BatchGraph> ; <http://www.w3.org/ns/prov#wasGeneratedBy> ?activity .
+            ?activity <http://www.w3.org/ns/prov#startedAtTime> ?started .
+            OPTIONAL { ?activity <http://www.w3.org/ns/prov#endedAtTime> ?ended }
+            OPTIONAL { ?batch <https://ontology.healix.example.org/assertionCount> ?count }
+            ?activity <https://ontology.healix.example.org/mappingVersion> ?mapping ;
+                      <https://ontology.healix.example.org/ontologyVersion> ?ontology ;
+                      <https://ontology.healix.example.org/shaclVersion> ?shacl ;
+                      <https://ontology.healix.example.org/splitterVersion> ?splitter ;
+                      <https://ontology.healix.example.org/kafkaOffsetRange> ?offsets .
+            FILTER(?started > "${incident.detected_at - 3600}"^^xsd:dateTime)
+          } } ORDER BY DESC(?started) LIMIT 20
+    read_only: true
+    timeout_s: 30
+    record_as: recent_batches        # TKG-INGEST-009: versions recorded on every batch PROV activity; an unended activity = uncommitted batch
+  - step: released_alignment_versions
+    tool: {server: ontology-registry, operation: get_release}
+    params: {artefacts: [fhir-to-healix-mapping, ontology, shacl-shapes], env: "${env}", include_previous: 1}
+    read_only: true
+    timeout_s: 15
+    record_as: released_versions     # TKG-INGEST-003: the sink must use the *released* mapping/shape versions
+  - step: alignment_version_skew
+    tool: {server: observability, operation: evaluate_expression}
+    params:
+      expression: >-
+        recent_batches[0].mapping != released_versions.fhir_to_healix_mapping.current or
+        recent_batches[0].shacl != released_versions.shacl_shapes.current or
+        recent_batches[0].ontology != released_versions.ontology.current
+    read_only: true
+    timeout_s: 5
+    record_as: hypothesis            # FLT-SINK-001 typical cause: a splitter still running the old mapping after an ontology/shape release, or vice versa
+  - step: dlq_reason_histogram
+    tool: {server: kafka-admin, operation: sample_records}
+    params:
+      topic: hc.kg.dlq.v1
+      window_s: 1800
+      max_records: 200
+      fields: [headers.hc-dlq-reason, headers.hc-source-topic, headers.hc-batch-ulid, headers.hc-shape-iri, headers.hc-group, headers.hc-event-time]   # envelope headers only — payload is phi:direct and never read (GOV-PHI-003)
+      aggregate: {group_by: [hc-dlq-reason, hc-source-topic, hc-shape-iri], count: true}
+    read_only: true
+    timeout_s: 20
+    record_as: dlq_profile           # CONVERSION | SHACL | COMMIT | STORE_REJECT | TEMPORAL_SKEW | POISON (TKG-04 §8); a single shape IRI dominating = mapping/shape mismatch
+  - step: shacl_report_summary
+    tool: {server: graph-query, operation: sparql_select}
+    params:
+      query: >-
+        SELECT ?shape ?path ?severity (COUNT(?r) AS ?n) WHERE {
+          GRAPH <${last_receipt.shacl_report_pointer}> {
+            ?r a <http://www.w3.org/ns/shacl#ValidationResult> ; <http://www.w3.org/ns/shacl#sourceShape> ?shape ;
+               <http://www.w3.org/ns/shacl#resultSeverity> ?severity . OPTIONAL { ?r <http://www.w3.org/ns/shacl#resultPath> ?path }
+          } } GROUP BY ?shape ?path ?severity ORDER BY DESC(?n) LIMIT 25
+    read_only: true
+    timeout_s: 30
+    record_as: shape_violations      # shape + path + counts only (`sh:value` is never selected — it may carry PHI literals)
+  - step: batch_size_and_transaction_errors
+    tool: {server: observability, operation: query_metric}
+    params:
+      query: >-
+        healix.kg.sink.batch_events{sink_instance='${trigger.labels.sink_instance}'} p99(900s),
+        healix.kg.sink.commit_errors_total{sink_instance='${trigger.labels.sink_instance}'} by (status) increase(900s),
+        healix.kg.sink.commit_duration_seconds{sink_instance='${trigger.labels.sink_instance}'} p99(900s)
+    read_only: true
+    timeout_s: 15
+    record_as: batch_profile         # "transaction too large" / timeouts → split batch (TKG-04 §8); 5xx → retry/backoff; reject → isolate
+  - step: current_view_drift
+    tool: {server: observability, operation: query_metric}
+    params: {query: "healix.kg.current_view.drift_rows{group='${trigger.labels.group}'}"}
+    read_only: true
+    timeout_s: 10
+    record_as: symptom               # TKG-STORE-007: drift > 0 rows ⇒ DQR-CONSISTENCY-KG-001; the sink's incremental maintenance fell behind the batch graphs
+  - step: reconciliation_report
+    tool: {server: kafka-admin, operation: sample_records}
+    params:
+      topic: hc.ops.kg-edw-reconciliation.v1
+      partition_key_prefix: "${trigger.labels.group}|"
+      tail: 10
+      fields: [key, value.recorded_day, value.check, value.kg_count, value.edw_count, value.kg_hash_matches, value.er_link_delta, value.retraction_delta, value.differing_keys_count]   # differing business keys themselves are phi:quasi and are NOT fetched
+    read_only: true
+    timeout_s: 15
+    record_as: recon                 # TKG-04 §7.2: which check failed (count / hash / ER links / retractions) and on which recorded day
+  - step: replay_asymmetry
+    tool: {server: lineage, operation: get_upstream}
+    params: {artefact: "edw_${trigger.labels.group | lower}.hist_${trigger.labels.entity_type}", since: "${recon.recorded_day}", include: [replay_runs, kg_sink_runs, edw_sink_runs]}
+    read_only: true
+    timeout_s: 20
+    record_as: hypothesis            # FLT-SINK-005 typical cause: a replay (`healix:replayOf`) reached one sink but not the other, or a late retraction (TKG-INGEST-011/012)
+  - step: playbook_memory
+    tool: {server: memory, operation: search_playbooks}
+    params:
+      symptoms: ["load_receipt_missing", "shacl_violation_surge", "dlq_growth", "sink_commit_errors", "reconciliation_mismatch"]
+      scope: {kind: interface, id: "sink.kg-sparql", group: "${trigger.labels.group}"}
+    read_only: true
+    timeout_s: 5
+    record_as: prior_outcomes        # MEM-02 `playbook_match` / `incident_triage` profiles; degraded → continue from Git (MEM-HEAL-014)
+
+# -----------------------------------------------------------------------------------------------------------------
+# Decision tree — maps diagnosis to the ordered action list (≤ 5 actions per incident, MEM-HEAL-004). Only
+# autonomous_allowed actions execute when the playbook is `autonomous`; in `shadow` every branch is recorded as a
+# recommendation and compared with the human's.
+# -----------------------------------------------------------------------------------------------------------------
+decision_tree:
+  - when: "store_state.up == 0 or store_state.disk_free_ratio < 0.05"
+    then_actions: [A9-dq-issue-and-ticket]      # store down / disk full: module 12 DR + store-engineering runbook; HEALIX self-healer does not fail over stores
+  - when: "trigger.signal == 'kg.reconciliation_mismatch' and recon.check in ['current_count', 'recorded_count', 'content_hash'] and replay_asymmetry.kg_missing_replay == true"
+    then_actions: [A0-set-severity, A3-redrive-batch-by-ulid, A10-trigger-reconciliation, A9-dq-issue-and-ticket]   # KG side missed a replay the EDW received: re-drive the same canonical range through kg.* (idempotent, TKG-INGEST-013)
+  - when: "trigger.signal == 'kg.reconciliation_mismatch'"
+    then_actions: [A0-set-severity, A10-trigger-reconciliation, A9-dq-issue-and-ticket]   # any other mismatch: never auto-fix by copying (TKG-INGEST-014); humans find the root cause in canonical
+  - when: "alignment_version_skew == true and dlq_profile.top_reason == 'SHACL'"
+    then_actions: [A4-pin-alignment-previous-release, A2-isolate-failing-batch, A3-redrive-batch-by-ulid, A8-propose-shape-mapping-cr, A9-dq-issue-and-ticket]   # FLT-SINK-001 classic: shapes released ahead of mapping (or vice versa)
+  - when: "dlq_profile.top_reason == 'SHACL' and shape_violations[0].n / dlq_profile.total > 0.8"
+    then_actions: [A2-isolate-failing-batch, A8-propose-shape-mapping-cr, A9-dq-issue-and-ticket]   # one shape dominates with versions aligned: shape vs ontology/mapping content mismatch → CR, never a store edit
+  - when: "batch_profile.commit_errors.status contains 'reject' or batch_profile.commit_duration_p99 > 60"
+    then_actions: [A5-split-batch, A1-retry-with-backoff, A2-isolate-failing-batch, A3-redrive-batch-by-ulid, A9-dq-issue-and-ticket]   # transaction too large (TKG-04 §8) → halve batch, then re-drive
+  - when: "batch_profile.commit_errors.status matches '5..' or batch_profile.commit_errors.status contains 'timeout'"
+    then_actions: [A1-retry-with-backoff, A6-pause-sink-partitions, A2-isolate-failing-batch, A3-redrive-batch-by-ulid, A9-dq-issue-and-ticket]   # transient store errors: back off, shed ≤ 10 % partitions, isolate what still fails
+  - when: "trigger.signal == 'kg.load_receipt_missing' and recent_batches[0].ended == null"
+    then_actions: [A1-retry-with-backoff, A2-isolate-failing-batch, A3-redrive-batch-by-ulid, A9-dq-issue-and-ticket]   # an activity started but never ended: uncommitted batch (TKG-STORE-003 atomicity means nothing partial is visible)
+  - when: "trigger.signal == 'kg.dlq_growth' and dlq_profile.top_reason in ['TEMPORAL_SKEW', 'CONVERSION', 'POISON']"
+    then_actions: [A0-set-severity, A9-dq-issue-and-ticket]      # S3; skew/conversion/poison are upstream fixes re-published to canonical by the remediator or steward (TKG-INGEST-018) — never a KG replay
+  - when: "current_view_drift.value > 0"
+    then_actions: [A7-pause-and-rebuild-current-view, A10-trigger-reconciliation, A9-dq-issue-and-ticket]   # TKG-STORE-007: derived view rebuilt from batch graphs; assertions untouched
+  - when: "default"
+    then_actions: [A1-retry-with-backoff, A2-isolate-failing-batch, A3-redrive-batch-by-ulid, A9-dq-issue-and-ticket]
+
+# -----------------------------------------------------------------------------------------------------------------
+# Actions — every action carries blast_radius_class + budget + compensation/idempotency (MEM-HEAL-038).
+# Ladder: L0 observe · L1 safe automatic · L2 after dry-run · L3 propose CR/ticket. A6 is the only L2 action.
+# Nothing here is `schema` or `data_mutation`: assertions, retractions and DLQ records are never written, edited or
+# dropped by this playbook (MEM-HEAL-001, TKG-INGEST-012/018).
+# -----------------------------------------------------------------------------------------------------------------
+actions:
+  - id: A0-set-severity
+    ladder_level: L0
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: partition, max: 1, scope_expr: "incident == '${incident.id}'", time_box_s: 60}
+    requires_dry_run: false
+    tool: {server: memory, operation: record_incident, permission: propose}
+    params:
+      incident_id: "${incident.id}"
+      severity: "${'S2' if (trigger.labels.group in ['G2', 'G3'] and trigger.signal == 'kg.reconciliation_mismatch') else 'S3'}"   # OPS-03 §4.2 ReconciliationMismatch: SEV3, SEV2 if G2/G3; DLQ-growth-only incidents are SEV3 (MEM-04 §2)
+      reason: "severity set from fault class and group per OPS-03 §4.2"
+    idempotency_key_recipe: "sha256(${incident.id}|A0|${trigger.signal}|${trigger.labels.group})"
+    timeout_s: 10
+    retries: 1
+    verify: {probe: "incident.severity", expect: "in ['S2', 'S3']", within_s: 10}
+    on_failure: continue
+    compensating_action: {tool: {server: memory, operation: correct}, params: {memory_id: "${incident.id}", change_kind: correction, new_content: {severity: S2}}}
+
+  - id: A1-retry-with-backoff
+    ladder_level: L1
+    blast_radius_class: restart
+    autonomous_allowed: true
+    blast_radius: {unit: partition, max: 1, scope_expr: "sink_instance == '${trigger.labels.sink_instance}' and batch_ulid == '${recent_batches[0].batch_ulid}'", time_box_s: 600}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: sink.retry_batch, permission: apply}
+    params:
+      sink: sink.kg-sparql
+      sink_instance: "${trigger.labels.sink_instance}"
+      batch_ulid: "${recent_batches[0].batch_ulid}"     # the sink re-issues the *same* idempotent SPARQL UPDATE (TKG-INGEST-007: FILTER NOT EXISTS on healix:assertionId makes a double commit a no-op)
+      max_attempts: 5
+      backoff: {initial_s: 5, multiplier: 2, max_s: 120, jitter: true}   # 5 → 10 → 20 → 40 → 80 s ≈ 2.6 min total
+      resume_offsets_from: graph                        # TKG-INGEST-008: offsets come from the committed PROV activity, never from the consumer group
+    idempotency_key_recipe: "sha256(${incident.id}|A1|${trigger.labels.sink_instance}|${recent_batches[0].batch_ulid})"
+    timeout_s: 420
+    retries: 0                                          # retries are internal to the action (max_attempts); the engine does not add more
+    verify:
+      probe: "hc.kg.load-receipt.v1 for batch_ulid == '${recent_batches[0].batch_ulid}' and healix.kg.sink.commit_errors_total increase(300s)"
+      expect: "receipt.present == true and commit_errors_increase == 0"
+      within_s: 480
+    on_failure: continue                                # still failing after 5 attempts → A2 isolates the batch
+    compensating_action:
+      tool: {server: playbook-runner, operation: sink.cancel_retry}
+      params: {sink_instance: "${trigger.labels.sink_instance}", batch_ulid: "${recent_batches[0].batch_ulid}"}   # no store state to undo: a failed UPDATE is atomic and leaves nothing (TKG-STORE-003)
+
+  - id: A2-isolate-failing-batch
+    ladder_level: L1
+    blast_radius_class: reroute
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 5000, scope_expr: "batch_ulid == '${recent_batches[0].batch_ulid}'", time_box_s: 600}   # one sink batch is ≤ 5,000 events (TKG-04 §6)
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: sink.isolate_batch, permission: apply}
+    params:
+      sink_instance: "${trigger.labels.sink_instance}"
+      batch_ulid: "${recent_batches[0].batch_ulid}"
+      target_graph: "https://ontology.healix.example.org/graph/dlq/${recent_batches[0].batch_ulid}"   # quarantine named graph; ACL = store engineering + remediator read, phiClassMax stamped (TKG-STORE-008)
+      mode: no_partial_commit                           # the whole batch moves or nothing does; batch graph atomicity preserved (TKG-STORE-003)
+      publish_dlq_envelopes: true                       # one hc.kg.dlq.v1 record per resource with reason = COMMIT and batch ULID (TKG-04 §8); payload written by the sink identity, never by the agent
+      advance_sink_past_batch: true                     # partition continues (TKG-04 §8 poison-event semantics); offsets committed in the same transaction as the isolation marker
+      prov: {activity_type: "healix:Isolation", reason: "${batch_profile.commit_errors.status}", incident_id: "${incident.id}"}
+    idempotency_key_recipe: "sha256(${incident.id}|A2|${recent_batches[0].batch_ulid})"
+    timeout_s: 300
+    retries: 1
+    verify:
+      probe: "graph-query.get_named_graphs(prefix='graph/dlq/${recent_batches[0].batch_ulid}') and sink consumer lag on the partition set"
+      expect: "isolated_graph.present == true and isolated_graph.assertion_count == recent_batches[0].count and consumer_lag_decreasing == true"
+      within_s: 300
+    on_failure: escalate
+    compensating_action:
+      tool: {server: playbook-runner, operation: sink.release_isolated_batch}
+      params: {batch_ulid: "${recent_batches[0].batch_ulid}", action: requeue}   # returns the batch to the sink's input for normal processing; the dlq graph is retained (never dropped) for lineage
+
+  - id: A3-redrive-batch-by-ulid
+    ladder_level: L1
+    blast_radius_class: replay
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 500000, scope_expr: "topic in ['hc.kg.assertion.v1', 'hc.kg.retraction.v1'] and partition_set == '${trigger.labels.sink_instance}' and offset_range within ${last_receipt.offset_range}..${sink_consumer_lag.head_offsets}", time_box_s: 1800}
+    requires_dry_run: true                              # MEM-HEAL-046: replay with max > 50,000 records ⇒ dry-run row estimate first; the engine refuses when the estimate exceeds the budget
+    tool: {server: playbook-runner, operation: sink.redrive, permission: apply}
+    params:
+      sink: sink.kg-sparql
+      sink_instance: "${trigger.labels.sink_instance}"
+      from_batch_ulid: "${last_receipt.batch_ulid}"      # TKG-STORE-004: bulk load restartable by batch ULID
+      offset_range: "${last_receipt.offset_range.end + 1}..${sink_consumer_lag.head_offsets}"
+      include_isolated_batches: false                   # isolated graphs are reprocessed only after the CR (A8) or steward re-publication to canonical (TKG-INGEST-018)
+      replay_marker: {header: "hc-replay", value: "${incident.id}", prov: "healix:replayOf"}   # TKG-INGEST-013: identical assertionIds ⇒ no-ops; gaps filled with healix:replayOf
+      dry_run: {estimate_records: true, assert_max: 500000}
+    idempotency_key_recipe: "sha256(${incident.id}|A3|${trigger.labels.sink_instance}|${last_receipt.batch_ulid}|${sink_consumer_lag.head_offsets})"
+    timeout_s: 1800
+    retries: 1
+    verify:
+      probe: "hc.kg.load-receipt.v1 cadence for sink_instance; S9 load latency; batch content hashes vs originals where a receipt existed"
+      expect: "receipts_per_minute > 0 and s9_p95_seconds <= 120 and duplicate_assertion_count == 0 and hash_mismatch_count == 0"
+      within_s: 1800
+    on_failure: escalate
+    compensating_action:
+      tool: {server: playbook-runner, operation: sink.redrive_cancel}
+      params: {sink_instance: "${trigger.labels.sink_instance}", replay_marker: "${incident.id}"}   # partial redrive output is already-idempotent committed batches; nothing is deleted (TKG-INGEST-012), the marker makes them auditable
+
+  - id: A4-pin-alignment-previous-release
+    ladder_level: L1
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: {unit: partition, max: 1, scope_expr: "processor == 'proc.temporal-splitter' and source == '${trigger.labels.source}'", time_box_s: 86400}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: processor.pin_alignment_version, permission: apply}
+    params:
+      processor: proc.temporal-splitter
+      source: "${trigger.labels.source}"
+      mapping_version: "${released_versions.fhir_to_healix_mapping.previous}"   # previous *released* version from the Ontology Registry only (TKG-INGEST-003); never an unreleased or hand-edited mapping
+      shacl_version: "${released_versions.shacl_shapes.previous}"
+      pin_ttl_s: 86400                                  # auto-unpins after 24 h or when the A8 CR is applied, whichever first
+      record_on_prov: {healix_changeReason: "healing:${incident.id}:pin-mapping:${released_versions.fhir_to_healix_mapping.previous}"}   # TKG-INGEST-017: representation changes surface as `correction` events when the pin is lifted
+    idempotency_key_recipe: "sha256(${incident.id}|A4|${trigger.labels.source}|${released_versions.fhir_to_healix_mapping.previous})"
+    timeout_s: 120
+    retries: 1
+    verify:
+      probe: "healix.kg.splitter.shacl_violation_ratio{source='${trigger.labels.source}'} and recent_batches[0].mapping after pin"
+      expect: "shacl_violation_ratio < 0.01 for 600s and mapping == released_versions.fhir_to_healix_mapping.previous"
+      within_s: 900
+    on_failure: compensate
+    rollback:
+      tool: {server: playbook-runner, operation: processor.unpin_alignment_version}
+      params: {processor: proc.temporal-splitter, source: "${trigger.labels.source}", resume: current_release}
+
+  - id: A5-split-batch
+    ladder_level: L1
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: {unit: partition, max: 1, scope_expr: "sink_instance == '${trigger.labels.sink_instance}'", time_box_s: 3600}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: sink.set_batch_bounds, permission: apply}
+    params:
+      sink_instance: "${trigger.labels.sink_instance}"
+      max_events: "${max(250, batch_profile.batch_events_p99 // 2)}"   # halve recursively (TKG-04 §8 transaction-too-large behaviour), floor 250 events
+      max_interval_s: 2                                 # TKG-04 §6 boundary unchanged
+      ttl_s: 3600                                       # reverts to the governed default (≤ 5,000 events) after 1 h
+    idempotency_key_recipe: "sha256(${incident.id}|A5|${trigger.labels.sink_instance}|${batch_profile.batch_events_p99})"
+    timeout_s: 60
+    retries: 1
+    verify:
+      probe: "healix.kg.sink.commit_errors_total{status=~'reject|timeout'} increase(600s) and healix.kg.sink.commit_duration_seconds p99"
+      expect: "increase == 0 and p99 < 30"
+      within_s: 900
+    on_failure: continue
+    rollback:
+      tool: {server: playbook-runner, operation: sink.set_batch_bounds}
+      params: {sink_instance: "${trigger.labels.sink_instance}", max_events: 5000, max_interval_s: 2}
+
+  - id: A6-pause-sink-partitions
+    ladder_level: L2
+    blast_radius_class: reroute
+    autonomous_allowed: true                            # L2: executes only after dry-run + blast-radius check pass (MEM-04 §7); never during a freeze window (MEM-HEAL-010)
+    blast_radius: {unit: partition, max: 10, scope_expr: "topic in ['hc.kg.assertion.v1', 'hc.kg.retraction.v1'] and partitions ⊆ failing_partitions and count <= 0.10 * topic.partition_count", time_box_s: 1800}   # ≤ 10 % of one topic's partitions (MEM-04 §7 default)
+    requires_dry_run: true
+    tool: {server: playbook-runner, operation: sink.pause_partitions, permission: apply}
+    params:
+      sink: sink.kg-sparql
+      topics: [hc.kg.assertion.v1, hc.kg.retraction.v1]
+      partitions: "${batch_profile.failing_partitions | first_n(0.10 * topic.partition_count)}"
+      reason: "store 5xx/timeout on these partitions; events accumulate in Kafka (TKG-04 §8 store-unavailable semantics), no offset advance"
+      max_pause_s: 1800
+      dry_run: {estimate: [backlog_growth_per_min, s9_impact], assert: "backlog_growth_per_min * 30 < 500000"}
+    idempotency_key_recipe: "sha256(${incident.id}|A6|${trigger.labels.sink_instance}|${sorted(partitions)})"
+    timeout_s: 120
+    retries: 0
+    verify:
+      probe: "healix.kg.sink.commit_errors_total on unpaused partitions and store_state.open_transactions"
+      expect: "commit_error_ratio_unpaused < 0.001 for 600s and open_transactions decreasing"
+      within_s: 900
+    on_failure: compensate
+    rollback:
+      tool: {server: playbook-runner, operation: sink.resume_partitions}
+      params: {sink: sink.kg-sparql, topics: [hc.kg.assertion.v1, hc.kg.retraction.v1], partitions: "${A6.partitions}", resume_offsets_from: graph}
+
+  - id: A7-pause-and-rebuild-current-view
+    ladder_level: L1
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "graph == 'https://ontology.healix.example.org/graph/current/${trigger.labels.group}'", time_box_s: 3600}   # one derived current-view graph (one group); base batch graphs untouched
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: store.rebuild_current_view, permission: apply}
+    params:
+      group: "${trigger.labels.group}"
+      steps: [pause_incremental_maintenance, rebuild_from_batch_graphs, reconcile_drift, resume_incremental_maintenance]   # TKG-STORE-007: current view is derived and rebuilt from batch graphs; only graph/current/<Gn> is rewritten
+      serve_from: batch_graphs_as_of_now                # TKG-01 §8 Current view keeps answering (slower) while graph/current/<Gn> rebuilds; no read outage
+      max_runs_per_day: 1
+    idempotency_key_recipe: "sha256(${incident.id}|A7|${trigger.labels.group}|${floor(now/86400)})"
+    timeout_s: 3600
+    retries: 0
+    verify:
+      probe: "healix.kg.current_view.drift_rows{group='${trigger.labels.group}'} and S10 query p95"
+      expect: "drift_rows == 0 and s10_p95_seconds <= 2"
+      within_s: 3600
+    on_failure: compensate
+    rollback:
+      tool: {server: playbook-runner, operation: store.resume_current_view_maintenance}
+      params: {group: "${trigger.labels.group}", keep_partial_rebuild: false}   # abandons the derived rebuild; batch graphs (source of truth) were never touched
+
+  - id: A8-propose-shape-mapping-cr
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true                            # proposing is observe-class; applying is the CR engine's job after gates (AGT-03)
+    blast_radius: {unit: records, max: 1, scope_expr: "cr_type in ['mapping', 'ontology'] and target == '${shape_violations[0].shape}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: graph-query, operation: propose_update, permission: propose}
+    params:
+      kind: "${'mapping' if shape_violations[0].path in released_versions.fhir_to_healix_mapping.paths else 'ontology'}"   # A-box alignment rule → `mapping` CR to agent.source_mapper; T-box/shape → `ontology` CR to agent.ontologist (AGT-04 §2.6)
+      summary: "SHACL shape ${shape_violations[0].shape} rejects ${shape_violations[0].n} resources from ${dlq_profile.top_source_topic} on ${trigger.labels.group}: mapping ${recent_batches[0].mapping} vs shapes ${recent_batches[0].shacl} vs ontology ${recent_batches[0].ontology}"
+      evidence:
+        - {kind: incident_id, ref: "${incident.id}"}
+        - {kind: artefact_iri, ref: "${last_receipt.shacl_report_pointer}"}            # pointer to the report graph, not its contents
+        - {kind: artefact_iri, ref: "https://ontology.healix.example.org/graph/dlq/${recent_batches[0].batch_ulid}"}
+        - {kind: memory_record, ref: "${prior_outcomes.record_ids}"}                  # MEM-ARCH-006: memory-influenced CRs echo recalled ids
+      requested_gates: [evaluation, privacy_review, human_approval]
+      hold_dependents: [edw_ddl]                       # the EDW column binding for the same path waits for the mapping decision
+    idempotency_key_recipe: "sha256(${incident.id}|A8|${shape_violations[0].shape}|${recent_batches[0].mapping}|${recent_batches[0].shacl})"
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "cr-engine.get_cr", expect: "state in ['proposed', 'evaluating'] and provenance.incident_id == '${incident.id}'", within_s: 120}
+    on_failure: escalate
+    emits_cr: {cr_type: mapping, risk_class: medium, gates_required: [evaluation, privacy_review, human_approval]}   # `ontology` when the shape/T-box is at fault; risk high if G2/G3 clinical paths are affected
+    compensating_action:
+      tool: {server: cr-engine, operation: withdraw_cr}
+      params: {cr_id: "${A8.cr_id}", reason: "healing run rolled back"}
+
+  - id: A9-dq-issue-and-ticket
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: partition, max: 1, scope_expr: "sink_instance == '${trigger.labels.sink_instance}' or group == '${trigger.labels.group}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: ticketing, operation: create_issue, permission: apply}
+    params:
+      template: ticket_template          # PHI-free packet (see escalation.ticket_template)
+      assignee_role: store-engineering
+      cc_roles: [platform-sre, data-platform-steward]
+      link_dq_issue:
+        tool: {server: dq-engine, operation: open_issue}
+        params:
+          rule_id: "${'DQR-CONSISTENCY-KG-EDW-001' if trigger.signal == 'kg.reconciliation_mismatch' else ('DQR-CONSISTENCY-KG-001' if current_view_drift.value > 0 else 'DQR-TIMELINESS-KG-LOAD-001')}"
+          dimension: "${'consistency' if trigger.signal in ['kg.reconciliation_mismatch'] or current_view_drift.value > 0 else 'timeliness'}"
+          group: "${trigger.labels.group}"
+          sink_instance: "${trigger.labels.sink_instance}"
+          batch_ulid: "${recent_batches[0].batch_ulid}"
+          affected_record_count: "${sink_consumer_lag.total + dlq_profile.total}"
+          severity: non-blocking             # DQ-FW-007: operational DQ issues never block clinical consumers; results marked `suspect` not deleted (DQ-PIPE-014)
+    idempotency_key_recipe: "sha256(${incident.id}|A9|${trigger.labels.sink_instance}|${trigger.labels.group})"   # ticketing dedup by (incident, type)
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "ticketing.get_issue", expect: "status in ['open', 'acknowledged'] and linked_incident == '${incident.id}'", within_s: 120}
+    on_failure: escalate
+    compensating_action:
+      tool: {server: ticketing, operation: update_issue}
+      params: {issue_id: "${A9.issue_id}", status: "cancelled", reason: "healing run rolled back"}
+
+  - id: A10-trigger-reconciliation
+    ladder_level: L1
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "group == '${trigger.labels.group}' and recorded_day == '${recon.recorded_day | default(today_utc)}'", time_box_s: 1800}   # one (group, recorded day) reconciliation run; read-only on both stores
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: reconciler.run_on_demand, permission: apply}
+    params:
+      group: "${trigger.labels.group}"
+      recorded_day: "${recon.recorded_day | default(today_utc)}"
+      checks: [current_count, recorded_count, content_hash, er_link_count, retractions]   # TKG-04 §7.2 full check set
+      publish_to: hc.ops.kg-edw-reconciliation.v1
+      auto_fix: false                                   # TKG-INGEST-014: copying between KG and EDW is prohibited; this only measures
+    idempotency_key_recipe: "sha256(${incident.id}|A10|${trigger.labels.group}|${recon.recorded_day | default(today_utc)})"
+    timeout_s: 1800
+    retries: 1
+    verify:
+      probe: "latest hc.ops.kg-edw-reconciliation.v1 for (group, recorded_day); S13"
+      expect: "matched_ratio >= 0.9999 or (differing_keys_count <= 1000 and dq_issue_opened == true)"   # either healed by the re-drive, or the residual is now issue-tracked ≤ 24 h (OPS-SLO-010)
+      within_s: 1800
+    on_failure: escalate
+    compensating_action:
+      tool: {server: playbook-runner, operation: reconciler.cancel}
+      params: {group: "${trigger.labels.group}", run_marker: "${incident.id}"}   # no state to undo: reconciliation is read-only on both stores
+
+# -----------------------------------------------------------------------------------------------------------------
+# Verification — success is measured on the same signals that triggered the incident (window ≥ 3× detection window,
+# MEM-HEAL-022). Reconciliation drift target ≤ 0.01 % mirrors S13 (≥ 99.99 % matched).
+# -----------------------------------------------------------------------------------------------------------------
+verification:
+  probes:
+    - {id: V1-receipts-flowing, topic: hc.kg.load-receipt.v1, expect: "receipts for sink_instance in every 5-min bucket of the window; seconds_since_last_receipt < 300"}
+    - {id: V2-load-latency-slo, sli: S9, expect: "p95 <= 120s and p99 <= 600s over the window"}                  # OPS-SLO-005
+    - {id: V3-commit-errors, metric: "healix.kg.sink.commit_errors_total{sink_instance='${trigger.labels.sink_instance}'}", expect: "increase == 0 for the window"}
+    - {id: V4-shacl-rate, metric: "healix.kg.splitter.shacl_violation_ratio{source='${trigger.labels.source}'}", expect: "< 0.01"}
+    - {id: V5-dlq-stable, topic: hc.kg.dlq.v1, expect: "growth_rate(source_topic, reason) <= 0.001 * daily_input (TKG-INGEST-018 steady state) and no record removed"}
+    - {id: V6-reconciliation-drift, sli: S13, expect: "matched_ratio >= 0.9999 for (group, recorded_day) after A10, i.e. drift <= 0.01 %"}
+    - {id: V7-no-duplicate-assertions, metric: "healix.kg.sink.duplicate_assertion_id_total{sink_instance='${trigger.labels.sink_instance}'}", expect: "delta == 0"}   # TKG-INGEST-007/013 idempotent re-drive
+    - {id: V8-query-availability, sli: S10, expect: "availability >= 99.9% and p95 <= 2s during rebuild/pause"}
+    - {id: V9-no-forbidden-writes, metric: "healix.gateway.denials_total{agent='agent.self_healer',server=~'graph-query|kafka-admin',operation=~'sparql_update|produce'}", expect: "== 0 and no free-form UPDATE executed (AGT-04 §2.6)"}
+  duration_s: 2700                     # 3× the longest detection window used by the non-daily triggers (900 s)
+  success_criteria: "V1 and V2 and V3 and V4 and V5 and V7 and V8 and V9 true for the full duration, and V6 true when the incident includes FLT-SINK-005; otherwise verifying → rolled_back (compensations in reverse order) → escalated"
+
+# -----------------------------------------------------------------------------------------------------------------
+# Limits — FIXED-POINT PROTECTED (MEM-HEAL-042/048): changed only by a `policy`-class CR from DGC / Privacy Office.
+# -----------------------------------------------------------------------------------------------------------------
+limits:
+  max_runs_per_hour: 4
+  cooldown_s: 900
+  max_actions_per_incident: 5
+  max_concurrent_per_target: 1
+  circuit_breaker: {consecutive_failures: 3, open_for_s: 86400, page: true}
+  change_freeze_calendar_ref: OPS-02/freeze-calendar            # release windows, ontology releases, Fusion quarterly update, Millennium code upgrades
+  recursion:
+    max_depth: 2
+    may_trigger: [PBK-DQ-001]        # a re-drive or isolation can legitimately surface a DQ burst; PBK-DQ-001 may never re-trigger PBK-SINK-001 (MEM-HEAL-009)
+  per_action_overrides:
+    A1-retry-with-backoff: {max_attempts_per_action: 5, max_runs_per_hour: 2}
+    A3-redrive-batch-by-ulid: {max_records_per_action: 500000, max_runs_per_day: 4, requires_dry_run: true}
+    A6-pause-sink-partitions: {max_partition_share: 0.10, max_pause_s: 1800, max_runs_per_day: 2}
+    A7-pause-and-rebuild-current-view: {max_runs_per_day: 1}
+    A4-pin-alignment-previous-release: {max_pin_s: 86400, released_versions_only: true}
+
+# -----------------------------------------------------------------------------------------------------------------
+# Guards — FIXED-POINT PROTECTED (MEM-HEAL-042/043).
+# -----------------------------------------------------------------------------------------------------------------
+guards:
+  kill_switch_paths:
+    - cr-engine.kill_switch.platform
+    - cr-engine.kill_switch.environment.${env}
+    - cr-engine.kill_switch.agent.agent.self_healer
+    - module14.kill_switch.healing
+    - module14.kill_switch.playbook.PBK-SINK-001
+  phi_ceiling: none
+  data_mutation: none
+  requires_dry_run_in: [test]
+  forbidden_targets:
+    - "graph-query.sparql_update"      # AGT-04 §2.6: SPARQL UPDATE travels only inside a CR applied by cr-engine; the sink's own idempotent load is driven through playbook-runner, never free-form
+    - "hc.canonical.*"
+    - "hc.kg.assertion.v1"             # GOV-ACC-011: agents never produce to canonical/kg/edw topics
+    - "hc.kg.retraction.v1"
+    - "hc.kg.dlq.v1:delete"            # TKG-INGEST-018: DLQ records are reprocessed only by re-publishing to canonical; never dropped, edited or truncated
+    - "hc.edw.*"
+    - "graph/batch/*:delete"           # named batch graphs are never dropped by healing (backfill drops are a human `kg_load` decision, TKG-INGEST-016)
+    - cerner-millennium                # SRC-CER-024
+    - oracle-fusion                    # MEM-HEAL-008
+  forbidden_params: [sh_value, resource_body, record_bytes, differing_business_keys, patient_iri, person_iri]   # never read, logged or memorised; DLQ payload and `sh:value` literals may carry PHI
+
+suppression:
+  notifications_only: true
+  max_s: 3600                          # MEM-HEAL-006: never suppresses detection or evaluation; visible on the incident (used for S9/ConsumerLagHigh pages while A6 pauses partitions)
+
+conflicts_with:
+  - PBK-DQ-001                         # MEM-04 §7 conflict matrix: SINK-001 ▶ DQ-001 on the same topic partition — a stalled sink is the likelier root cause; PBK-DQ-001 waits in playbook_selected until this run reaches verifying
+  # PBK-AGT-001 ▶ PBK-SINK-001 when both act on agent.self_healer — declared on PBK-AGT-001's side (precedence holder); listed here for symmetry by the linter
+
+escalation:
+  to:
+    - store-engineering                # OPS-03 §4.3 Store engineering (KG, EDW, reconciliation) — owns store failover, PITR (OPS-DR-005) and shape fixes
+    - platform-sre-primary             # OPS-03 §4.3 Platform SRE primary (first responder for KGLoadStalled pages)
+    - data-platform-steward            # G9 steward assigned DQR-CONSISTENCY-KG-EDW-001 issues (TKG-04 §7.2)
+    - ontologist                       # VIS-00 persona; receives `ontology` CRs when a released shape contradicts the mapping
+  after_s: 900
+  sla_minutes: {S1: 15, S2: 30, S3: 240, S4: 1440}   # OPS-00 §7 severities, aligned with DQ-SCORE-006
+  ticket_template: |
+    [HEALIX self-healer] KG sink load failure — ${env} — sink ${trigger.labels.sink_instance} — group ${trigger.labels.group}
+    Incident: ${incident.id}  Fault class: ${incident.fault_class}  Severity: ${incident.severity}  Trigger: ${trigger.signal}
+    Last committed batch: ${last_receipt.batch_ulid} at ${last_receipt.commit_time}  Offsets: ${last_receipt.offset_range}
+    Failing batch: ${recent_batches[0].batch_ulid}  Assertions: ${recent_batches[0].count}  Activity ended: ${recent_batches[0].ended}
+    Versions on batch — mapping ${recent_batches[0].mapping}  ontology ${recent_batches[0].ontology}  shacl ${recent_batches[0].shacl}  splitter ${recent_batches[0].splitter}
+    Released — mapping ${released_versions.fhir_to_healix_mapping.current}  ontology ${released_versions.ontology.current}  shacl ${released_versions.shacl_shapes.current}  Skew: ${alignment_version_skew}
+    Store: up=${store_state.up} disk_free=${store_state.disk_free_ratio} compaction=${store_state.compaction_in_progress} open_tx=${store_state.open_transactions}
+    Commit errors (15 min): ${batch_profile.commit_errors}  Batch p99 events: ${batch_profile.batch_events_p99}  Commit p99: ${batch_profile.commit_duration_p99}s
+    DLQ (30 min): ${dlq_profile.total} records; top reason ${dlq_profile.top_reason}; top shape ${shape_violations[0].shape} path ${shape_violations[0].path} n=${shape_violations[0].n}
+    Isolated graph: https://ontology.healix.example.org/graph/dlq/${recent_batches[0].batch_ulid}  SHACL report: ${last_receipt.shacl_report_pointer}
+    Reconciliation: check=${recon.check} day=${recon.recorded_day} kg=${recon.kg_count} edw=${recon.edw_count} hash_match=${recon.kg_hash_matches} differing_keys=${recon.differing_keys_count} (keys withheld — phi:quasi)
+    Current-view drift rows: ${current_view_drift.value}  Sink lag: ${sink_consumer_lag.total}
+    Actions attempted: ${run.actions_summary}  Verification: ${run.verification_summary}  CR: ${A8.cr_id}
+    Required from Store engineering: confirm store health / failover state (module 12 runbook) and decide on the isolated batch; mapping/shape decision via CR ${A8.cr_id}.
+    This ticket contains batch ULIDs, IRIs, versions, counts and offsets only; no resource content, business keys or patient data (hc-phi-class: non-phi).
+  page: true                           # S2 default (KGLoadStalled is a page in OPS-03 §4.2); the engine downgrades to ticket when A0 sets S3
+  on_failure: page
+
+learning:
+  memory_classes_written: [incident, root_cause, observation, playbook_step, outcome, drift_signature]
+  lesson_template: >-
+    On ${env} sink ${trigger.labels.sink_instance} (group ${trigger.labels.group}, source ${trigger.labels.source}) a
+    ${incident.fault_class} with DLQ top reason ${dlq_profile.top_reason}, version skew ${alignment_version_skew},
+    batch p99 ${batch_profile.batch_events_p99} events and store open_tx ${store_state.open_transactions} was
+    ${incident.outcome} by ${run.successful_action_id} in ${run.duration_s}s; reconciliation drift after healing
+    ${recon.drift_ratio}; hour-of-day ${incident.hour}.
+  record_episode: true                 # Graphiti JSON episode: Incident -EXHIBITED_SYMPTOM-> Symptom, -CAUSED_BY-> RootCause(SchemaVersion/MappingRule), -RESOLVED_BY-> Action, -PRODUCED_OUTCOME-> Outcome
+  emit_reflexion: true                 # masked (GOV-LIN-015), trust T1, untrusted_text: true; never promotes without a CR
+  candidate_for_tuning:                # MEM-HEAL-050: thresholds/windows/timeouts only — never limits/guards/blast_radius
+    - triggers[kg.shacl_violation_rate].threshold
+    - triggers[kg.shacl_violation_rate].for_s
+    - triggers[kg.dlq_growth].threshold
+    - triggers[kg.dlq_growth].for_s
+    - triggers[kg.sink_error_rate].for_s
+    - correlation_window_s
+    - actions[A1-retry-with-backoff].params.backoff
+    - actions[A1-retry-with-backoff].verify.within_s
+    - actions[A3-redrive-batch-by-ulid].verify.within_s
+    - actions[A5-split-batch].params.max_events
+    - verification.duration_s
+  learned_from:
+    description: >-
+      Seed authored from the TKG-04 sink design (idempotent SPARQL UPDATE per batch graph, PROV activity per batch,
+      DLQ reasons CONVERSION/SHACL/COMMIT/STORE_REJECT/TEMPORAL_SKEW/POISON), TKG-02 store contracts (atomic batch
+      visibility, restart by batch ULID, derived current view) and the §7.2 reconciliation protocol. Typical Fortune-100
+      failure shapes encoded: ontology/shape release landing before the mapping release (or the reverse) on one
+      splitter, store compaction or disk pressure stalling commits, oversized batches after a Millennium bulk
+      backload, and replays that reach the EDW sink but not the KG sink. No production incidents yet;
+      `compiled_from_incidents` fills as the curator mines Graphiti incident communities (MEM-04 §9).
+    signatures_to_learn:
+      - "SHACL surge within 1 h of an ontology/shape/mapping release event per source (release ordering signature)"
+      - "commit error bursts vs store compaction windows and disk_free_ratio trend (store pressure signature)"
+      - "batch p99 size vs reject/timeout rate per sink instance (Millennium backload / Fusion quarterly-load signature)"
+      - "reconciliation mismatch class (count/hash/ER/retraction) vs replay runs seen by only one sink"
+  graduation: {shadow_matches_required: 10, min_agreement: 0.9, harmful_recommendations_allowed: 0}
+
+references:
+  requirements:
+    - TKG-STORE-003   # each sink SPARQL UPDATE is ACID; batch graph visible atomically — retries and isolation leave nothing partial
+    - TKG-STORE-004   # bulk load restartable by batch ULID — basis of A3 re-drive
+    - TKG-STORE-006   # supersededAt written into the original batch graph — never rewritten by healing
+    - TKG-STORE-007   # current view incrementally maintained, rebuilt and reconciled nightly — basis of A7
+    - TKG-STORE-008   # named-graph ACLs / phiClassMax — isolated dlq graphs inherit them
+    - TKG-INGEST-003  # alignment uses the Ontology Registry's released mapping version — A4 pins only to a released version
+    - TKG-INGEST-004  # SHACL sh:Violation → hc.kg.dlq.v1 with report attached
+    - TKG-INGEST-007  # exactly-once + idempotent sink by assertionId — safe retry / re-drive
+    - TKG-INGEST-008  # offsets committed with the data; resume from the graph
+    - TKG-INGEST-009  # one named graph + PROV activity per batch (versions, offsets, counts, hash)
+    - TKG-INGEST-012  # retractions close, never delete
+    - TKG-INGEST-013  # replays are no-ops for existing assertions, fill gaps with healix:replayOf
+    - TKG-INGEST-014  # nightly reconciliation; copying between KG and EDW is prohibited
+    - TKG-INGEST-016  # backfills in a distinct <source> segment — only humans drop them
+    - TKG-INGEST-017  # mapping-version changes surface as `correction` events with healix:changeReason
+    - TKG-INGEST-018  # DLQ reprocessing only via canonical; DLQ rate ≤ 0.1 %/day, alert 0.5 %
+    - TKG-TIME-012    # temporal skew guard — TEMPORAL_SKEW DLQ records are upstream fixes, not KG replays
+    - OPS-SLO-005     # S9 KG load latency p95 ≤ 2 min
+    - OPS-SLO-010     # S13 reconciliation ≥ 99.99 %, discrepancies tracked ≤ 24 h
+    - OPS-DR-005      # graph store PITR — store failover/restore is module 12's runbook, referenced not executed
+    - STR-OPS-006     # connector/processor state exported to module 12
+    - ARC-NFR-005     # canonical replayable from retention window
+    - ARC-NFR-007     # RPO 15 min / RTO 4 h platform-wide
+    - DQ-FW-007       # operational DQ issues non-blocking
+    - DQ-PIPE-014     # never delete DQ results
+    - DQ-REM-005      # never alter clinical/financial values
+    - GOV-ACC-011     # no direct writes to canonical/kg/edw
+    - GOV-PHI-003     # unclassified/unknown payloads default to phi:direct — DLQ payload never read
+    - GOV-LIN-015     # masked agent transcripts
+    - SRC-CER-024     # read-only integration with Millennium
+    - MEM-HEAL-001
+    - MEM-HEAL-002
+    - MEM-HEAL-003
+    - MEM-HEAL-004
+    - MEM-HEAL-006
+    - MEM-HEAL-008
+    - MEM-HEAL-009
+    - MEM-HEAL-010
+    - MEM-HEAL-011
+    - MEM-HEAL-012
+    - MEM-HEAL-014
+    - MEM-HEAL-020
+    - MEM-HEAL-021
+    - MEM-HEAL-022
+    - MEM-HEAL-023
+    - MEM-HEAL-036
+    - MEM-HEAL-037
+    - MEM-HEAL-038
+    - MEM-HEAL-041
+    - MEM-HEAL-042
+    - MEM-HEAL-043
+    - MEM-HEAL-045
+    - MEM-HEAL-046
+    - MEM-HEAL-047
+    - MEM-HEAL-050
+    - MEM-ARCH-006    # memory-influenced CRs echo recalled record ids (A8 evidence)
+  runbooks:
+    - OPS-03 §4.2 KGLoadStalled
+    - OPS-03 §4.2 ReconciliationMismatch
+    - OPS-03 §4.2 ConsumerLagHigh
+    - OPS-04 §4 graph-store failover and PITR (module 12 — referenced; executed by Store engineering / SRE, never by this playbook)
+    - TKG-04 §7 replay, backfill and reconciliation
+    - TKG-04 §8 failure handling
+  slo_ids: [S9, S10, S13]
+  topics:
+    - hc.kg.assertion.v1
+    - hc.kg.retraction.v1
+    - hc.kg.load-receipt.v1
+    - hc.kg.dlq.v1
+    - hc.ops.kg-edw-reconciliation.v1
+    - hc.dq.issue.v1
+    - hc.ops.healing.incident.event.v1
+    - hc.ops.healing.playbookrun.event.v1
+    - hc.ops.audit.v1
+  connector_manifest: sink.kg-sparql
+
+chaos_tests:                           # MEM-HEAL-013/041: ≥ 1 per trigger; run in `test` against the synthetic production-shape KG dataset (TKG-02 §8) with a store fault-injection proxy
+  - id: CT1-drop-load-receipt
+    trigger: kg.load_receipt_missing
+    injection: "Fault proxy swallows the sink's load-receipt publish for sink instance kg-sink-02 while commits continue for 20 min; then a commit is held open (activity started, never ended)"
+    expected_mttd_s: 900
+    expected_mttr_s: 1800
+    blast_radius_assert: "A1 retried exactly one batch ULID ≤ 5 attempts; 0 batch graphs dropped; receipt reappears; 0 duplicate assertionIds; actions touched 1 sink instance only"
+  - id: CT2-corrupt-shacl-batch-version-skew
+    trigger: kg.shacl_violation_rate
+    injection: "Release shacl-shapes v2026.10.2 to the registry while proc.temporal-splitter for source cerner-fhir is pinned to mapping v2026.10.1 fixture, producing sh:Violation on clin:Condition.onsetDateTime range for 12 % of resources"
+    expected_mttd_s: 300
+    expected_mttr_s: 1800
+    blast_radius_assert: "A4 pinned exactly one source to the previous *released* mapping/shape pair; isolated graph graph/dlq/<ulid> contains exactly the failing batch's assertion count; re-drive produced hashes identical to originals; exactly one `mapping` CR proposed; 0 SPARQL UPDATE executed outside the sink identity"
+  - id: CT3-shape-content-mismatch-no-skew
+    trigger: kg.shacl_violation_rate
+    injection: "Versions aligned; shape fixture healix-shape:NoOverlapFunctional tightened so 8 % of Encounter resources violate; store healthy"
+    expected_mttd_s: 300
+    expected_mttr_s: 1800
+    blast_radius_assert: "no pin applied (skew == false); one batch isolated; one `ontology`/`mapping` CR proposed with evidence pointers only (no sh:value literal in CR body — phi_scan clean); DLQ records count unchanged after run (none dropped)"
+  - id: CT4-dlq-growth-temporal-skew
+    trigger: kg.dlq_growth
+    injection: "Simulator emits 800 canonical Observation resources with sourceTime 6 h ahead of eventTime (TKG-TIME-012 skew) in 10 min → DLQ reason TEMPORAL_SKEW"
+    expected_mttd_s: 900
+    expected_mttr_s: 3600
+    blast_radius_assert: "only A0 (severity S3) and A9 executed; 0 replays; 0 isolations; DQ issue opened non-blocking; ticket packet phi_scan clean; DLQ count unchanged"
+  - id: CT5-store-5xx-burst
+    trigger: kg.sink_error_rate
+    injection: "Fault proxy returns HTTP 503 for 40 % of SPARQL UPDATE requests on partitions 3–4 of hc.kg.assertion.v1 (12-partition topic) for 15 min"
+    expected_mttd_s: 300
+    expected_mttr_s: 3600
+    blast_radius_assert: "A6 paused ≤ 1 partition (10 % of 12, floor) after dry-run; pause ≤ 1,800 s; resume used offsets from graph; backlog drained; 0 offset advanced past an uncommitted batch (no gap vs EDW on nightly reconciliation)"
+  - id: CT6-transaction-too-large
+    trigger: kg.sink_error_rate
+    injection: "Backload fixture produces 5,000-event batches whose average triple count is 4× normal (Millennium CLINICAL_EVENT bulk) so the store rejects with STORE_REJECT"
+    expected_mttd_s: 300
+    expected_mttr_s: 1800
+    blast_radius_assert: "A5 halved max_events on exactly one sink instance; bounds reverted after ttl; 0 single events dropped (any irreducible event appears in DLQ with reason STORE_REJECT, never discarded)"
+  - id: CT7-latency-stall-compaction
+    trigger: kg.load_latency_stalled
+    injection: "Store compaction forced; commit p99 rises to 90 s and S9 p99 > 10 min for 15 min; disk_free_ratio 0.20"
+    expected_mttd_s: 900
+    expected_mttr_s: 3600
+    blast_radius_assert: "A1 backoff then A6 pause ≤ 10 % partitions; no restart of the store process; store_not_in_failover precondition respected; S10 availability ≥ 99.9 % throughout"
+  - id: CT8-store-down-escalate-only
+    trigger: kg.load_receipt_missing
+    injection: "Store endpoint blackholed for all sink instances (store-wide outage fixture)"
+    expected_mttd_s: 900
+    expected_mttr_s: 900
+    blast_radius_assert: "preconditions graph_store_reachable / single_sink_target_in_scope fail → escalated with ticket + page to store-engineering; 0 actions executed; module 12 DR runbook referenced in packet"
+  - id: CT9-reconciliation-replay-asymmetry
+    trigger: kg.reconciliation_mismatch
+    injection: "Replay of hc.canonical.clinical.condition.fhir.v1 offsets 1,000,000–1,050,000 delivered to sink.edw only (KG sink filtered by fixture); nightly reconciliation reports recorded_count mismatch for (G2, Condition, D)"
+    expected_mttd_s: 86400
+    expected_mttr_s: 86400
+    blast_radius_assert: "A3 re-drive ≤ 50,000 records (dry-run estimate honoured), hashes identical, 0 duplicates; A10 on-demand reconciliation matched ≥ 99.99 %; 0 rows copied between stores; DQR-CONSISTENCY-KG-EDW-001 issue opened and closed by the reconciler, not by the playbook"
+  - id: CT10-reconciliation-hash-mismatch-no-autofix
+    trigger: kg.reconciliation_mismatch
+    injection: "EDW hist_encounter fixture altered for 20 business keys on recorded day D (content hash differs; counts equal)"
+    expected_mttd_s: 86400
+    expected_mttr_s: 86400
+    blast_radius_assert: "no re-drive (replay_asymmetry false); only A0/A10/A9 ran; 0 writes to KG or EDW; differing business keys never fetched or stored by the playbook (phi:quasi); issue assigned to data-platform-steward"
+  - id: CT11-current-view-drift
+    trigger: kg.load_latency_stalled
+    injection: "graph/current/G5 corrupted by fixture (120 stale base triples) while batch graphs are correct; S9 stall induced on the same sink"
+    expected_mttd_s: 900
+    expected_mttr_s: 3600
+    blast_radius_assert: "A7 rewrote only graph/current/G5; 0 batch graphs modified (content hashes unchanged); drift_rows == 0 after rebuild; S10 served from batch graphs during rebuild"
+  - id: CT12-conflict-with-dq-storm
+    trigger: kg.sink_error_rate
+    injection: "CT5 fault plus a DQ rule storm (≥ 20 rules breaching) on the same topic partitions to trigger PBK-DQ-001 simultaneously"
+    expected_mttd_s: 300
+    expected_mttr_s: 3600
+    blast_radius_assert: "PBK-SINK-001 ran first; PBK-DQ-001 waited in playbook_selected until verifying (not suppressed; its detection continued); recursion ledger shows PBK-DQ-001 as child depth 1 with no re-trigger of PBK-SINK-001"
+
+phi: none
+change_request: {type: playbook, risk_class: high}   # high because A6 is ladder L2 (MEM-A3 §2); approvers Platform SRE + Agent Operator, privacy_guardian review (MEM-HEAL-027)
+provenance:
+  created_by: human:store-engineering  # seed authored by humans; learned successors carry agent.self_healer + DERIVED_FROM edges (MEM-HEAL-029)
+  compiled_from_incidents: []
+  approved_cr_id: null                 # required before status may leave `shadow` (MEM-HEAL-044)

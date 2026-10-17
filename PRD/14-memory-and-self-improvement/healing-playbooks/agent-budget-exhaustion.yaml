@@ -1,0 +1,957 @@
+# playbook_id: PBK-AGT-001
+# module: 14-memory-and-self-improvement
+# artefact: healing playbook (validated by healing-playbooks/playbook.schema.json; rules MEM-HEAL-036…050 in 04-self-healing.md)
+# status: shadow — recommend-only until graduated via a `playbook` CR (MEM-HEAL-012, MEM-HEAL-037, MEM-HEAL-044)
+#
+# Heals an **agent that is exhausting its budgets or looping**: `daily_token_cap` ≥ 90 % consumed before the daily
+# window resets, `runs_per_day` exhausted, `budget_stop` records piling up on `hc.ops.agent.decision.v1` (FLT-AGT-001);
+# the same CR `idempotency_key` re-proposed more than 3× or a streak of identical tool calls inside one run (FLT-AGT-002);
+# a model-provider 429/5xx/refusal spike that turns every retry into wasted tokens (FLT-AGT-005; the "provider
+# unreachable through the GOV-ACC-018 egress proxy" case of FLT-PLAT-006 lands on the same branch); and a C0 provider
+# prompt-cache read ratio collapsing below 50 % for an hour after a silently invalidating prompt/tool/model change
+# (FLT-AGT-006). In a Cerner Millennium / Oracle Fusion estate the usual root causes are mundane: a prompt or policy
+# release that shipped a timestamp into the stable prefix (every cached 40k-token prefix re-written on every run), a
+# BICC quarterly-update or CDC re-snapshot that fans out thousands of `hc.ops.agent.trigger.v1` events to
+# `agent.source_mapper` in one hour, a terminology release that makes `agent.terminology_steward` re-evaluate a whole
+# code system, a tool that returns a non-deterministic error so the agent re-proposes the same CR until its run budget
+# dies, or the provider's rate-limit tier being hit during the 02:00–04:00 consolidation window.
+#
+# "Heal the pipe, never the data": this playbook may re-route low-risk work to the manifest's `fallback_ref` model,
+# lower effort tier / raise cache use on bulk routes **within `cache-policy.yaml` and the manifest**, defer
+# schedule-triggered runs while keeping event- and CR-triggered ones, lower the agent's *effective* concurrency,
+# checkpoint-and-park a looping run, and open a PHI-free ticket to the Agent Operator. It **never raises
+# `tokens_per_run`, `runs_per_day`, `daily_token_cap` or `max_concurrent_runs`** — budgets are `policy` class and
+# human-only (AGT-ARCH-008, GOV-00 §2.2, MEM-HEAL-015, MEM-GOV-002) — never touches `agent.evaluator` or
+# `agent.privacy_guardian` routing (they fail closed by design, AGT-ARCH-009; both are fixed-point protected, MEM-06 §4),
+# never edits a manifest, prompt, rubric or golden set, never changes a `limits`/`guards` block, never widens a tool
+# allow-list (GOV-ACC-010) and never writes to Cerner, Fusion, `hc.canonical.*`, `hc.kg.*` or `hc.edw.*` (MEM-HEAL-008,
+# SRC-CER-024, GOV-ACC-011). Lowering is allowed; raising is not.
+#
+# No tier of memory (M0–M4 as used by this module) and no cache tier (C0–C4) may hold content whose `hc-phi-class` is
+# anything but `non-phi`/`internal` (steward preferences: `pii:workforce` with consent flag). This includes the C0
+# provider prompt cache: pseudonymised PHI is not permitted. Everything this playbook reads and records is agent ids,
+# run ids, workflow ids, prompt versions, model *refs* (`${MODEL_*}`, never literal ids in the playbook), token and
+# cost counters, trigger `event_type` counts, idempotency-key hashes, tool-call hashes, cache ratios and incident/CR
+# ids. It never opens a run transcript, a tool result body, a CR payload or a decision-log `rationale` beyond its
+# structured fields; `guards.forbidden_params` lists the fields that must never appear in a parameter, a ticket or a
+# memory record.
+
+id: PBK-AGT-001
+name: Agent budget exhaustion, loop or provider/cache collapse — throttle, re-route and park within policy; never raise budgets
+version: 0.1.0
+status: shadow
+owners:
+  - Agent Operator
+  - Agent Platform
+  - Platform SRE
+fault_classes:
+  - FLT-AGT-001   # Budget exhaustion (P0, ladder L1, SEV3, MTTD 300 s / MTTR 3,600 s)
+  - FLT-AGT-002   # Agent loop — repeated identical tool calls / idempotency re-proposal (P0, ladder L1, SEV3, MTTD 300 s / MTTR 900 s)
+  - FLT-AGT-005   # Model provider 429/5xx/refusal spike (P0, ladder L1, SEV3, MTTD 120 s / MTTR 900 s); FLT-PLAT-006 (proxy/provider unreachable, SEV2) is handled on the same branch per MEM-04 §2
+  - FLT-AGT-006   # Prompt-cache hit-ratio collapse (P1, ladder L1, SEV4, MTTD 3,600 s / MTTR 3,600 s)
+severity_default: S3           # OPS-00 §7 SEV3 for FLT-AGT-001/002/005; S4 for FLT-AGT-006; S2 when agent.evaluator or agent.privacy_guardian are the exhausted agents (gates stall — AGT-ARCH-009) or when the provider is unreachable platform-wide (FLT-PLAT-006)
+risk_class: medium             # highest autonomous ladder level is L1 (no L2 actions) — MEM-04 §8; `high` would be required if any L2 action were added
+autonomy_required: L3          # ARC-01 §5 autonomy level of agent.self_healer (not the healing ladder)
+mttd_target_s: 300
+mttr_target_s: 3600            # FLT-AGT-002 and FLT-AGT-005 keep their own 900 s MTTR from MEM-04 §2 (see verification.duration_s per branch)
+
+scope:
+  environments: [dev, test, uat, prod]
+  source_systems: ["*"]        # the target is an agent, not a source; source labels are carried only to explain runaway triggers (e.g. BICC manifest fan-out)
+  interfaces: ["*"]
+  groups: [G1, G2, G3, G4, G5, G6, G7, G8, G9]
+  facilities: ["*"]
+  agents_in_scope:             # every roster agent (ARC-01 §5) except the two fixed-point gate agents, which this playbook may only *observe* and page for
+    - agent.orchestrator
+    - agent.inventory
+    - agent.vocabulary_curator
+    - agent.taxonomist
+    - agent.thesaurus_editor
+    - agent.ontologist
+    - agent.schema_architect
+    - agent.source_mapper
+    - agent.interop_engineer
+    - agent.terminology_steward
+    - agent.dq_author
+    - agent.dq_monitor
+    - agent.remediator
+    - agent.kg_builder
+    - agent.release_manager
+    - agent.memory_curator
+    - agent.self_healer        # the healer may heal its own budget (depth-1 incident) but never re-trigger the parent incident's playbook (MEM-HEAL-009)
+    - agent.improver
+  agents_observe_only: [agent.evaluator, agent.privacy_guardian]   # AGT-ARCH-009 fail-closed gates; any budget action on them is a human decision — A6 pages instead
+
+# -----------------------------------------------------------------------------------------------------------------
+# Triggers — evaluated by the healing engine (Temporal) from the agent runtime's budget meters (AGT-01 §3.6; gateway
+# usage block), the decision log `hc.ops.agent.decision.v1` (`decision_type: budget_stop`, AGT-06 §1.2), cr-engine
+# idempotency returns (AGT-ORCH-009), MCP-gateway tool-call hashes, model-gateway counters `healix.agent.provider.*`,
+# cache metrics `healix.cache.*` (MEM-03 §9) and the OPS-03 §4.2 `BudgetAnomaly` alert. Labels are `agent_id`,
+# `route` (manifest tool/task route name), `model_ref` (`${MODEL_*}`), `workflow_id`, `event_type` — never a run's content.
+# -----------------------------------------------------------------------------------------------------------------
+triggers:
+  - signal: agent.daily_token_cap_utilisation
+    description: >-
+      Tokens metered today (gateway usage block, input + output + cache writes) against the manifest `daily_token_cap`, projected forward; ≥ 90 % consumed is the AGT-01 §3.6 soft-limit zone where runs start checkpointing and non-P0 CRs pause at 100 % (OPS-OBS-010)
+    source_module: 10-agentic-pipeline
+    metric: healix.agent.budget.daily_tokens_used{env,agent_id} / healix.agent.budget.daily_token_cap{env,agent_id}
+    comparator: ">="
+    threshold: 0.90
+    window_s: 300
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-AGT-001
+  - signal: agent.runs_per_day_exhausted
+    description: >-
+      Runs started today reached the manifest `runs_per_day`, so new triggers queue until the daily window resets (AGT-ARCH-008); detected from the runtime counter and confirmed by `budget_stop` records with reason `runs_per_day`
+    source_module: 10-agentic-pipeline
+    topic: hc.ops.agent.decision.v1
+    metric: healix.agent.budget.runs_today{env,agent_id} / healix.agent.budget.runs_per_day{env,agent_id}
+    comparator: ">="
+    threshold: 1.0
+    window_s: 300
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-AGT-001
+  - signal: agent.budget_stop_burst
+    description: >-
+      `decision_type: budget_stop` records for one agent on `hc.ops.agent.decision.v1` in 15 minutes (any budget: tokens_per_run, max_tool_calls_per_run, wall_clock_minutes_per_run, daily caps); a burst means runs are dying mid-task and resuming from checkpoint at the next trigger — a runaway trigger or a loop, not normal load
+    source_module: 10-agentic-pipeline
+    topic: hc.ops.agent.decision.v1
+    metric: increase(healix.agent.decisions_total{env,agent_id,decision_type="budget_stop"}[15m])
+    comparator: ">="
+    threshold: 3
+    window_s: 900
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-AGT-001
+  - signal: agent.idempotency_reproposal
+    description: >-
+      The same CR `idempotency_key` presented to `cr-engine.create_cr` more than 3 times in one hour (AGT-ORCH-009 returns the existing CR; the agent keeps proposing) — the canonical "stale memory / non-deterministic tool error" loop (FLT-AGT-002)
+    source_module: 10-agentic-pipeline
+    topic: hc.ops.agent.changerequest.v1
+    metric: max by (agent_id, idempotency_key_hash)(increase(healix.cr.create_duplicate_total{env,agent_id}[1h]))
+    comparator: ">"
+    threshold: 3
+    window_s: 3600
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-AGT-002
+  - signal: agent.identical_tool_call_streak
+    description: >-
+      Consecutive MCP tool calls within one run whose (server, operation, canonical-params hash) are identical and whose results are identical or identical errors — the gateway (AGT-TOOL-010) exports the streak length per run; ≥ 5 is never a legitimate retry pattern (AGT-01 §3.5 allows 3 retries with jitter)
+    source_module: 10-agentic-pipeline
+    metric: max by (agent_id, run_id)(healix.agent.tool_call_identical_streak{env,agent_id})
+    comparator: ">="
+    threshold: 5
+    window_s: 300
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-AGT-002
+  - signal: provider.error_rate
+    description: >-
+      Model-gateway responses that are HTTP 429, 5xx, timeouts through the GOV-ACC-018 egress proxy, or provider refusals, as a share of all LLM calls for one `model_ref` in 5 minutes; above 5 % the AGT-01 §3.5 retry ladder (3 attempts, exponential) multiplies token burn without producing CRs
+    source_module: 12-platform-and-operations
+    metric: sum(rate(healix.agent.provider.errors_total{env,model_ref,code=~"429|5..|timeout|refusal"}[5m])) / sum(rate(healix.agent.provider.requests_total{env,model_ref}[5m]))
+    comparator: ">"
+    threshold: 0.05
+    window_s: 300
+    min_occurrences: 1
+    for_s: 120
+    fault_class: FLT-AGT-005
+  - signal: cache.c0_read_ratio_collapse
+    description: >-
+      C0 provider prompt-cache read ratio (`usage.cache_read_input_tokens` ÷ eligible prefix tokens, MEM-03 §9) for one route below 50 % for a full hour — the `AgentPromptCacheCollapse` alert (MEM-CACHE-013, cache-policy.yaml `alerts[]`); a silent invalidator (timestamp/run id in prefix, tool order change, model or effort switch mid-route — MEM-CACHE-012) or a cold cache after deploy
+    source_module: 14-memory-and-self-improvement
+    metric: healix.cache.c0_read_ratio{env,agent_id,route}
+    comparator: "<"
+    threshold: 0.50
+    window_s: 3600
+    min_occurrences: 1
+    for_s: 3600
+    fault_class: FLT-AGT-006
+  - signal: agent.cost_forecast_anomaly
+    description: >-
+      OPS-03 §4.2 `BudgetAnomaly`: the day's LLM cost for one agent exceeds its forecast by more than 25 % (OPS-OBS-009 allocation per agent); routed here so the throttle starts before the hard cap, not after
+    source_module: 12-platform-and-operations
+    metric: healix.agent.cost_usd_today{env,agent_id} / healix.agent.cost_usd_forecast_today{env,agent_id}
+    comparator: ">"
+    threshold: 1.25
+    window_s: 3600
+    min_occurrences: 1
+    for_s: 600
+    fault_class: FLT-AGT-001
+
+dedupe_key: "${env}|${trigger.labels.agent_id}|${trigger.fault_class}"
+correlation_window_s: 1800     # a provider 429 wave or a prompt release hits several agents within minutes; each agent is its own incident (blast radius = 1 agent), correlated by window id and linked CAUSED_BY to the first
+
+# -----------------------------------------------------------------------------------------------------------------
+# Preconditions — the agent must be in scope, the kill switch released, and the symptom must not be a platform
+# outage that belongs to module 12's runbooks (Temporal down FLT-PLAT-004, Redis down FLT-PLAT-001).
+# -----------------------------------------------------------------------------------------------------------------
+preconditions:
+  - check: agent_manifest_resolvable
+    tool: {server: ontology-registry, operation: get_agent_manifest}
+    params: {agent_id: "${trigger.labels.agent_id}", fields: [id, autonomy_level, autonomy_ceiling, model.ref, model.fallback_ref, budgets, triggers, escalation, "tools[].server", "tools[].permission"]}
+    expect: "result.id == trigger.labels.agent_id and result.budgets.tokens_per_run != null and result.budgets.runs_per_day != null"   # AGT-01 manifest anatomy; `fallback_ref` optional — A1 is skipped when absent
+    on_fail: escalate
+  - check: agent_not_fixed_point_gate
+    tool: {server: observability, operation: evaluate_expression}
+    params: {expr: "trigger.labels.agent_id not in ['agent.evaluator','agent.privacy_guardian']"}
+    expect: "true"             # AGT-ARCH-009: the gates fail closed; healing their budgets is a human decision — the incident still opens (A0) and pages (A6) but no throttle action runs
+    on_fail: escalate
+  - check: temporal_and_gateway_healthy
+    tool: {server: observability, operation: query_metric}
+    params: {query: "healix.temporal.frontend_up{env} and healix.mcp.gateway_up{env}"}
+    expect: "value == 1"       # FLT-PLAT-004 (Temporal) is a module-12 runbook; a dead gateway makes every agent look exhausted
+    on_fail: escalate
+  - check: not_in_change_freeze_window_or_observe_only
+    tool: {server: observability, operation: freeze_calendar_check}
+    params: {scope: ["release", "fusion-quarterly-update", "millennium-code-upgrade"]}
+    expect: "frozen == false"  # MEM-HEAL-010: inside a freeze only observe/restart actions run — A0 and A5 (park looping run) still run, A1–A4 (reconfigure/reroute) do not
+    on_fail: skip
+  - check: no_kill_switch
+    tool: {server: cr-engine, operation: kill_switch_status}
+    params: {scopes: ["platform", "environment:${env}", "agent:agent.self_healer", "agent:${trigger.labels.agent_id}", "module14:healing", "playbook:PBK-AGT-001"]}
+    expect: "all_released == true"   # an agent-scope kill switch already tripped on the target (AGT-SAFE-013) means the agent is stopped — nothing left to throttle; incident links to the kill-switch event
+    on_fail: skip
+  - check: agent_not_oscillating
+    tool: {server: observability, operation: query_metric}
+    params: {query: "increase(healix.agent.runtime_override_changes_total{agent_id='${trigger.labels.agent_id}',actor='agent.self_healer'}[1h])"}
+    expect: "value < 3"        # MEM-HEAL-011 analogue: do not flip the same agent's route/concurrency back and forth; a third override in the hour escalates instead
+    on_fail: escalate
+
+# -----------------------------------------------------------------------------------------------------------------
+# Diagnosis — read-only (MEM-HEAL-045/019). Finds *who* is burning (route, workflow, model ref), *why* (invalidation
+# storm, runaway trigger, loop, provider fault, fallback already in use) and *how long* the budget lasts at the current
+# burn rate. Counters, ids and hashes only; no transcript, tool result, CR payload or rationale text is ever read.
+# -----------------------------------------------------------------------------------------------------------------
+diagnosis:
+  - step: budget_state
+    tool: {server: observability, operation: query_metric}
+    params:
+      query: >-
+        healix.agent.budget.daily_tokens_used{agent_id='${trigger.labels.agent_id}'},
+        healix.agent.budget.daily_token_cap{agent_id='${trigger.labels.agent_id}'},
+        healix.agent.budget.runs_today{agent_id='${trigger.labels.agent_id}'},
+        healix.agent.budget.runs_per_day{agent_id='${trigger.labels.agent_id}'},
+        healix.agent.active_runs{agent_id='${trigger.labels.agent_id}'},
+        healix.agent.queued_triggers{agent_id='${trigger.labels.agent_id}'},
+        rate(healix.agent.budget.daily_tokens_used{agent_id='${trigger.labels.agent_id}'}[30m])
+    read_only: true
+    timeout_s: 15
+    record_as: budget_state     # {tokens_used, cap, runs_today, runs_cap, active_runs, queued, burn_rate_per_h, hours_to_window_reset, projected_end_of_day_tokens}
+  - step: top_consumers
+    tool: {server: observability, operation: query_metric}
+    params:
+      query: "topk(10, sum by (route, workflow_id, model_ref, prompt_version)(increase(healix.agent.tokens_total{agent_id='${trigger.labels.agent_id}'}[1h])))"
+    read_only: true
+    timeout_s: 15
+    record_as: top_consumers    # which routes/workflows/model refs burned the last hour; `prompt_version` tells whether a release just landed
+  - step: cache_state
+    tool: {server: cache, operation: stats}
+    params: {namespace: "pc.*|rc.*|sc.*", filter: {agent_id: "${trigger.labels.agent_id}"}, window: PT1H, fields: [c0_read_ratio_by_route, c0_write_tokens, c1_hit_ratio, c2_hit_ratio, bypass_ratio_by_reason, invalidations_1h, last_invalidation_tags]}
+    read_only: true
+    timeout_s: 10
+    record_as: cache_state      # a cache_write ≫ cache_read pattern per route = prefix churn (FLT-AGT-006); bypass_ratio{reason=canary_cohort|risk_class} explains legitimately uncached work (MEM-03 §7)
+  - step: invalidation_storm
+    tool: {server: kafka-admin, operation: sample_records}
+    params:
+      topic: hc.ops.cache.invalidate.v1
+      since: "${incident.detected_at - 7200}"
+      filter: {tag_kind: [prompt_version, policy_bundle_version, model_id, tool_manifest_hash, ontology_release, valueset_version]}
+      fields: [tag_kind, tag_value, source_event, emitted_at, affected_tiers]
+      limit: 200
+    read_only: true
+    timeout_s: 15
+    record_as: invalidation_storm   # module-14 requested topic (README §6); until it lands the engine reads `hc.ops.agent.policy.release.v1` (STR-02) for prompt/policy releases
+  - step: policy_releases
+    tool: {server: kafka-admin, operation: sample_records}
+    params:
+      topic: hc.ops.agent.policy.release.v1
+      since: "${incident.detected_at - 86400}"
+      filter: {agent_id: "${trigger.labels.agent_id}"}
+      fields: [agent_id, artefact_kind, from_version, to_version, released_at, cr_id, canary_stage]
+      tail: 5
+    read_only: true
+    timeout_s: 15
+    record_as: policy_releases  # a prompt/policy/tool-manifest release within the window is the prime suspect for both prefix churn and behaviour change; `canary_stage` tells whether MEM-05's canary controller already owns the rollback decision
+  - step: trigger_profile
+    tool: {server: kafka-admin, operation: sample_records}
+    params:
+      topic: hc.ops.agent.trigger.v1
+      since: "${incident.detected_at - 3600}"
+      filter: {consumer_agent_id: "${trigger.labels.agent_id}"}
+      aggregate: [event_type, producer, debounce_key_hash]
+      fields: [count, first_at, last_at]
+    read_only: true
+    timeout_s: 15
+    record_as: trigger_profile  # runaway trigger = one event_type at ≫ 7-d baseline (e.g. `schema_change` fan-out from a BICC manifest diff, `terminology_release`, `profiling_complete` after a CDC re-snapshot); AGT-ARCH-010 debounce keys show whether dedupe is working
+  - step: trigger_baseline
+    tool: {server: observability, operation: query_metric}
+    params: {query: "sum by (event_type)(increase(healix.agent.triggers_total{consumer_agent_id='${trigger.labels.agent_id}'}[1h])) / avg_over_time(sum by (event_type)(increase(healix.agent.triggers_total{consumer_agent_id='${trigger.labels.agent_id}'}[1h]))[7d:1h])"}
+    read_only: true
+    timeout_s: 15
+    record_as: trigger_baseline   # ratio per event_type vs 7-day hourly baseline; > 5× = runaway
+  - step: loop_signature
+    tool: {server: kafka-admin, operation: sample_records}
+    params:
+      topic: hc.ops.agent.decision.v1
+      since: "${incident.detected_at - 3600}"
+      filter: {agent_id: "${trigger.labels.agent_id}", decision_type: [propose, withdraw, budget_stop, skip]}
+      aggregate: [run_id, workflow_id, decision_type, idempotency_key_hash, target_ref_hash]
+      fields: [count, tokens_input_sum, tokens_output_sum, tool_calls_sum, first_at, last_at]   # structured fields only — `rationale`, `evidence_refs` and `summary` are never read (MEM-HEAL-033)
+    read_only: true
+    timeout_s: 15
+    record_as: loop_signature   # {looping_runs[]: {run_id, idempotency_key_hash, repeats, tokens}, duplicate_cr_ids[]} — repeats > 3 on one key = FLT-AGT-002
+  - step: tool_call_streaks
+    tool: {server: observability, operation: query_metric}
+    params: {query: "topk(5, healix.agent.tool_call_identical_streak{agent_id='${trigger.labels.agent_id}'}) and sum by (server, operation, result_class)(increase(healix.mcp.calls_total{agent_id='${trigger.labels.agent_id}'}[1h]))"}
+    read_only: true
+    timeout_s: 10
+    record_as: tool_call_streaks   # which tool/operation is looping and whether it returns identical errors (non-deterministic error ⇒ tool fault, FLT-AGT-003 territory, ticket the tool owner too)
+  - step: provider_state
+    tool: {server: observability, operation: query_metric}
+    params:
+      query: >-
+        sum by (model_ref, code)(rate(healix.agent.provider.errors_total{env='${env}'}[5m])),
+        sum by (model_ref)(rate(healix.agent.provider.requests_total{env='${env}'}[5m])),
+        histogram_quantile(0.95, sum by (model_ref, le)(rate(healix.agent.provider.latency_seconds_bucket{env='${env}'}[5m]))),
+        healix.egress_proxy.up{env='${env}'}, healix.egress_proxy.allowlist_version{env='${env}'},
+        sum by (model_ref)(rate(healix.agent.provider.retry_total{env='${env}'}[5m]))
+    read_only: true
+    timeout_s: 15
+    record_as: provider_state   # per-model_ref error/retry rates and the GOV-ACC-018 proxy health; errors on *every* model_ref with proxy down = FLT-PLAT-006 (page SRE, nothing to re-route to)
+  - step: routing_state
+    tool: {server: observability, operation: query_metric}
+    params: {query: "sum by (route, model_ref, effort_tier, override_actor)(increase(healix.agent.model_routes_total{agent_id='${trigger.labels.agent_id}'}[1h]))"}
+    read_only: true
+    timeout_s: 10
+    record_as: routing_state    # is fallback_ref already in use (AGT-ARCH-007 tier escalation after structured-output failures burns the reasoning tier)? which routes run at `high` effort?
+  - step: cr_backlog
+    tool: {server: cr-engine, operation: list_crs}
+    params: {proposer: "${trigger.labels.agent_id}", state: [proposed, evaluated], since: "${incident.detected_at - 86400}", aggregate: [cr_type, risk_class, priority], fields: [count, oldest_age_s]}
+    read_only: true
+    timeout_s: 15
+    record_as: cr_backlog       # what queues if we defer: P0/high CRs stay (OPS-OBS-010 pauses only non-P0 at the hard limit); AGT-ORCH-010 serialisation may already be holding CRs
+  - step: canary_state
+    tool: {server: observability, operation: list_canaries}
+    params: {agent_id: "${trigger.labels.agent_id}", states: [canary_5, canary_25, promoted, monitoring]}
+    read_only: true
+    timeout_s: 10
+    record_as: canary_state     # MEM-05 §4: cost +25 % on the canary cohort is the canary controller's rollback trigger, not this playbook's — if a canary is live we record and let the controller act (CAUSED_BY link), never re-route the cohort
+  - step: freeze_state
+    tool: {server: observability, operation: freeze_calendar_check}
+    params: {scope: ["release", "fusion-quarterly-update", "millennium-code-upgrade"], horizon_s: 86400}
+    read_only: true
+    timeout_s: 5
+    record_as: freeze_state     # a Fusion quarterly update inside 24 h means the schedule-triggered load will spike again — note it in the lesson
+  - step: prior_outcomes
+    tool: {server: memory, operation: recall}
+    params:
+      scopes: ["healix.${env}.agent.${trigger.labels.agent_id}", "healix.${env}.agent.agent.self_healer"]
+      query: "budget exhaustion or loop on ${trigger.labels.agent_id}; root cause (invalidation storm, runaway trigger, loop, provider) and successful throttle action"
+      retrieval_profile: incident_triage
+      filters: {classes: [incident, root_cause, outcome, drift_signature, evaluation_lesson], min_trust_tier: T1, min_confidence: 0.6}
+      top_k: 10
+      budget_tokens: 1500
+    read_only: true
+    timeout_s: 5
+    record_as: prior_outcomes   # untrusted block `[mem:<id> class conf trust from <evidence>]` (MEM-02 §7); record ids echoed in ticket/CR provenance (MEM-ARCH-006); absent and `memory_degraded=true` when Mem0/Graphiti are down (MEM-HEAL-014)
+
+# -----------------------------------------------------------------------------------------------------------------
+# Decision tree — first matching branch wins; A0 runs on every branch. At most 5 counted actions per incident
+# (A0 is L0 observe and exempt, MEM-04 §7).
+# -----------------------------------------------------------------------------------------------------------------
+decision_tree:
+  - when: "trigger.labels.agent_id in ['agent.evaluator','agent.privacy_guardian']"
+    then_actions: [A0-record-incident, A6-ticket-agent-operator]   # SEV2: gates fail closed (AGT-ARCH-009) — CRs stall platform-wide; humans decide on budget, this playbook never throttles or re-routes the gates
+  - when: "provider_state.proxy_up == 0 or (provider_state.error_rate_all_models > 0.05 and provider_state.model_refs_affected == 'all')"
+    then_actions: [A0-record-incident, A3-defer-schedule-triggered-runs, A4-reduce-effective-concurrency, A6-ticket-agent-operator]   # FLT-PLAT-006: nothing to re-route to; stop burning retries, hold the queue, page Platform SRE via A6 (proxy allow-list/DNS is module 12's runbook)
+  - when: "loop_signature.max_repeats > 3 or tool_call_streaks.max_streak >= 5"
+    then_actions: [A0-record-incident, A5-park-looping-run, A4-reduce-effective-concurrency, A6-ticket-agent-operator]   # FLT-AGT-002: checkpoint-and-park the looping run, block its idempotency key for the cooldown, ticket the tool owner when the loop is an identical-error tool
+  - when: "provider_state.error_rate[trigger.labels.model_ref] > 0.05 and manifest.model.fallback_ref != null and canary_state.active == false"
+    then_actions: [A0-record-incident, A1-route-low-risk-to-fallback, A4-reduce-effective-concurrency, A3-defer-schedule-triggered-runs]   # FLT-AGT-005 on one model ref: low-risk/enum routes go to fallback_ref, concurrency and schedule load drop so the retry ladder stops multiplying
+  - when: "cache_state.c0_read_ratio_min < 0.50 and (policy_releases.released_within_window == true or invalidation_storm | length > 20)"
+    then_actions: [A0-record-incident, A2-lower-effort-and-raise-cache-use, A3-defer-schedule-triggered-runs, A6-ticket-agent-operator]   # FLT-AGT-006 after a release: pre-warm, pin effort, enable eligible C1/C2; the *fix* (remove the silent invalidator) is a `agent_policy` CR by humans/improver — ticket carries the offending prompt_version
+  - when: "cache_state.c0_read_ratio_min < 0.50"
+    then_actions: [A0-record-incident, A2-lower-effort-and-raise-cache-use]   # cold cache after deploy / TTL gap: pre-warm and align TTL by gap table (MEM-CACHE-005); nothing else needed
+  - when: "trigger_baseline.max_ratio > 5.0"
+    then_actions: [A0-record-incident, A3-defer-schedule-triggered-runs, A4-reduce-effective-concurrency, A2-lower-effort-and-raise-cache-use, A6-ticket-agent-operator]   # runaway trigger (BICC manifest fan-out, terminology release, re-snapshot profiling): absorb — event/CR-triggered work continues at lower concurrency; ticket names the producer so debounce can be fixed (AGT-ARCH-010)
+  - when: "canary_state.active == true and canary_state.cost_delta > 0.25"
+    then_actions: [A0-record-incident, A3-defer-schedule-triggered-runs]   # MEM-05 §4 owns the rollback (cost +25 %); this playbook only sheds schedule load and links CAUSED_BY to the canary candidate — never touches the canary cohort's routing or caches (MEM-IMP-008)
+  - when: "budget_state.projected_end_of_day_tokens > budget_state.cap or budget_state.runs_today >= budget_state.runs_cap"
+    then_actions: [A0-record-incident, A1-route-low-risk-to-fallback, A2-lower-effort-and-raise-cache-use, A3-defer-schedule-triggered-runs, A4-reduce-effective-concurrency]   # plain over-consumption: the full ladder from AGT-01 §3.6 — cheaper model for low-risk routes, cheaper effort, fewer scheduled runs, less parallelism; the cap itself is untouched
+  - when: "true"
+    then_actions: [A0-record-incident, A3-defer-schedule-triggered-runs, A6-ticket-agent-operator]   # unexplained anomaly (e.g. BudgetAnomaly without a visible cause): shed the deferrable load and hand to the Agent Operator — never guess a routing change
+
+# -----------------------------------------------------------------------------------------------------------------
+# Actions — every action carries class + budget + (compensation or provable idempotency) — MEM-HEAL-038/046.
+# Budgets tighten the engine defaults: 1 agent per incident, `time_box_s` ≤ 1,800, restores on resolve. No action has
+# class `schema` or `data_mutation` (MEM-HEAL-001); no action raises any budget, edits a manifest/prompt/rubric, or
+# touches agent.evaluator / agent.privacy_guardian (MEM-HEAL-015, MEM-GOV-002, MEM-GOV-016).
+# Every override is a *runtime* flag on the agent's workflow (AGT-01 §3.3 router / §3.6 budget enforcement), scoped
+# to one agent and one env, snapshotted before change, and reverted by rollback — never a Git/manifest change.
+# -----------------------------------------------------------------------------------------------------------------
+actions:
+  - id: A0-record-incident
+    ladder_level: L0
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: agent, max: 1, scope_expr: "agent_id == '${trigger.labels.agent_id}'", time_box_s: 120}
+    requires_dry_run: false
+    tool: {server: memory, operation: record_incident, permission: propose}
+    params:
+      incident_id: "${incident.id}"
+      severity: "${trigger.labels.agent_id in ['agent.evaluator','agent.privacy_guardian'] or decision.branch == 'provider_unreachable' ? 'S2' : (trigger.fault_class == 'FLT-AGT-006' ? 'S4' : incident.severity)}"
+      annotations:
+        agent_id: "${trigger.labels.agent_id}"
+        fault_class: "${trigger.fault_class}"
+        tokens_used_pct: "${budget_state.tokens_used / budget_state.cap}"
+        runs_used_pct: "${budget_state.runs_today / budget_state.runs_cap}"
+        burn_rate_tokens_per_h: "${budget_state.burn_rate_per_h}"
+        hours_to_window_reset: "${budget_state.hours_to_window_reset}"
+        projected_over_cap: "${budget_state.projected_end_of_day_tokens > budget_state.cap}"
+        top_routes: "${top_consumers | top(3) | map({route, model_ref, prompt_version, tokens})}"
+        c0_read_ratio_min: "${cache_state.c0_read_ratio_min}"
+        invalidations_2h: "${invalidation_storm | length}"
+        policy_release_in_window: "${policy_releases.released_within_window}"
+        policy_release_cr: "${policy_releases.latest.cr_id}"
+        runaway_event_type: "${trigger_baseline.max_event_type}"
+        runaway_ratio: "${trigger_baseline.max_ratio}"
+        looping_run_ids: "${loop_signature.looping_runs[].run_id}"
+        loop_idempotency_key_hashes: "${loop_signature.looping_runs[].idempotency_key_hash}"
+        looping_tool: "${tool_call_streaks.top.server}.${tool_call_streaks.top.operation}"
+        provider_error_rate: "${provider_state.error_rate[trigger.labels.model_ref]}"
+        proxy_up: "${provider_state.proxy_up}"
+        fallback_in_use: "${routing_state.fallback_share}"
+        canary_active: "${canary_state.active}"
+        canary_candidate_id: "${canary_state.candidate_id}"   # Graphiti edge Incident -CAUSED_BY-> ImprovementCandidate when the canary explains the cost (MEM-02 §4)
+        freeze_within_24h: "${freeze_state.next_window}"
+        memory_degraded: "${memory.degraded}"
+        hypothesis: "${decision.branch}"
+    idempotency_key_recipe: "sha256(${incident.id}|A0|${trigger.labels.agent_id}|${trigger.fault_class})"
+    timeout_s: 10
+    retries: 1
+    verify: {probe: "incident.annotations.hypothesis", expect: "present", within_s: 10}
+    on_failure: continue
+    compensating_action: {tool: {server: memory, operation: correct}, params: {memory_id: "${incident.id}", change_kind: correction, new_content: {annotations: null}}}
+
+  - id: A1-route-low-risk-to-fallback
+    description: >-
+      Set a runtime router override so that this agent's *low-risk* routes — tasks whose output schema is a single enum or classification, retrieval-ranking and summarisation-for-humans sub-steps, and any route the manifest already marks `fallback_eligible` — resolve to the manifest's `model.fallback_ref` instead of `model.ref` until the incident resolves (max 4 h). Routes that produce CR payloads of `risk_class ∈ {high, phi_affecting}`, evaluator rubric scoring and privacy decisions are excluded by construction (they are not on this agent, or are bypass-listed). The override is applied at *route boundary* for new runs only, never mid-conversation, so it is not itself a silent C0 invalidator (MEM-CACHE-012); the resolved model id is recorded in each decision-log record as always (AGT-ARCH-007). Model refs stay `${MODEL_*}` configuration references — this playbook never names a literal model id.
+    ladder_level: L1
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: {unit: agent, max: 1, scope_expr: "agent_id == '${trigger.labels.agent_id}' and route.risk_ceiling in ['low','medium'] and route not in bypass_when[]", time_box_s: 1800}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: agent.set_route_override, permission: apply}
+    params:
+      agent_id: "${trigger.labels.agent_id}"
+      override:
+        routes: "${manifest.routes | where(fallback_eligible or output_schema_kind == 'enum' or output_schema_kind == 'classification')}"
+        model_ref: "${manifest.model.fallback_ref}"
+        apply_at: route_boundary_new_runs_only
+        exclude_routes: [cr_payload_high, cr_payload_phi_affecting, canary_cohort]
+      until: "${incident.id} resolved or 14400s"
+      reason: "budget/provider healing ${incident.id} (${decision.branch})"
+      snapshot_name: "pre-A1-${incident.id}"
+      note: "Runtime router flag (AGT-01 §3.3) scoped to one agent and env; not a manifest, prompt, budget or autonomy change (MEM-HEAL-015, MEM-GOV-002). Pre-warms the fallback route's C0 prefix (cache.warm) so the switch does not itself collapse the read ratio."
+    idempotency_key_recipe: "sha256(${incident.id}|A1|${trigger.labels.agent_id}|${manifest.model.fallback_ref})"
+    timeout_s: 60
+    retries: 1
+    verify:
+      probe: "sum by (model_ref)(increase(healix.agent.model_routes_total{agent_id='${trigger.labels.agent_id}',route in override.routes}[15m])) and healix.agent.structured_output_failures_total{agent_id='${trigger.labels.agent_id}'} and manifest hash"
+      expect: "fallback_share_on_overridden_routes >= 0.9 and structured_output_failure_rate <= baseline + 0.02 and manifest_hash_unchanged and budgets_unchanged and routes_excluded_untouched"
+      within_s: 900
+    on_failure: compensate
+    rollback:
+      tool: {server: playbook-runner, operation: agent.restore_route_override}
+      params: {agent_id: "${trigger.labels.agent_id}", snapshot: "pre-A1-${incident.id}"}
+
+  - id: A2-lower-effort-and-raise-cache-use
+    description: >-
+      Cut token burn on bulk routes without changing what is cached: (a) pin the effort/thinking tier of the agent's bulk mapping/classification/profiling-summary routes to the manifest's `standard` tier for *new runs* (never mid-route — MEM-CACHE-012), (b) enable C1 exact-match and C2 semantic caching for routes that `cache-policy.yaml` lists as `eligible_tasks` and that currently run `cache: off` (never a route on `bypass_when[]`: high/phi_affecting CRs, evaluator verdicts, guardian decisions, canary cohort, injection-flagged inputs — MEM-CACHE-002), (c) re-warm the C0 prefix namespaces `pc.*` of the agent for the current prompt version and select the C0 TTL from the start-to-start gap table (MEM-CACHE-005; 1-h markers before 5-m markers). Nothing enters a cache that was not already permitted by policy; PHI class of every namespace stays `none` (MEM-CACHE-001).
+    ladder_level: L1
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: {unit: agent, max: 1, scope_expr: "agent_id == '${trigger.labels.agent_id}' and namespace in cache_policy.namespaces[owner_agent == agent_id] and route not in bypass_when[]", time_box_s: 1800}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: agent.set_effort_and_cache_profile, permission: apply}
+    params:
+      agent_id: "${trigger.labels.agent_id}"
+      effort:
+        routes: "${manifest.routes | where(bulk == true)}"
+        tier: standard
+        apply_at: route_boundary_new_runs_only
+        pin_effort: true                     # cache-policy.yaml provider_prompt_layout.pin_effort
+      cache:
+        enable: "${cache_policy.namespaces | where(owner_agent == trigger.labels.agent_id and tier in ['C1','C2'] and route in cache_policy.tiers[tier].eligible_tasks and current_state == 'off')}"
+        never_enable: "${cache_policy.bypass_when}"
+        warm: "${cache_policy.namespaces | where(owner_agent == trigger.labels.agent_id and tier == 'C0')}"
+        c0_ttl_by_gap: "${cache_policy.provider_prompt_layout.ttl_by_gap}"
+        verify_on_hit_required_for: [sc.mapping_suggestion, rc.terminology_lookup, sc.terminology_lookup]   # MEM-CACHE-003: mapping/terminology hits re-validated via TS
+      until: "${incident.id} resolved or 14400s"
+      reason: "budget/cache healing ${incident.id} (${decision.branch})"
+      snapshot_name: "pre-A2-${incident.id}"
+      note: "Cache enablement goes through `cache.policy_check` per request (allow|bypass) — the playbook cannot force a hit for a bypass-listed request. Thresholds (`similarity_threshold`) are never lowered here; they are `candidate_for_tuning` of MEM-03 and change only via `agent_policy` CR."
+    idempotency_key_recipe: "sha256(${incident.id}|A2|${trigger.labels.agent_id}|${policy_releases.latest.to_version})"
+    timeout_s: 120
+    retries: 1
+    verify:
+      probe: "healix.cache.c0_read_ratio{agent_id='${trigger.labels.agent_id}'} by route; healix.cache.policy_check_total{result='refused_phi'}; healix.cache.hits_total{tier in ['C1','C2'],agent_id}; healix.agent.effort_tier_changes_mid_route_total"
+      expect: "c0_read_ratio >= 0.70 on warmed routes within 30 min (or cache_write_tokens falling ≥ 50 %) and refused_phi == 0 and mid_route_effort_changes == 0 and bypass_listed_hits == 0 and divergence_rate <= 0.02"
+      within_s: 1800
+    on_failure: compensate
+    rollback:
+      tool: {server: playbook-runner, operation: agent.restore_effort_and_cache_profile}
+      params: {agent_id: "${trigger.labels.agent_id}", snapshot: "pre-A2-${incident.id}", purge_namespaces_enabled_by_this_run: true}   # entries written under the temporary enablement are purged on rollback so no stale hit survives the override
+
+  - id: A3-defer-schedule-triggered-runs
+    description: >-
+      Pause the agent's manifest triggers of `kind: schedule` (nightly harvests, weekly profiling summaries, consolidation sweeps) until the daily budget window resets or the burn rate is back under projection (max 24 h), while `kind: event`, `kind: change_request` and `kind: manual` triggers keep flowing. Queued `hc.ops.agent.trigger.v1` events are *held* in the orchestrator's debounced queue, never dropped (AGT-ARCH-010); CRs of priority P0 and `high`/`phi_affecting` risk are never deferred (OPS-OBS-010 pauses only non-P0 work at the hard limit). Deferred work resumes automatically at the window reset in arrival order.
+    ladder_level: L1
+    blast_radius_class: reroute
+    autonomous_allowed: true
+    blast_radius: {unit: agent, max: 1, scope_expr: "agent_id == '${trigger.labels.agent_id}' and trigger.kind == 'schedule'", time_box_s: 1800}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: agent.defer_triggers, permission: apply}
+    params:
+      agent_id: "${trigger.labels.agent_id}"
+      defer: {kinds: [schedule]}
+      keep: {kinds: [event, change_request, manual], always_keep: {cr_priority: [P0], cr_risk_class: [high, phi_affecting]}}
+      hold_queue: true                       # held, not dropped; resumes in arrival order
+      until: "min(${budget_state.hours_to_window_reset}h, 86400s) or ${incident.id} resolved and burn_rate_under_projection"
+      reason: "budget healing ${incident.id} (${decision.branch}; runaway=${trigger_baseline.max_event_type})"
+      snapshot_name: "pre-A3-${incident.id}"
+      note: "Orchestrator queue flag (AGT-01 §4), not a manifest `triggers[]` edit. For a runaway *event* producer (e.g. per-column `schema_change` fan-out) the fix is the producer's debounce — ticketed via A6; this action does not throttle event triggers."
+    idempotency_key_recipe: "sha256(${incident.id}|A3|${trigger.labels.agent_id})"
+    timeout_s: 30
+    retries: 1
+    verify:
+      probe: "healix.agent.triggers_total{consumer_agent_id='${trigger.labels.agent_id}',kind='schedule',state='started'} and healix.agent.queued_triggers{agent_id,kind} and healix.cr.cycle_time_seconds{proposer='${trigger.labels.agent_id}',priority='P0'}"
+      expect: "schedule_runs_started_after_A3 == 0 and event_cr_manual_runs_started > 0 (when queued) and queued_schedule_events_dropped == 0 and P0_cr_cycle_time_p95 <= 1800 (S14)"
+      within_s: 900
+    on_failure: compensate
+    rollback:
+      tool: {server: playbook-runner, operation: agent.restore_triggers}
+      params: {agent_id: "${trigger.labels.agent_id}", snapshot: "pre-A3-${incident.id}", release_held_queue: true}
+
+  - id: A4-reduce-effective-concurrency
+    description: >-
+      Lower the agent's *effective* `max_concurrent_runs` at runtime to max(1, ⌈manifest value / 2⌉) — never below 1 and never above the manifest value — so parallel runs stop racing for the same daily cap and the provider's rate-limit tier (429s) is respected without retries. This is a reduction of a budget-derived runtime limit; the manifest `budgets.max_concurrent_runs` itself is untouched and can only be changed by a `policy`-class CR (MEM-HEAL-015). Running runs finish; new runs queue in the orchestrator.
+    ladder_level: L1
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: {unit: agent, max: 1, scope_expr: "agent_id == '${trigger.labels.agent_id}' and new_value >= 1 and new_value <= manifest.budgets.max_concurrent_runs", time_box_s: 1800}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: agent.set_effective_concurrency, permission: apply}
+    params:
+      agent_id: "${trigger.labels.agent_id}"
+      max_concurrent_runs_effective: "${max(1, ceil(manifest.budgets.max_concurrent_runs / 2))}"
+      direction_allowed: lower_only          # engine refuses any value above the manifest (MEM-HEAL-015)
+      until: "${incident.id} resolved or 14400s"
+      reason: "budget/provider healing ${incident.id} (${decision.branch})"
+      snapshot_name: "pre-A4-${incident.id}"
+    idempotency_key_recipe: "sha256(${incident.id}|A4|${trigger.labels.agent_id}|${max(1, ceil(manifest.budgets.max_concurrent_runs / 2))})"
+    timeout_s: 30
+    retries: 1
+    verify:
+      probe: "healix.agent.active_runs{agent_id='${trigger.labels.agent_id}'} and healix.agent.budget.max_concurrent_runs{agent_id} (manifest) and healix.agent.provider.errors_total{code='429',agent_id}"
+      expect: "max_over_time(active_runs[15m]) <= effective_value and manifest_value_unchanged and rate(429s) falling"
+      within_s: 900
+    on_failure: compensate
+    rollback:
+      tool: {server: playbook-runner, operation: agent.restore_effective_concurrency}
+      params: {agent_id: "${trigger.labels.agent_id}", snapshot: "pre-A4-${incident.id}"}
+
+  - id: A5-park-looping-run
+    description: >-
+      Break the loop: ask the runtime to checkpoint and terminate the looping run(s) exactly as a budget stop does (AGT-ARCH-008 semantics — checkpoint + `decision_type: budget_stop` with reason `loop_detected`), then block re-triggering on the same `idempotency_key`/`debounce_key` hash for this playbook's cooldown so the next trigger does not immediately restart the same loop. Duplicate CRs already created are left as cr-engine returned them (AGT-ORCH-009 — there is only one CR per key); nothing is withdrawn or edited. The run can be resumed from its checkpoint by the Agent Operator after the ticket (A6) is dispositioned. If the loop is an identical-error tool (`tool_call_streaks.result_class == 'identical_error'`), the ticket is also routed to the tool's owning module (FLT-AGT-003 territory).
+    ladder_level: L1
+    blast_radius_class: restart
+    autonomous_allowed: true
+    blast_radius: {unit: agent, max: 1, scope_expr: "agent_id == '${trigger.labels.agent_id}' and run_id in loop_signature.looping_runs[].run_id and runs_parked <= 3", time_box_s: 900}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: agent.checkpoint_and_park_run, permission: apply}
+    params:
+      agent_id: "${trigger.labels.agent_id}"
+      run_ids: "${loop_signature.looping_runs | top(3) | map(run_id)}"
+      reason: loop_detected
+      block_retrigger:
+        keys: "${loop_signature.looping_runs[].idempotency_key_hash}"
+        for_s: 3600
+      preserve: [checkpoint, decision_log, trace]   # evidence kept for the postmortem (MEM-HEAL-024); nothing deleted
+      note: "Runtime control-plane call on the agent's Temporal workflow (AGT-01 §3.5); no CR is withdrawn, no manifest or budget changes. A parked run counts as one restart for the MEM-HEAL-011 oscillation detector."
+    idempotency_key_recipe: "sha256(${incident.id}|A5|${trigger.labels.agent_id}|${sorted(loop_signature.looping_runs[].run_id) | hash})"
+    timeout_s: 60
+    retries: 1
+    verify:
+      probe: "healix.agent.run_state{run_id in A5.run_ids} and healix.cr.create_duplicate_total{agent_id='${trigger.labels.agent_id}'} and healix.agent.tool_call_identical_streak{agent_id}"
+      expect: "all parked runs in state 'checkpointed' with budget_stop record present and increase(create_duplicate_total[15m]) == 0 and max identical_streak < 5 and parked_runs <= 3"
+      within_s: 600
+    on_failure: escalate
+    rollback:
+      tool: {server: playbook-runner, operation: agent.release_retrigger_block}
+      params: {agent_id: "${trigger.labels.agent_id}", keys: "${loop_signature.looping_runs[].idempotency_key_hash}", resume_runs: false, comment: "healing run rolled back ${incident.id}; parked runs stay checkpointed for human resume"}   # a parked run is never auto-resumed by a rollback — resuming a loop is the failure we are preventing
+
+  - id: A6-ticket-agent-operator
+    description: >-
+      Open one PHI-free ticket to the Agent Operator (OPS-03 §4.3) — and to Platform SRE when the provider/proxy is the cause, to the producing module's owner when a runaway trigger is the cause, to the tool's owner when a looping identical-error tool is the cause — carrying the budget state, top consumers, the suspected release/trigger/loop and every override applied. Any *permanent* change this incident calls for (raising a budget, fixing the debounce, removing a silent invalidator from a prompt, changing a cache threshold) is a `policy`/`agent_policy` CR by humans or `agent.improver`, never by this playbook (MEM-HEAL-015, MEM-GOV-002).
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: agent, max: 1, scope_expr: "agent_id == '${trigger.labels.agent_id}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: ticketing, operation: create_issue, permission: apply}
+    params:
+      queue: agent-operations
+      assignees: ["agent-operator"]
+      cc:
+        - "${decision.branch in ['provider_unreachable','provider_error'] ? 'platform-sre-primary' : null}"
+        - "${trigger_baseline.max_ratio > 5.0 ? 'module-owner:' + trigger_profile.top_producer : null}"
+        - "${tool_call_streaks.result_class == 'identical_error' ? 'tool-owner:' + tool_call_streaks.top.server : null}"
+        - "${trigger.labels.agent_id in ['agent.evaluator','agent.privacy_guardian'] ? 'privacy-security-office' : null}"
+      severity: "${incident.severity}"
+      title: "[HEALIX agent] ${trigger.fault_class} on ${trigger.labels.agent_id} — ${decision.branch}"
+      body_template_ref: escalation.ticket_template
+      link_incident: "${incident.id}"
+      link_memory_records: "${prior_outcomes.record_ids}"   # MEM-ARCH-006 attribution; `memory_record` evidence kind is a module-10 request (README §6)
+      phi_scan: required                     # AGT-TOOL-014 / MEM-HEAL-033
+    idempotency_key_recipe: "sha256(${incident.id}|A6|${trigger.labels.agent_id}|${decision.branch})"
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "ticketing.get_issue", expect: "state in ['open','acknowledged'] and phi_scan == 'clean' and linked_incident == '${incident.id}'", within_s: 120}
+    on_failure: escalate
+    compensating_action:
+      tool: {server: ticketing, operation: update_issue}
+      params: {issue_id: "${A6.ticket_id}", state: cancelled, comment: "healing run rolled back ${incident.id}"}
+
+verification:
+  probes:
+    - {id: V1-burn-under-projection, metric: "rate(healix.agent.budget.daily_tokens_used{agent_id='${trigger.labels.agent_id}'}[30m]) × hours_to_window_reset + tokens_used", expect: "<= daily_token_cap for 3 consecutive windows (FLT-AGT-001 branches); no new budget_stop records with reason daily_token_cap|runs_per_day"}
+    - {id: V2-queue-drains, metric: "healix.agent.queued_triggers{agent_id='${trigger.labels.agent_id}',kind in ['event','change_request','manual']}", expect: "falling to < 10 within 3,600 s; oldest queued event/CR trigger age <= 3,600 s; held schedule events dropped == 0"}
+    - {id: V3-loop-stopped, metric: "healix.cr.create_duplicate_total{agent_id} and healix.agent.tool_call_identical_streak{agent_id}", expect: "increase(create_duplicate_total[15m]) == 0 and max identical_streak < 5 for the full duration (FLT-AGT-002 branch)"}
+    - {id: V4-provider-recovered-or-rerouted, metric: "sum by (model_ref)(rate(healix.agent.provider.errors_total{code=~'429|5..|timeout|refusal'}[5m])) / requests", expect: "< 0.01 on the routes this agent now uses, or fallback_share >= 0.9 on overridden routes with structured_output_failure_rate <= baseline + 0.02 (FLT-AGT-005 branch)"}
+    - {id: V5-cache-recovered, metric: "healix.cache.c0_read_ratio{agent_id='${trigger.labels.agent_id}'} by route", expect: ">= 0.70 on orchestrator/evaluator-style routes and >= 0.85 on mapping/classification loops (MEM-CACHE-010/013), or cache_write_tokens down >= 50 % with an A6 ticket naming the invalidating prompt_version (FLT-AGT-006 branch)"}
+    - {id: V6-budgets-unchanged, tool: "ontology-registry.get_agent_manifest", expect: "manifest hash unchanged; budgets.tokens_per_run, runs_per_day, daily_token_cap, max_concurrent_runs identical to pre-incident snapshot; autonomy_level unchanged; tools[] allow-list unchanged (MEM-HEAL-015, GOV-ACC-010)"}
+    - {id: V7-gates-untouched, metric: "healix.agent.runtime_override_changes_total{agent_id in ['agent.evaluator','agent.privacy_guardian']}", expect: "== 0 for this incident; evaluator and guardian gate latency within S14 (AGT-ARCH-009)"}
+    - {id: V8-no-mid-route-invalidator, metric: "healix.agent.effort_tier_changes_mid_route_total{agent_id} and healix.agent.model_switch_mid_route_total{agent_id}", expect: "== 0 — every override applied at route boundary for new runs only (MEM-CACHE-012)"}
+    - {id: V9-canary-cohort-untouched, metric: "healix.cache.bypass_total{reason='canary_cohort',agent_id} and healix.agent.model_routes_total{cohort='canary',override_actor='agent.self_healer'}", expect: "canary cohort still bypassing C1/C2/C4 (MEM-IMP-008) and 0 self_healer overrides on canary-cohort routes"}
+    - {id: V10-p0-work-unaffected, metric: "healix.cr.cycle_time_seconds{proposer='${trigger.labels.agent_id}',priority='P0'} and healix.cr.cycle_time_seconds{risk_class in ['high','phi_affecting']}", expect: "p95 <= 1,800 s (S14) and 0 deferred P0 / high / phi_affecting CRs"}
+    - {id: V11-other-agents-unaffected, metric: "healix.agent.runtime_override_changes_total{agent_id!='${trigger.labels.agent_id}',actor='agent.self_healer'}", expect: "== 0 for this incident; exactly one agent targeted (blast radius unit agent max 1)"}
+  duration_s: 2700              # ≥ 3 × the longest short-window trigger (900 s budget_stop_burst) — MEM-HEAL-022; FLT-AGT-006 (3,600 s window) verifies for 10,800 s via V5 before `resolved`; FLT-AGT-002 and FLT-AGT-005 branches may resolve at 900 s MTTR once V3/V4 hold for 3 × 300 s
+  success_criteria: "V1 through V11 all true for the full duration; otherwise verifying → rolled_back (A4 restore concurrency, A3 restore triggers and release held queue, A2 restore effort/cache profile and purge temporary entries, A1 restore route override, A5 release re-trigger block without resuming runs, A6 cancel) → escalated"
+
+# -----------------------------------------------------------------------------------------------------------------
+# Limits — FIXED-POINT PROTECTED (MEM-HEAL-042/048): changed only by a `policy`-class CR from DGC / Privacy Office.
+# -----------------------------------------------------------------------------------------------------------------
+limits:
+  max_runs_per_hour: 4
+  cooldown_s: 900
+  max_actions_per_incident: 5    # A0 is L0 observe and exempt (MEM-04 §7); every branch above lists ≤ 5 counted actions
+  max_concurrent_per_target: 1   # target = agent_id (MEM-HEAL-021)
+  circuit_breaker: {consecutive_failures: 3, open_for_s: 86400, page: true}
+  change_freeze_calendar_ref: OPS-02/freeze-calendar            # release windows, `fusion-quarterly-update`, `millennium-code-upgrade`; inside them only A0 (observe) and A5 (restart class) run (MEM-HEAL-010)
+  recursion:
+    max_depth: 2
+    may_trigger: []                # throttling an agent never triggers another playbook; PBK-AGT-001 *precedes* every other playbook on the same agent (README §7) and a child incident never re-triggers its parent (MEM-HEAL-009)
+  per_action_overrides:
+    A1-route-low-risk-to-fallback: {max_until_s: 14400, max_runs_per_day: 4, never_on_agents: [agent.evaluator, agent.privacy_guardian]}
+    A2-lower-effort-and-raise-cache-use: {max_until_s: 14400, max_runs_per_day: 4, never_enable_bypass_listed: true, never_lower_similarity_threshold: true}
+    A3-defer-schedule-triggered-runs: {max_until_s: 86400, max_agents_deferred_platform_wide: 3}   # deferring every agent's schedules would be a platform-wide harvest outage ⇒ humans decide
+    A4-reduce-effective-concurrency: {min_value: 1, max_value: manifest.budgets.max_concurrent_runs, direction: lower_only}
+    A5-park-looping-run: {max_runs_parked_per_incident: 3, max_runs_parked_per_day: 6, block_retrigger_max_s: 3600}
+    A6-ticket-agent-operator: {max_tickets_per_day_per_agent: 2}   # same agent, same day ⇒ comment on the open ticket, never a second one
+  platform_wide:
+    max_agents_under_override_concurrently: 3   # beyond three throttled agents the platform is in a provider/proxy incident — module 12 owns it (FLT-PLAT-006 page)
+
+# -----------------------------------------------------------------------------------------------------------------
+# Guards — FIXED-POINT PROTECTED (MEM-HEAL-042/043).
+# -----------------------------------------------------------------------------------------------------------------
+guards:
+  kill_switch_paths:
+    - cr-engine.kill_switch.platform
+    - cr-engine.kill_switch.environment.${env}
+    - cr-engine.kill_switch.agent.agent.self_healer
+    - cr-engine.kill_switch.agent.${trigger.labels.agent_id}
+    - module14.kill_switch.healing
+    - module14.kill_switch.playbook.PBK-AGT-001
+  phi_ceiling: none
+  data_mutation: none
+  requires_dry_run_in: [test]
+  forbidden_targets:
+    - agent.evaluator                  # AGT-ARCH-009 fail-closed gate; fixed-point list F-list (MEM-06 §4) — observe and page only
+    - agent.privacy_guardian           # idem
+    - "agents/*.yaml"                  # manifests are Git/CR-only (AGT-MEM-009); never edited by a healing action
+    - "prompts/*"                      # PromptVersion/PolicyVersion live in Git via `agent_policy` CR + canary (MEM-IMP-001)
+    - "rubrics/RUB-*"                  # fixed-point protected
+    - "golden-sets/*"                  # fixed-point protected
+    - cerner-millennium                # MEM-HEAL-008 / SRC-CER-024
+    - oracle-fusion-cloud              # MEM-HEAL-008
+    - "hc.canonical.*"
+    - "hc.kg.*"
+    - "hc.edw.*"                       # GOV-ACC-011
+    - "hc.ops.agent.decision.v1"       # append-only decision log (AGT-MEM-002); the healer reads aggregates, never produces or compacts on it
+  forbidden_operations:
+    - cr-engine.set_budget             # MEM-HEAL-015 / MEM-GOV-002 — raising any of tokens_per_run, runs_per_day, daily_token_cap, max_concurrent_runs
+    - cr-engine.set_autonomy_level     # autonomy changes are graduation-job + DGC (MEM-06 §6)
+    - cr-engine.kill_switch_release    # release is human-only (MEM-06 §9)
+    - agent.set_route_override[direction=raise_tier]      # never route to a *more* expensive tier; AGT-ARCH-007 tier escalation stays the router's own rule
+    - agent.set_effective_concurrency[direction=raise]    # lower only
+    - agent.edit_manifest
+    - agent.edit_tool_allowlist        # GOV-ACC-010
+    - cache.set_similarity_threshold   # MEM-03 candidate_for_tuning — `agent_policy` CR only
+    - cache.put[namespace=bypass_listed]   # MEM-CACHE-002: never cache evaluator verdicts, guardian decisions, high/phi_affecting CR work, canary cohort, injection-flagged inputs
+    - cache.invalidate[scope=platform] # a platform-wide purge is itself a budget storm; invalidation is release-event driven (MEM-CACHE-006)
+    - canary.set_stage                 # MEM-05 controller only; cost +25 % rollback belongs to it
+    - agent.resume_run                 # parked loops are resumed by the Agent Operator, never by the healer
+    - memory.purge                     # admin, Privacy Office/DGC
+  forbidden_params: [transcript, tool_result_body, cr_payload, rationale_text, summary_text, prompt_text, system_prompt, few_shot_examples, memory_text, record_body, resource_json, sample_rows, PID, NK1, IN1, NTE, OBX-5, MRN, FIN, PERSON_ID, PERSON_NUMBER, PARTY_ID, patient_name, dob, address, phone, email, ssn, api_key, provider_credential]   # never read, logged or memorised (GOV-PHI-004 Cerner/Fusion patterns; GOV-LIN-015 masked transcripts; AGT-MEM-003)
+
+suppression:
+  notifications_only: true
+  max_s: 3600                          # MEM-HEAL-006: budget warnings in agent context (AGT-01 §3.6), budget_stop records, SLO burn accounting and `BudgetAnomaly` evaluation continue; only duplicate pages/chat posts for the same agent are de-duplicated for ≤ 60 min, visible on the incident
+
+conflicts_with:
+  - PBK-ING-001                        # README §7: AGT-001▶ING-001 on the same agent — reduce concurrency before a healing action (e.g. replay driven by agent.interop_engineer) spends the budget
+  - PBK-ING-002                        # AGT-001▶ING-002
+  - PBK-ING-003                        # AGT-001▶ING-003 (schema-drift CRs drafted by agent.source_mapper)
+  - PBK-SEM-001                        # AGT-001▶SEM-001 (value_set CRs by agent.terminology_steward)
+  - PBK-DQ-001                         # AGT-001▶DQ-001 (dq_rule CRs by agent.dq_author / remediator freeze)
+  - PBK-SINK-001                       # AGT-001▶SINK-001 (re-drive by agent.kg_builder)
+  # Precedence is on the *same agent* target only; a PBK-ING-001 incident on an MLLP interface and a PBK-AGT-001 incident on agent.source_mapper share no target and both run (MEM-HEAL-020/021). The waiting playbook is not suppressed: its detection and evaluation continue and the wait is visible on its incident.
+
+escalation:
+  to:
+    - agent-operator                   # OPS-03 §4.3 Agent Operator — owns agent runtime, budgets (via policy CR), workflow, memory stack and healing
+    - platform-sre-primary             # OPS-03 §4.3 Platform SRE — provider/proxy (GOV-ACC-018), Temporal, Redis; pages for SEV2
+    - privacy-security-office          # when agent.privacy_guardian is the exhausted agent (gates stalled) or a loop touched a `phi_affecting` CR path
+    - module-owner                     # the module producing a runaway trigger (03 BICC manifest diff, 06 terminology release, 09 profiling) — resolved from trigger_profile.top_producer
+  after_s: 900                         # 15 min without autonomous resolution (SEV3 default, MEM-04 §11); SEV2 branches page via A6 immediately (MEM-HEAL-032)
+  sla_minutes: {S1: 15, S2: 30, S3: 240, S4: 1440}   # OPS-00 §7 severities
+  ticket_template: |
+    [HEALIX self-healer] Agent budget/loop — ${env} — ${trigger.labels.agent_id}
+    Incident: ${incident.id}  Fault class: ${incident.fault_class}  Severity: ${incident.severity}  Hypothesis: ${decision.branch}
+    Budget: tokens ${budget_state.tokens_used}/${budget_state.cap} (${budget_state.tokens_used / budget_state.cap | pct}), runs ${budget_state.runs_today}/${budget_state.runs_cap}, burn ${budget_state.burn_rate_per_h} tok/h, window resets in ${budget_state.hours_to_window_reset} h, projected end-of-day ${budget_state.projected_end_of_day_tokens} (over cap: ${budget_state.projected_end_of_day_tokens > budget_state.cap})
+    Top consumers (route @ model_ref @ prompt_version → tokens, last hour): ${top_consumers | top(5) | summarise}
+    Cache: C0 read ratio min ${cache_state.c0_read_ratio_min} (route ${cache_state.c0_worst_route}); invalidations 2 h: ${invalidation_storm | length} (${invalidation_storm | top_tags(3)}); C1/C2 hit ${cache_state.c1_hit_ratio}/${cache_state.c2_hit_ratio}; bypass by reason ${cache_state.bypass_ratio_by_reason}
+    Releases (24 h): ${policy_releases | summarise(artefact_kind, from_version → to_version, cr_id, canary_stage)}  Canary active: ${canary_state.active} (${canary_state.candidate_id}, cost delta ${canary_state.cost_delta})
+    Triggers (1 h vs 7-d baseline): top event_type ${trigger_baseline.max_event_type} at ${trigger_baseline.max_ratio}× from ${trigger_profile.top_producer}; debounce hits ${trigger_profile.debounce_hits}
+    Loop: runs ${loop_signature.looping_runs[].run_id} repeats ${loop_signature.max_repeats} on key hash ${loop_signature.looping_runs[].idempotency_key_hash}; tool ${tool_call_streaks.top.server}.${tool_call_streaks.top.operation} streak ${tool_call_streaks.max_streak} (${tool_call_streaks.result_class}); duplicate CRs ${loop_signature.duplicate_cr_ids}
+    Provider: error rate ${provider_state.error_rate[trigger.labels.model_ref]} on ${trigger.labels.model_ref} (all refs: ${provider_state.error_rate_all_models}); proxy up ${provider_state.proxy_up} allow-list v${provider_state.allowlist_version}; retries/s ${provider_state.retry_rate}; fallback share before incident ${routing_state.fallback_share}
+    Overrides applied (runtime, auto-revert at resolve/time-box): A1 route→fallback ${A1.applied} · A2 effort/cache ${A2.applied} · A3 schedule deferred ${A3.applied} (held ${A3.held_count}) · A4 concurrency ${A4.from} → ${A4.to} · A5 parked ${A5.run_ids}
+    Actions attempted: ${run.actions_summary}  Verification: ${run.verification_summary}  Memory degraded: ${memory.degraded}  Recalled memory: ${prior_outcomes.record_ids}
+    Required from Agent Operator: confirm root cause (release / runaway trigger / loop / provider); decide whether a `policy` CR to change a budget is warranted (this playbook cannot and did not change any budget); for a prompt-cache collapse raise an `agent_policy` CR removing the silent invalidator in ${policy_releases.latest.to_version}; for a runaway trigger have the producer fix its debounce (AGT-ARCH-010); resume parked runs from checkpoint when safe.
+    This ticket contains agent ids, run ids, workflow ids, prompt/policy versions, model configuration refs, counters, ratios and hashes only; no transcript, tool output, CR payload, prompt text, patient, worker, supplier or financial content (hc-phi-class: non-phi).
+  page: true                           # SEV2 branches (gates exhausted, provider/proxy unreachable) page within 60 s of `escalated` (MEM-HEAL-032); SEV3/SEV4 ticket only
+  on_failure: page
+
+learning:
+  memory_classes_written: [incident, root_cause, observation, drift_signature, evaluation_lesson, playbook_step]
+  lesson_template: >-
+    On ${env} agent ${trigger.labels.agent_id} a ${incident.fault_class} (${decision.branch}) was ${incident.outcome} by
+    ${run.successful_action_id} in ${run.duration_s}s; tokens at detection ${budget_state.tokens_used / budget_state.cap | pct}
+    of cap with burn ${budget_state.burn_rate_per_h}/h; top route ${top_consumers.top.route} on ${top_consumers.top.model_ref}
+    @ ${top_consumers.top.prompt_version}; C0 read ratio min ${cache_state.c0_read_ratio_min}; release in window
+    ${policy_releases.released_within_window} (${policy_releases.latest.cr_id}); runaway event_type
+    ${trigger_baseline.max_event_type} at ${trigger_baseline.max_ratio}×; loop repeats ${loop_signature.max_repeats} on
+    ${tool_call_streaks.top.server}.${tool_call_streaks.top.operation}; provider error rate
+    ${provider_state.error_rate[trigger.labels.model_ref]}; overrides A1 ${A1.applied} A2 ${A2.applied} A3 ${A3.applied}
+    A4 ${A4.applied} A5 ${A5.applied}; budgets unchanged; operator confirmed root cause ${postmortem.root_cause_confirmed};
+    follow-up CR ${postmortem.followup_cr_id} (${postmortem.followup_cr_type}).
+  record_episode: true                 # Graphiti JSON episode: Agent -EXHIBITED_SYMPTOM-> Symptom, Incident -CAUSED_BY-> {PromptVersion|PolicyVersion|Topic(event_type)|Agent(tool)|ImprovementCandidate}, Incident -RESOLVED_BY-> Action -PRODUCED_OUTCOME-> Outcome, Lesson -LEARNED_FROM-> Incident, PromptVersion -DRIFTED_TO-> Signal(c0_read_ratio) (MEM-02 §4)
+  emit_reflexion: true                 # masked (GOV-LIN-015), trust T1, untrusted_text: true; never promotes without a CR (MEM-GRA-033)
+  candidate_for_tuning:                # MEM-HEAL-050: thresholds/windows/timeouts only — never limits/guards/blast_radius
+    - triggers[agent.daily_token_cap_utilisation].threshold
+    - triggers[agent.budget_stop_burst].threshold
+    - triggers[agent.budget_stop_burst].window_s
+    - triggers[agent.idempotency_reproposal].threshold
+    - triggers[agent.identical_tool_call_streak].threshold
+    - triggers[provider.error_rate].threshold
+    - triggers[provider.error_rate].for_s
+    - triggers[cache.c0_read_ratio_collapse].for_s
+    - triggers[agent.cost_forecast_anomaly].threshold
+    - correlation_window_s
+    - diagnosis[trigger_baseline].params.query            # the 5× runaway ratio
+    - actions[A1-route-low-risk-to-fallback].verify.within_s
+    - actions[A2-lower-effort-and-raise-cache-use].verify.within_s
+    - actions[A3-defer-schedule-triggered-runs].params.until
+    - verification.duration_s
+  learned_from:
+    description: >-
+      Seed authored from AGT-01 §3.3 (router), §3.5 (retry ladder), §3.6 (budget scopes, 80 % warning / 100 % stop,
+      fail-closed gates), §4 (trigger debounce), AGT-06 §1.2 (budget_stop decision records), AGT-03/AGT-ORCH-009
+      (idempotent create_cr), MEM-03 §3 (C0 layout, silent invalidators, TTL by gap) and §9 (alerts → PBK-AGT-001),
+      MEM-05 §4 (canary cost rollback belongs to the controller) and typical Fortune-100 estates: a prompt release
+      that put `today's date` in the system prefix and tripled daily spend overnight; a Fusion quarterly update whose
+      BICC manifest diff emitted one `schema_change` trigger per column (1,800 in an hour) at agent.source_mapper; a
+      LOINC release that sent agent.terminology_steward through an entire code system; a `sql-sandbox` timeout that
+      returned a slightly different error each time so the agent re-proposed the same mapping CR 40 times; and a
+      provider rate-limit tier hit during the 02:00–04:00 consolidation window. No production incidents yet;
+      `compiled_from_incidents` fills as the curator mines Graphiti incident communities (MEM-04 §9).
+    signatures_to_learn:
+      - "prompt/policy releases that collapse C0 (changed fields in the stable prefix) vs those absorbed — feeds the MEM-03 §3.2 CI lint and the improver's `agent_policy` candidates"
+      - "event_type × producer fan-out shapes after Fusion quarterly updates, Millennium code upgrades and terminology releases — predicts when to pre-defer schedules (freeze_state) rather than react"
+      - "tool/operation pairs that produce identical-error loops (sql-sandbox timeouts, fhir-validator transient 5xx, git lock contention) — candidates for FLT-AGT-003 detection rules and tool-owner fixes"
+      - "hour-of-day provider 429 patterns per model_ref — informs when consolidation (MEM-02 §8) and compile jobs (MEM-05 §3) should run"
+      - "which agents repeatedly reach 90 % of daily_token_cap on normal load — evidence for a human `policy` CR on budgets, which this playbook can only ever recommend"
+  graduation: {shadow_matches_required: 10, min_agreement: 0.9, harmful_recommendations_allowed: 0}
+
+references:
+  requirements:
+    - AGT-ARCH-007    # router escalates one tier after two structured-output failures; resolved model recorded — A1 never overrides upward
+    - AGT-ARCH-008    # budgets enforced by the runtime; exceeding ends the run with checkpoint + decision-log entry — A5 reuses this path
+    - AGT-ARCH-009    # evaluator and privacy_guardian fail closed on budget exhaustion — observe-only here
+    - AGT-ARCH-010    # all agent events on hc.ops.agent.trigger.v1 with per-type debounce — runaway-trigger diagnosis and A3 hold queue
+    - AGT-ORCH-009    # create_cr idempotent on idempotency_key — the re-proposal loop signal
+    - AGT-ORCH-010    # open CRs sharing a target are serialised — explains some CR backlog without deferral
+    - AGT-TOOL-010    # gateway enforces per-run/per-day tool limits — identical-call streak counter source
+    - AGT-TOOL-014    # ticketing.create_issue runs phi_scan
+    - AGT-SAFE-012    # kill switch scopes platform/environment/agent/cr_type
+    - AGT-SAFE-013    # kill switch trips automatically on PGV-012 or ≥ 3 vetoes — an already-stopped agent is not throttled
+    - AGT-MEM-002     # every consequential decision (incl. budget_stop) appended to hc.ops.agent.decision.v1
+    - AGT-MEM-003     # decision-log records with phi_scan ≠ pass rejected — structured fields only are read
+    - AGT-MEM-009     # playbook, rubric and prompt changes versioned in Git and applied through CRs — never by a healing action
+    - OPS-OBS-004     # every alert carries runbook_url and owner — `BudgetAnomaly`, `AgentPromptCacheCollapse` route here
+    - OPS-OBS-009     # cost allocated per agent — `agent.cost_forecast_anomaly` source
+    - OPS-OBS-010     # token budgets enforced per agent per day; soft-limit alert; non-P0 CRs paused at hard limit — A3 keep-list
+    - OPS-02          # release windows and change-freeze calendar
+    - GOV-ACC-010     # tool calls outside the manifest allow-list rejected — A1/A2 never widen it
+    - GOV-ACC-011     # no direct writes to canonical/kg/edw
+    - GOV-ACC-018     # LLM egress through allow-listing DLP proxy — provider_state reads its health; FLT-PLAT-006 is module 12's runbook
+    - GOV-LIN-015     # masked agent transcripts — never read by this playbook
+    - GOV-PHI-004     # identifier patterns in the scanner (ticket/memory phi_scan)
+    - SRC-CER-024     # no write-back to Cerner Millennium
+    - MEM-ARCH-006    # memory-influenced tickets/CRs echo recalled record ids
+    - MEM-ARCH-034    # memoryless degraded mode flags provenance
+    - MEM-CACHE-001   # no cache tier holds PHI-classed content — A2 enables only policy-permitted namespaces
+    - MEM-CACHE-002   # bypass list enforced — A2 never caches bypass-listed work
+    - MEM-CACHE-003   # mapping hits re-validated via TS
+    - MEM-CACHE-005   # C0 TTL selected by start-to-start gap table
+    - MEM-CACHE-006   # release events invalidate within 60 s — invalidation_storm diagnosis
+    - MEM-CACHE-010   # C0 read ratio ≥ 70 % on evaluator golden runs — V5 target
+    - MEM-CACHE-012   # CI lint blocks silent invalidators — the permanent fix for FLT-AGT-006 lives there
+    - MEM-CACHE-013   # mapping/classification loops ≥ 85 %; AgentPromptCacheCollapse < 50 % for 1 h — trigger source
+    - MEM-CACHE-020   # canary traffic bypasses C1/C2/C4 — V9
+    - MEM-IMP-008     # canary cohort bypasses caches — never touched here
+    - MEM-GOV-002     # fixed-point list enforced at cr-engine — budgets, gates, manifests, prompts, rubrics
+    - MEM-GOV-016     # improver cannot modify own prompt or rubrics — the healer cannot either
+    - MEM-HEAL-001
+    - MEM-HEAL-002
+    - MEM-HEAL-003
+    - MEM-HEAL-004
+    - MEM-HEAL-005
+    - MEM-HEAL-006
+    - MEM-HEAL-007
+    - MEM-HEAL-008
+    - MEM-HEAL-009
+    - MEM-HEAL-010
+    - MEM-HEAL-011
+    - MEM-HEAL-012
+    - MEM-HEAL-014
+    - MEM-HEAL-015
+    - MEM-HEAL-020
+    - MEM-HEAL-021
+    - MEM-HEAL-022
+    - MEM-HEAL-024
+    - MEM-HEAL-032
+    - MEM-HEAL-033
+    - MEM-HEAL-036
+    - MEM-HEAL-037
+    - MEM-HEAL-038
+    - MEM-HEAL-041
+    - MEM-HEAL-042
+    - MEM-HEAL-043
+    - MEM-HEAL-045
+    - MEM-HEAL-046
+    - MEM-HEAL-047
+    - MEM-HEAL-050
+  runbooks:
+    - AGT-01 §3.3 model router / §3.5 retry ladder / §3.6 cost and token budgets / §4 triggers and debounce
+    - AGT-06 §1.2 decision log (`budget_stop`) and §6 graduation statistics
+    - MEM-03 §3 C0 prompt layout, TTL by gap, silent-invalidator lint; §7 bypass rules; §9 alerts → PBK-AGT-001
+    - MEM-05 §4 canary controller — cost +25 % rollback is the controller's, not this playbook's
+    - MEM-06 §4 fixed-point list / §9 kill-switch hierarchy
+    - OPS-02 freeze calendar — release windows, Fusion quarterly update, Millennium code upgrade
+    - OPS-03 §4.2 `BudgetAnomaly` / §6 cost allocation; module 12 runbooks for FLT-PLAT-004 (Temporal) and FLT-PLAT-006 (egress proxy / provider)
+  slo_ids: [S14, S16, S23, S24, S25]
+  topics:
+    - hc.ops.agent.decision.v1
+    - hc.ops.agent.trigger.v1
+    - hc.ops.agent.changerequest.v1
+    - hc.ops.agent.policy.release.v1        # existing STR-02 release topic; `hc.ops.agent.policy.v1` is the module-14 request (README §6)
+    - hc.ops.cache.invalidate.v1            # module-14 request (README §6); invalidation_storm falls back to policy.release until it lands
+    - hc.ops.healing.incident.event.v1
+    - hc.ops.healing.playbookrun.event.v1
+    - hc.ops.audit.v1
+  connector_manifest: null                  # the target is an agent manifest (`agents/<role>.yaml`, AGT-01), read-only here; no Kafka Connect connector is involved
+
+chaos_tests:                           # MEM-HEAL-013/041: ≥ 1 per trigger; run in `test` against the agent simulator (synthetic manifests `agent.chaos_mapper` with fallback_ref, mocked model gateway, disposable cache namespaces `pc.chaos_*`, synthetic trigger producer)
+  - id: CT1-zero-token-budget
+    trigger: agent.daily_token_cap_utilisation
+    injection: "Set the simulator's effective daily_token_cap for agent.chaos_mapper to current usage + 1 % (the MEM-04 §10 'zero a token budget' fixture) while a steady 200-run/h mapping workload continues"
+    expected_mttd_s: 300
+    expected_mttr_s: 3600
+    blast_radius_assert: "exactly 1 agent targeted; A1 routes enum/classification routes to ${MODEL_CLASSIFICATION} (fallback_ref) at route boundary only; A2 pins effort standard and warms pc.chaos_* (0 bypass-listed namespaces enabled, 0 refused_phi); A3 defers schedule triggers only (0 event/CR triggers dropped, P0 CRs cycle p95 ≤ 1,800 s); A4 sets effective concurrency to ⌈n/2⌉ ≥ 1; manifest hash and all four budget fields unchanged; projected end-of-day ≤ cap within 3,600 s"
+  - id: CT2-runs-per-day-exhausted
+    trigger: agent.runs_per_day_exhausted
+    injection: "Synthetic trigger producer fires 160 `profiling_complete` events in 20 min at agent.chaos_mapper whose runs_per_day is 150"
+    expected_mttd_s: 300
+    expected_mttr_s: 3600
+    blast_radius_assert: "budget_stop records with reason runs_per_day observed; A3 holds schedule triggers and the queue of event triggers is preserved in arrival order (0 dropped); runs_per_day unchanged; A6 ticket names the producer; held events resume at the simulated window reset"
+  - id: CT3-budget-stop-burst-from-runaway-trigger
+    trigger: agent.budget_stop_burst
+    injection: "Replay a Fusion quarterly-update BICC manifest diff through the module-03 simulator emitting one `schema_change` trigger per changed column (1,800 events/h, ≈ 12× the 7-d baseline) at agent.chaos_mapper; tokens_per_run set so each run checkpoints at 80 %"
+    expected_mttd_s: 300
+    expected_mttr_s: 3600
+    blast_radius_assert: "trigger_baseline.max_ratio > 5 branch selected; A3/A4/A2 applied, A6 ticket cc's module-owner:03-source-systems with debounce_key_hash evidence; event triggers are not throttled (held only by concurrency); 0 budget raised; Incident -CAUSED_BY-> Topic(schema_change) edge recorded"
+  - id: CT4-idempotency-reproposal-loop
+    trigger: agent.idempotency_reproposal
+    injection: "Mock `sql-sandbox.run_profile` to return a different transient error text on every call so agent.chaos_mapper re-proposes the same mapping CR (identical idempotency_key) 6 times in 40 min"
+    expected_mttd_s: 300
+    expected_mttr_s: 900
+    blast_radius_assert: "A5 checkpoints and parks ≤ 3 runs with budget_stop reason loop_detected, blocks the key hash for 3,600 s; exactly 1 CR exists for the key (AGT-ORCH-009) and it is not withdrawn or edited; A4 halves concurrency; A6 ticket cc's tool-owner:sql-sandbox; parked runs are not auto-resumed by rollback"
+  - id: CT5-identical-tool-call-streak
+    trigger: agent.identical_tool_call_streak
+    injection: "Mock `terminology-service.$translate` to return the same `404 ConceptMap not found` for one code system; agent.chaos_mapper calls it 9 times with identical params inside one run"
+    expected_mttd_s: 300
+    expected_mttr_s: 900
+    blast_radius_assert: "streak ≥ 5 detected within 300 s; A5 parks the run (1 run, evidence preserved); identical_streak < 5 for 900 s thereafter; no action on any other agent; PBK-SEM-001 (unmapped-code surge on the same code system) runs `corr`, neither suppressed"
+  - id: CT6-provider-429-wave
+    trigger: provider.error_rate
+    injection: "Mock model gateway returns HTTP 429 for 30 % of calls to ${MODEL_MAPPING} for 15 min while ${MODEL_CLASSIFICATION} stays healthy"
+    expected_mttd_s: 120
+    expected_mttr_s: 900
+    blast_radius_assert: "A1 routes low-risk/enum routes of agent.chaos_mapper to fallback_ref (cr_payload_high/phi_affecting/canary routes excluded, 0 mid-route switches); A4 halves concurrency; A3 defers schedules; error rate on routes in use < 1 % within 900 s; structured-output failure rate ≤ baseline + 0.02; 0 overrides on agent.evaluator / agent.privacy_guardian"
+  - id: CT7-provider-unreachable-through-proxy
+    trigger: provider.error_rate
+    injection: "Flip the GOV-ACC-018 egress proxy allow-list in `test` so every model_ref times out for 10 min (FLT-PLAT-006 fixture)"
+    expected_mttd_s: 120
+    expected_mttr_s: 0                 # expected outcome: contain and page — nothing to re-route to
+    blast_radius_assert: "provider_unreachable branch: A1 not attempted (no healthy fallback), A3 + A4 applied, A6 pages platform-sre-primary within 60 s with SEV2; retry rate falls to ~0; at most 3 agents under override platform-wide, the rest escalate without action"
+  - id: CT8-prompt-cache-collapse-after-release
+    trigger: cache.c0_read_ratio_collapse
+    injection: "Release prompt version chaos_mapper/1.5.0 via the simulator's policy.release topic with an ISO timestamp inserted into the system prefix above breakpoint 2 (MEM-03 §3.2 silent invalidator); 400 runs/h continue"
+    expected_mttd_s: 3600
+    expected_mttr_s: 3600
+    blast_radius_assert: "c0_read_ratio < 0.50 for 1 h detected; A2 warms pc.chaos_* and pins effort (cache_write_tokens falls ≥ 50 %, 0 bypass-listed namespaces enabled); A3 defers schedules; A6 ticket names prompt_version 1.5.0 and cites MEM-CACHE-012; no prompt edited, no rollback of the release performed by the healer (that is an `agent_policy` CR / MEM-05 controller decision)"
+  - id: CT9-cost-forecast-anomaly
+    trigger: agent.cost_forecast_anomaly
+    injection: "Inject a cost forecast of 100 USD/day for agent.chaos_mapper while the workload runs at 140 USD/day-equivalent tokens (+40 %) with no release, loop or provider fault present"
+    expected_mttd_s: 3600
+    expected_mttr_s: 3600
+    blast_radius_assert: "default branch: A3 defers schedules and A6 tickets agent-operator; no routing/effort/concurrency change; `BudgetAnomaly` keeps evaluating (suppression notifications-only ≤ 3,600 s); cost projection back under forecast + 25 % within 3,600 s or ticket acknowledged within SLA"
+  - id: CT10-oscillation-and-conflict
+    trigger: agent.budget_stop_burst
+    injection: "Run CT3 while PBK-ING-003 is executing on the same agent (agent.chaos_mapper drafting schema-drift CRs) and re-fire the trigger 3 times in one hour"
+    expected_mttd_s: 300
+    expected_mttr_s: 3600
+    blast_radius_assert: "PBK-AGT-001 precedes PBK-ING-003 on the same agent (ING-003 waits in playbook_selected, not suppressed, wait visible on its incident — MEM-HEAL-020); third override within the hour is refused by `agent_not_oscillating` and the incident escalates; max_runs_per_hour 4 and cooldown 900 s enforced by the engine; recursion ledger depth ≤ 1, no re-trigger of the parent"
+
+phi: none
+change_request: {type: playbook, risk_class: medium}    # `playbook` crType is a module-10 request (README §6); risk medium because no ladder-L2 action (MEM-HEAL-027)
+provenance:
+  created_by: "human:agent-platform-team"              # seed authored for module 14 v0.1.0; later versions compiled by agent.self_healer from curator candidates (MEM-04 §9)
+  compiled_from_incidents: []
+  approved_cr_id: null                                  # required once status ≠ shadow (MEM-HEAL-044)

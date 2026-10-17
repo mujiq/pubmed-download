@@ -1,0 +1,889 @@
+# doc_id: MEM-A2
+# title: Cache policy (machine-readable form of 03-caching-strategy.md, MEM-03)
+# module: 14-memory-and-self-improvement
+# version: 0.1.0
+# status: draft
+# owners: [Agent Platform, Platform SRE, Privacy & Security Office]
+# last_updated: 2026-10-17
+# validated_by: cache-policy.schema.json (MEM-CACHE-030)
+# depends_on: [MEM-03, MEM-01, ARC-01, AGT-01, AGT-03, AGT-04, AGT-05, IOP-04, GOV-01, GOV-02, OPS-03, STR-02]
+#
+# Hard rule (MEM-CACHE-001, verbatim from MEM-03):
+#   No tier of memory (M0–M4 as used by this module) and no cache tier (C0–C4) may hold content whose
+#   `hc-phi-class` is anything but `non-phi`/`internal` (steward preferences: `pii:workforce` with consent flag).
+#   This includes the C0 provider prompt cache: pseudonymised PHI is not permitted.
+#
+# Caches are correctness-neutral accelerators and shock absorbers, never a learning store (MEM-CACHE-030):
+# no code path may read a cache entry as evidence for a memory write or a change request.
+# Loaded by the MCP `cache` server (AGT-04 enum extension requested in README §6) and by the model gateway
+# that renders C0 prompt layouts. Edit only via a `policy`-class change request (GOV-00 §2.2; MEM-06 §4
+# fixed-point list) — this file is never modified by an automated CR.
+
+schema_version: 1.0.0
+artefact_id: MEM-A2
+source_document: MEM-03
+x-requirements:
+  governs: [MEM-CACHE-001, MEM-CACHE-002, MEM-CACHE-003, MEM-CACHE-004, MEM-CACHE-005, MEM-CACHE-006,
+            MEM-CACHE-007, MEM-CACHE-008, MEM-CACHE-009, MEM-CACHE-010, MEM-CACHE-011, MEM-CACHE-012,
+            MEM-CACHE-013, MEM-CACHE-014, MEM-CACHE-015, MEM-CACHE-016, MEM-CACHE-017, MEM-CACHE-018,
+            MEM-CACHE-019, MEM-CACHE-020, MEM-CACHE-021, MEM-CACHE-022, MEM-CACHE-023, MEM-CACHE-024,
+            MEM-CACHE-025, MEM-CACHE-026, MEM-CACHE-027, MEM-CACHE-028, MEM-CACHE-029, MEM-CACHE-030]
+  cross_module: [ARC-NFR-001, ARC-NFR-003, GOV-ACC-009, GOV-ACC-013, GOV-ACC-018, GOV-PHI-004, GOV-PHI-013,
+                 GOV-PHI-017, GOV-LIN-006, IOP-TS-002, IOP-TS-003, IOP-TS-007, IOP-TS-013, IOP-TS-014,
+                 DQ-FW-007, DQ-PIPE-013, OPS-OBS-004, AGT-SAFE-010, MEM-ARCH-002, MEM-ARCH-025]
+
+# ---------------------------------------------------------------------------------------------------------
+# 1. Defaults — inherited by every tier and namespace unless the tier narrows them (never widens)
+# ---------------------------------------------------------------------------------------------------------
+defaults:
+  phi_allowed: false                       # MEM-CACHE-001; policy_check refuses put when phi_class != none
+  phi_class_ceiling: internal              # hc-phi-class values permitted: non-phi, internal (GOV-01 §3)
+  pseudonymised_phi_allowed: false         # GOV-PHI-013 tokens are not a licence to cache
+  model_scoped: true                       # model_id is part of every key / C0 is model-scoped by construction
+  env_isolation: true                      # MEM-CACHE-008: one cluster per env, env in every key
+  tenant_isolation: true                   # MEM-CACHE-008: tenant/facility in every key and keyspace prefix
+  failure_mode: bypass                     # MEM-CACHE-004: fail open, compute live, never block the pipeline
+  bypass_latency_ms_max: 50                # MEM-CACHE-004
+  client_timeout_ms: 20
+  circuit_breaker:
+    consecutive_failures: 5
+    half_open_probe_s: 10
+  max_entry_bytes: 65536                   # MEM-CACHE-019: 64 KB
+  stale_while_revalidate_s_max: 60         # MEM-CACHE-019
+  required_entry_fields: [version_tags, verified_by, created_at, model_id, source_run_id]   # MEM-CACHE-019
+  encryption:                              # MEM-CACHE-023
+    in_transit: mTLS
+    at_rest: AES-256
+    key_management: KMS
+    reference: GOV-ACC-013
+  learning_store: false                    # MEM-CACHE-030: never evidence for memory writes or CRs
+  backup: none                             # caches are rebuilt from origin, never backed up or replicated across envs
+  audit_topic: hc.ops.audit.v1             # cross-tenant get denial, purges, policy_check refusals (GOV-LIN-006)
+  keyspace_prefix_template: "<tier>.<namespace>:<tenant>:<purpose>"
+  acl: per-agent Redis ACL users (GOV-ACC-009) limited to own namespaces; cross-tenant get denied and audited
+
+# ---------------------------------------------------------------------------------------------------------
+# 2. Version-tag vocabulary — the only invalidation language (MEM-03 §6)
+# ---------------------------------------------------------------------------------------------------------
+version_tags:
+  - tag: ontology_release
+    description: Dated owl:versionIRI of the HEALIX ontology release (CONVENTIONS §5)
+    produced_by: { module: "02", event: ontology_release, source: Ontology Registry release event }
+  - tag: valueset_version
+    description: ValueSet version IRI and expansion.identifier of the pinned TS release (IOP-TS-005/014)
+    produced_by: { module: "06", event: terminology_release, topic: hc.canonical.reference.valueset.fhir.v1 }
+  - tag: conceptmap_version
+    description: ConceptMap version IRI (mapping release, IOP-TS-009/013)
+    produced_by: { module: "06", event: mapping_release, topic: hc.canonical.reference.conceptmap.fhir.v1 }
+  - tag: prompt_version
+    description: PromptVersion semver of an agent route (MEM-05 §5, signed Git tag)
+    produced_by: { module: "14", event: prompt_release, topic: hc.ops.agent.policy.v1 }
+  - tag: policy_bundle_version
+    description: PolicyVersion / rubric bundle semver (RUB-*, policy text in bp2)
+    produced_by: { module: "14", event: policy_release, topic: hc.ops.agent.policy.v1 }
+  - tag: model_id
+    description: Provider model id of the route (model_ref / fallback_ref) and embedding model id (${MODEL_EMBED})
+    produced_by: { module: "10", event: model_change, source: agent manifest release (AGT-01) }
+  - tag: playbook_version
+    description: Healing playbook semver (PBK-*; MEM-04 §8)
+    produced_by: { module: "14", event: playbook_release, topic: hc.ops.agent.policy.v1 }
+  - tag: rule_pack_version
+    description: DQ rule-pack version (DQ-PIPE-013)
+    produced_by: { module: "09", event: rule_release, topic: hc.dq.rule-activation.v1 }
+  - tag: scanner_version
+    description: PHI scanner version (GOV-PHI-004); bump forces re-scan of recall results (C4)
+    produced_by: { module: "11", event: scanner_release, source: privacy_guardian scanner release }
+  - tag: tool_manifest_hash
+    description: Hash of the frozen, name-sorted tool list rendered from the agent manifest (bp1)
+    produced_by: { module: "10", event: prompt_release, topic: hc.ops.agent.policy.v1 }
+
+# ---------------------------------------------------------------------------------------------------------
+# 3. Tiers C0–C4 (MEM-03 §2)
+# ---------------------------------------------------------------------------------------------------------
+tiers:
+  - id: C0
+    name: provider_prompt_cache
+    kind: provider_prompt
+    backend: model provider prompt cache (cache_control type ephemeral), via in-VPC model gateway (GOV-ACC-018)
+    environments: [dev, test, uat, prod]
+    keyspace: provider-side; implicit model_id; no HEALIX keyspace
+    key_strategy: exact byte prefix up to each breakpoint in order tools -> system -> messages; model-scoped
+    key_recipe: provider prefix match; breakpoints declared in provider_prompt_layout
+    ttl: 5m
+    max_ttl: 1h
+    ttl_rules:
+      default: 5m
+      low_frequency_routes: 1h
+      refresh_on_read: true                # timer measured start-to-start, refresh at no extra cost
+      ordering: 1h markers MUST precede 5m markers in the same request (MEM-CACHE-026)
+    max_breakpoints: 4
+    min_prefix_tokens: 4096                # MEM-CACHE-014: caches on any configured model (512–4,096 minimum)
+    phi_allowed: false
+    phi_rule: nothing at or after bp3 may carry PHI; pseudonymised PHI not permitted (MEM-CACHE-001)
+    cost_model:
+      write_multiplier_5m: 1.25
+      write_multiplier_1h: 2.0
+      read_multiplier: 0.1
+      note: read price lower on newest models; verify against provider price list monthly (MEM-CACHE-027)
+    eligible_content: [tools, policy_system, ontology_context, conversation_prefix]
+    ineligible_content: [memory_recall, masked_samples, run_ids, timestamps, cr_context, steward_names, env_banner]
+    invalidate_on: [prompt_version, policy_bundle_version, tool_manifest_hash, ontology_release, valueset_version,
+                    conceptmap_version, model_id]
+    invalidation_semantics: new entry on next request after re-render; superseded 1h entries left to expire are
+      logged as an exception on PHI incident (MEM-CACHE-028)
+    failure_mode: provider miss ⇒ full-price input, no functional change
+    divergence_concept: none               # provider prefix caching is byte-exact
+    verification: usage.cache_read_input_tokens on golden runs; cache-diagnostics beta in test (MEM-CACHE-029)
+    owner: Agent Platform
+    metrics:
+      hit_ratio_target: 0.70               # orchestrator/evaluator routes (MEM-CACHE-010)
+      hit_ratio_target_bulk_loops: 0.85    # mapping/classification loops (MEM-CACHE-013)
+      alert_below: 0.50
+      alert_below_for_s: 3600
+      alert_name: AgentPromptCacheCollapse
+      p95_ms: null                         # provider-side; not measured locally
+      stale_rate_max: 0.0
+      divergence_alert: null
+      cost_reduction_target: 0.40          # MEM-CACHE-027 for source_mapper / terminology_steward / evaluator
+    x-requirements: [MEM-CACHE-001, MEM-CACHE-005, MEM-CACHE-010, MEM-CACHE-012, MEM-CACHE-013, MEM-CACHE-014,
+                     MEM-CACHE-026, MEM-CACHE-027, MEM-CACHE-029]
+
+  - id: C1
+    name: exact_match
+    kind: exact
+    backend: Redis Cluster (3 AZ, 1 replica per shard) per environment; keyspace rc.*
+    environments: [dev, test, uat, prod]
+    keyspace: rc.*
+    key_strategy: sha256 over canonical-JSON normalised input plus scoping fields
+    key_recipe: "sha256(env|tenant|model_id|prompt_version|tool_manifest_hash|normalised_input) + version_tags{}"
+    normalisation:
+      canonical_json: true                 # sorted keys, fixed separators
+      whitespace_collapse: true
+      unicode: NFC
+      code_systems_as_canonical_uri: true
+      strip_fields: [run_id, cr_id, incident_id, trace_id, timestamps]
+    ttl: 1h                                # per-namespace override 10m–24h
+    max_ttl: 24h
+    negative_result_ttl: 10m               # IOP-04 §8
+    phi_allowed: false
+    phi_rule: policy_check refuses put when phi_class != none
+    eligible_tasks: [validate_code, lookup, incident_fingerprint_diagnosis, playbook_runner_readonly_probe,
+                     schema_registry_lookup, dq_classification]
+    ineligible_tasks: [evaluator_verdict, guardian_decision, policy_class_content, phi_access_not_none,
+                       injection_flagged_input]
+    invalidate_on: [prompt_version, policy_bundle_version, model_id, tool_manifest_hash, ontology_release,
+                    valueset_version, conceptmap_version, rule_pack_version, playbook_version]
+    invalidation_transport: hc.ops.cache.invalidate.v1
+    size_limit_bytes: 65536
+    stale_while_revalidate_s: 60
+    failure_mode: bypass
+    bypass_latency_ms_max: 50
+    hot_key_protection:                    # MEM-CACHE-011
+      per_key_qps_threshold: 5000
+      client_micro_cache_s: 1
+      single_flight_coalescing: true
+      shard_by: tenant
+    shadow_recompute_sample: 0.01          # MEM-CACHE-021
+    owner: Agent Platform / Platform SRE
+    metrics:
+      hit_ratio_target: 0.80
+      alert_below: 0.50
+      p95_ms: 5
+      stale_rate_max: 0.005
+      divergence_alert: 0.02               # MEM-CACHE-022, per namespace over 1h
+    x-requirements: [MEM-CACHE-001, MEM-CACHE-002, MEM-CACHE-004, MEM-CACHE-006, MEM-CACHE-008, MEM-CACHE-009,
+                     MEM-CACHE-011, MEM-CACHE-019, MEM-CACHE-021, MEM-CACHE-022, MEM-CACHE-023]
+
+  - id: C2
+    name: semantic
+    kind: semantic
+    backend: Redis Cluster vector index (HNSW, cosine) per namespace; keyspace sc.*; embeddings via ${MODEL_EMBED}
+      in-VPC or through the GOV-ACC-018 proxy under GOV-PHI-017 zero retention
+    environments: [dev, test, uat, prod]
+    keyspace: sc.*
+    key_strategy: C1 exact pass first; on miss, embedding(normalised_input) nearest-neighbour filtered by version_tags{}
+    key_recipe: "exact: C1 recipe; semantic: cosine(embedding(normalised_input)) >= namespace.similarity_threshold AND version_tags match"
+    embedding_model_in_namespace: true     # embedding model change starts a new index
+    ttl: 6h                                # per-namespace 1h–24h
+    max_ttl: 24h
+    phi_allowed: false
+    phi_rule: free-text labels and anything with phi_access != none are ineligible (key or embedding could carry PHI)
+    similarity_threshold: 0.93             # default; per-task overrides in namespaces[] (MEM-CACHE-007)
+    similarity_thresholds_by_task:
+      terminology_lookup_explanation: 0.92
+      mapping_suggestion: 0.95
+      evaluator_rubric_explanation: 0.95
+      classification: 0.93
+    verify_on_hit:
+      default: true
+      failed_verification: delete entry and count as divergence
+    eligible_tasks: [terminology_lookup_explanation, mapping_suggestion, evaluator_rubric_explanation,
+                     classification]
+    ineligible_tasks: [self_healing_diagnosis, free_text_label_classification, evaluator_verdict, guardian_decision,
+                       policy_class_content, phi_access_not_none, injection_flagged_input]
+    ineligible_task_rationale:
+      self_healing_diagnosis: C1 only by incident fingerprint; semantic incident matching belongs to Graphiti (MEM-02 §7)
+      free_text_label_classification: injection surface (AGT-05 RT-01) — Cerner CODE_VALUE.DESCRIPTION, Fusion FND_LOOKUP_VALUES.MEANING, document titles
+    invalidate_on: [prompt_version, policy_bundle_version, model_id, tool_manifest_hash, ontology_release,
+                    valueset_version, conceptmap_version, rule_pack_version]
+    invalidation_transport: hc.ops.cache.invalidate.v1
+    size_limit_bytes: 65536
+    stale_while_revalidate_s: 60
+    failure_mode: bypass
+    bypass_latency_ms_max: 50
+    shadow_recompute_sample: 0.01
+    owner: Agent Platform
+    metrics:
+      hit_ratio_target: 0.60
+      alert_below: 0.30
+      p95_ms: 25                           # embedding reuse, no re-embedding on hit
+      stale_rate_max: 0.005
+      divergence_alert: 0.02
+    x-requirements: [MEM-CACHE-001, MEM-CACHE-002, MEM-CACHE-003, MEM-CACHE-004, MEM-CACHE-006, MEM-CACHE-007,
+                     MEM-CACHE-008, MEM-CACHE-009, MEM-CACHE-015, MEM-CACHE-019, MEM-CACHE-020, MEM-CACHE-021,
+                     MEM-CACHE-022]
+
+  - id: C3
+    name: materialised_terminology
+    kind: materialised
+    backend: HEALIX TS gateway cache (IOP-04 §8) — in-process LRU + shared Redis-compatible tier; keyspace ts.*
+    environments: [dev, test, uat, prod]
+    keyspace: ts.*
+    key_strategy: FHIR TS operation keyed by resource version IRI of the pinned TS release
+    key_recipe: "(operation, system, code, version, target, release_id) keyed by ValueSet|CodeSystem|ConceptMap version IRI and expansion.identifier"
+    operations: ["$expand", "$translate", "$validate-code", "$lookup", "$closure"]
+    ttl: until_next_release
+    max_ttl: 30d
+    old_release_grace_s: 86400             # superseded namespace retained 24h for in-flight consumers, then purged
+    max_stale_serve_s: 86400               # MEM-CACHE-016: ≤ 24h during TS outage (FLT-SEM-003)
+    stale_serve:
+      response_flag: "stale=true"
+      header: "hc-ts-stale: true"
+      dq_marking: suspect                  # DQ-FW-007 non-blocking forwarding
+      after_window: miss, mapping applies ValueSet unmappedPolicy (IOP-TS-003); replay re-validation when TS returns (IOP-TS-013)
+    pre_warm_on_release: true              # MEM-CACHE-017: $expand all enterprise ValueSets, $translate active ConceptMap elements, $closure rebuild (IOP-TS-007) before pointer flip
+    put_allowed_identities: [ts-gateway]   # MEM-CACHE-025 / IOP-TS-002: no agent may write terminology facts
+    phi_allowed: false
+    phi_rule: terminology is G8 reference data, hc-phi-class <= internal
+    eligible_tasks: [expand, translate, validate_code, lookup, closure]
+    ineligible_tasks: [any_agent_authored_terminology_fact]
+    invalidate_on: [valueset_version, conceptmap_version, ontology_release]
+    invalidation_transport: hc.ops.cache.invalidate.v1
+    size_limit_bytes: null                 # $expand pages bounded by count <= 5,000 (IOP-TS-005)
+    failure_mode: stale_serve_then_bypass
+    golden_lookups_ref: golden_lookups     # §9 of this file (MEM-CACHE-018)
+    owner: Terminology Stewardship / Agent Platform
+    metrics:
+      hit_ratio_target: 0.95               # $validate-code / $translate hot path
+      alert_below: 0.90
+      p95_ms: 5                            # IOP-04 §8 cache budget; OPS-03 S20 origin p95 <= 50 ms
+      stale_rate_max: 0.005
+      stale_serving_alert_after_s: 900     # TSCacheStaleServing
+      divergence_alert: 0.0                # any golden mismatch is an incident
+    x-requirements: [MEM-CACHE-001, MEM-CACHE-004, MEM-CACHE-006, MEM-CACHE-016, MEM-CACHE-017, MEM-CACHE-018,
+                     MEM-CACHE-025]
+
+  - id: C4
+    name: recall_result
+    kind: recall
+    backend: Redis Cluster per environment; keyspace mc.*; populated only by the Memory API (MCP memory server)
+    environments: [dev, test, uat, prod]
+    keyspace: mc.*
+    key_strategy: hash of the full recall request within one run burst
+    key_recipe: "sha256(env|agent_id|scope_set|retrieval_profile|as_of_valid|as_of_transaction|normalised_query|filters|top_k)"
+    ttl: 60s
+    max_ttl: 60s
+    phi_allowed: false
+    phi_rule: memory records are already non-PHI by MEM-ARCH-002 / MEM-ARCH-025; re-scanned on scanner_version bump
+    eligible_tasks: [memory_recall]
+    ineligible_tasks: [canary_cohort_recall, guardian_decision, policy_class_content]
+    invalidate_on: [scanner_version]
+    invalidate_on_events: [memory_write_on_overlapping_scope]   # hc.ops.memory.write.v1 (MEM-CACHE-024)
+    invalidation_transport: hc.ops.memory.write.v1
+    size_limit_bytes: 65536
+    failure_mode: bypass                   # bypass ⇒ live recall
+    bypass_latency_ms_max: 50
+    owner: Agent Platform
+    metrics:
+      hit_ratio_target: 0.30
+      alert_below: null
+      p95_ms: 5
+      stale_rate_max: 0.005
+      divergence_alert: null
+    x-requirements: [MEM-CACHE-001, MEM-CACHE-002, MEM-CACHE-004, MEM-CACHE-008, MEM-CACHE-020, MEM-CACHE-024]
+
+# ---------------------------------------------------------------------------------------------------------
+# 4. Namespaces — seeds (MEM-03 §2, §4, §5; MEM-CACHE-030 requires tier, isolation, tags, thresholds, owner)
+#    naming: pc.* = C0 prompt-cache layouts, rc.* = C1, sc.* = C2, ts.* = C3, mc.* = C4
+# ---------------------------------------------------------------------------------------------------------
+namespaces:
+  - id: pc.orchestrator_prefix
+    tier: C0
+    routes: [agent.orchestrator.plan, agent.orchestrator.route_cr]
+    isolation: { env: true, tenant: true, purpose: orchestration }
+    ttl: 1h                                # start-to-start gap 5–60 min
+    keepalive: none
+    tags: [prompt_version, policy_bundle_version, tool_manifest_hash, ontology_release, model_id]
+    thresholds: { hit_ratio_target: 0.70, alert_below: 0.50 }
+    owner: Agent Platform
+  - id: pc.evaluator_prefix
+    tier: C0
+    routes: [agent.evaluator.score_cr, agent.evaluator.regression]
+    isolation: { env: true, tenant: true, purpose: evaluation }
+    ttl: 5m                                # kept warm by the CR queue
+    keepalive: max_tokens_0                # applied when queue gap approaches 5 min
+    tags: [prompt_version, policy_bundle_version, tool_manifest_hash, ontology_release, valueset_version, model_id]
+    thresholds: { hit_ratio_target: 0.70, alert_below: 0.50 }
+    note: rubric text (RUB-*) lives in bp2; verdicts and scores are computed live and never cached (MEM-CACHE-015)
+    owner: Agent Platform
+  - id: pc.mapper_loop
+    tier: C0
+    routes: [agent.source_mapper.map_field, agent.terminology_steward.classify_code, agent.dq_author.classify_dimension]
+    isolation: { env: true, tenant: true, purpose: mapping }
+    ttl: 5m
+    keepalive: none
+    tags: [prompt_version, policy_bundle_version, tool_manifest_hash, ontology_release, valueset_version,
+           conceptmap_version, model_id]
+    thresholds: { hit_ratio_target: 0.85, alert_below: 0.50 }
+    owner: Agent Platform
+  - id: pc.self_healer_diagnosis
+    tier: C0
+    routes: [agent.self_healer.triage, agent.self_healer.diagnose]
+    isolation: { env: true, tenant: true, purpose: healing }
+    ttl: 1h
+    keepalive: none
+    tags: [prompt_version, policy_bundle_version, tool_manifest_hash, playbook_version, model_id]
+    thresholds: { hit_ratio_target: 0.70, alert_below: 0.50 }
+    owner: Platform SRE / Agent Platform
+  - id: pc.curator_consolidation
+    tier: C0
+    routes: [agent.memory_curator.consolidate]
+    isolation: { env: true, tenant: true, purpose: consolidation }
+    ttl: 1h
+    keepalive: scheduled_prewarm           # 02:00 nightly window (MEM-02 §8)
+    tags: [prompt_version, policy_bundle_version, tool_manifest_hash, model_id]
+    thresholds: { hit_ratio_target: 0.70, alert_below: 0.50 }
+    owner: Agent Platform
+
+  - id: rc.terminology_lookup
+    tier: C1
+    tasks: [validate_code, lookup]
+    tool: { server: terminology-service, operations: ["$validate-code", "$lookup"] }
+    isolation: { env: true, tenant: true, purpose: terminology }
+    ttl: 24h
+    negative_result_ttl: 10m
+    tags: [valueset_version, conceptmap_version, model_id]
+    thresholds: { hit_ratio_target: 0.90, alert_below: 0.60, p95_ms: 5, divergence_alert: 0.02 }
+    owner: Agent Platform
+  - id: rc.schema_registry_lookup
+    tier: C1
+    tasks: [schema_registry_lookup]
+    tool: { server: schema-registry, operations: [get_subject_version, check_compatibility] }
+    isolation: { env: true, tenant: false, purpose: streaming }
+    ttl: 10m
+    tags: [model_id]
+    thresholds: { hit_ratio_target: 0.80, alert_below: 0.40, p95_ms: 5, divergence_alert: 0.02 }
+    owner: Platform SRE
+  - id: rc.heal_diagnosis
+    tier: C1
+    tasks: [incident_fingerprint_diagnosis, playbook_runner_readonly_probe]
+    fingerprint: [fault_class, interface, symptom_hash, playbook_version]
+    semantic_matching: false               # MEM-CACHE-007: incidents matched semantically only in Graphiti
+    isolation: { env: true, tenant: true, purpose: healing }
+    ttl: 1h
+    tags: [playbook_version, prompt_version, model_id]
+    thresholds: { hit_ratio_target: 0.50, alert_below: null, p95_ms: 5, divergence_alert: 0.02 }
+    owner: Platform SRE / Agent Platform
+  - id: rc.evaluator_rubric_explain
+    tier: C1
+    tasks: [evaluator_rubric_explanation]
+    isolation: { env: true, tenant: true, purpose: evaluation }
+    ttl: 6h
+    tags: [prompt_version, policy_bundle_version, rule_pack_version, model_id]
+    entry_must_carry: [rubric_id, prompt_version]
+    never_cached: [verdict, score]         # MEM-CACHE-015
+    thresholds: { hit_ratio_target: 0.60, alert_below: 0.30, p95_ms: 5, divergence_alert: 0.02 }
+    owner: Agent Platform
+
+  - id: sc.terminology_lookup
+    tier: C2
+    tasks: [terminology_lookup_explanation]
+    isolation: { env: true, tenant: true, purpose: terminology }
+    ttl: 24h
+    similarity_threshold: 0.92
+    verify_on_hit: { server: terminology-service, operation: "$validate-code", against: pinned_release }
+    result_tags_required: [valueset_version, conceptmap_version]
+    tags: [valueset_version, conceptmap_version, prompt_version, model_id]
+    thresholds: { hit_ratio_target: 0.60, alert_below: 0.30, p95_ms: 25, divergence_alert: 0.02 }
+    owner: Agent Platform
+  - id: sc.mapping_suggestion
+    tier: C2
+    tasks: [mapping_suggestion]            # local code → enterprise code; HL7 v2 field → FHIR element
+    isolation: { env: true, tenant: true, purpose: mapping }
+    ttl: 6h
+    similarity_threshold: 0.95
+    verify_on_hit:
+      mandatory: true                      # MEM-CACHE-003
+      server: terminology-service
+      operations: ["$translate", "$validate-code"]
+      secondary: { server: fhir-validator, operation: validate_path }
+    put_condition: originating CR evaluator score >= auto-approve threshold (AGT-05 §6); never from rejected or vetoed CRs
+    tags: [ontology_release, valueset_version, conceptmap_version, prompt_version, model_id]
+    thresholds: { hit_ratio_target: 0.50, alert_below: 0.20, p95_ms: 25, divergence_alert: 0.02 }
+    owner: Agent Platform
+  - id: sc.classification
+    tier: C2
+    tasks: [classification]                # DQ dimension, G1–G9 group, element category, PHI-class suggestion
+    isolation: { env: true, tenant: true, purpose: classification }
+    ttl: 12h
+    similarity_threshold: 0.93
+    verify_on_hit: { check: label in closed enum of current rule_pack_version / ontology_release }
+    advisory_only: [phi_class_suggestion]  # guardian decision itself is bypass-listed
+    excluded_inputs: [free_text_label, free_text_description, document_title]
+    tags: [ontology_release, rule_pack_version, prompt_version, model_id]
+    thresholds: { hit_ratio_target: 0.60, alert_below: 0.30, p95_ms: 25, divergence_alert: 0.02 }
+    owner: Agent Platform
+  - id: sc.evaluator_rubric_explain
+    tier: C2
+    tasks: [evaluator_rubric_explanation]
+    isolation: { env: true, tenant: true, purpose: evaluation }
+    ttl: 6h
+    similarity_threshold: 0.95
+    verify_on_hit: { check: rubric_id and prompt_version equality }
+    never_cached: [verdict, score]
+    tags: [prompt_version, policy_bundle_version, rule_pack_version, model_id]
+    thresholds: { hit_ratio_target: 0.50, alert_below: 0.20, p95_ms: 25, divergence_alert: 0.02 }
+    owner: Agent Platform
+
+  - id: ts.expand
+    tier: C3
+    operations: ["$expand"]
+    isolation: { env: true, tenant: false, purpose: terminology }   # G8 reference data shared across facilities
+    ttl: until_next_release
+    tags: [valueset_version, ontology_release]
+    pre_warm: all enterprise ValueSets (IOP-TS-003) before release pointer flip
+    thresholds: { hit_ratio_target: 0.95, alert_below: 0.90, p95_ms: 5, stale_serve_s_max: 86400 }
+    put_allowed_identities: [ts-gateway]
+    owner: Terminology Stewardship
+  - id: ts.translate
+    tier: C3
+    operations: ["$translate"]
+    isolation: { env: true, tenant: false, purpose: terminology }
+    ttl: until_next_release
+    tags: [conceptmap_version]
+    pre_warm: every active ConceptMap element (IOP-TS-009)
+    miss_signal: per code system miss counter feeds PBK-SEM-001 (FLT-SEM-002)
+    thresholds: { hit_ratio_target: 0.95, alert_below: 0.90, p95_ms: 5, stale_serve_s_max: 86400 }
+    put_allowed_identities: [ts-gateway]
+    owner: Terminology Stewardship
+  - id: ts.validate_code
+    tier: C3
+    operations: ["$validate-code", "$lookup"]
+    isolation: { env: true, tenant: false, purpose: terminology }
+    ttl: until_next_release
+    tags: [valueset_version, conceptmap_version]
+    thresholds: { hit_ratio_target: 0.95, alert_below: 0.90, p95_ms: 5, stale_serve_s_max: 86400 }
+    put_allowed_identities: [ts-gateway]
+    owner: Terminology Stewardship
+  - id: ts.closure
+    tier: C3
+    operations: ["$closure"]
+    isolation: { env: true, tenant: false, purpose: terminology }
+    ttl: until_next_release
+    tags: [valueset_version]
+    pre_warm: rebuild on each release for SNOMED CT and LOINC (IOP-TS-007)
+    thresholds: { hit_ratio_target: 0.95, alert_below: 0.90, p95_ms: 5, stale_serve_s_max: 86400 }
+    put_allowed_identities: [ts-gateway]
+    owner: Terminology Stewardship
+
+  - id: mc.recall
+    tier: C4
+    tasks: [memory_recall]
+    isolation: { env: true, tenant: true, purpose: memory }
+    ttl: 60s
+    tags: [scanner_version]
+    evict_on: hc.ops.memory.write.v1 for overlapping scope (remember|correct|retract|forget)
+    bypass_for: [canary_cohort]
+    thresholds: { hit_ratio_target: 0.30, alert_below: null, p95_ms: 5 }
+    owner: Agent Platform
+
+# ---------------------------------------------------------------------------------------------------------
+# 5. C0 provider prompt layout (MEM-03 §3)
+# ---------------------------------------------------------------------------------------------------------
+provider_prompt_layout:
+  order: [tools, system, messages]
+  marker: { cache_control: { type: ephemeral } }
+  max_breakpoints: 4
+  min_prefix_tokens: 4096                  # MEM-CACHE-014; measured with the token-count endpoint per configured model
+  breakpoints:
+    - index: 1
+      content_ref: tools
+      description: tool definitions serialised from the agent manifest in frozen name-sorted order; hash = tool_manifest_hash
+      ttl: 1h
+      changes_via: hc.ops.agent.policy.v1 release only; per-request tool_choice does not break the cache
+    - index: 2
+      content_ref: policy_system
+      description: PromptVersion + PolicyVersion + RUB-* rubric text only; no date, run id, steward name, env banner or mode string
+      ttl: 1h
+      operator_instruction_channel: mid-conversation system message in messages[] (fallback user-turn text block); never edit top-level system
+    - index: 3
+      content_ref: ontology_context
+      description: ontology / value-set context snapshot rendered by release id; first line is the release tag
+      ttl: 5m
+      keyed_by: [ontology_release, valueset_version, conceptmap_version]
+    - index: 4
+      content_ref: conversation_prefix
+      description: explicit marker on the last block of the most recently appended turn; moves forward per turn
+      ttl: 5m
+      lookback_positions_max: 20           # MEM-CACHE-026
+      intermediate_marker_every_positions: 15
+  ttl_by_gap:                              # MEM-CACHE-005; start-to-start gap between requests sharing the prefix
+    - gap: "<5m"
+      ttl: 5m
+      keepalive: none
+      example_routes: [pc.mapper_loop, pc.evaluator_prefix]
+    - gap: "5m-60m"
+      ttl: 1h
+      alternative: { ttl: 5m, keepalive: max_tokens_0 }   # non-streaming, no structured output, shortly before expiry
+      example_routes: [pc.orchestrator_prefix, pc.self_healer_diagnosis]
+    - gap: ">1h"
+      ttl: 5m
+      keepalive: scheduled_prewarm         # nightly consolidation 02:00, BICC extract window, release gate
+      alternative: accept_cold_miss
+      example_routes: [pc.curator_consolidation, agent.improver.compile, agent.release_manager.release]
+  keepalive_options: [none, max_tokens_0, scheduled_prewarm]
+  pin_effort: true                         # thinking configuration and output_config.effort fixed per manifest route
+  pin_model: true
+  marker_ordering_rule: 1h markers before 5m markers
+  volatile_after_last_breakpoint:
+    - memory_recall_assembled_context      # MEM-01 §7 untrusted block
+    - masked_sample_hashes
+    - run_id
+    - cr_id
+    - incident_id
+    - trace_id
+    - timestamps
+    - per_run_cr_context
+    - current_question
+    - untrusted_text
+  verification:
+    metric: usage.cache_read_input_tokens
+    golden_run_targets: { orchestrator_evaluator: 0.70, mapping_classification: 0.85 }
+    cache_diagnostics_beta_environments: [test]   # MEM-CACHE-029
+    payload_fingerprint_retention_h: 24          # other envs: adjacent-request fingerprints, markers stripped
+
+# ---------------------------------------------------------------------------------------------------------
+# 6. Bypass rules — evaluated by cache.policy_check before every get/put (MEM-03 §7, MEM-CACHE-002)
+#    bypass = compute live, do not store
+# ---------------------------------------------------------------------------------------------------------
+bypass_when:
+  - condition: risk_class
+    values: [high, phi_affecting]          # AGT-03 CR schema
+    tiers: [C1, C2, C4]
+    rationale: human-gated changes computed fresh with current context
+  - condition: change_class
+    values: [policy]                       # GOV-00 §2.2
+    tiers: [C1, C2, C4]
+    rationale: policy artefacts are fixed-point protected (MEM-06 §4)
+  - condition: evaluator_verdict
+    values: [true]
+    tiers: [C1, C2]
+    rationale: every CR scored live; only explanations cacheable (MEM-CACHE-015)
+  - condition: guardian_decision
+    values: [true]                         # agent.privacy_guardian decisions and PGV-* rule evaluations
+    tiers: [C1, C2, C4]
+    rationale: veto authority is never replayed from cache
+  - condition: canary_cohort
+    values: [true]                         # MEM-05 §4
+    tiers: [C1, C2, C4]
+    rationale: candidate prompt version measured on live computation (MEM-CACHE-020); results never written
+  - condition: injection_flagged
+    values: [true]                         # prompt_injection_scan hit or untrusted_text from quarantine
+    tiers: [C1, C2]
+    rationale: an injected instruction must not be stored or replayed (AGT-05 RT-01)
+  - condition: phi_class
+    values: [not_none]
+    tiers: [C0, C1, C2, C3, C4]
+    action: { put: refuse, get: bypass }
+    rationale: hard rule (MEM-CACHE-001)
+  - condition: kill_switch_active
+    values: [agent, module_14, environment, platform]   # MEM-06 §9 scopes
+    tiers: [C1, C2, C4]
+    action: { put: refuse, get: allow }
+    rationale: caches keep serving reads (bypass-capable) but accept no new entries
+
+shadow_recompute_sample: 0.01              # MEM-CACHE-021: deterministic on key hash, per namespace, C1/C2 hits
+shadow_recompute:
+  tiers: [C1, C2]
+  divergence_alert: 0.02                   # MEM-CACHE-022 over 1h
+  on_breach: { alert: CacheDivergenceHigh, playbook_id: PBK-AGT-001, action: disable_namespace_writes_until_human_reenable }
+  publish_to: edw_g9_governance.fact_cache_stats
+
+# ---------------------------------------------------------------------------------------------------------
+# 7. Golden lookups — C3 poisoning detection (MEM-03 §5, MEM-CACHE-018)
+# ---------------------------------------------------------------------------------------------------------
+golden_lookups:
+  tier: C3
+  per_hour: 100
+  code_systems: [SNOMED CT, LOINC, RxNorm, ICD-10-CM, CPT, Cerner CODE_VALUE maps, Oracle Fusion FND_LOOKUP_VALUES maps]
+  compare_against: ts_origin
+  on_mismatch:
+    actions: [purge_namespace, rewarm_from_origin, open_incident]
+    incident: { id_pattern: "INC-<yyyymmdd>-<ULID>", fault_class: FLT-SEM-001, route_to: [agent.self_healer, Terminology Manager] }
+    within_s: 300
+  fixture_ref: 13-roadmap-and-acceptance (golden lookup fixture registered with module 13)
+
+# ---------------------------------------------------------------------------------------------------------
+# 8. Invalidation events — version-tag fan-out via hc.ops.cache.invalidate.v1 (MEM-03 §6, MEM-CACHE-006)
+# ---------------------------------------------------------------------------------------------------------
+invalidation_transport:
+  topic: hc.ops.cache.invalidate.v1
+  key: tag
+  retention: 7d
+  idempotency: event_id
+  ordering: per tag
+  replay_on_restart: from last committed offset before serving
+  max_propagation_s: 60
+  lag_degraded_mode: affected namespaces switch to verify_on_hit for all entries until lag clears
+
+invalidation_events:
+  - event: ontology_release
+    source_module: "02"
+    source: Ontology Registry release event (owl:versionIRI)
+    tags_bumped: [ontology_release]
+    tiers: [C0, C1, C2, C3]
+    tier_effects:
+      C0: bp3 and later re-rendered (new entry)
+      C1: namespaces tagged ontology_release
+      C2: sc.mapping_suggestion, sc.classification
+      C3: $expand of value sets bound to changed concepts
+    max_propagation_s: 60
+  - event: terminology_release
+    source_module: "06"
+    topic: hc.canonical.reference.valueset.fhir.v1
+    source: TS release id promotion (IOP-04 §6, IOP-TS-014)
+    tags_bumped: [valueset_version]
+    tiers: [C0, C1, C2, C3]
+    tier_effects:
+      C0: bp3 snapshot
+      C1: rc.terminology_lookup
+      C2: sc.terminology_lookup, sc.mapping_suggestion
+      C3: pre-warm new release namespace, purge old after 24h grace
+    max_propagation_s: 60
+  - event: mapping_release
+    source_module: "06"
+    topic: hc.canonical.reference.conceptmap.fhir.v1
+    source: ConceptMap release (IOP-TS-009/013; mapping CR applied)
+    tags_bumped: [conceptmap_version]
+    tiers: [C0, C1, C2, C3]
+    tier_effects:
+      C0: bp3 snapshot
+      C1: rc.terminology_lookup
+      C2: sc.terminology_lookup, sc.mapping_suggestion
+      C3: ts.translate, ts.validate_code pre-warm; old purged after 24h grace
+    max_propagation_s: 60
+  - event: rule_release
+    source_module: "09"
+    topic: hc.dq.rule-activation.v1
+    source: DQ rule-pack release (DQ-PIPE-013)
+    tags_bumped: [rule_pack_version]
+    tiers: [C1, C2]
+    tier_effects:
+      C1: DQ classification entries
+      C2: sc.classification, sc.evaluator_rubric_explain (dq_rule CR explanations)
+    max_propagation_s: 60
+  - event: prompt_release
+    source_module: "14"
+    topic: hc.ops.agent.policy.v1
+    source: PromptVersion / PolicyVersion / tool-manifest release (MEM-05 §5)
+    tags_bumped: [prompt_version, policy_bundle_version, tool_manifest_hash]
+    tiers: [C0, C1, C2]
+    tier_effects:
+      C0: bp2 and later; tool change ⇒ bp1 and all
+      C1: all namespaces of that agent
+      C2: all namespaces of that agent
+    max_propagation_s: 60
+  - event: playbook_release
+    source_module: "14"
+    topic: hc.ops.agent.policy.v1
+    source: playbook CR applied (MEM-04 §8)
+    tags_bumped: [playbook_version]
+    tiers: [C0, C1]
+    tier_effects:
+      C0: pc.self_healer_diagnosis
+      C1: rc.heal_diagnosis, playbook-runner read-only probes
+    max_propagation_s: 60
+  - event: model_change
+    source_module: "10"
+    source: agent manifest release changing model_ref, fallback_ref or ${MODEL_EMBED}
+    tags_bumped: [model_id]
+    tiers: [C0, C1, C2]
+    tier_effects:
+      C0: all entries miss by construction (model-scoped)
+      C1: all entries keyed on model_id
+      C2: all entries; new vector index for embedding model change
+    max_propagation_s: 60
+  - event: scanner_release
+    source_module: "11"
+    source: GOV-PHI-004 PHI scanner version bump
+    tags_bumped: [scanner_version]
+    tiers: [C4]
+    tier_effects:
+      C4: all recall results evicted and re-scanned
+    max_propagation_s: 60
+  - event: memory_write
+    source_module: "14"
+    topic: hc.ops.memory.write.v1
+    source: accepted remember | correct | retract | forget on a scope
+    tags_bumped: []
+    tiers: [C4]
+    tier_effects:
+      C4: evict entries whose scope_set overlaps the written scope (MEM-CACHE-024)
+    max_propagation_s: 60
+  - event: phi_incident
+    source_module: "11"
+    source: PGV-012 veto, honeytoken hit, RT-11 finding, kill switch (AGT-05)
+    tags_bumped: []
+    tiers: [C0, C1, C2, C3, C4]
+    scope: all namespaces of the affected agent / tenant
+    tier_effects:
+      C0: scoped purge; 1h entries left to expire are logged as an exception
+      C1: purge
+      C2: purge
+      C3: purge if scope touched the TS gateway
+      C4: purge
+    max_propagation_s: 300                 # MEM-CACHE-028: purge receipt on hc.ops.audit.v1 within 5 min
+    audit: { topic: hc.ops.audit.v1, record: purge_receipt }
+
+# ---------------------------------------------------------------------------------------------------------
+# 9. CI lint — silent invalidators fail the build (MEM-03 §3.2, MEM-CACHE-012)
+# ---------------------------------------------------------------------------------------------------------
+ci_lint:
+  fail_build: true
+  silent_invalidators:
+    - rule: no-timestamp-in-prefix
+      catches: dates, clocks, now() in tools / system / bp3
+      fix: move after last breakpoint
+    - rule: sorted-json
+      catches: unsorted or non-deterministic JSON serialisation before bp4
+      fix: canonical JSON (sorted keys, fixed separators)
+    - rule: frozen-toolset
+      catches: tool set or order differs from manifest hash; conditional tools
+      fix: release via hc.ops.agent.policy.v1
+    - rule: pinned-model
+      catches: model id or fallback_ref switch mid-route without new namespace
+      fix: model change = model_id tag bump; all C0 entries miss
+    - rule: pinned-thinking-effort
+      catches: thinking type or effort changed between requests of the same route
+      fix: pin in manifest route
+    - rule: memory-after-breakpoint
+      catches: memory recall text, masked samples or untrusted_text above the last breakpoint
+      fix: move to volatile tail
+    - rule: no-run-ids-in-prefix
+      catches: run_id, cr_id, incident_id, trace ids in prefix
+      fix: volatile tail
+    - rule: operator-instruction-channel
+      catches: top-level system edited mid-conversation
+      fix: mid-conversation system message
+    - rule: min-prefix-4096
+      catches: stable prefix below 4,096 tokens on any configured model (token-count endpoint)
+      fix: pad with rubric/context or merge routes
+    - rule: breakpoint-budget
+      catches: more than 4 breakpoints; 5m marker before 1h marker
+      fix: reorder or merge
+    - rule: lookback-20
+      catches: a single turn appends more than 20 positions without an intermediate marker
+      fix: intermediate breakpoint every ~15 positions
+  policy_lint:
+    - rule: namespace-complete
+      catches: namespace missing tier, isolation, tags, thresholds or owner (MEM-CACHE-030)
+    - rule: phi-allowed-false
+      catches: any tier or namespace with phi_allowed true or phi_class_ceiling above internal
+    - rule: ts-put-identity
+      catches: ts.* namespace permitting put from any identity other than ts-gateway (MEM-CACHE-025)
+    - rule: tag-vocabulary
+      catches: tag not in version_tags enum
+    - rule: no-learning-store
+      catches: Memory API or cr-engine code path reading a cache entry as evidence
+
+# ---------------------------------------------------------------------------------------------------------
+# 10. Metrics and alerts (MEM-03 §9; OPS-03 §4.2 alert catalogue; runbook_url per OPS-OBS-004)
+# ---------------------------------------------------------------------------------------------------------
+metrics:
+  prefix: healix.cache
+  labels: [tier, namespace, env, tenant, route]
+  names: [hits_total, misses_total, stale_served_total, divergence_total, bypass_total, invalidation_lag_seconds,
+          c0_read_ratio, c0_cache_creation_tokens, c0_cache_read_tokens, entries_active, evictions_total,
+          policy_check_total, golden_lookup_mismatch_total, hotkey_total, failover_total, purge_total, usd_saved_daily]
+  edw_projection:
+    table: edw_g9_governance.fact_cache_stats
+    grain: tier x namespace x day
+    columns: [hits, misses, stale_served, divergence, tokens_read, tokens_written, usd_saved,
+              valid_from, valid_to, recorded_at, superseded_at, prov_activity_iri, change_kind, source_tz]
+    written_by: agent.kg_builder from hc.ops.* topics (never by this module)
+  slo_registration: module 12 (OPS-03) — cache SLOs requested in README §6
+
+alerts:
+  - name: AgentPromptCacheCollapse
+    metric: healix.cache.c0_read_ratio
+    comparator: "<"
+    threshold: 0.50
+    for_s: 3600
+    severity: SEV4
+    fault_class: FLT-AGT-006
+    playbook_id: PBK-AGT-001
+  - name: CacheDivergenceHigh
+    metric: healix.cache.divergence_total / healix.cache.hits_total
+    comparator: ">"
+    threshold: 0.02
+    window_s: 3600
+    severity: SEV3
+    playbook_id: PBK-AGT-001
+    action: disable namespace writes until human re-enable
+  - name: CacheInvalidationLag
+    metric: healix.cache.invalidation_lag_seconds (p95)
+    comparator: ">"
+    threshold: 60
+    severity: SEV3
+    playbook_id: PBK-AGT-001
+    action: affected namespaces switch to verify_on_hit
+  - name: TSCacheStaleServing
+    metric: healix.cache.stale_served_total{tier=C3}
+    comparator: ">"
+    threshold: 0
+    for_s: 900
+    severity: SEV2
+    fault_class: FLT-SEM-003
+    playbook_id: manual                    # TS outage handling is manual per MEM-04 §2; PBK-SEM-001 covers stale version
+    route_to: Platform SRE on-call (OPS-03 §4.3)
+  - name: CacheGoldenMismatch
+    metric: healix.cache.golden_lookup_mismatch_total
+    comparator: ">"
+    threshold: 0
+    severity: SEV2
+    fault_class: FLT-SEM-001
+    playbook_id: PBK-SEM-001
+    action: purge_namespace + rewarm + incident within 5 min
+  - name: CacheBypassSustained
+    metric: healix.cache.bypass_total{reason=redis_unavailable}
+    comparator: ">"
+    threshold: 0
+    for_s: 300
+    severity: SEV3
+    fault_class: FLT-PLAT-001
+    playbook_id: manual
+    route_to: Platform SRE on-call
+  - name: CacheHotKey
+    metric: healix.cache.hotkey_total
+    comparator: ">"
+    threshold: 0
+    for_s: 60
+    severity: SEV4
+    playbook_id: PBK-AGT-001
+  - name: CachePolicyCheckPHIRefusal
+    metric: healix.cache.policy_check_total{result=refused_phi}
+    comparator: ">"
+    threshold: 0
+    severity: SEV2
+    route_to: [agent.privacy_guardian, Privacy & Security Office]
+    action: PGV-012 review; scoped purge per invalidation_events.phi_incident
