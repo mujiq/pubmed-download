@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology.healix.example.org/schema/streaming/topics-catalog/0.1.0",
+  "title": "HEALIX Kafka Topic Catalog",
+  "description": "Schema for PRD/07-streaming-platform/topics.yaml. Every topic on every cluster MUST be declared here; GitOps creates topics from this file only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["catalog_version", "last_updated", "owner", "defaults", "topics"],
+  "properties": {
+    "catalog_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "last_updated": { "type": "string", "format": "date" },
+    "owner": { "type": "string", "minLength": 1 },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["replication_factor", "min_insync_replicas", "retention_ms_by_layer", "compatibility_by_layer", "phi_classes"],
+      "properties": {
+        "replication_factor": { "type": "integer", "minimum": 3 },
+        "min_insync_replicas": { "type": "integer", "minimum": 2 },
+        "unclean_leader_election": { "type": "boolean", "const": false },
+        "message_timestamp_type": { "type": "string", "enum": ["CreateTime", "LogAppendTime"] },
+        "compression_type": { "type": "string", "enum": ["zstd", "lz4", "snappy", "gzip", "producer"] },
+        "compacted_topic_settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "min_compaction_lag_ms": { "type": "integer", "minimum": 0 },
+            "delete_retention_ms": { "type": "integer", "minimum": 86400000 },
+            "segment_ms": { "type": "integer", "minimum": 3600000 }
+          }
+        },
+        "retention_ms_by_layer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["raw", "std", "canonical", "dq", "kg", "edw", "ops"],
+          "properties": {
+            "raw": { "type": "integer", "minimum": 2592000000, "description": "raw MUST retain >= 30 days (ARC-NFR-005)" },
+            "std": { "type": "integer", "minimum": 604800000 },
+            "canonical": { "type": "integer", "minimum": 2592000000 },
+            "dq": { "type": "integer", "minimum": 7776000000, "description": "dq MUST retain >= 90 days" },
+            "kg": { "type": "integer", "minimum": 604800000 },
+            "edw": { "type": "integer", "minimum": 604800000 },
+            "ops": { "type": "integer", "minimum": 604800000 }
+          }
+        },
+        "compatibility_by_layer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["raw", "std", "canonical", "dq", "kg", "edw", "ops"],
+          "properties": {
+            "raw": { "$ref": "#/$defs/compatibility" },
+            "std": { "$ref": "#/$defs/compatibility" },
+            "canonical": { "type": "string", "const": "BACKWARD_TRANSITIVE", "description": "CONVENTIONS.md section 5" },
+            "dq": { "$ref": "#/$defs/compatibility" },
+            "kg": { "type": "string", "const": "FULL", "description": "CONVENTIONS.md section 5" },
+            "edw": { "type": "string", "const": "FULL", "description": "CONVENTIONS.md section 5" },
+            "ops": { "$ref": "#/$defs/compatibility" }
+          }
+        },
+        "phi_classes": { "type": "array", "items": { "$ref": "#/$defs/phiClass" }, "uniqueItems": true },
+        "key_formats": { "type": "array", "items": { "$ref": "#/$defs/keyFormat" } },
+        "value_formats": { "type": "array", "items": { "$ref": "#/$defs/valueFormat" } }
+      }
+    },
+    "topics": {
+      "type": "array",
+      "minItems": 60,
+      "items": { "$ref": "#/$defs/topic" }
+    }
+  },
+  "$defs": {
+    "compatibility": {
+      "type": "string",
+      "enum": ["BACKWARD", "BACKWARD_TRANSITIVE", "FORWARD", "FORWARD_TRANSITIVE", "FULL", "FULL_TRANSITIVE", "NONE"]
+    },
+    "phiClass": { "type": "string", "enum": ["phi", "phi-limited", "de-identified", "pii", "non-phi"] },
+    "keyFormat": { "type": "string", "enum": ["string", "avro"] },
+    "valueFormat": { "type": "string", "enum": ["avro", "avro-envelope", "fhir-json", "fhir-ext-json", "json", "protobuf"] },
+    "layer": { "type": "string", "enum": ["raw", "std", "canonical", "dq", "kg", "edw", "ops"] },
+    "group": {
+      "type": "string",
+      "enum": ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "source"],
+      "description": "Subject-area group from 01-architecture-overview.md section 4, or 'source' for raw/std topics owned by integration teams"
+    },
+    "principal": {
+      "type": "string",
+      "pattern": "^(connect|proc|sink|agent|api|ci|sre|svc)\\.[a-z0-9_*-]+(\\.[a-z0-9_*-]+)*$|^[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*$",
+      "description": "Service principal name: connect.<connector>, proc.<processor>, sink.<sink>, agent.<role>, svc.<service>, ci.<pipeline>, sre.<role>"
+    },
+    "topic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "layer", "domain", "group", "owner", "key", "key_format", "value_format", "schema_subject",
+                   "compatibility", "partitions", "phi_class", "producers", "consumers", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^hc\\.(raw|std|canonical|dq|kg|edw|ops)(\\.[a-z0-9][a-z0-9_-]*){1,5}\\.v[1-9][0-9]*$",
+          "maxLength": 128
+        },
+        "layer": { "$ref": "#/$defs/layer" },
+        "domain": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+        "group": { "$ref": "#/$defs/group" },
+        "owner": { "type": "string", "minLength": 3 },
+        "source_feed": { "type": "string", "description": "Human-readable source feed / table / PVO this raw or std topic carries" },
+        "key": { "type": "string", "minLength": 1, "description": "Partitioning key definition (business key or source key expression)" },
+        "key_format": { "$ref": "#/$defs/keyFormat" },
+        "value_format": { "$ref": "#/$defs/valueFormat" },
+        "schema_subject": { "type": "string", "pattern": "^hc\\..+-value$" },
+        "compatibility": { "$ref": "#/$defs/compatibility" },
+        "partitions": { "type": "integer", "minimum": 1, "maximum": 96 },
+        "retention_ms": { "type": "integer", "minimum": 3600000 },
+        "cleanup_policy": { "type": "string", "const": "compact" },
+        "phi_class": { "$ref": "#/$defs/phiClass" },
+        "producers": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/principal" } },
+        "consumers": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/principal" } },
+        "description": { "type": "string", "minLength": 20 }
+      },
+      "oneOf": [
+        { "required": ["retention_ms"], "not": { "required": ["cleanup_policy"] } },
+        { "required": ["cleanup_policy"], "not": { "required": ["retention_ms"] } }
+      ],
+      "allOf": [
+        {
+          "description": "Topic name layer segment must equal the layer field",
+          "if": { "properties": { "layer": { "const": "raw" } } }, "then": { "properties": { "name": { "pattern": "^hc\\.raw\\." }, "group": { "const": "source" } } }
+        },
+        {
+          "if": { "properties": { "layer": { "const": "std" } } }, "then": { "properties": { "name": { "pattern": "^hc\\.std\\." }, "group": { "const": "source" } } }
+        },
+        {
+          "if": { "properties": { "layer": { "const": "canonical" } } },
+          "then": { "properties": { "name": { "pattern": "^hc\\.canonical\\.(party|clinical|finance|supply|workforce|pophealth|research|reference|governance)\\." },
+                                    "value_format": { "enum": ["fhir-json", "fhir-ext-json"] },
+                                    "compatibility": { "const": "BACKWARD_TRANSITIVE" },
+                                    "group": { "pattern": "^G[1-9]$" } } }
+        },
+        { "if": { "properties": { "layer": { "const": "dq" } } }, "then": { "properties": { "name": { "pattern": "^hc\\.dq\\." } } } },
+        { "if": { "properties": { "layer": { "const": "kg" } } }, "then": { "properties": { "name": { "pattern": "^hc\\.kg\\." }, "compatibility": { "const": "FULL" } } } },
+        { "if": { "properties": { "layer": { "const": "edw" } } }, "then": { "properties": { "name": { "pattern": "^hc\\.edw\\.cdc\\.g[1-9]\\.v[0-9]+$" }, "compatibility": { "const": "FULL" } } } },
+        { "if": { "properties": { "layer": { "const": "ops" } } }, "then": { "properties": { "name": { "pattern": "^hc\\.ops\\." }, "group": { "const": "G9" } } } },
+        {
+          "description": "schema_subject must be <name>-value (checked structurally; exact equality is enforced by the catalog linter)",
+          "properties": { "schema_subject": { "pattern": "-value$" } }
+        }
+      ]
+    }
+  }
+}
