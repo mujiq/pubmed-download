@@ -48,6 +48,8 @@ flowchart TB
     AG{{Specialist agents}}
     EVAL{{Evaluator / Critic}}
     HITL[Human approval gates]
+    MEM[(Memory: Mem0 · Graphiti · semantic cache)]
+    HEAL{{Self-healer · Improver}}
   end
   subgraph L6[Layer 6 · Governance & Operations  (module 11 · 12)]
     GOV[Policy · PHI · Access · Audit · Lineage (PROV-O / OpenLineage)]
@@ -63,6 +65,9 @@ flowchart TB
   DQT --> TKG & EDW
   ORCH --> AG --> ONT & TS & DQE & EDW & TKG
   AG --> EVAL --> HITL --> ONT
+  AG <--> MEM
+  HEAL --> MEM
+  OBS --> HEAL
   GOV -.-> L1 & L2 & L3 & L4 & L5
   OBS -.-> L1 & L3 & L4 & L5
   classDef ext fill:#eee,stroke:#999;
@@ -104,6 +109,9 @@ flowchart TB
 | EDW | ANSI SQL; reference DDL in Teradata dialect with portable variant; columnar MPP (Teradata Vantage, Snowflake, Databricks SQL, BigQuery) | DDL + dbt-style models |
 | Agents | LLM-driven agents using tool calls over MCP; default model family configurable per environment (recommended: latest Claude models, e.g. `claude-fable-5-1` for orchestration/critique and `claude-sonnet-5-5` / `claude-haiku-5-5` for high-volume mapping and classification) | Agent manifests (`10/agents/*.yaml`) |
 | Workflow engine | Durable orchestration (Temporal.io or Apache Airflow for batch, Flink for streaming) | Workflow definitions |
+| Agent memory | **Mem0** for per-agent/per-steward preference and episodic memory; **Graphiti** (Zep) temporal knowledge graph for agent episodic/semantic memory with bitemporal edges, aligned to module 08's time model; the HEALIX ontology/KG itself as shared semantic memory | Memory API (`14/memory-schema.yaml`) |
+| Caching | Provider prompt caching for stable policy prompts and ontology context; semantic response cache (Redis vector + exact-match tiers) for terminology lookups, mapping suggestions and evaluator rubrics; HTTP/materialised caches for FHIR TS `$expand`/`$translate` | Cache policy (module 14) |
+| Self-improvement | Evaluation-driven optimisation of agent prompts/policies (DSPy-style compile, reflexion traces), playbook learning from resolved incidents, canary + rollback | Improvement loop (module 14) |
 | Lineage | OpenLineage events + PROV-O in graph | Lineage API |
 | Secrets/Identity | OIDC, mTLS between services, KMS-managed keys | — |
 
@@ -148,6 +156,9 @@ Item, Cost Center, Code (terminology), Source System. These are owned by G1/G8 a
 | `agent.privacy_guardian` | Classifies PHI, enforces minimisation, blocks disallowed flows, reviews every change for PHI impact | 11 | L4 (veto authority) |
 | `agent.evaluator` | Independent critic: scores every proposal against rubrics, tests, reasoner, SHACL, regression suites | 10 | — |
 | `agent.release_manager` | Versions and publishes ontology/schema/topic releases; generates changelogs | 02, 05, 07 | L2 |
+| `agent.memory_curator` | Consolidates episodic memory (Mem0/Graphiti) into playbooks and semantic memory; prunes/expires; enforces no-PHI-in-memory | 14 | L3 |
+| `agent.self_healer` | Detects pipeline faults (connector down, schema drift, consumer lag, failed loads), runs healing playbooks, escalates; recursive: learns new playbooks from resolved incidents | 14, 12 | L3 |
+| `agent.improver` | Runs offline optimisation of agent prompts/policies/thresholds against evaluation suites; proposes canary rollouts | 14, 10 | L1 |
 
 Autonomy levels: **L1** propose only · **L2** propose, auto-apply when evaluator score ≥ threshold and risk class = low ·
 **L3** act within policy, report · **L4** act and veto other agents.
@@ -164,6 +175,8 @@ Autonomy levels: **L1** propose only · **L2** propose, auto-apply when evaluato
 | Bitemporal graph model | 08 | 05, 09, 11 | `08-temporal-knowledge-graph/01-temporal-model.md` |
 | EDW logical model & DDL | 05 | 09, 12 | `05-edw-schema/ddl/` |
 | DQ rule pack | 09 | 07, 08, 10 | `09-data-quality/rules/` |
+| Memory API & cache policy | 14 | 10, 09, 12 | `14-memory-and-self-improvement/README.md` |
+| Healing playbooks | 14 | 12, 07, 10 | `14-memory-and-self-improvement/healing-playbooks/` |
 | Change Request schema | 10 | 02, 05, 06, 09, 11 | `10-agentic-pipeline/03-orchestration-and-workflows.md` |
 | PHI classification & policy | 11 | all | `11-governance-security-compliance/01-hipaa-phi-and-privacy.md` |
 
@@ -177,6 +190,8 @@ Autonomy levels: **L1** propose only · **L2** propose, auto-apply when evaluato
 | ADR-04 | Kafka with layered topics `raw → std → canonical → dq → kg/edw` | Replayability, decoupling, per-layer contracts | Point-to-point ETL, ESB |
 | ADR-05 | IBM UDMH + Teradata HCDM used as *blueprints* harmonised into our own licensed-safe logical model | Leverage industry models without lock-in or IP leakage | Adopt one model verbatim |
 | ADR-06 | Agents operate under typed change requests with independent evaluator and PHI guardian veto | Safe autonomy; auditable | Fully manual curation; unconstrained agents |
+| ADR-08 | Agent memory is layered: Mem0 (preferences/episodes), Graphiti temporal graph (episodic + entity memory with validity intervals), HEALIX KG (shared semantic memory); memory never stores PHI, only metadata, decisions and de-identified evidence | Agents must learn from outcomes without becoming an uncontrolled PHI store; Graphiti's bitemporal edges match ADR-03 | Vector-store-only memory (no temporal reasoning), no memory (no learning) |
+| ADR-09 | Self-healing and self-improvement are closed-loop but gated: healing playbooks run at L3 inside policy; prompt/policy changes ship via canary with evaluator thresholds and automatic rollback | Autonomy with bounded blast radius | Unbounded self-modification; purely manual tuning |
 | ADR-07 | Dual projection (KG + EDW) from the same canonical stream, reconciled nightly | Serve graph and SQL consumers without ETL between them | EDW-first then graph, or graph-only |
 
 ## 8. Non-functional requirements (platform-level)

@@ -37,6 +37,8 @@ Requirements are atomic, testable statements with a stable ID: `<PREFIX>-<AREA>-
 | 11 Governance/Security | `GOV` | `GOV-PHI-001` |
 | 12 Platform/Ops | `OPS` | `OPS-SLO-004` |
 | 13 Roadmap | `RMP` | `RMP-PH1-002` |
+| 14 Memory & Self-Improvement | `MEM` | `MEM-GRA-003` (Graphiti), `MEM-CACHE-002`, `MEM-HEAL-004`, `MEM-IMP-001` |
+| 15 Adversarial Review | `ADV` | `ADV-LEG-012` (legacy), `ADV-SCALE-003` |
 
 Each requirement uses RFC 2119 keywords (**MUST**, **SHOULD**, **MAY**) and carries a priority
 (`P0` launch-blocking, `P1` first release, `P2` later) and a verification method (`test`, `inspection`, `demo`, `analysis`).

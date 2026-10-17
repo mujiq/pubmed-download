@@ -44,8 +44,10 @@ modules in any order; dependencies are declared in each module's front matter.
 | 08 | [Temporal Knowledge Graph](08-temporal-knowledge-graph/README.md) | Bitemporal graph model, store, entity resolution, ingestion from Kafka | Graph schema, SPARQL/Cypher patterns |
 | 09 | [Data Quality](09-data-quality/README.md) | DQ framework, rule catalog, pipelines, scorecards, remediation | `rules/*.yaml` |
 | 10 | [Agentic Pipeline](10-agentic-pipeline/README.md) | Agent architecture, catalog, orchestration, tools/MCP, guardrails, memory | `agents/*.yaml` |
+| 14 | [Agent Memory, Caching & Self-Improvement](14-memory-and-self-improvement/README.md) | Mem0 + Graphiti memory layers, semantic/prompt caching, recursive self-healing and self-improving loops | `memory-schema.yaml`, `healing-playbooks/` |
 | 11 | [Governance, Security & Compliance](11-governance-security-compliance/README.md) | HIPAA/PHI, access control, lineage/provenance/audit, stewardship | Policy matrices |
 | 12 | [Platform & Operations](12-platform-and-operations/README.md) | Deployment topology, environments, CI/CD, observability, DR/retention | SLO tables |
+| 15 | [Adversarial Review & Production Readiness](15-adversarial-review/README.md) | Red-team findings, Fortune-100 legacy/tech-debt outliers, remediation log | Findings register |
 | 13 | [Roadmap & Acceptance](13-roadmap-and-acceptance/README.md) | Phased delivery, acceptance criteria, risks and open questions | — |
 | 99 | [Appendices](99-appendices/) | Glossary, code-system reference, bibliography | — |
 
