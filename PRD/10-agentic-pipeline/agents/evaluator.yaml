@@ -1,0 +1,115 @@
+manifest_version: 0.1.0
+id: agent.evaluator
+role: Evaluator / Critic
+mission: >-
+  Independently score every change request against its rubric, run the automated checks (OWL consistency,
+  SHACL, label completeness, mapping golden tests, DQ backtests, DDL dry-run, FHIR validation, schema
+  compatibility), act as a calibrated LLM-as-judge, and publish verdicts; never proposes changes itself.
+owns_modules: ["10"]
+autonomy_level: not_applicable
+model:
+  ref: "${MODEL_CRITIQUE}"
+  recommended_default: claude-fable-5-1
+  fallback_ref: "${MODEL_REASONING}"
+  temperature: 0.0
+  max_output_tokens: 16384
+  structured_output: true
+tools:
+  - server: cr-engine
+    operations: [get_cr, list_crs, record_evaluation]
+    permission: apply
+    phi_access: none
+  - server: ontology-registry
+    operations: [run_reasoner, validate_shacl, diff, check_label_collision, detect_cycles, list_orphans, get_release]
+    permission: read
+    phi_access: none
+  - server: terminology-service
+    operations: [expand, validate_code, translate, subsumes]
+    permission: read
+    phi_access: none
+  - server: fhir-validator
+    operations: [validate_resource, validate_bundle, validate_profile]
+    permission: read
+    phi_access: none
+  - server: dq-engine
+    operations: [backtest_rule, run_rule]
+    permission: read
+    phi_access: masked
+  - server: edw-metadata
+    operations: [ddl_dry_run, naming_lint]
+    permission: read
+    phi_access: none
+  - server: schema-registry
+    operations: [check_compatibility]
+    permission: read
+    phi_access: none
+  - server: graph-query
+    operations: [sparql_select, sparql_ask]
+    permission: read
+    phi_access: none
+  - server: git
+    operations: [read_file, get_diff]
+    permission: read
+    phi_access: none
+  - server: lineage
+    operations: [impact_analysis]
+    permission: read
+    phi_access: none
+triggers:
+  - kind: event
+    topic: hc.ops.agent.changerequest.v1
+    event_type: state_changed
+    description: CR entered 'proposed' (or re-proposed after revise).
+  - kind: schedule
+    cron: "0 6 * * 0"
+    description: Weekly calibration — rescore the human-reviewed sample and publish agreement statistics.
+  - kind: schedule
+    cron: "0 2 * * *"
+    description: Nightly regression suites against the release candidate.
+  - kind: manual
+inputs:
+  - CR payload, evidence, impact and target context
+  - Rubrics (05-guardrails-hitl-evals.md §4) and golden datasets
+  - Human reviewer decisions (for calibration)
+outputs:
+  - artefact: Evaluation record (rubric scores, automated checks, aggregate, verdict)
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+  - artefact: Weekly calibration report (agreement, drift per CR type)
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+  - artefact: Graduation evidence summaries per agent
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+risk_classes: []
+evaluation:
+  rubric_ids: [RUB-EVL-01]
+  auto_approve_threshold: null
+  human_agreement_target: 0.95
+  golden_sets: [human-reviewed-cr-sample-rolling-90d, adversarial-cr-set-v1]
+budgets:
+  tokens_per_run: 200000
+  runs_per_day: 3000
+  daily_token_cap: 100000000
+  max_tool_calls_per_run: 150
+  wall_clock_minutes_per_run: 45
+  max_concurrent_runs: 16
+  max_open_change_requests: 0
+escalation:
+  to: [Agent Operator]
+  sla_hours: 4
+  on_low_score: If calibration agreement < 0.90 for a CR type, auto-approval for that type is suspended until recalibrated.
+  on_budget_exhausted: Evaluate high/phi_affecting first; low-risk CRs queue.
+  on_tool_failure: Mark check 'skipped' — a skipped mandatory check forces human review.
+  on_conflict: Not applicable.
+memory:
+  working: true
+  episodic: true
+  semantic_write: false
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: none
+  criteria: [Not applicable — the evaluator holds no autonomy level; its calibration gates other agents' graduation.]
+  demotion_triggers: []

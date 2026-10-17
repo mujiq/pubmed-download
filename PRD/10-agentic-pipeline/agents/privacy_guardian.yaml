@@ -1,0 +1,121 @@
+manifest_version: 0.1.0
+id: agent.privacy_guardian
+role: Privacy Guardian
+mission: >-
+  Classify PHI across every registered element, enforce minimisation in agent tool access, review every
+  change request for PHI impact, block disallowed flows (topics, mappings, DDL, graph loads) and veto any
+  proposal that would expose, re-identify or improperly retain PHI. Veto authority over all other agents.
+owns_modules: ["11"]
+autonomy_level: L4
+autonomy_ceiling: L4
+model:
+  ref: "${MODEL_CRITIQUE}"
+  recommended_default: claude-fable-5-1
+  fallback_ref: "${MODEL_REASONING}"
+  temperature: 0.0
+  max_output_tokens: 8192
+  structured_output: true
+tools:
+  - server: source-registry
+    operations: [get_element, list_elements, set_phi_classification]
+    permission: apply
+    phi_access: none
+  - server: cr-engine
+    operations: [get_cr, list_crs, record_privacy_review, veto_cr, kill_switch]
+    permission: admin
+    phi_access: none
+  - server: ontology-registry
+    operations: [get_concept, get_shapes, diff]
+    permission: read
+    phi_access: none
+  - server: edw-metadata
+    operations: [describe_table, list_columns, get_column_bindings]
+    permission: read
+    phi_access: none
+  - server: kafka-admin
+    operations: [describe_topic, list_acls, propose_acl_change]
+    permission: propose
+    phi_access: none
+  - server: graph-query
+    operations: [sparql_select, sparql_ask]
+    permission: read
+    phi_access: none
+  - server: sql-sandbox
+    operations: [profile_column]
+    permission: read
+    phi_access: masked
+  - server: lineage
+    operations: [get_downstream, impact_analysis]
+    permission: read
+    phi_access: none
+  - server: ticketing
+    operations: [create_issue, update_issue, link_cr]
+    permission: apply
+    phi_access: none
+triggers:
+  - kind: event
+    topic: hc.ops.agent.changerequest.v1
+    event_type: state_changed
+    description: Every CR entering 'evaluated' receives a privacy review before any approval gate.
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: new_element_registered
+    description: Classify PHI for every new element (18 HIPAA identifiers + sensitive categories).
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: phi_access_exception
+    description: Audit log reported break-glass or masked-view bypass.
+  - kind: schedule
+    cron: "0 1 * * *"
+    description: Nightly scan of agent decision logs, CR summaries and memory stores for PHI leakage.
+  - kind: manual
+inputs:
+  - CRs in state 'evaluated' with payload, impact and evidence
+  - Data Element Catalog with PHI hints and element-level lineage
+  - PHI policy matrix (module 11), de-identification standard (Safe Harbor / Expert Determination)
+  - Topic ACLs, EDW column masks, named-graph access policies
+outputs:
+  - artefact: Privacy review decision (cleared / cleared_with_conditions / vetoed) with PGV rule ids
+    cr_type: null
+    destination: hc.ops.agent.changerequest.v1
+  - artefact: PHI classification updates on elements
+    cr_type: null
+    destination: source-registry
+  - artefact: Leakage scan report and incidents
+    cr_type: null
+    destination: ticketing
+  - artefact: ACL / mask change proposals
+    cr_type: topic
+    destination: cr-engine
+risk_classes: [low, medium, high, phi_affecting]
+evaluation:
+  rubric_ids: [RUB-PHI-01, RUB-PHI-02, RUB-EVD-01]
+  auto_approve_threshold: null
+  human_agreement_target: 0.98
+  golden_sets: [labelled-phi-elements-v1, phi-leakage-redteam-v1]
+budgets:
+  tokens_per_run: 60000
+  runs_per_day: 2000
+  daily_token_cap: 40000000
+  max_tool_calls_per_run: 60
+  wall_clock_minutes_per_run: 15
+  max_concurrent_runs: 10
+  max_open_change_requests: 20
+escalation:
+  to: [Privacy & Security Officer]
+  sla_hours: 2
+  on_low_score: Default to veto; a human privacy officer may override with recorded justification.
+  on_budget_exhausted: Fail closed — no CR may pass the privacy gate until budget resets or officer extends it.
+  on_tool_failure: Fail closed; page Privacy & Security Officer.
+  on_conflict: Veto wins over any approval.
+memory:
+  working: true
+  episodic: true
+  semantic_write: false
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: none
+  criteria: [Fixed at L4 by ADR-06; level is not subject to graduation or demotion.]
+  demotion_triggers: []

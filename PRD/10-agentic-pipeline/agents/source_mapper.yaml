@@ -1,0 +1,124 @@
+manifest_version: 0.1.0
+id: agent.source_mapper
+role: Source Mapper
+mission: >-
+  Map source fields to std and FHIR R4 canonical resources: HL7 v2 segment/field → FHIR element, Millennium
+  CDC columns → FHIR, Oracle Fusion BICC/REST entities → FHIR or HEALIX-ERP extension profiles; maintain the
+  mapping specs under test with golden message sets and keep them aligned with ontology bindings.
+pipeline_stage: [0, 5]
+owns_modules: ["03", "06"]
+autonomy_level: L2
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_MAPPING}"
+  recommended_default: claude-sonnet-5-5
+  fallback_ref: "${MODEL_CLASSIFICATION}"
+  temperature: 0.0
+  max_output_tokens: 16384
+  structured_output: true
+tools:
+  - server: source-registry
+    operations: [get_source, get_element, list_elements]
+    permission: read
+    phi_access: none
+  - server: schema-registry
+    operations: [get_schema, check_compatibility, list_subjects]
+    permission: read
+    phi_access: none
+  - server: kafka-admin
+    operations: [sample_records, describe_topic]
+    permission: read
+    phi_access: masked
+  - server: terminology-service
+    operations: [translate, validate_code, lookup]
+    permission: read
+    phi_access: none
+  - server: fhir-validator
+    operations: [validate_resource, validate_bundle, get_structure_definition]
+    permission: read
+    phi_access: none
+  - server: ontology-registry
+    operations: [get_concept, list_properties]
+    permission: read
+    phi_access: none
+  - server: dq-engine
+    operations: [run_rule]
+    permission: read
+    phi_access: masked
+  - server: cr-engine
+    operations: [create_cr, get_cr, withdraw_cr]
+    permission: propose
+    phi_access: none
+  - server: git
+    operations: [read_file, create_branch, commit, open_pr, get_diff]
+    permission: propose
+    phi_access: none
+triggers:
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: new_source_discovered
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: schema_drift
+    description: New Avro version on hc.raw.*/hc.std.* or changed HL7 v2 conformance profile.
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: mapping_failure
+    description: Canonicaliser dead-letter rate exceeded threshold for a source.
+  - kind: change_request
+    cr_types: [profile]
+  - kind: manual
+inputs:
+  - Source element catalog entries and HL7 v2 conformance profiles (e.g. ADT^A01, ORU^R01, ORM^O01, DFT^P03, SIU^S12)
+  - Avro schemas for hc.std.* subjects
+  - FHIR R4 US Core 6.1 and HEALIX profiles
+  - Masked sample messages and CDC rows
+  - Golden message→resource test pairs
+outputs:
+  - artefact: Mapping specs (hl7v2-mapping / yaml) std→FHIR with element-level provenance
+    cr_type: mapping
+    destination: cr-engine
+  - artefact: Golden test additions (masked/synthetic) per mapping
+    cr_type: mapping
+    destination: git
+  - artefact: Mapping coverage report per source
+    cr_type: null
+    destination: hc.ops.agent.decision.v1
+risk_classes: [low, medium, high, phi_affecting]
+evaluation:
+  rubric_ids: [RUB-MAP-01, RUB-MAP-02, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: 0.93
+  human_agreement_target: 0.95
+  golden_sets: [golden-mappings-cerner-adt-v1, golden-mappings-cerner-oru-v1, golden-mappings-fusion-ap-v1, synthetic-fhir-bundles-v1]
+  regression_suites: [mapping-golden-tests, fhir-validation-us-core-6.1]
+budgets:
+  tokens_per_run: 200000
+  runs_per_day: 150
+  daily_token_cap: 20000000
+  max_tool_calls_per_run: 400
+  wall_clock_minutes_per_run: 90
+  max_concurrent_runs: 6
+  max_open_change_requests: 120
+escalation:
+  to: [Integration Engineer, Data Steward (domain)]
+  sla_hours: 24
+  on_low_score: Revise once with failing golden cases; then human review.
+  on_budget_exhausted: Flush completed mapping CRs; checkpoint remaining elements.
+  on_veto: Withdraw CR; mapping marked 'blocked_phi' in coverage report.
+  on_conflict: One open mapping CR per (source, resource) pair; later proposals rebase.
+memory:
+  working: true
+  episodic: true
+  semantic_write: false
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: L3
+  criteria:
+    - ">= 500 evaluated mapping CRs over >= 90 days"
+    - "Golden-test pass rate on first evaluation >= 0.98"
+    - "Rollback rate <= 0.5 %; FHIR validation pass rate of produced resources >= 99.5 %"
+  demotion_triggers:
+    - A released mapping that mis-assigns a PHI field (immediate demotion to L1).
+    - Dead-letter rate increase attributable to a released mapping > 0.5 %.

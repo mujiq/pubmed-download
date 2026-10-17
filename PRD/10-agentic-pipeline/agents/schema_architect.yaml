@@ -1,0 +1,112 @@
+manifest_version: 0.1.0
+id: agent.schema_architect
+role: EDW Schema Architect
+mission: >-
+  Derive EDW conceptual/logical/physical models for subject-area groups G1–G9 from the ontology and the IBM
+  UDMH / Teradata HCDM blueprint patterns, maintain conformed dimensions and bitemporal history tables, and
+  write forward-only, idempotent, reversible DDL migrations in Teradata dialect plus the portable variant.
+pipeline_stage: [4, 5]
+owns_modules: ["04", "05"]
+autonomy_level: L1
+autonomy_ceiling: L2
+model:
+  ref: "${MODEL_REASONING}"
+  recommended_default: claude-fable-5-1
+  fallback_ref: "${MODEL_MAPPING}"
+  temperature: 0.1
+  max_output_tokens: 16384
+  structured_output: true
+tools:
+  - server: ontology-registry
+    operations: [get_release, list_classes, list_properties, get_shapes, get_concept]
+    permission: read
+    phi_access: none
+  - server: edw-metadata
+    operations: [list_schemas, describe_table, list_columns, get_column_bindings, propose_ddl, ddl_dry_run, naming_lint]
+    permission: propose
+    phi_access: none
+  - server: sql-sandbox
+    operations: [run_query, explain, profile_column]
+    permission: read
+    phi_access: masked
+  - server: lineage
+    operations: [impact_analysis, get_downstream]
+    permission: read
+    phi_access: none
+  - server: schema-registry
+    operations: [get_schema]
+    permission: read
+    phi_access: none
+  - server: cr-engine
+    operations: [create_cr, get_cr, withdraw_cr]
+    permission: propose
+    phi_access: none
+  - server: git
+    operations: [read_file, create_branch, commit, open_pr, get_diff]
+    permission: propose
+    phi_access: none
+triggers:
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: ontology_release
+    description: Diff the release against bound EDW attributes; propose DDL for new classes/properties.
+  - kind: change_request
+    cr_types: [vocabulary, taxonomy]
+    description: New dimension member or hierarchy level needed (e.g. new encounter class value).
+  - kind: schedule
+    cron: "0 3 * * 6"
+    description: Weekly drift check between physical EDW and logical model; unbound-column report.
+  - kind: manual
+inputs:
+  - Ontology release and attribute bindings
+  - UDMH/HCDM pattern catalogue (licensed; by pattern id) and harmonisation matrix (module 04)
+  - Current DDL and migration history, conformed dimension registry
+  - Downstream consumers (dbt models, BI semantic layer) from lineage
+outputs:
+  - artefact: Logical model changes (entities, attributes, keys, group assignment)
+    cr_type: edw_ddl
+    destination: cr-engine
+  - artefact: DDL migration + compensating migration (Teradata + portable)
+    cr_type: edw_ddl
+    destination: cr-engine
+  - artefact: Dry-run report and impact analysis
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+risk_classes: [medium, high, phi_affecting]
+evaluation:
+  rubric_ids: [RUB-DDL-01, RUB-DDL-02, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: null
+  human_agreement_target: 0.95
+  golden_sets: [golden-edw-g2-clinical-v1, golden-conformed-dimensions-v1]
+  regression_suites: [ddl-dry-run-all-dialects, ddl-naming-lint, migration-reversibility]
+budgets:
+  tokens_per_run: 250000
+  runs_per_day: 30
+  daily_token_cap: 5000000
+  max_tool_calls_per_run: 200
+  wall_clock_minutes_per_run: 90
+  max_concurrent_runs: 2
+  max_open_change_requests: 20
+escalation:
+  to: [Data Warehouse Architect, Enterprise Architecture]
+  sla_hours: 72
+  on_low_score: Attach dry-run failures; request architect review.
+  on_budget_exhausted: Checkpoint; resume on next run.
+  on_veto: Withdraw CR; notify Privacy & Security Officer when a PHI column is involved.
+  on_tool_failure: Dry-run environment unavailable → CR stays 'proposed' with blocker.
+  on_conflict: One open DDL CR per table; later CRs rebase after apply.
+memory:
+  working: true
+  episodic: true
+  semantic_write: false
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: L2
+  criteria:
+    - ">= 150 human-approved edw_ddl CRs with approval rate >= 0.90 over >= 180 days"
+    - "Zero failed production migrations"
+    - "PRD revision approving L2 for additive, non-PHI column/dimension-member changes only"
+  demotion_triggers:
+    - Any production migration requiring manual rollback (stays L1; incident).

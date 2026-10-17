@@ -1,0 +1,120 @@
+manifest_version: 0.1.0
+id: agent.inventory
+role: Metadata Inventory Agent (Stage 0)
+mission: >-
+  Discover sources, schemas, tables, segments, fields and codes across Cerner Millennium, Oracle Fusion and
+  peripheral systems; maintain the Source Registry and Data Element Catalog with stewards, PHI classification
+  hints and profiling statistics so that nothing enters the pipeline without a registered element.
+pipeline_stage: [0]
+owns_modules: ["02", "03", "G9"]
+autonomy_level: L3
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_MAPPING}"
+  recommended_default: claude-sonnet-5-5
+  fallback_ref: "${MODEL_CLASSIFICATION}"
+  temperature: 0.0
+  max_output_tokens: 16384
+  structured_output: true
+tools:
+  - server: source-registry
+    operations: [list_sources, get_source, list_elements, get_element, register_source, upsert_element, propose_steward]
+    permission: apply
+    phi_access: none
+  - server: schema-registry
+    operations: [list_subjects, get_schema, get_schema_history]
+    permission: read
+    phi_access: none
+  - server: kafka-admin
+    operations: [list_topics, describe_topic, sample_records]
+    permission: read
+    phi_access: masked
+  - server: edw-metadata
+    operations: [list_schemas, describe_table, list_columns]
+    permission: read
+    phi_access: none
+  - server: sql-sandbox
+    operations: [profile_column, run_query]
+    permission: read
+    phi_access: masked
+  - server: dq-engine
+    operations: [profile_dataset]
+    permission: read
+    phi_access: masked
+  - server: lineage
+    operations: [get_upstream, get_downstream, emit_run_event]
+    permission: apply
+    phi_access: none
+  - server: cr-engine
+    operations: [create_cr, get_cr]
+    permission: propose
+    phi_access: none
+  - server: ticketing
+    operations: [create_issue, link_cr]
+    permission: apply
+    phi_access: none
+triggers:
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: new_source_discovered
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: schema_drift
+    description: Schema Registry registered a new version or CDC saw DDL change on a Millennium replica table.
+  - kind: schedule
+    cron: "30 2 * * *"
+    description: Nightly crawl of Schema Registry subjects, Millennium data dictionary views and Oracle Fusion BICC PVO metadata.
+  - kind: manual
+inputs:
+  - Schema Registry subjects (hc.raw.*, hc.std.*)
+  - Cerner Millennium data dictionary (CODE_VALUE, CODE_SET, DM_TABLES/DM_COLUMNS via replica)
+  - Oracle Fusion BICC public view object metadata and REST discovery
+  - HL7 v2 conformance profiles of peripheral interfaces
+  - Masked column profiles (null %, distinct count, pattern histograms)
+outputs:
+  - artefact: Source Registry entries (source, system of record, owner, cadence, interface type)
+    cr_type: null
+    destination: source-registry
+  - artefact: Data Element Catalog entries with PHI hint, candidate code set, profiling stats
+    cr_type: null
+    destination: source-registry
+  - artefact: New-element notifications for vocabulary harvesting
+    cr_type: null
+    destination: hc.ops.agent.trigger.v1
+  - artefact: Stewardship assignment proposals
+    cr_type: vocabulary
+    destination: cr-engine
+risk_classes: [low, medium]
+evaluation:
+  rubric_ids: [RUB-INV-01, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: 0.90
+  human_agreement_target: 0.95
+  golden_sets: [golden-inventory-cerner-v1, golden-inventory-fusion-v1]
+budgets:
+  tokens_per_run: 400000
+  runs_per_day: 50
+  daily_token_cap: 12000000
+  max_tool_calls_per_run: 2000
+  wall_clock_minutes_per_run: 180
+  max_concurrent_runs: 4
+  max_open_change_requests: 50
+escalation:
+  to: [Data Steward (domain), Integration Engineer]
+  sla_hours: 24
+  on_low_score: Register element as 'unclassified' and open a steward ticket; do not emit downstream trigger.
+  on_budget_exhausted: Checkpoint crawl cursor; resume next scheduled run.
+  on_tool_failure: Mark source 'unreachable' with timestamp; retry in 6 h.
+  on_conflict: Prefer the entry with the newer source timestamp; record both in episodic memory.
+memory:
+  working: true
+  episodic: true
+  semantic_write: false
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: none
+  criteria: [L3 is the ceiling; registry writes are metadata-only and reversible.]
+  demotion_triggers:
+    - PHI hint false-negative confirmed by privacy_guardian (immediate demotion to L2 for 30 days).
+    - Inventory golden-set precision below 0.97 on two consecutive weekly evaluations.

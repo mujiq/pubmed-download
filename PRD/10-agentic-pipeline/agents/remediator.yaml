@@ -1,0 +1,106 @@
+manifest_version: 0.1.0
+id: agent.remediator
+role: Remediator
+mission: >-
+  Resolve quarantined canonical records within policy: re-map codes via approved ConceptMaps, re-run
+  canonicalisation after a mapping fix, apply deterministic corrections (unit normalisation to UCUM, identifier
+  formatting) and route the rest to stewards with masked evidence. Never alters clinical meaning on its own.
+pipeline_stage: [5]
+owns_modules: ["09"]
+autonomy_level: L2
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_CLASSIFICATION}"
+  recommended_default: claude-haiku-5-5
+  fallback_ref: "${MODEL_MAPPING}"
+  temperature: 0.0
+  max_output_tokens: 4096
+  structured_output: true
+tools:
+  - server: dq-engine
+    operations: [open_quarantine_sample, list_results, run_rule, replay_quarantine, propose_remediation]
+    permission: propose
+    phi_access: masked
+  - server: terminology-service
+    operations: [translate, validate_code, lookup]
+    permission: read
+    phi_access: none
+  - server: fhir-validator
+    operations: [validate_resource]
+    permission: read
+    phi_access: none
+  - server: kafka-admin
+    operations: [describe_topic]
+    permission: read
+    phi_access: none
+  - server: ticketing
+    operations: [create_issue, update_issue, link_cr]
+    permission: apply
+    phi_access: none
+  - server: cr-engine
+    operations: [create_cr, get_cr]
+    permission: propose
+    phi_access: none
+triggers:
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: dq_anomaly
+    description: Quarantine topic growth for a (source, resource, rule) tuple.
+  - kind: change_request
+    cr_types: [mapping, value_set]
+    description: A fix was applied — replay the quarantine for records that failed on the fixed element.
+  - kind: schedule
+    cron: "0 */4 * * *"
+    description: Sweep quarantine topics for records older than SLA.
+  - kind: manual
+inputs:
+  - Quarantined record samples (masked) and failing rule ids
+  - Approved ConceptMaps and remediation playbooks
+  - Recently applied mapping / value_set CRs
+outputs:
+  - artefact: Remediation plans (deterministic transform + replay scope) per quarantine class
+    cr_type: dq_rule
+    destination: cr-engine
+  - artefact: Replay jobs for quarantined partitions after approval
+    cr_type: null
+    destination: dq-engine
+  - artefact: Steward tickets with masked evidence for non-automatable cases
+    cr_type: null
+    destination: ticketing
+risk_classes: [low, medium, phi_affecting]
+evaluation:
+  rubric_ids: [RUB-REM-01, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: 0.95
+  human_agreement_target: 0.95
+  golden_sets: [golden-remediation-cases-v1]
+  regression_suites: [remediation-no-semantic-change, remediation-idempotent-replay]
+budgets:
+  tokens_per_run: 40000
+  runs_per_day: 500
+  daily_token_cap: 10000000
+  max_tool_calls_per_run: 100
+  wall_clock_minutes_per_run: 20
+  max_concurrent_runs: 8
+  max_open_change_requests: 100
+escalation:
+  to: [Data Steward (domain)]
+  sla_hours: 8
+  on_low_score: Do not replay; open steward ticket with plan attached.
+  on_budget_exhausted: Stop sweeping; quarantine backlog metric raised.
+  on_veto: Discard plan; record veto; steward ticket.
+  on_conflict: One remediation plan per (source, resource, rule); later plans wait.
+memory:
+  working: true
+  episodic: true
+  semantic_write: false
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: L3
+  criteria:
+    - ">= 1000 evaluated remediation plans over >= 90 days"
+    - "Zero remediations that changed a clinical code's meaning (steward audit)"
+    - "Replay success rate >= 0.99"
+  demotion_triggers:
+    - Any remediation touching an unmasked PHI value outside the audited tool path (immediate L1).
