@@ -1,0 +1,121 @@
+manifest_version: 0.1.0
+id: agent.kg_builder
+role: Knowledge Graph Builder (Stage 5)
+mission: >-
+  Generate and maintain RML/R2RML and FHIR→RDF mappings from canonical FHIR topics and EDW tables to the
+  ontology, load the bitemporal RDF-star graph in named graphs with PROV-O activities, run entity resolution
+  against the labelled EMPI pair set, and reconcile the graph with the EDW nightly.
+pipeline_stage: [5]
+owns_modules: ["08"]
+autonomy_level: L3
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_MAPPING}"
+  recommended_default: claude-sonnet-5-5
+  fallback_ref: "${MODEL_REASONING}"
+  temperature: 0.0
+  max_output_tokens: 16384
+  structured_output: true
+tools:
+  - server: ontology-registry
+    operations: [get_release, list_classes, list_properties, get_shapes, validate_shacl]
+    permission: read
+    phi_access: none
+  - server: graph-query
+    operations: [sparql_select, sparql_ask, sparql_construct, load_batch, propose_update, get_named_graphs]
+    permission: apply
+    phi_access: masked
+  - server: schema-registry
+    operations: [get_schema, list_subjects]
+    permission: read
+    phi_access: none
+  - server: kafka-admin
+    operations: [describe_topic, get_consumer_lag, sample_records]
+    permission: read
+    phi_access: masked
+  - server: edw-metadata
+    operations: [describe_table, list_columns, get_column_bindings]
+    permission: read
+    phi_access: none
+  - server: sql-sandbox
+    operations: [run_query]
+    permission: read
+    phi_access: masked
+  - server: lineage
+    operations: [emit_run_event, get_upstream]
+    permission: apply
+    phi_access: none
+  - server: cr-engine
+    operations: [create_cr, get_cr]
+    permission: propose
+    phi_access: none
+  - server: git
+    operations: [read_file, create_branch, commit, open_pr]
+    permission: propose
+    phi_access: none
+triggers:
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: ontology_release
+    description: New ontology release — regenerate mappings and re-validate loaders.
+  - kind: change_request
+    cr_types: [profile, edw_ddl]
+    description: Canonical profile or EDW DDL changed — update RML/R2RML.
+  - kind: schedule
+    cron: "0 0 * * *"
+    description: Nightly KG↔EDW reconciliation (counts, business keys, as-of snapshots).
+  - kind: manual
+inputs:
+  - Ontology release (OWL + SHACL) and FHIR profiles
+  - Canonical topic schemas (hc.canonical.*) and EDW DDL
+  - Bitemporal model rules (module 08) and named-graph naming convention
+  - Labelled EMPI pair set (de-identified) for entity-resolution evaluation
+outputs:
+  - artefact: RML / R2RML mapping files and FHIR→RDF transformation specs
+    cr_type: mapping
+    destination: cr-engine
+  - artefact: Named-graph loads with PROV-O activity and bitemporal annotations
+    cr_type: null
+    destination: graph store (via load_batch)
+  - artefact: Reconciliation report KG vs EDW
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+  - artefact: Entity-resolution evaluation report
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+risk_classes: [low, medium, high]
+evaluation:
+  rubric_ids: [RUB-KG-01, RUB-ER-01, RUB-MAP-01, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: 0.90
+  human_agreement_target: 0.95
+  golden_sets: [golden-fhir-to-rdf-bundles-v1, labelled-empi-pairs-v1]
+  regression_suites: [kg-bitemporal-invariants, kg-prov-completeness, kg-shacl-on-load]
+budgets:
+  tokens_per_run: 200000
+  runs_per_day: 100
+  daily_token_cap: 10000000
+  max_tool_calls_per_run: 1000
+  wall_clock_minutes_per_run: 240
+  max_concurrent_runs: 4
+  max_open_change_requests: 40
+escalation:
+  to: [Data Warehouse Architect, Platform SRE]
+  sla_hours: 24
+  on_low_score: Load to staging named graph only; do not promote; open ticket.
+  on_budget_exhausted: Pause loads; keep consumer offsets uncommitted.
+  on_veto: Purge staging graph for the batch; record veto.
+  on_tool_failure: Retry batch idempotently (same batch ULID); after 3 failures park and alert.
+  on_conflict: Mapping CRs on the same source table are serialised.
+memory:
+  working: true
+  episodic: true
+  semantic_write: true
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: none
+  criteria: [L3 is the ceiling; graph loads are idempotent and replayable from canonical topics.]
+  demotion_triggers:
+    - Reconciliation variance > 0.1 % of business keys for 3 consecutive nights (demotion to L2).
+    - Any PROV-O-less assertion detected in production graph.

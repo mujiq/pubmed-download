@@ -1,0 +1,374 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology.healix.example.org/schema/change-request/1.0.0",
+  "title": "HEALIX Change Request (CR)",
+  "description": "The typed change request every autonomous or human-initiated change to vocabulary, taxonomy, thesaurus, ontology, mapping, value set, DQ rule, EDW DDL, Kafka topic or FHIR profile must travel through. Owned by module 10 (AGT-03); consumed by modules 02, 05, 06, 09, 11. Published as the value of hc.ops.agent.changerequest.v1 on every state transition.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "schema_version", "type", "risk_class", "state", "environment", "proposer", "title", "summary",
+    "target", "evidence", "payload", "gates_required", "idempotency_key", "state_history", "provenance",
+    "created_at", "updated_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^CR-[0-9]{8}-[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "CR-<yyyymmdd>-<ULID>. Immutable."
+    },
+    "schema_version": { "const": "1.0.0" },
+    "type": { "$ref": "#/$defs/crType" },
+    "risk_class": { "$ref": "#/$defs/riskClass" },
+    "state": { "$ref": "#/$defs/state" },
+    "environment": { "enum": ["dev", "test", "uat", "prod"] },
+    "title": { "type": "string", "minLength": 10, "maxLength": 200 },
+    "summary": { "type": "string", "minLength": 20, "maxLength": 4000, "description": "Human-readable description. MUST NOT contain PHI; generated from metadata, aggregates and masked samples only." },
+    "rationale": { "type": "string", "maxLength": 8000 },
+    "proposer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent_id", "run_id", "autonomy_level_at_proposal"],
+      "properties": {
+        "agent_id": { "type": "string", "pattern": "^(agent\\.[a-z][a-z0-9_]*|human:[A-Za-z0-9._@-]+)$" },
+        "run_id": { "type": "string", "minLength": 8 },
+        "autonomy_level_at_proposal": { "enum": ["L1", "L2", "L3", "L4", "human"] },
+        "model": { "type": "string", "description": "Resolved model id used for this run (for audit; configuration ref lives in the manifest)." },
+        "manifest_version": { "type": "string" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module", "artefact_ref"],
+      "properties": {
+        "module": { "type": "string", "pattern": "^(0[2-9]|1[0-1])$" },
+        "artefact_ref": { "type": "string", "description": "IRI, repo path, topic name, table name or rule id of the artefact being changed." },
+        "subject_area_group": { "type": "string", "pattern": "^G[1-9]$" },
+        "pipeline_stage": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "current_version": { "type": "string" },
+        "source_system": { "type": "string", "description": "e.g. cerner_millennium, oracle_fusion_erp, lis_sunquest" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources"],
+      "properties": {
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "ref"],
+            "properties": {
+              "kind": { "enum": ["source_registry_element", "kafka_sample", "terminology_release", "standard", "ticket", "dq_result", "profiling_run", "reasoner_report", "human_note", "prior_cr", "golden_set"] },
+              "ref": { "type": "string" },
+              "description": { "type": "string", "maxLength": 1000 },
+              "untrusted_text": { "type": "boolean", "default": true, "description": "True when the evidence contains data-derived free text (labels, notes) that must be treated as untrusted input." }
+            }
+          }
+        },
+        "profiling_stats": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["metric", "value", "computed_at", "phi_masked"],
+            "properties": {
+              "metric": { "type": "string" },
+              "value": { "type": ["number", "string", "boolean"] },
+              "unit": { "type": "string" },
+              "sample_size": { "type": "integer", "minimum": 0 },
+              "population": { "type": "string" },
+              "computed_at": { "type": "string", "format": "date-time" },
+              "phi_masked": { "const": true }
+            }
+          }
+        },
+        "test_results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["suite", "passed", "failed"],
+            "properties": {
+              "suite": { "type": "string" },
+              "passed": { "type": "integer", "minimum": 0 },
+              "failed": { "type": "integer", "minimum": 0 },
+              "skipped": { "type": "integer", "minimum": 0 },
+              "report_ref": { "type": "string" }
+            }
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["standard"],
+            "properties": {
+              "standard": { "type": "string", "description": "e.g. SNOMED CT 20260301, LOINC 2.80, FHIR R4 US Core 6.1, ISO 25964-1, HL7 v2.5.1 Ch.3" },
+              "citation": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "operation"],
+      "properties": {
+        "format": { "enum": ["skos-turtle", "owl-turtle", "shacl-turtle", "sparql-update", "fhir-json", "yaml", "sql-ddl", "json-patch", "rml", "r2rml", "hl7v2-mapping", "avro-schema", "json-schema", "markdown"] },
+        "operation": { "enum": ["create", "update", "deprecate", "delete", "merge", "split", "retire"] },
+        "diff": { "type": "string", "maxLength": 262144, "description": "Unified diff or format-native delta. Larger payloads go in payload_ref." },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["uri", "sha256"],
+          "properties": {
+            "uri": { "type": "string", "format": "uri" },
+            "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "media_type": { "type": "string" }
+          }
+        },
+        "affected_iris": { "type": "array", "items": { "type": "string", "format": "uri" }, "uniqueItems": true },
+        "affected_objects": { "type": "array", "items": { "type": "string" }, "uniqueItems": true, "description": "Tables, topics, rule ids, profile canonical URLs." }
+      },
+      "anyOf": [ { "required": ["diff"] }, { "required": ["payload_ref"] } ]
+    },
+    "impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "breaking": { "type": "boolean" },
+        "downstream_artefacts": { "type": "array", "items": { "type": "string" } },
+        "estimated_rows_affected": { "type": "integer", "minimum": 0 },
+        "estimated_triples_affected": { "type": "integer", "minimum": 0 },
+        "phi_fields_touched": { "type": "array", "items": { "type": "string" }, "description": "Element ids (not values) of PHI-classified fields touched. Non-empty forces risk_class phi_affecting." },
+        "consumers_notified": { "type": "array", "items": { "type": "string" } },
+        "lineage_report_ref": { "type": "string" }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluator_run_id", "rubric_scores", "automated_checks", "aggregate_score", "verdict", "evaluated_at"],
+      "properties": {
+        "evaluator_run_id": { "type": "string" },
+        "rubric_scores": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rubric_id", "score"],
+            "properties": {
+              "rubric_id": { "type": "string", "pattern": "^RUB-[A-Z]{2,4}-[0-9]{2}$" },
+              "score": { "type": "number", "minimum": 0, "maximum": 1 },
+              "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+              "notes": { "type": "string", "maxLength": 4000 }
+            }
+          }
+        },
+        "automated_checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["check", "status"],
+            "properties": {
+              "check": { "enum": ["owl_consistency", "owl_unsatisfiable_classes", "shacl_validation", "label_completeness", "label_collision", "cycle_detection", "mapping_golden_tests", "fhir_validation", "value_set_expansion", "dq_rule_backtest", "ddl_dry_run", "ddl_naming_lint", "schema_compatibility", "topic_naming_lint", "prov_completeness", "phi_scan", "prompt_injection_scan", "idempotency_check"] },
+              "status": { "enum": ["pass", "fail", "warn", "skipped"] },
+              "details_ref": { "type": "string" },
+              "summary": { "type": "string", "maxLength": 2000 }
+            }
+          }
+        },
+        "aggregate_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "verdict": { "enum": ["approve", "revise", "reject"] },
+        "evaluated_at": { "type": "string", "format": "date-time" },
+        "llm_judge": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "model": { "type": "string" },
+            "calibration_set_version": { "type": "string" },
+            "estimated_human_agreement": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
+    "privacy_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer", "decision", "phi_classification", "reviewed_at"],
+      "properties": {
+        "reviewer": { "const": "agent.privacy_guardian" },
+        "decision": { "enum": ["cleared", "cleared_with_conditions", "vetoed"] },
+        "phi_classification": { "enum": ["none", "de_identified", "limited_data_set", "phi"] },
+        "conditions": { "type": "array", "items": { "type": "string" } },
+        "veto_rule_ids": { "type": "array", "items": { "type": "string", "pattern": "^PGV-[0-9]{3}$" } },
+        "reviewed_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "gates_required": {
+      "type": "array",
+      "items": { "enum": ["evaluation", "privacy_review", "auto_approval", "steward_approval", "architect_approval", "ontologist_approval", "privacy_officer_approval", "change_advisory_board", "dry_run", "release_window"] },
+      "uniqueItems": true
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gate", "approver_type", "approver_id", "decision", "decided_at"],
+        "properties": {
+          "gate": { "type": "string" },
+          "approver_type": { "enum": ["human", "agent", "policy"] },
+          "approver_id": { "type": "string" },
+          "role": { "type": "string" },
+          "decision": { "enum": ["approved", "rejected", "deferred", "revise"] },
+          "comment": { "type": "string", "maxLength": 4000 },
+          "decided_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applied_at", "applied_by"],
+      "properties": {
+        "applied_at": { "type": "string", "format": "date-time" },
+        "applied_by": { "type": "string" },
+        "git_commit_sha": { "type": "string", "pattern": "^[a-f0-9]{7,40}$" },
+        "pull_request_url": { "type": "string", "format": "uri" },
+        "migration_id": { "type": "string" },
+        "resulting_version": { "type": "string" },
+        "workflow_run_id": { "type": "string" }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["release_id", "released_at"],
+      "properties": {
+        "release_id": { "type": "string" },
+        "version_iri": { "type": "string", "format": "uri" },
+        "released_at": { "type": "string", "format": "date-time" },
+        "changelog_ref": { "type": "string" },
+        "released_by": { "type": "string" }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rolled_back_at", "reason", "by"],
+      "properties": {
+        "rolled_back_at": { "type": "string", "format": "date-time" },
+        "reason": { "type": "string" },
+        "by": { "type": "string" },
+        "compensating_cr_id": { "type": "string", "pattern": "^CR-[0-9]{8}-[0-9A-HJKMNP-TV-Z]{26}$" },
+        "trigger": { "enum": ["human", "kill_switch", "dq_regression", "evaluator_regression", "privacy_guardian", "consumer_failure"] }
+      }
+    },
+    "depends_on": { "type": "array", "items": { "type": "string", "pattern": "^CR-[0-9]{8}-[0-9A-HJKMNP-TV-Z]{26}$" }, "uniqueItems": true },
+    "conflicts_with": { "type": "array", "items": { "type": "string", "pattern": "^CR-[0-9]{8}-[0-9A-HJKMNP-TV-Z]{26}$" }, "uniqueItems": true },
+    "supersedes": { "type": "string", "pattern": "^CR-[0-9]{8}-[0-9A-HJKMNP-TV-Z]{26}$" },
+    "idempotency_key": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "sha256(type + target.artefact_ref + canonical payload). Two CRs with the same key are the same change; the second is rejected as duplicate."
+    },
+    "ticket_ref": { "type": "string" },
+    "labels": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9:_-]*$" }, "uniqueItems": true },
+    "state_history": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["to", "at", "by"],
+        "properties": {
+          "from": { "anyOf": [ { "$ref": "#/$defs/state" }, { "type": "null" } ] },
+          "to": { "$ref": "#/$defs/state" },
+          "at": { "type": "string", "format": "date-time" },
+          "by": { "type": "string" },
+          "reason": { "type": "string", "maxLength": 2000 }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prov_activity_iri", "workflow_id"],
+      "properties": {
+        "prov_activity_iri": { "type": "string", "format": "uri" },
+        "workflow_id": { "type": "string" },
+        "workflow_run_id": { "type": "string" },
+        "trace_id": { "type": "string", "pattern": "^[a-f0-9]{32}$" }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "description": "Anything past 'proposed' must carry an evaluation.",
+      "if": { "properties": { "state": { "enum": ["evaluated", "approved", "auto_approved", "applied", "released", "rolled_back"] } } },
+      "then": { "required": ["evaluation"] }
+    },
+    {
+      "description": "Auto-approval is only possible for low and medium risk.",
+      "if": { "properties": { "state": { "const": "auto_approved" } } },
+      "then": { "properties": { "risk_class": { "enum": ["low", "medium"] } } }
+    },
+    {
+      "description": "High and PHI-affecting CRs can never be auto-approved and must list a human gate.",
+      "if": { "properties": { "risk_class": { "enum": ["high", "phi_affecting"] } } },
+      "then": {
+        "properties": {
+          "gates_required": {
+            "contains": { "enum": ["steward_approval", "architect_approval", "ontologist_approval", "privacy_officer_approval", "change_advisory_board"] }
+          }
+        }
+      }
+    },
+    {
+      "description": "PHI-affecting CRs require a privacy review before approval.",
+      "if": {
+        "allOf": [
+          { "properties": { "risk_class": { "const": "phi_affecting" } } },
+          { "properties": { "state": { "enum": ["approved", "applied", "released"] } } }
+        ]
+      },
+      "then": {
+        "required": ["privacy_review"],
+        "properties": { "privacy_review": { "properties": { "decision": { "enum": ["cleared", "cleared_with_conditions"] } } } }
+      }
+    },
+    {
+      "description": "A vetoed CR must record the veto.",
+      "if": { "properties": { "state": { "const": "vetoed" } } },
+      "then": { "required": ["privacy_review"], "properties": { "privacy_review": { "properties": { "decision": { "const": "vetoed" } } } } }
+    },
+    {
+      "if": { "properties": { "state": { "enum": ["applied", "released", "rolled_back"] } } },
+      "then": { "required": ["application"] }
+    },
+    {
+      "if": { "properties": { "state": { "const": "released" } } },
+      "then": { "required": ["release"] }
+    },
+    {
+      "if": { "properties": { "state": { "const": "rolled_back" } } },
+      "then": { "required": ["rollback"] }
+    }
+  ],
+  "$defs": {
+    "crType": { "enum": ["vocabulary", "taxonomy", "thesaurus", "ontology", "mapping", "value_set", "dq_rule", "edw_ddl", "topic", "profile"] },
+    "riskClass": { "enum": ["low", "medium", "high", "phi_affecting"] },
+    "state": { "enum": ["proposed", "evaluated", "approved", "auto_approved", "rejected", "vetoed", "withdrawn", "applied", "failed", "released", "rolled_back"] }
+  }
+}

@@ -1,0 +1,338 @@
+# HEALIX Ontology Pipeline — Stage 4 SHACL shapes skeleton
+# Shape graph IRI: https://ontology.healix.example.org/shapes/core
+# Shapes are derived from OWL axioms in skeleton.owl.ttl (healix:derivedFromAxiom) plus steward rules.
+# Severity: sh:Violation = P0 (quarantine), sh:Warning = P1 (load + DQ result), sh:Info = profiling hint.
+
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix healix:  <https://ontology.healix.example.org/core/> .
+@prefix shp:     <https://ontology.healix.example.org/shapes/core/> .
+@prefix scheme:  <https://ontology.healix.example.org/scheme/> .
+@prefix ont:     <https://ontology.healix.example.org/ontology/> .
+
+<https://ontology.healix.example.org/shapes/core> a owl:Ontology ;
+    owl:versionIRI <https://ontology.healix.example.org/shapes/core/v2026.11.0> ;
+    owl:versionInfo "v2026.11.0" ;
+    dcterms:title "HEALIX core SHACL shapes"@en ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    sh:declare [ sh:prefix "healix" ; sh:namespace "https://ontology.healix.example.org/core/"^^xsd:anyURI ] ;
+    sh:declare [ sh:prefix "skos" ; sh:namespace "http://www.w3.org/2004/02/skos/core#"^^xsd:anyURI ] ;
+    sh:declare [ sh:prefix "xsd" ; sh:namespace "http://www.w3.org/2001/XMLSchema#"^^xsd:anyURI ] .
+
+###############################################################################
+# Reusable property shapes
+###############################################################################
+
+shp:IdentifierShape a sh:NodeShape ;
+    sh:targetClass healix:Identifier ;
+    sh:property [
+        sh:path healix:identifierSystem ;
+        sh:datatype xsd:anyURI ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        healix:derivedFromAxiom "healix:Identifier ⊑ =1 identifierSystem" ;
+        sh:message "Identifier must have exactly one identifier system URI."@en
+    ] ;
+    sh:property [
+        sh:path healix:identifierValue ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:minLength 1 ;
+        sh:severity sh:Violation ;
+        healix:derivedFromAxiom "healix:Identifier ⊑ =1 identifierValue" ;
+        sh:message "Identifier must have exactly one non-empty value."@en
+    ] .
+
+shp:CodedValueShape a sh:NodeShape ;
+    sh:targetClass healix:CodedValue ;
+    sh:property [
+        sh:path healix:code ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Coded value must carry exactly one code."@en
+    ] ;
+    sh:property [
+        sh:path healix:codeSystem ;
+        sh:datatype xsd:anyURI ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Coded value must carry exactly one code system URI."@en
+    ] ;
+    sh:property [
+        sh:path healix:concept ;
+        sh:nodeKind sh:IRI ;
+        sh:class skos:Concept ;
+        sh:maxCount 1 ;
+        sh:severity sh:Warning ;
+        healix:derivedFromAxiom "healix:CodedValue ⊑ ≤1 concept" ;
+        sh:message "Coded value is not resolved to a HEALIX concept (healix:unresolvedCode path, CR-CV-ADD raised)."@en
+    ] .
+
+###############################################################################
+# Patient
+###############################################################################
+
+shp:PatientShape a sh:NodeShape ;
+    sh:targetClass healix:PatientRole ;
+    rdfs:label "Patient role shape"@en ;
+    sh:property [
+        sh:path healix:roleOf ;
+        sh:class healix:Person ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        healix:derivedFromAxiom "healix:PatientRole ⊑ ∃roleOf.Person" ;
+        sh:message "A patient role must be borne by exactly one person."@en
+    ] ;
+    sh:property [
+        sh:path healix:hasIdentifier ;
+        sh:node shp:IdentifierShape ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "A patient must have at least one identifier (medical record number)."@en
+    ] ;
+    sh:property [
+        sh:path healix:hasIdentifier ;
+        sh:qualifiedValueShape [
+            sh:property [
+                sh:path healix:identifierSystem ;
+                sh:hasValue "urn:oid:2.16.840.1.113883.3.HEALIX.MRN"^^xsd:anyURI
+            ]
+        ] ;
+        sh:qualifiedMinCount 1 ;
+        sh:qualifiedMaxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "A patient must have exactly one enterprise MRN identifier."@en
+    ] ;
+    sh:property [
+        sh:path ( healix:roleOf healix:hasCode ) ;
+        sh:qualifiedValueShape [
+            sh:property [ sh:path healix:codeSystem ; sh:hasValue "http://hl7.org/fhir/administrative-gender"^^xsd:anyURI ]
+        ] ;
+        sh:qualifiedMaxCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "A person may carry at most one administrative gender code."@en
+    ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "MRN value must be unique across patient roles within the validated graph."@en ;
+        sh:severity sh:Violation ;
+        sh:prefixes <https://ontology.healix.example.org/shapes/core> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this healix:hasIdentifier ?id .
+                ?id healix:identifierSystem "urn:oid:2.16.840.1.113883.3.HEALIX.MRN"^^xsd:anyURI ;
+                    healix:identifierValue ?value .
+                ?other healix:hasIdentifier ?id2 .
+                ?id2 healix:identifierSystem "urn:oid:2.16.840.1.113883.3.HEALIX.MRN"^^xsd:anyURI ;
+                     healix:identifierValue ?value .
+                FILTER (?other != $this)
+            }
+        """
+    ] .
+
+###############################################################################
+# Encounter
+###############################################################################
+
+shp:EncounterShape a sh:NodeShape ;
+    sh:targetClass healix:Encounter ;
+    rdfs:label "Encounter shape"@en ;
+    sh:property [
+        sh:path healix:hasSubject ;
+        sh:class healix:PatientRole ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        healix:derivedFromAxiom "healix:Encounter ⊑ ∃hasSubject.PatientRole" ;
+        sh:message "An encounter must have exactly one patient subject."@en
+    ] ;
+    sh:property [
+        sh:path healix:hasClass ;
+        sh:node shp:CodedValueShape ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        healix:derivedFromAxiom "healix:Encounter ⊑ ∃hasClass.CodedValue" ;
+        sh:message "An encounter must have exactly one encounter class."@en
+    ] ;
+    sh:property [
+        sh:path ( healix:hasClass healix:concept skos:inScheme ) ;
+        sh:hasValue scheme:encounter-class ;
+        sh:severity sh:Violation ;
+        sh:message "Encounter class must resolve to a concept in the released encounter-class scheme."@en
+    ] ;
+    sh:property [
+        sh:path healix:hasStatus ;
+        sh:node shp:CodedValueShape ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        healix:derivedFromAxiom "healix:Event ⊑ ∃hasStatus.CodedValue" ;
+        sh:message "An encounter must have exactly one status."@en
+    ] ;
+    sh:property [
+        sh:path healix:periodStart ;
+        sh:datatype xsd:dateTime ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "An encounter must have exactly one period start."@en
+    ] ;
+    sh:property [
+        sh:path healix:periodEnd ;
+        sh:datatype xsd:dateTime ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "An encounter may have at most one period end."@en
+    ] ;
+    sh:property [
+        sh:path healix:atLocation ;
+        sh:class healix:Location ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "An encounter should have at least one location."@en
+    ] ;
+    sh:property [
+        sh:path healix:wasGeneratedBy ;
+        sh:class prov:Activity ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Every encounter assertion must be traceable to a PROV-O load activity."@en
+    ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Encounter period end must not precede period start."@en ;
+        sh:severity sh:Violation ;
+        sh:prefixes <https://ontology.healix.example.org/shapes/core> ;
+        sh:select """
+            SELECT $this ?start ?end WHERE {
+                $this healix:periodStart ?start ; healix:periodEnd ?end .
+                FILTER (?end < ?start)
+            }
+        """
+    ] .
+
+###############################################################################
+# Observation
+###############################################################################
+
+shp:ObservationShape a sh:NodeShape ;
+    sh:targetClass healix:Observation ;
+    rdfs:label "Observation shape"@en ;
+    sh:property [
+        sh:path healix:hasSubject ;
+        sh:class healix:PatientRole ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        healix:derivedFromAxiom "healix:Observation ⊑ ∃hasSubject.PatientRole" ;
+        sh:message "An observation must have exactly one patient subject."@en
+    ] ;
+    sh:property [
+        sh:path healix:hasCode ;
+        sh:node shp:CodedValueShape ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "An observation must have at least one code (LOINC preferred)."@en
+    ] ;
+    sh:property [
+        sh:path ( healix:hasCode healix:codeSystem ) ;
+        sh:hasValue "http://loinc.org"^^xsd:anyURI ;
+        sh:severity sh:Warning ;
+        sh:message "Observation should carry a LOINC code; local Cerner event code without LOINC binding."@en
+    ] ;
+    sh:property [
+        sh:path healix:hasValue ;
+        sh:maxCount 1 ;
+        sh:or ( [ sh:class healix:Quantity ] [ sh:class healix:CodedValue ] ) ;
+        sh:severity sh:Violation ;
+        healix:derivedFromAxiom "healix:Observation ⊑ ≤1 hasValue ; range Quantity ⊔ CodedValue" ;
+        sh:message "An observation has at most one value, which is a Quantity or a CodedValue."@en
+    ] ;
+    sh:property [
+        sh:path ( healix:hasValue healix:unit ) ;
+        sh:nodeKind sh:IRI ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "A quantity value must have at most one UCUM unit concept."@en
+    ] ;
+    sh:property [
+        sh:path healix:hasStatus ;
+        sh:node shp:CodedValueShape ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "An observation must have exactly one status."@en
+    ] ;
+    sh:property [
+        sh:path healix:occurredAt ;
+        sh:datatype xsd:dateTime ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "An observation must have exactly one effective time."@en
+    ] ;
+    sh:property [
+        sh:path healix:partOfEncounter ;
+        sh:class healix:Encounter ;
+        sh:maxCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "An observation should be linked to at most one encounter."@en
+    ] ;
+    sh:property [
+        sh:path healix:wasGeneratedBy ;
+        sh:class prov:Activity ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Every observation assertion must be traceable to a PROV-O load activity."@en
+    ] .
+
+###############################################################################
+# Practitioner
+###############################################################################
+
+shp:PractitionerShape a sh:NodeShape ;
+    sh:targetClass healix:PractitionerRole ;
+    rdfs:label "Practitioner role shape"@en ;
+    sh:property [
+        sh:path healix:roleOf ;
+        sh:class healix:Person ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        healix:derivedFromAxiom "healix:PractitionerRole ⊑ ∃roleOf.Person" ;
+        sh:message "A practitioner role must be borne by exactly one person."@en
+    ] ;
+    sh:property [
+        sh:path healix:hasIdentifier ;
+        sh:qualifiedValueShape [
+            sh:property [
+                sh:path healix:identifierSystem ;
+                sh:hasValue "http://hl7.org/fhir/sid/us-npi"^^xsd:anyURI
+            ] ;
+            sh:property [
+                sh:path healix:identifierValue ;
+                sh:pattern "^[0-9]{10}$"
+            ]
+        ] ;
+        sh:qualifiedMaxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "A practitioner may carry at most one NPI, and it must be ten digits."@en
+    ] ;
+    sh:property [
+        sh:path healix:hasIdentifier ;
+        sh:qualifiedValueShape [
+            sh:property [
+                sh:path healix:identifierSystem ;
+                sh:hasValue "http://hl7.org/fhir/sid/us-npi"^^xsd:anyURI
+            ]
+        ] ;
+        sh:qualifiedMinCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "A billing practitioner should carry an NPI."@en
+    ] ;
+    sh:property [
+        sh:path ( healix:hasCode healix:codeSystem ) ;
+        sh:hasValue "http://nucc.org/provider-taxonomy"^^xsd:anyURI ;
+        sh:severity sh:Warning ;
+        sh:message "A practitioner role should carry a NUCC specialty taxonomy code."@en
+    ] .

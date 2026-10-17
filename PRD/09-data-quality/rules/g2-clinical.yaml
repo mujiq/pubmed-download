@@ -1,0 +1,373 @@
+# HEALIX DQ rule pack — G2 Clinical Care
+# Validated by rule.schema.json; indexed in 02-rule-catalog.md §3.2
+pack: g2-clinical
+version: 0.1.0
+group: G2
+owner: steward.clinical
+description: Clinical care rules for Encounter, Condition, Observation (labs) and MedicationRequest from Cerner Millennium, LIS and pharmacy, derived from HEALIX clinical shapes, US Core bindings, ontology axioms and profiling baselines.
+rules:
+  - id: DQR-COMPLETENESS-ENCOUNTER-001
+    name: Encounter class present
+    description: Encounter.class is required (US Core Encounter 1..1; EncounterShape sh:minCount 1). Missing class breaks census, length-of-stay and billing classification.
+    dimension: completeness
+    group: G2
+    domain: clinical
+    source_systems: [cerner]
+    cde: [Encounter.class]
+    targets:
+      - plane: stream
+        resource: Encounter
+        language: fhirpath
+        expression: "class.code.exists()"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/clinical/EncounterShape#class
+      - plane: warehouse
+        table: edw_g2_clinical.fact_encounter
+        language: sql
+        key_columns: [encounter_bk]
+        sql: SELECT encounter_bk FROM {{ ref('fact_encounter') }} WHERE encounter_class_cd IS NULL AND recorded_at >= {{ window_start }}
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: PT1H}
+    owner: steward.clinical
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shapes/clinical/EncounterShape#class
+    remediation: {action: auto_fix, fix_class: derived_field, hint: Derive class from Cerner ENCNTR_TYPE_CLASS_CD via ConceptMap cerner-encntr-type-class-to-actcode when the mapped element is absent, tool: mapping.derive}
+    version: 1.0.0
+    status: active
+    tags: [us-core, cde]
+
+  - id: DQR-CONSISTENCY-ENCOUNTER-002
+    name: Encounter period end not before start
+    description: Encounter.period.end, when present, must be on or after period.start (temporal axiom healix:endAfterStart on clinical:Encounter). Discharge-before-admit corrupts LOS and bed-day metrics.
+    dimension: consistency
+    group: G2
+    domain: clinical
+    source_systems: [cerner]
+    cde: [Encounter.period]
+    targets:
+      - plane: stream
+        resource: Encounter
+        language: fhirpath
+        expression: "period.end.empty() or period.start.empty() or period.end >= period.start"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/clinical/EncounterShape#periodOrder
+      - plane: warehouse
+        table: edw_g2_clinical.fact_encounter
+        language: sql
+        key_columns: [encounter_bk]
+        sql: SELECT encounter_bk FROM {{ ref('fact_encounter') }} WHERE discharge_dt_tm IS NOT NULL AND discharge_dt_tm < admit_dt_tm
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: PT1H}
+    owner: steward.clinical
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/clinical/Encounter#endAfterStart
+    remediation: {action: source_fix, hint: Discharge precedes admit in Cerner ENCOUNTER; registration team to correct, policy_ref: https://policy.healix.example.org/dq/encounter-period}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-VALIDITY-ENCOUNTER-003
+    name: Encounter class in v3 ActEncounterCode
+    description: Encounter.class must be a member of http://terminology.hl7.org/ValueSet/v3-ActEncounterCode (extensible binding, HEALIX treats as required).
+    dimension: validity
+    group: G2
+    domain: clinical
+    source_systems: [cerner]
+    cde: [Encounter.class]
+    targets:
+      - plane: stream
+        resource: Encounter
+        language: fhirpath
+        expression: "class.empty() or class.memberOf('http://terminology.hl7.org/ValueSet/v3-ActEncounterCode')"
+      - plane: warehouse
+        table: edw_g2_clinical.fact_encounter
+        language: sql
+        key_columns: [encounter_bk]
+        sql: SELECT encounter_bk FROM {{ ref('fact_encounter') }} WHERE encounter_class_cd IS NOT NULL AND encounter_class_cd NOT IN ({{ vs_members('http://terminology.hl7.org/ValueSet/v3-ActEncounterCode') }})
+    severity: major
+    threshold: {metric: pass_rate, min: 0.99, window: P1D}
+    owner: steward.clinical
+    derivation: terminology
+    derived_from: http://terminology.hl7.org/ValueSet/v3-ActEncounterCode
+    remediation: {action: auto_fix, fix_class: code_remap, hint: Translate Cerner encounter type via ConceptMap; unmapped values to terminology steward, tool: terminology.translate}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-COMPLETENESS-CONDITION-001
+    name: Encounter diagnosis has code and rank
+    description: Every Encounter.diagnosis must reference a Condition with a code and carry a rank; the principal diagnosis (rank 1) must exist for discharged inpatient encounters. Required for DRG grouping and quality measures.
+    dimension: completeness
+    group: G2
+    domain: clinical
+    source_systems: [cerner]
+    cde: [Condition.code, Encounter.diagnosis.rank]
+    targets:
+      - plane: stream
+        resource: Encounter
+        language: fhirpath
+        expression: "diagnosis.all(condition.exists() and rank.exists()) and (class.code != 'IMP' or status != 'finished' or diagnosis.where(rank = 1).exists())"
+      - plane: warehouse
+        table: edw_g2_clinical.bridge_encounter_diagnosis
+        language: sql
+        key_columns: [encounter_bk]
+        sql: SELECT e.encounter_bk FROM {{ ref('fact_encounter') }} e LEFT JOIN {{ ref('bridge_encounter_diagnosis') }} d ON d.encounter_sk = e.encounter_sk AND d.diagnosis_rank = 1 WHERE e.encounter_class_cd = 'IMP' AND e.status_cd = 'finished' AND d.encounter_sk IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.995, window: P1D}
+    owner: steward.clinical
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shapes/clinical/EncounterShape#principalDiagnosis
+    remediation: {action: source_fix, hint: Principal diagnosis not ranked in Cerner DIAGNOSIS; HIM coding to complete, policy_ref: https://policy.healix.example.org/dq/coding-completeness}
+    version: 1.0.0
+    status: active
+    tags: [drg, cde]
+
+  - id: DQR-VALIDITY-CONDITION-002
+    name: Condition code valid ICD-10-CM for the release in force
+    description: Condition.code coded in ICD-10-CM must be a valid, billable code in the ICD-10-CM release in force on Condition.recordedDate (releases change every 1 October). Catches retired codes and header-level (non-billable) codes.
+    dimension: validity
+    group: G2
+    domain: clinical
+    source_systems: [cerner]
+    cde: [Condition.code]
+    targets:
+      - plane: stream
+        resource: Condition
+        language: fhirpath
+        expression: "code.coding.where(system='http://hl7.org/fhir/sid/icd-10-cm').all(%vs('https://ontology.healix.example.org/vs/icd10cm-billable', recordedDate))"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/clinical/ConditionShape#icd10cmBillable
+      - plane: warehouse
+        table: edw_g2_clinical.fact_condition
+        language: sql
+        key_columns: [condition_bk]
+        sql: SELECT c.condition_bk FROM {{ ref('fact_condition') }} c LEFT JOIN {{ ref('ref_value_set_member') }} v ON v.value_set_url = 'https://ontology.healix.example.org/vs/icd10cm-billable' AND v.code = c.icd10cm_cd AND c.recorded_dt BETWEEN v.valid_from AND COALESCE(v.valid_to, DATE '9999-12-31') WHERE c.icd10cm_cd IS NOT NULL AND v.code IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.995, window: P1D}
+    owner: steward.clinical
+    derivation: terminology
+    derived_from: https://ontology.healix.example.org/vs/icd10cm-billable
+    remediation: {action: steward, hint: "HIM coding review; retired codes re-coded in Cerner, header codes specified to billable child"}
+    version: 1.0.0
+    status: active
+    tags: [drg]
+
+  - id: DQR-SEMANTIC-CONDITION-005
+    name: ICD-10-CM sex and age restrictions consistent with patient
+    description: A Condition whose ICD-10-CM code carries an ontology restriction (healix:restrictedToSex, healix:minAgeYears, healix:maxAgeYears, derived from the CMS MCE edits) must be attached to a Patient whose administrative sex and age at onset satisfy it. Example - O80 (normal delivery) on a male patient, or N40 (prostate hyperplasia) on a female patient.
+    dimension: semantic
+    group: G2
+    domain: clinical
+    source_systems: [cerner]
+    cde: [Condition.code, Patient.gender, Patient.birthDate]
+    targets:
+      - plane: stream
+        resource: Condition
+        language: fhirpath
+        expression: "code.coding.where(system='http://hl7.org/fhir/sid/icd-10-cm').all(%code_constraint(code, 'sex').empty() or %code_constraint(code, 'sex') = %resolve_patient(subject).gender) and code.coding.where(system='http://hl7.org/fhir/sid/icd-10-cm').all(%code_constraint(code, 'maxAge').empty() or %age_at(%resolve_patient(subject).birthDate, onset.start | recordedDate) <= %code_constraint(code, 'maxAge'))"
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/clinical/Condition
+        sparql: |
+          PREFIX clinical: <https://ontology.healix.example.org/clinical/>
+          PREFIX party: <https://ontology.healix.example.org/party/>
+          PREFIX healix: <https://ontology.healix.example.org/core/>
+          SELECT ?focus (CONCAT(STR(?code), ' restricted to ', STR(?sex), ' but patient is ', STR(?pSex)) AS ?detail) WHERE {
+            ?focus a clinical:Condition ; clinical:code ?code ; clinical:subject ?p .
+            ?code healix:restrictedToSex ?sex .
+            ?p party:administrativeGender ?pSex .
+            FILTER(?sex != ?pSex)
+          }
+      - plane: warehouse
+        table: edw_g2_clinical.fact_condition
+        language: sql
+        key_columns: [condition_bk]
+        sql: SELECT c.condition_bk FROM {{ ref('fact_condition') }} c JOIN {{ ref('dim_patient') }} p ON p.patient_sk = c.patient_sk JOIN {{ ref('ref_code_constraint') }} k ON k.code_system = 'icd-10-cm' AND k.code = c.icd10cm_cd WHERE (k.restricted_sex IS NOT NULL AND k.restricted_sex <> p.gender_cd) OR (k.max_age_years IS NOT NULL AND {{ age_years('p.birth_date', 'c.onset_dt') }} > k.max_age_years) OR (k.min_age_years IS NOT NULL AND {{ age_years('p.birth_date', 'c.onset_dt') }} < k.min_age_years)
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.clinical
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/core/restrictedToSex
+    remediation: {action: steward, hint: Coding steward decides whether the diagnosis or the demographic is wrong; demographic errors open an EMPI task, policy_ref: https://policy.healix.example.org/dq/coding-edits}
+    version: 1.0.0
+    status: active
+    tags: [mce, cde]
+
+  - id: DQR-VALIDITY-OBSERVATION-003
+    name: Lab Observation code in LOINC laboratory value set
+    description: Observations in the laboratory category must have at least one code in LOINC and that code must be a member of the HEALIX LOINC laboratory value set (CLASSTYPE 1). Cerner event codes and LIS test codes are mapped via ConceptMaps maintained by the terminology steward.
+    dimension: validity
+    group: G2
+    domain: clinical
+    source_systems: [cerner, lis]
+    cde: [Observation.code]
+    targets:
+      - plane: stream
+        resource: Observation
+        language: fhirpath
+        expression: "category.coding.where(code='laboratory').empty() or code.coding.where(system='http://loinc.org' and memberOf('https://ontology.healix.example.org/vs/loinc-lab')).exists()"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/clinical/LabObservationShape#code
+      - plane: warehouse
+        table: edw_g2_clinical.fact_lab_result
+        language: sql
+        key_columns: [lab_result_bk]
+        sql: SELECT r.lab_result_bk FROM {{ ref('fact_lab_result') }} r LEFT JOIN {{ ref('ref_value_set_member') }} v ON v.value_set_url = 'https://ontology.healix.example.org/vs/loinc-lab' AND v.code = r.loinc_cd WHERE v.code IS NULL AND r.recorded_at >= {{ window_start }}
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.995, window: PT1H}
+    owner: steward.clinical
+    derivation: terminology
+    derived_from: https://ontology.healix.example.org/vs/loinc-lab
+    remediation: {action: auto_fix, fix_class: code_remap, hint: Translate Cerner EVENT_CD or LIS test code to LOINC via ConceptMap; unmapped codes open a terminology task, tool: terminology.translate}
+    version: 1.0.0
+    status: active
+    tags: [us-core, cde]
+
+  - id: DQR-COMPLETENESS-OBSERVATION-004
+    name: Quantitative lab has value, unit and UCUM system
+    description: A laboratory Observation with a quantitative result must carry valueQuantity.value, valueQuantity.unit and valueQuantity.system = http://unitsofmeasure.org (LabObservationShape). Results without units cannot be trended or compared across labs.
+    dimension: completeness
+    group: G2
+    domain: clinical
+    source_systems: [cerner, lis]
+    cde: [Observation.valueQuantity, Observation.valueQuantity.unit]
+    targets:
+      - plane: stream
+        resource: Observation
+        language: fhirpath
+        expression: "category.coding.where(code='laboratory').empty() or value.empty() or (value is Quantity).not() or (value.value.exists() and value.code.exists() and value.system = 'http://unitsofmeasure.org')"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/clinical/LabObservationShape#quantity
+      - plane: warehouse
+        table: edw_g2_clinical.fact_lab_result
+        language: sql
+        key_columns: [lab_result_bk]
+        sql: SELECT lab_result_bk FROM {{ ref('fact_lab_result') }} WHERE result_type_cd = 'numeric' AND (result_value_num IS NULL OR ucum_unit_cd IS NULL)
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.995, window: PT1H}
+    owner: steward.clinical
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shapes/clinical/LabObservationShape#quantity
+    remediation: {action: auto_fix, fix_class: unit_normalisation, hint: "Map local unit string to UCUM via unit ConceptMap; if no mapping, raise to LIS owner", tool: terminology.translate}
+    version: 1.0.0
+    status: active
+    tags: [cde]
+
+  - id: DQR-ACCURACY-OBSERVATION-005
+    name: Lab value within plausibility range for LOINC code
+    description: Numeric lab values must fall within the plausibility range for their LOINC code and UCUM unit, derived by profiling (0.1 to 99.9 percentile over 12 months) and widened by clinically possible bounds reviewed by the clinical informaticist (for example serum potassium 1.0 to 12.0 mmol/L).
+    dimension: accuracy
+    group: G2
+    domain: clinical
+    source_systems: [cerner, lis]
+    cde: [Observation.valueQuantity]
+    targets:
+      - plane: stream
+        resource: Observation
+        language: fhirpath
+        expression: "category.coding.where(code='laboratory').empty() or (value is Quantity).not() or %plausible_range(code.coding.where(system='http://loinc.org').first().code, value.code).contains(value.value)"
+      - plane: warehouse
+        table: edw_g2_clinical.fact_lab_result
+        language: sql
+        key_columns: [lab_result_bk]
+        sql: SELECT r.lab_result_bk FROM {{ ref('fact_lab_result') }} r JOIN {{ ref('ref_lab_plausibility_range') }} pr ON pr.loinc_cd = r.loinc_cd AND pr.ucum_unit_cd = r.ucum_unit_cd WHERE r.result_value_num < pr.plausible_low OR r.result_value_num > pr.plausible_high
+    severity: major
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.clinical
+    derivation: profiling
+    derived_from: urn:healix:dq:baseline:lab-plausibility:2026-09
+    baseline_ref: urn:healix:dq:baseline:lab-plausibility:2026-09
+    remediation: {action: steward, hint: "Clinical informaticist reviews with LIS; transcription errors are source fixes, unit mismatches are ConceptMap fixes, verified extremes are accepted"}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-VALIDITY-MEDICATION-001
+    name: Medication coded in RxNorm prescribable term types
+    description: MedicationRequest.medication (CodeableConcept or referenced Medication.code) must include an RxNorm code with TTY in SCD, SBD, GPCK or BPCK (US Core medication binding). Cerner order catalog codes are mapped via the pharmacy ConceptMap.
+    dimension: validity
+    group: G2
+    domain: clinical
+    source_systems: [cerner, pharmacy]
+    cde: [MedicationRequest.medication]
+    targets:
+      - plane: stream
+        resource: MedicationRequest
+        language: fhirpath
+        expression: "(medication as CodeableConcept).coding.where(system='http://www.nlm.nih.gov/research/umls/rxnorm' and memberOf('https://ontology.healix.example.org/vs/rxnorm-prescribable')).exists() or (medication as Reference).resolve().code.coding.where(system='http://www.nlm.nih.gov/research/umls/rxnorm' and memberOf('https://ontology.healix.example.org/vs/rxnorm-prescribable')).exists()"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/clinical/MedicationRequestShape#rxnorm
+      - plane: warehouse
+        table: edw_g2_clinical.fact_medication_request
+        language: sql
+        key_columns: [medication_request_bk]
+        sql: SELECT m.medication_request_bk FROM {{ ref('fact_medication_request') }} m LEFT JOIN {{ ref('ref_value_set_member') }} v ON v.value_set_url = 'https://ontology.healix.example.org/vs/rxnorm-prescribable' AND v.code = m.rxnorm_cui WHERE v.code IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.995, window: PT1H}
+    owner: steward.clinical
+    derivation: terminology
+    derived_from: https://ontology.healix.example.org/vs/rxnorm-prescribable
+    remediation: {action: auto_fix, fix_class: code_remap, hint: Translate Cerner order catalog or NDC to RxNorm via ConceptMap; unmapped to pharmacy informatics, tool: terminology.translate}
+    version: 1.0.0
+    status: active
+    tags: [us-core, medication-safety, cde]
+
+  - id: DQR-COMPLETENESS-MEDICATION-002
+    name: Medication request has dose and route
+    description: Active MedicationRequests must carry dosageInstruction.doseAndRate.dose (quantity or range) and dosageInstruction.route (MedicationRequestShape). Missing dose or route prevents medication-safety checks.
+    dimension: completeness
+    group: G2
+    domain: clinical
+    source_systems: [cerner]
+    cde: [MedicationRequest.dosageInstruction.doseAndRate.dose, MedicationRequest.dosageInstruction.route]
+    targets:
+      - plane: stream
+        resource: MedicationRequest
+        language: fhirpath
+        expression: "status != 'active' or dosageInstruction.all(doseAndRate.dose.exists() and route.exists())"
+      - plane: warehouse
+        table: edw_g2_clinical.fact_medication_request
+        language: sql
+        key_columns: [medication_request_bk]
+        sql: SELECT medication_request_bk FROM {{ ref('fact_medication_request') }} WHERE status_cd = 'active' AND (dose_value IS NULL OR route_cd IS NULL)
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.99, window: P1D}
+    owner: steward.clinical
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shapes/clinical/MedicationRequestShape#dosage
+    remediation: {action: source_fix, hint: Order entered without structured dose or route in Cerner; pharmacy to clarify order, policy_ref: https://policy.healix.example.org/dq/medication-orders}
+    version: 1.0.0
+    status: active
+    tags: [medication-safety, cde]
+
+  - id: DQR-TIMELINESS-ADT-001
+    name: ADT event canonicalised within 5 minutes
+    description: ADT messages (A01, A02, A03, A04, A08) from Cerner must be available as canonical Encounter records within 5 minutes of MSH-7 message time (hc-source-time). Late ADT delays census, bed management and downstream notifications.
+    dimension: timeliness
+    group: G2
+    domain: clinical
+    source_systems: [cerner]
+    cde: [Encounter.period, Encounter.status]
+    targets:
+      - plane: stream
+        resource: Encounter
+        language: fhirpath
+        expression: "%header('hc-trigger-event').startsWith('A0').not() or (%header('hc-event-time') - %header('hc-source-time')) <= 5 minutes"
+        stateful: true
+      - plane: warehouse
+        table: edw_g2_clinical.fact_encounter_event
+        language: sql
+        key_columns: [encounter_event_bk]
+        sql: SELECT encounter_event_bk FROM {{ ref('fact_encounter_event') }} WHERE trigger_event_cd IN ('A01','A02','A03','A04','A08') AND canonical_ts > source_ts + INTERVAL '5' MINUTE AND source_ts >= {{ window_start }}
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.99, window: PT1H}
+    owner: steward.clinical
+    derivation: policy
+    derived_from: https://policy.healix.example.org/sla/adt-latency
+    remediation: {action: source_fix, hint: Interface engine or MLLP listener lag; SRE to inspect connector backlog, policy_ref: https://policy.healix.example.org/sla/adt-latency}
+    version: 1.0.0
+    status: active
+    tags: [sla]

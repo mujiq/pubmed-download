@@ -1,0 +1,121 @@
+manifest_version: 0.1.0
+id: agent.interop_engineer
+role: Interoperability Engineer
+mission: >-
+  Generate and validate FHIR R4 profiles (US Core 6.1 derived and HEALIX-ERP extensions), HL7 v2 conformance
+  profiles for inbound/outbound interfaces, X12/C-CDA mapping constraints and partner conformance test suites;
+  keep every canonical topic's payload validating against its profile.
+pipeline_stage: [4, 5]
+owns_modules: ["06"]
+autonomy_level: L2
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_MAPPING}"
+  recommended_default: claude-sonnet-5-5
+  fallback_ref: "${MODEL_REASONING}"
+  temperature: 0.1
+  max_output_tokens: 16384
+  structured_output: true
+tools:
+  - server: fhir-validator
+    operations: [validate_resource, validate_bundle, validate_profile, get_structure_definition, generate_examples, propose_profile]
+    permission: propose
+    phi_access: none
+  - server: terminology-service
+    operations: [expand, validate_code, lookup]
+    permission: read
+    phi_access: none
+  - server: ontology-registry
+    operations: [list_classes, list_properties, get_shapes]
+    permission: read
+    phi_access: none
+  - server: schema-registry
+    operations: [get_schema, check_compatibility, propose_schema]
+    permission: propose
+    phi_access: none
+  - server: kafka-admin
+    operations: [describe_topic, sample_records, propose_topic]
+    permission: propose
+    phi_access: masked
+  - server: source-registry
+    operations: [get_source, list_elements]
+    permission: read
+    phi_access: none
+  - server: cr-engine
+    operations: [create_cr, get_cr, withdraw_cr]
+    permission: propose
+    phi_access: none
+  - server: git
+    operations: [read_file, create_branch, commit, open_pr, get_diff]
+    permission: propose
+    phi_access: none
+triggers:
+  - kind: change_request
+    cr_types: [ontology, value_set]
+    description: Ontology or binding change may require a profile update.
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: new_source_discovered
+    description: New interface — draft HL7 v2 conformance profile and canonical topic proposal.
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: fhir_validation_regression
+  - kind: schedule
+    cron: "0 5 * * 4"
+    description: Weekly partner conformance test run and US Core / IG version check.
+  - kind: manual
+inputs:
+  - Ontology classes/properties and SHACL shapes to reflect in profiles
+  - Existing StructureDefinitions, ImplementationGuide, conformance profiles
+  - Validation statistics per canonical topic (masked)
+  - Partner conformance requirements
+outputs:
+  - artefact: FHIR StructureDefinition / extension / CapabilityStatement changes
+    cr_type: profile
+    destination: cr-engine
+  - artefact: HL7 v2 conformance profiles (XML) and message test sets (synthetic)
+    cr_type: profile
+    destination: cr-engine
+  - artefact: Canonical topic and JSON Schema proposals
+    cr_type: topic
+    destination: cr-engine
+  - artefact: Conformance test report
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+risk_classes: [low, medium, high]
+evaluation:
+  rubric_ids: [RUB-PRF-01, RUB-TOP-01, RUB-MAP-02, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: 0.92
+  human_agreement_target: 0.95
+  golden_sets: [synthetic-fhir-bundles-v1, golden-hl7v2-messages-v1]
+  regression_suites: [fhir-validation-us-core-6.1, schema-compatibility-backward-transitive]
+budgets:
+  tokens_per_run: 200000
+  runs_per_day: 60
+  daily_token_cap: 8000000
+  max_tool_calls_per_run: 300
+  wall_clock_minutes_per_run: 90
+  max_concurrent_runs: 3
+  max_open_change_requests: 60
+escalation:
+  to: [Integration Engineer, Enterprise Architecture]
+  sla_hours: 48
+  on_low_score: Attach validator output; human review.
+  on_budget_exhausted: Flush completed profile CRs.
+  on_veto: Withdraw CR.
+  on_conflict: One open CR per StructureDefinition canonical URL.
+memory:
+  working: true
+  episodic: true
+  semantic_write: false
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: L3
+  criteria:
+    - ">= 200 evaluated profile/topic CRs over >= 120 days"
+    - "No released profile that broke BACKWARD_TRANSITIVE compatibility"
+    - "Rollback rate <= 0.5 %"
+  demotion_triggers:
+    - Released profile causing canonical validation pass rate to fall below 99.5 % (immediate L1 for 30 days).

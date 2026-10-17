@@ -1,0 +1,120 @@
+manifest_version: 0.1.0
+id: agent.ontologist
+role: Ontologist (Stage 4)
+mission: >-
+  Promote stable thesaurus concepts and relations into OWL 2 DL classes, object/data properties, domain/range
+  and cardinality axioms and SHACL shapes; run the reasoner on every proposal; keep the enterprise ontology
+  consistent, aligned to FHIR R4 resource semantics and bound to EDW attributes. Always human-approved.
+pipeline_stage: [4]
+owns_modules: ["02"]
+autonomy_level: L1
+autonomy_ceiling: L2
+model:
+  ref: "${MODEL_REASONING}"
+  recommended_default: claude-fable-5-1
+  fallback_ref: "${MODEL_MAPPING}"
+  temperature: 0.1
+  max_output_tokens: 16384
+  structured_output: true
+tools:
+  - server: ontology-registry
+    operations: [get_concept, get_relations, list_classes, list_properties, get_shapes, diff, propose_change, run_reasoner, validate_shacl, explain_inconsistency]
+    permission: propose
+    phi_access: none
+  - server: terminology-service
+    operations: [lookup, subsumes, expand]
+    permission: read
+    phi_access: none
+  - server: graph-query
+    operations: [sparql_select, sparql_ask, sparql_construct]
+    permission: read
+    phi_access: none
+  - server: fhir-validator
+    operations: [validate_profile, get_structure_definition]
+    permission: read
+    phi_access: none
+  - server: edw-metadata
+    operations: [describe_table, list_columns, get_column_bindings]
+    permission: read
+    phi_access: none
+  - server: lineage
+    operations: [impact_analysis]
+    permission: read
+    phi_access: none
+  - server: cr-engine
+    operations: [create_cr, get_cr, withdraw_cr]
+    permission: propose
+    phi_access: none
+  - server: git
+    operations: [read_file, create_branch, commit, open_pr]
+    permission: propose
+    phi_access: none
+triggers:
+  - kind: change_request
+    cr_types: [thesaurus]
+    description: Thesaurus relation stable for >= 30 days with no edits — candidate for promotion.
+  - kind: schedule
+    cron: "0 2 * * 0"
+    description: Weekly full OWL reasoning (HermiT/ELK) and SHACL run over the release candidate.
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: profile_changed
+    description: FHIR profile CR applied — check class/property alignment.
+  - kind: manual
+inputs:
+  - Stable thesaurus relations and their usage statistics
+  - Current OWL ontology, SHACL shapes and reasoner reports
+  - FHIR R4 StructureDefinitions (US Core 6.1, HEALIX profiles)
+  - EDW attribute→property bindings and unbound attributes
+  - UDMH/HCDM entity patterns (licensed, referenced by pattern name only)
+outputs:
+  - artefact: OWL class/property/axiom additions and changes (Turtle diff)
+    cr_type: ontology
+    destination: cr-engine
+  - artefact: SHACL node/property shapes with severity and message
+    cr_type: ontology
+    destination: cr-engine
+  - artefact: Reasoner and SHACL report for the release candidate
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+  - artefact: Attribute binding proposals (edw column ↔ ontology property)
+    cr_type: ontology
+    destination: cr-engine
+risk_classes: [medium, high, phi_affecting]
+evaluation:
+  rubric_ids: [RUB-ONT-01, RUB-ONT-02, RUB-ONT-03, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: null
+  human_agreement_target: 0.95
+  golden_sets: [golden-ontology-axioms-v1, golden-shacl-encounter-v1]
+  regression_suites: [owl-dl-consistency, shacl-conformance-synthetic-bundles, kg-competency-questions]
+budgets:
+  tokens_per_run: 300000
+  runs_per_day: 30
+  daily_token_cap: 6000000
+  max_tool_calls_per_run: 200
+  wall_clock_minutes_per_run: 120
+  max_concurrent_runs: 2
+  max_open_change_requests: 30
+escalation:
+  to: [Ontologist / Taxonomist, Enterprise Architecture]
+  sla_hours: 72
+  on_low_score: Attach reasoner explanation and counter-model; request human review.
+  on_budget_exhausted: Checkpoint reasoning job; resume on next window.
+  on_veto: Withdraw CR; notify Privacy & Security Officer.
+  on_tool_failure: Reasoner timeout → fall back to ELK profile check and flag incomplete.
+  on_conflict: Serialise ontology CRs; rebase on latest release candidate.
+memory:
+  working: true
+  episodic: true
+  semantic_write: true
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: L2
+  criteria:
+    - ">= 200 human-approved ontology CRs with approval rate >= 0.90 over >= 180 days"
+    - "Zero released inconsistencies or unsatisfiable classes"
+    - "Explicit PRD revision approving L2 for SHACL-only, low-risk CRs"
+  demotion_triggers:
+    - Any released ontology that fails OWL consistency (incident; stays L1).

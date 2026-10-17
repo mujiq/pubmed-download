@@ -1,0 +1,103 @@
+manifest_version: 0.1.0
+id: agent.dq_monitor
+role: Data Quality Monitor
+mission: >-
+  Run DQ pipelines on canonical streams, detect anomalies and drift (volume, distribution, code mix, latency,
+  rule breach rate), correlate them with upstream changes, open issues with masked evidence and trigger
+  dq_author, remediator or source_mapper as appropriate.
+pipeline_stage: [5]
+owns_modules: ["09"]
+autonomy_level: L3
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_CLASSIFICATION}"
+  recommended_default: claude-haiku-5-5
+  fallback_ref: "${MODEL_MAPPING}"
+  temperature: 0.0
+  max_output_tokens: 4096
+  structured_output: true
+tools:
+  - server: dq-engine
+    operations: [run_rule, list_results, get_scorecard, profile_dataset, open_quarantine_sample, detect_drift]
+    permission: apply
+    phi_access: masked
+  - server: kafka-admin
+    operations: [describe_topic, get_consumer_lag, sample_records]
+    permission: read
+    phi_access: masked
+  - server: lineage
+    operations: [get_upstream, impact_analysis, emit_run_event]
+    permission: apply
+    phi_access: none
+  - server: schema-registry
+    operations: [get_schema_history]
+    permission: read
+    phi_access: none
+  - server: ticketing
+    operations: [create_issue, update_issue, link_cr]
+    permission: apply
+    phi_access: none
+  - server: cr-engine
+    operations: [get_cr, list_crs]
+    permission: read
+    phi_access: none
+triggers:
+  - kind: schedule
+    cron: "*/15 * * * *"
+    description: Rolling scorecard and drift detection on hc.canonical.* and hc.dq.* windows.
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: dq_breach
+    description: Stream processor raised a critical rule breach.
+  - kind: change_request
+    cr_types: [mapping, value_set, dq_rule]
+    description: Post-apply watch window (72 h) for regressions attributable to the change.
+  - kind: manual
+inputs:
+  - DQ results (hc.dq.*), scorecards per subject-area group
+  - Topic throughput/lag and schema version history
+  - Recently applied CRs (for attribution)
+  - Anomaly baselines (seasonal, per source)
+outputs:
+  - artefact: Anomaly / drift events with attribution hypothesis
+    cr_type: null
+    destination: hc.ops.agent.trigger.v1
+  - artefact: Issues with masked evidence and suggested owner
+    cr_type: null
+    destination: ticketing
+  - artefact: Post-change regression verdicts
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+risk_classes: [low]
+evaluation:
+  rubric_ids: [RUB-DQM-01, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: 0.85
+  human_agreement_target: 0.90
+  golden_sets: [labelled-dq-anomalies-v1]
+budgets:
+  tokens_per_run: 30000
+  runs_per_day: 200
+  daily_token_cap: 6000000
+  max_tool_calls_per_run: 100
+  wall_clock_minutes_per_run: 10
+  max_concurrent_runs: 8
+  max_open_change_requests: 0
+escalation:
+  to: [Data Steward (domain), Platform SRE]
+  sla_hours: 1
+  on_low_score: Lower anomaly severity to 'info'; keep evidence for weekly review.
+  on_budget_exhausted: Fall back to rule-only (non-LLM) scorecard until next window.
+  on_tool_failure: Alert SRE if dq-engine unreachable > 2 windows.
+  on_conflict: Deduplicate anomalies by (rule id, source, window).
+memory:
+  working: true
+  episodic: true
+  semantic_write: false
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: none
+  criteria: [L3 is the ceiling; the monitor opens issues and triggers, never mutates artefacts.]
+  demotion_triggers:
+    - "Anomaly precision on labelled set < 0.80 for 2 consecutive weeks (demotion to L2; issues then need steward confirmation)."

@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ontology.healix.example.org/schema/dq/rule-pack/0.1.0",
+  "title": "HEALIX DQ Rule Pack",
+  "description": "JSON Schema for the HEALIX data-quality rule DSL (PRD module 09, DQ-02 section 2). A pack is a YAML document with an envelope and a list of rules; each rule declares one dimension, one or more execution-plane targets, a severity, an aggregate threshold, an owner, its derivation source and a remediation hint.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pack", "version", "group", "owner", "rules"],
+  "properties": {
+    "pack": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Pack name; equals the file name without extension."
+    },
+    "version": { "$ref": "#/$defs/semver" },
+    "group": { "$ref": "#/$defs/group" },
+    "owner": { "$ref": "#/$defs/steward" },
+    "description": { "type": "string", "maxLength": 1000 },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/rule" }
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?$"
+    },
+    "group": {
+      "type": "string",
+      "enum": ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "XSYS"]
+    },
+    "domain": {
+      "type": "string",
+      "enum": ["party", "clinical", "finance", "supply", "workforce", "pophealth", "research", "reference", "governance"]
+    },
+    "dimension": {
+      "type": "string",
+      "enum": ["completeness", "validity", "accuracy", "consistency", "uniqueness", "timeliness", "integrity", "temporal", "lineage", "semantic"]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["blocker", "critical", "major", "minor"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "review", "active", "tuning", "deprecated", "retired"]
+    },
+    "derivation": {
+      "type": "string",
+      "enum": ["ontology", "terminology", "profiling", "policy"]
+    },
+    "source_system": {
+      "type": "string",
+      "enum": ["cerner", "oracle_erp", "oracle_hcm", "oracle_scm", "lis", "ris_pacs", "pharmacy", "rcm", "clearinghouse", "hie", "portal", "devices", "payer", "credentialing", "timekeeping", "scheduling", "empi", "platform"]
+    },
+    "steward": {
+      "type": "string",
+      "pattern": "^steward\\.[a-z][a-z0-9_]*$",
+      "description": "Steward business key resolving to edw_g9_governance.dim_data_steward.steward_bk."
+    },
+    "iri": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^(https?://|urn:)[^\\s]+$"
+    },
+    "iso8601_duration": {
+      "type": "string",
+      "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+S)?)?$"
+    },
+    "rule_id": {
+      "type": "string",
+      "pattern": "^DQR-(COMPLETENESS|VALIDITY|ACCURACY|CONSISTENCY|UNIQUENESS|TIMELINESS|INTEGRITY|TEMPORAL|LINEAGE|SEMANTIC)-[A-Z][A-Z0-9]*-\\d{3}$"
+    },
+    "threshold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric", "window"],
+      "properties": {
+        "metric": { "type": "string", "enum": ["pass_rate", "fail_count", "value"] },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "window": { "$ref": "#/$defs/iso8601_duration" }
+      },
+      "anyOf": [ { "required": ["min"] }, { "required": ["max"] } ]
+    },
+    "remediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "hint"],
+      "properties": {
+        "action": { "type": "string", "enum": ["auto_fix", "steward", "source_fix", "accept"] },
+        "hint": { "type": "string", "minLength": 10, "maxLength": 500 },
+        "policy_ref": { "$ref": "#/$defs/iri" },
+        "tool": { "type": "string", "maxLength": 120 },
+        "fix_class": {
+          "type": "string",
+          "enum": ["code_remap", "unit_normalisation", "identifier_format", "reference_resolution", "timestamp_repair", "derived_field", "late_arrival_wait"]
+        }
+      },
+      "if": { "properties": { "action": { "const": "auto_fix" } } },
+      "then": { "required": ["fix_class"] }
+    },
+    "test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixture", "expect"],
+      "properties": {
+        "fixture": { "type": "string" },
+        "expect": { "type": "string", "enum": ["pass", "fail"] },
+        "plane": { "type": "string", "enum": ["stream", "graph", "warehouse"] }
+      }
+    },
+    "target_stream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plane", "resource", "language", "expression"],
+      "properties": {
+        "plane": { "const": "stream" },
+        "resource": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$", "description": "FHIR R4 resource type or HEALIX-ERP profile name (e.g. Observation, GLJournalBatch)." },
+        "profile": { "$ref": "#/$defs/iri" },
+        "topic": { "type": "string", "pattern": "^hc\\.[a-z0-9.]+\\.v\\d+$" },
+        "language": { "const": "fhirpath" },
+        "expression": { "type": "string", "minLength": 1, "description": "FHIRPath boolean; true = pass." },
+        "stateful": { "type": "boolean", "default": false, "description": "Rule needs keyed state (timeliness timers, windowed uniqueness)." }
+      }
+    },
+    "target_graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plane", "language"],
+      "properties": {
+        "plane": { "const": "graph" },
+        "language": { "type": "string", "enum": ["shacl", "sparql"] },
+        "shape": { "$ref": "#/$defs/iri", "description": "SHACL NodeShape or PropertyShape IRI in the Ontology Registry." },
+        "sparql": { "type": "string", "minLength": 1, "description": "SPARQL SELECT binding ?focus (and optionally ?detail); each row is a failing focus node." },
+        "target_class": { "$ref": "#/$defs/iri", "description": "Class whose instance count is the denominator for SPARQL rules." },
+        "as_of": { "type": "string", "enum": ["current", "batch"], "default": "current" }
+      },
+      "allOf": [
+        { "if": { "properties": { "language": { "const": "shacl" } } }, "then": { "required": ["shape"] } },
+        { "if": { "properties": { "language": { "const": "sparql" } } }, "then": { "required": ["sparql", "target_class"] } }
+      ]
+    },
+    "target_warehouse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plane", "table", "language", "sql", "key_columns"],
+      "properties": {
+        "plane": { "const": "warehouse" },
+        "table": { "type": "string", "pattern": "^edw_g[1-9]_[a-z]+\\.(dim|fact|bridge|ref|stg|hist|agg)_[a-z0-9_]+$" },
+        "grain": { "type": "string", "maxLength": 120 },
+        "language": { "const": "sql" },
+        "sql": { "type": "string", "minLength": 1, "description": "SELECT returning failing rows (dbt-test convention); zero rows = pass." },
+        "key_columns": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" } },
+        "schedule": { "type": "string", "enum": ["on_load", "daily", "both"], "default": "on_load" }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "description", "dimension", "group", "domain", "source_systems", "targets", "severity", "threshold", "owner", "derivation", "derived_from", "remediation", "version", "status"],
+      "properties": {
+        "id": { "$ref": "#/$defs/rule_id" },
+        "name": { "type": "string", "minLength": 3, "maxLength": 120 },
+        "description": { "type": "string", "minLength": 20, "maxLength": 2000 },
+        "dimension": { "$ref": "#/$defs/dimension" },
+        "group": { "$ref": "#/$defs/group" },
+        "domain": { "$ref": "#/$defs/domain" },
+        "source_systems": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/source_system" } },
+        "cde": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/target_stream" },
+              { "$ref": "#/$defs/target_graph" },
+              { "$ref": "#/$defs/target_warehouse" }
+            ]
+          }
+        },
+        "severity": { "$ref": "#/$defs/severity" },
+        "quarantine": { "type": "boolean" },
+        "issue_grain": { "type": "string", "enum": ["record", "hourly", "daily"] },
+        "threshold": { "$ref": "#/$defs/threshold" },
+        "owner": { "$ref": "#/$defs/steward" },
+        "derivation": { "$ref": "#/$defs/derivation" },
+        "derived_from": { "$ref": "#/$defs/iri" },
+        "baseline_ref": { "$ref": "#/$defs/iri" },
+        "remediation": { "$ref": "#/$defs/remediation" },
+        "version": { "$ref": "#/$defs/semver" },
+        "status": { "$ref": "#/$defs/status" },
+        "tags": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" } },
+        "tests": { "type": "array", "items": { "$ref": "#/$defs/test" } }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "derivation": { "const": "profiling" } } },
+          "then": {
+            "required": ["baseline_ref"],
+            "properties": { "severity": { "enum": ["critical", "major", "minor"] } }
+          }
+        },
+        {
+          "if": { "properties": { "derivation": { "const": "ontology" } } },
+          "then": { "properties": { "derived_from": { "pattern": "^https://ontology\\.healix\\.example\\.org/" } } }
+        },
+        {
+          "if": { "properties": { "derivation": { "const": "profiling" } } },
+          "then": { "properties": { "derived_from": { "pattern": "^urn:healix:dq:baseline:" } } }
+        },
+        {
+          "if": { "properties": { "severity": { "const": "blocker" } } },
+          "then": { "required": ["cde"], "properties": { "cde": { "minItems": 1 } } }
+        }
+      ]
+    }
+  }
+}

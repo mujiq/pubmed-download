@@ -1,0 +1,397 @@
+########################################################################################################################
+# HEALIX temporal vocabulary  (healix-time)
+# doc: PRD/08-temporal-knowledge-graph/01-temporal-model.md  (TKG-01 §4)
+# IRI: https://ontology.healix.example.org/time/
+# Status: draft 0.1.0 — published through the Ontology Registry as an owl:imports-able module.
+#
+# Design notes
+#  * These properties annotate RDF-star triple terms (the assertion), NOT the domain entity. OWL-Time (time:) is
+#    reused for *domain* temporal entities (an Encounter's period); PROV-O for activities and agents.
+#  * Valid time  [validFrom, validTo)        — when the fact was true in the world.  Half-open; open end = absent.
+#  * Transaction [recordedAt, supersededAt)  — when the platform held the assertion as current.  Half-open.
+#  * No sentinel dates. Ever.
+#  * RDF 1.1 export (TKG-01 §11): the triple term becomes a node typed healix-time:BitemporalAssertion with
+#    rdf:subject / rdf:predicate / rdf:object; all annotation properties below attach to that node unchanged.
+########################################################################################################################
+
+@prefix healix:      <https://ontology.healix.example.org/> .
+@prefix healix-time: <https://ontology.healix.example.org/time/> .
+@prefix healix-shape: <https://ontology.healix.example.org/shape/> .
+@prefix owl:         <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:         <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:        <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:         <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:        <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms:     <http://purl.org/dc/terms/> .
+@prefix prov:        <http://www.w3.org/ns/prov#> .
+@prefix time:        <http://www.w3.org/2006/time#> .
+@prefix sh:          <http://www.w3.org/ns/shacl#> .
+@prefix vann:        <http://purl.org/vocab/vann/> .
+
+#---------------------------------------------------------------------------------------------------------------------
+# Ontology header
+#---------------------------------------------------------------------------------------------------------------------
+
+<https://ontology.healix.example.org/time/>
+    a owl:Ontology ;
+    dcterms:title "HEALIX Temporal Vocabulary (healix-time)"@en ;
+    dcterms:description """Annotation vocabulary for bitemporal assertions in the HEALIX knowledge graph. Properties in this
+vocabulary are attached to RDF-star triple terms and carry valid time, transaction time, event/source/decision time,
+change classification and links to the superseding assertion or retraction activity."""@en ;
+    owl:versionIRI <https://ontology.healix.example.org/time/0.1.0> ;
+    owl:versionInfo "0.1.0" ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    dcterms:creator "HEALIX Knowledge Graph Engineering" ;
+    vann:preferredNamespacePrefix "healix-time" ;
+    vann:preferredNamespaceUri "https://ontology.healix.example.org/time/" ;
+    owl:imports <http://www.w3.org/ns/prov-o#> , <http://www.w3.org/2006/time#> ;
+    rdfs:seeAlso <https://ontology.healix.example.org/doc/TKG-01> .
+
+#---------------------------------------------------------------------------------------------------------------------
+# Classes
+#---------------------------------------------------------------------------------------------------------------------
+
+healix-time:BitemporalAssertion
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Bitemporal assertion"@en ;
+    rdfs:comment """A single asserted triple together with its bitemporal annotation and provenance. In RDF 1.2 the
+instance of this class is the named reifier r of the triple (r rdf:reifies <<( s p o )>>, written << s p o ~ r >>,
+r = <base>assertion/<batch-ulid>/<seq>); in the RDF-star Community Group dialect it is the triple term << s p o >>
+itself; in the RDF 1.1 export it is a node carrying rdf:subject / rdf:predicate / rdf:object. Every instance MUST
+carry healix-time:validFrom, healix-time:recordedAt and prov:wasGeneratedBy (TKG-TIME-001)."""@en ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:Retraction
+    a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Retraction"@en ;
+    rdfs:comment """An activity that closes the transaction time of one or more assertions because they were never true
+(entered-in-error, logical delete, duplicate, entity-resolution unmerge). A retraction preserves the valid time of the
+retracted assertion and never physically deletes the triple term (TKG-TIME-007)."""@en ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:IngestionBatch
+    a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Ingestion batch"@en ;
+    rdfs:comment "The sink transaction that produced one named graph <base>graph/<source>/<yyyy-mm-dd>/<batch-ulid> (TKG-04 §6)."@en ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:ChangeKind
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Change kind"@en ;
+    rdfs:comment "Controlled reason for closing an assertion's transaction time. Members are in the SKOS scheme healix-time:ChangeKindScheme."@en ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:TemporalPrecision
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Temporal precision"@en ;
+    rdfs:comment "Precision of the source value from which valid time was derived. Aligned to time:TemporalUnit where a unit exists."@en ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+#---------------------------------------------------------------------------------------------------------------------
+# Valid time
+#---------------------------------------------------------------------------------------------------------------------
+
+healix-time:validFrom
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "valid from"@en ;
+    rdfs:comment """Inclusive start of the valid-time interval: the instant from which the asserted fact is/was true in
+the world. xsd:dateTime in UTC; xsd:date permitted only when the source supplied a date without time, in which case
+healix-time:sourceTimeZone MUST state the zone used to expand it. MANDATORY on every assertion."""@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range xsd:dateTime ;
+    skos:note "Conceptually the time:inXSDDateTimeStamp of the time:hasBeginning instant of the fact's validity interval; kept as a direct literal for query performance."@en ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:validTo
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "valid to"@en ;
+    rdfs:comment """EXCLUSIVE end of the valid-time interval. Absent for an open-ended (still true) fact. Sentinel values
+such as 9999-12-31 or 4712-12-31 are forbidden (TKG-TIME-002). Oracle Fusion inclusive EFFECTIVE_END_DATE values are
+converted by adding one day in the local zone (TKG-TIME-005)."""@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range xsd:dateTime ;
+    skos:note "Conceptually the time:hasEnd instant of the fact's validity interval."@en ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:validToRecordedAt
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "valid-to recorded at"@en ;
+    rdfs:comment "Transaction instant at which validTo was written, when it was written later than the assertion itself (e.g. an encounter discharge, a contract expiry learned later). Enables 'when did we learn it ended' without scanning provenance."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range xsd:dateTime ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:validTimeSource
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "valid time source"@en ;
+    rdfs:comment "FHIRPath or source column reference from which valid time was derived, e.g. \"Condition.onsetDateTime\", \"PER_ALL_PEOPLE_F.EFFECTIVE_START_DATE\" (TKG-TIME-004)."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range xsd:string ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:validTimePrecision
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:label "valid time precision"@en ;
+    rdfs:comment "Precision of the source temporal value (instant, day, month, year, approximate)."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range healix-time:TemporalPrecision ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+#---------------------------------------------------------------------------------------------------------------------
+# Transaction time
+#---------------------------------------------------------------------------------------------------------------------
+
+healix-time:recordedAt
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:subPropertyOf prov:generatedAtTime ;
+    rdfs:label "recorded at"@en ;
+    rdfs:comment """Inclusive start of transaction time: the commit instant at which the KG sink made this assertion
+current knowledge. Assigned from the sink's clock, never copied from event or source time (TKG-TIME-003).
+MANDATORY."""@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range xsd:dateTime ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:supersededAt
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:subPropertyOf prov:invalidatedAtTime ;
+    rdfs:label "superseded at"@en ;
+    rdfs:comment "EXCLUSIVE end of transaction time: the commit instant at which the platform stopped holding this assertion as current (new version, correction, retraction, merge or unmerge). Absent while current."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range xsd:dateTime ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:supersededBy
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:label "superseded by"@en ;
+    rdfs:comment "The assertion that replaced this one (new version or correction). The inverse direction corresponds to prov:wasRevisionOf from the new assertion to this one."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range healix-time:BitemporalAssertion ;
+    owl:inverseOf healix-time:supersedes ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:supersedes
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasRevisionOf ;
+    rdfs:label "supersedes"@en ;
+    rdfs:comment "Inverse of supersededBy: this assertion replaced the object assertion."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range healix-time:BitemporalAssertion ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:retractedBy
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:subPropertyOf prov:wasInvalidatedBy ;
+    rdfs:label "retracted by"@en ;
+    rdfs:comment "Links a retracted assertion to the healix-time:Retraction activity that closed it."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range healix-time:Retraction ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:changeKind
+    a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:label "change kind"@en ;
+    rdfs:comment "Why this assertion was closed (set together with supersededAt) or how it came to exist (new). One of the members of healix-time:ChangeKindScheme (TKG-TIME-006)."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range healix-time:ChangeKind ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+#---------------------------------------------------------------------------------------------------------------------
+# Event, source and decision time
+#---------------------------------------------------------------------------------------------------------------------
+
+healix-time:eventTime
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "event time"@en ;
+    rdfs:comment "Instant of the originating business event as stamped by the source (HL7 MSH-7, FHIR meta.lastUpdated, CDC commit time). Copied from the Kafka header hc-event-time (CONVENTIONS §4)."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range xsd:dateTime ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:sourceTime
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "source time"@en ;
+    rdfs:comment "Instant at which the source system committed the data (Cerner UPDT_DT_TM, Oracle LAST_UPDATE_DATE, FHIR Provenance.recorded). Copied from the Kafka header hc-source-time."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range xsd:dateTime ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:decisionTime
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "decision time"@en ;
+    rdfs:comment "Instant of the clinical, financial or governance decision the fact depends on (MedicationRequest.authoredOn, Claim.created, ClaimResponse.created, Consent.dateTime, PO APPROVED_DATE, GL POSTED_DATE). Optional (TKG-TIME-013)."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range xsd:dateTime ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+healix-time:sourceTimeZone
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "source time zone"@en ;
+    rdfs:comment "IANA zone (or fixed offset) the source supplied or that was used to expand a date-only value to an instant, e.g. \"America/Chicago\". Stored values are always UTC; this records how they were derived (TKG-TIME-008)."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range xsd:string ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+#---------------------------------------------------------------------------------------------------------------------
+# Convenience / derived flags
+#---------------------------------------------------------------------------------------------------------------------
+
+healix-time:derived
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "derived"@en ;
+    rdfs:comment "true when the base triple was produced by OWL RL materialisation or survivorship rather than ingested; derived triples live in <base>graph/inferred/<Gn> and are never annotated with transaction time of their own (TKG-STORE-005)."@en ;
+    rdfs:range xsd:boolean ;
+    rdfs:isDefinedBy <https://ontology.healix.example.org/time/> .
+
+#---------------------------------------------------------------------------------------------------------------------
+# SKOS scheme: change kinds
+#---------------------------------------------------------------------------------------------------------------------
+
+healix-time:ChangeKindScheme
+    a skos:ConceptScheme ;
+    skos:prefLabel "Change kinds"@en ;
+    skos:hasTopConcept healix-time:ChangeKind_new , healix-time:ChangeKind_newVersion , healix-time:ChangeKind_correction ,
+                       healix-time:ChangeKind_retraction , healix-time:ChangeKind_merge , healix-time:ChangeKind_unmerge .
+
+healix-time:ChangeKind_new a healix-time:ChangeKind , skos:Concept ;
+    skos:inScheme healix-time:ChangeKindScheme ; skos:topConceptOf healix-time:ChangeKindScheme ;
+    skos:notation "new" ; skos:prefLabel "new"@en ;
+    skos:definition "First assertion of a fact; nothing was closed."@en .
+
+healix-time:ChangeKind_newVersion a healix-time:ChangeKind , skos:Concept ;
+    skos:inScheme healix-time:ChangeKindScheme ; skos:topConceptOf healix-time:ChangeKindScheme ;
+    skos:notation "new-version" ; skos:prefLabel "new version"@en ;
+    skos:definition "The world changed: the prior assertion's valid time is closed at the new validFrom and its transaction time is closed."@en .
+
+healix-time:ChangeKind_correction a healix-time:ChangeKind , skos:Concept ;
+    skos:inScheme healix-time:ChangeKindScheme ; skos:topConceptOf healix-time:ChangeKindScheme ;
+    skos:notation "correction" ; skos:prefLabel "correction"@en ;
+    skos:definition "Our knowledge was wrong: the prior assertion's valid time is untouched, its transaction time is closed, and a replacement assertion carries the corrected valid time."@en .
+
+healix-time:ChangeKind_retraction a healix-time:ChangeKind , skos:Concept ;
+    skos:inScheme healix-time:ChangeKindScheme ; skos:topConceptOf healix-time:ChangeKindScheme ;
+    skos:notation "retraction" ; skos:prefLabel "retraction"@en ;
+    skos:definition "The fact was never true (entered-in-error, logical delete, duplicate): transaction time closed, valid time preserved, linked by retractedBy."@en .
+
+healix-time:ChangeKind_merge a healix-time:ChangeKind , skos:Concept ;
+    skos:inScheme healix-time:ChangeKindScheme ; skos:topConceptOf healix-time:ChangeKindScheme ;
+    skos:notation "merge" ; skos:prefLabel "merge"@en ;
+    skos:definition "Entity-resolution link asserted or re-scored (TKG-03 §6)."@en .
+
+healix-time:ChangeKind_unmerge a healix-time:ChangeKind , skos:Concept ;
+    skos:inScheme healix-time:ChangeKindScheme ; skos:topConceptOf healix-time:ChangeKindScheme ;
+    skos:notation "unmerge" ; skos:prefLabel "unmerge"@en ;
+    skos:definition "Entity-resolution link retracted; survivorship re-derived (TKG-03 §6)."@en .
+
+#---------------------------------------------------------------------------------------------------------------------
+# SKOS scheme: temporal precision (aligned to OWL-Time units where one exists)
+#---------------------------------------------------------------------------------------------------------------------
+
+healix-time:TemporalPrecisionScheme
+    a skos:ConceptScheme ;
+    skos:prefLabel "Temporal precision"@en .
+
+healix-time:Precision_instant a healix-time:TemporalPrecision , skos:Concept ;
+    skos:inScheme healix-time:TemporalPrecisionScheme ; skos:notation "instant" ; skos:prefLabel "instant"@en ;
+    skos:closeMatch time:unitSecond ;
+    skos:definition "Source supplied a full date-time (second or better)."@en .
+
+healix-time:Precision_day a healix-time:TemporalPrecision , skos:Concept ;
+    skos:inScheme healix-time:TemporalPrecisionScheme ; skos:notation "day" ; skos:prefLabel "day"@en ;
+    skos:exactMatch time:unitDay ;
+    skos:definition "Source supplied a date only; expanded to local midnight in sourceTimeZone."@en .
+
+healix-time:Precision_month a healix-time:TemporalPrecision , skos:Concept ;
+    skos:inScheme healix-time:TemporalPrecisionScheme ; skos:notation "month" ; skos:prefLabel "month"@en ;
+    skos:exactMatch time:unitMonth ;
+    skos:definition "Source supplied year and month (e.g. HL7 v2 TS YYYYMM); interval widened to the month."@en .
+
+healix-time:Precision_year a healix-time:TemporalPrecision , skos:Concept ;
+    skos:inScheme healix-time:TemporalPrecisionScheme ; skos:notation "year" ; skos:prefLabel "year"@en ;
+    skos:exactMatch time:unitYear ;
+    skos:definition "Source supplied a year only; interval widened to the year."@en .
+
+healix-time:Precision_approximate a healix-time:TemporalPrecision , skos:Concept ;
+    skos:inScheme healix-time:TemporalPrecisionScheme ; skos:notation "approximate" ; skos:prefLabel "approximate"@en ;
+    skos:definition "Valid time was inferred from a fallback (recordedDate, meta.lastUpdated, hc-source-time) rather than an explicit clinical/business element; a DQ timeliness observation accompanies it."@en .
+
+#---------------------------------------------------------------------------------------------------------------------
+# Supporting HEALIX properties used on assertions / batch graphs (defined here for self-containment)
+#---------------------------------------------------------------------------------------------------------------------
+
+healix:assertionId
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "assertion id"@en ;
+    rdfs:comment "Idempotency key of the assertion: <batch-ulid-of-first-sight>:sha256(subject|predicate|object|validFrom|validTimeSource) (TKG-04 §5)."@en ;
+    rdfs:domain healix-time:BitemporalAssertion ;
+    rdfs:range xsd:string .
+
+healix:BatchGraph
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity , prov:Bundle ;
+    rdfs:label "Batch graph"@en ;
+    rdfs:comment "Named graph <base>graph/<source>/<yyyy-mm-dd>/<batch-ulid> holding one ingestion batch's assertions."@en .
+
+healix:phiClassMax
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "maximum PHI class"@en ;
+    rdfs:comment "Highest PHI classification (module 11) present in a batch graph; drives named-graph ACLs (TKG-STORE-008)."@en ;
+    rdfs:domain healix:BatchGraph ;
+    rdfs:range xsd:string .
+
+healix:contentHash
+    a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "content hash"@en ;
+    rdfs:comment "SHA-256 over the sorted N-Quads of the batch graph excluding recordedAt; identical for a faithful replay (TKG-INGEST-013)."@en ;
+    rdfs:domain healix:BatchGraph ;
+    rdfs:range xsd:string .
+
+healix:replayOf
+    a owl:ObjectProperty ;
+    rdfs:label "replay of"@en ;
+    rdfs:comment "Links a replay/backfill ingestion batch to the original activity whose input it re-processed."@en ;
+    rdfs:domain healix-time:IngestionBatch ;
+    rdfs:range prov:Activity .
+
+#---------------------------------------------------------------------------------------------------------------------
+# SHACL shapes (TKG-TIME-001, TKG-TIME-002). Applied to the RDF 1.1 export form (assertion node) and, in stores that
+# support it, to triple terms via sh:targetClass on healix-time:BitemporalAssertion.
+#---------------------------------------------------------------------------------------------------------------------
+
+healix-shape:BitemporalAssertionShape
+    a sh:NodeShape ;
+    sh:targetClass healix-time:BitemporalAssertion ;
+    sh:property [ sh:path healix-time:validFrom ;  sh:minCount 1 ; sh:maxCount 1 ; sh:or ( [ sh:datatype xsd:dateTime ] [ sh:datatype xsd:date ] ) ;
+                  sh:message "TKG-TIME-001: validFrom is mandatory and must be xsd:dateTime or xsd:date." ] ;
+    sh:property [ sh:path healix-time:validTo ;    sh:maxCount 1 ; sh:or ( [ sh:datatype xsd:dateTime ] [ sh:datatype xsd:date ] ) ;
+                  sh:maxExclusive "4000-01-01T00:00:00Z"^^xsd:dateTime ;
+                  sh:message "TKG-TIME-002: validTo must be absent for open intervals; sentinel dates are forbidden." ] ;
+    sh:property [ sh:path healix-time:recordedAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:dateTime ;
+                  sh:message "TKG-TIME-001: recordedAt is mandatory." ] ;
+    sh:property [ sh:path healix-time:supersededAt ; sh:maxCount 1 ; sh:datatype xsd:dateTime ;
+                  sh:maxExclusive "4000-01-01T00:00:00Z"^^xsd:dateTime ;
+                  sh:message "TKG-TIME-002: supersededAt must be absent while current; sentinel dates are forbidden." ] ;
+    sh:property [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:nodeKind sh:IRI ;
+                  sh:message "TKG-TIME-001: every assertion must reference its PROV-O activity." ] ;
+    sh:property [ sh:path healix-time:changeKind ; sh:maxCount 1 ; sh:class healix-time:ChangeKind ] ;
+    sh:property [ sh:path healix-time:validTimePrecision ; sh:maxCount 1 ; sh:class healix-time:TemporalPrecision ] ;
+    sh:sparql [
+        sh:message "TKG-TIME-002: validTo must be strictly after validFrom." ;
+        sh:select """
+            SELECT $this WHERE {
+              $this <https://ontology.healix.example.org/time/validFrom> ?f ;
+                    <https://ontology.healix.example.org/time/validTo>   ?t .
+              FILTER(?t <= ?f)
+            }""" ] ;
+    sh:sparql [
+        sh:message "TKG-TIME-006: a closed assertion (supersededAt bound) must carry a changeKind." ;
+        sh:select """
+            SELECT $this WHERE {
+              $this <https://ontology.healix.example.org/time/supersededAt> ?s .
+              FILTER NOT EXISTS { $this <https://ontology.healix.example.org/time/changeKind> ?k }
+            }""" ] .

@@ -1,0 +1,210 @@
+########################################################################################################################
+# HEALIX bitemporal example — a Condition whose onset was corrected  (TKG-01 §1, §6.2; TKG-02 §5.3)
+#
+# Story
+#  2026-03-02  Nurse charts atrial fibrillation (SNOMED CT 49436004) for patient EMPI 01HZX7K3 with onset
+#              "about January 2026" → Cerner FHIR Condition/12345678 v1, onsetDateTime 2026-01-15 (precision: month,
+#              because the nurse entered only "01/2026").
+#  2026-03-20  Cardiologist reviews a 2025-11 ECG and CORRECTS the onset to 2025-11-14 → Condition/12345678 v2, with
+#              Provenance.activity REVISE / reason CORRECT.  Our earlier belief was wrong, the world did not change
+#              ⇒ changeKind = correction: the old assertion keeps its valid time, its transaction time closes.
+#
+# Query "did the patient have AF on 2025-12-01?"
+#   asked on 2026-03-10 (as-known) → NO   (only the 2026-01-15 onset was believed)
+#   asked on 2026-04-01 (as-known) → YES  (the 2025-11-14 onset is current)
+#
+# Syntax: TriG, RDF 1.2 (RDF-star).  Each assertion is a NAMED REIFIER  << s p o ~ <reifier> >>  whose IRI is
+#   <base>assertion/<batch-ulid>/<seq>  — the reifier node is the healix-time:BitemporalAssertion instance and carries
+#   the annotations; `r rdf:reifies <<( s p o )>>` is produced by the parser.  Stores that implement only the
+#   RDF-star Community Group syntax read the same content with `~ <reifier>` removed (the triple term is then the
+#   assertion itself and supersedes/supersededBy point at `<< s p o >>` terms) — see TKG-01 §3.1.
+#   The base triple is ALSO asserted, so plain SPARQL and OWL RL work on it.
+# Validated with pyoxigraph 0.5 (RDF 1.2 TriG + SPARQL 1.2); see TKG-00 README validation notes.
+########################################################################################################################
+
+@prefix healix:      <https://ontology.healix.example.org/> .
+@prefix healix-time: <https://ontology.healix.example.org/time/> .
+@prefix clin:        <https://ontology.healix.example.org/clinical/> .
+@prefix party:       <https://ontology.healix.example.org/party/> .
+@prefix graph:       <https://ontology.healix.example.org/graph/> .
+@prefix id:          <https://ontology.healix.example.org/id/> .
+@prefix asrt:        <https://ontology.healix.example.org/assertion/> .
+@prefix provact:     <https://ontology.healix.example.org/prov/activity/> .
+@prefix prov:        <http://www.w3.org/ns/prov#> .
+@prefix fhir:        <http://hl7.org/fhir/> .
+@prefix sct:         <http://snomed.info/id/> .
+@prefix xsd:         <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs:        <http://www.w3.org/2000/01/rdf-schema#> .
+
+#=====================================================================================================================
+# Batch 1 — 2026-03-02, source cerner-fhir.  First sight of the Condition.
+#=====================================================================================================================
+GRAPH <https://ontology.healix.example.org/graph/cerner-fhir/2026-03-02/01J8Q6Z3M9K2V7XW4R5T6Y8ABC> {
+
+  # --- base triples (asserted) -------------------------------------------------------------------------------------
+  id:condition\/cerner\/12345678
+      a clin:Condition , fhir:Condition ;
+      healix:businessKey "cerner:condition:12345678" ;
+      healix:group "G2" ;
+      clin:subject id:patient\/cerner\/MERCY-MAIN\/00412345 ;
+      clin:code sct:49436004 ;
+      clin:clinicalStatus clin:ClinicalStatus_active ;
+      clin:verificationStatus clin:VerificationStatus_confirmed ;
+      clin:onsetDateTime "2026-01-15T06:00:00Z"^^xsd:dateTime .     # 2026-01-15 00:00 America/Chicago
+
+  # --- the onset assertion, annotated (this is the one that will be corrected) --------------------------------------
+  << id:condition\/cerner\/12345678 clin:onsetDateTime "2026-01-15T06:00:00Z"^^xsd:dateTime
+     ~ asrt:01J8Q6Z3M9K2V7XW4R5T6Y8ABC\/1 >>
+      a healix-time:BitemporalAssertion ;
+      healix:assertionId            "01J8Q6Z3M9K2V7XW4R5T6Y8ABC:sha256:a1b2c3d4e5f60718293a4b5c6d7e8f9001122334455667788990aabbccddeeff" ;
+      healix-time:validFrom         "2026-01-15T06:00:00Z"^^xsd:dateTime ;
+      # validTo absent: open interval (the condition is ongoing)
+      healix-time:recordedAt        "2026-03-02T14:07:11.412Z"^^xsd:dateTime ;
+      healix-time:supersededAt      "2026-03-20T09:41:30.088Z"^^xsd:dateTime ;    # written by batch 2 into THIS graph
+      healix-time:changeKind        healix-time:ChangeKind_correction ;
+      healix-time:supersededBy      asrt:01J9R1T5N7P3W8XY2Z4V6B9CDE\/1 ;
+      healix-time:eventTime         "2026-03-02T14:06:58Z"^^xsd:dateTime ;
+      healix-time:sourceTime        "2026-03-02T14:06:58Z"^^xsd:dateTime ;
+      healix-time:validTimeSource   "Condition.onsetDateTime" ;
+      healix-time:validTimePrecision healix-time:Precision_month ;
+      healix-time:sourceTimeZone    "America/Chicago" ;
+      prov:wasGeneratedBy           provact:01J8Q6Z3M9K2V7XW4R5T6Y8ABC .
+
+  # --- the other facts of v1, still current (they were not affected by the correction) -----------------------------
+  << id:condition\/cerner\/12345678 clin:clinicalStatus clin:ClinicalStatus_active
+     ~ asrt:01J8Q6Z3M9K2V7XW4R5T6Y8ABC\/2 >>
+      a healix-time:BitemporalAssertion ;
+      healix:assertionId            "01J8Q6Z3M9K2V7XW4R5T6Y8ABC:sha256:0f0e0d0c0b0a09080706050403020100ffeeddccbbaa99887766554433221100" ;
+      healix-time:validFrom         "2026-01-15T06:00:00Z"^^xsd:dateTime ;
+      healix-time:recordedAt        "2026-03-02T14:07:11.412Z"^^xsd:dateTime ;
+      healix-time:changeKind        healix-time:ChangeKind_new ;
+      healix-time:eventTime         "2026-03-02T14:06:58Z"^^xsd:dateTime ;
+      healix-time:sourceTime        "2026-03-02T14:06:58Z"^^xsd:dateTime ;
+      healix-time:validTimeSource   "Condition.onsetDateTime" ;
+      healix-time:validTimePrecision healix-time:Precision_month ;
+      healix-time:sourceTimeZone    "America/Chicago" ;
+      prov:wasGeneratedBy           provact:01J8Q6Z3M9K2V7XW4R5T6Y8ABC .
+
+  << id:condition\/cerner\/12345678 clin:code sct:49436004
+     ~ asrt:01J8Q6Z3M9K2V7XW4R5T6Y8ABC\/3 >>
+      a healix-time:BitemporalAssertion ;
+      healix:assertionId            "01J8Q6Z3M9K2V7XW4R5T6Y8ABC:sha256:1111111111111111111111111111111111111111111111111111111111111111" ;
+      healix-time:validFrom         "2026-01-15T06:00:00Z"^^xsd:dateTime ;
+      healix-time:recordedAt        "2026-03-02T14:07:11.412Z"^^xsd:dateTime ;
+      healix-time:changeKind        healix-time:ChangeKind_new ;
+      healix-time:eventTime         "2026-03-02T14:06:58Z"^^xsd:dateTime ;
+      healix-time:sourceTime        "2026-03-02T14:06:58Z"^^xsd:dateTime ;
+      healix-time:validTimeSource   "Condition.onsetDateTime" ;
+      healix-time:validTimePrecision healix-time:Precision_month ;
+      healix-time:sourceTimeZone    "America/Chicago" ;
+      prov:wasGeneratedBy           provact:01J8Q6Z3M9K2V7XW4R5T6Y8ABC .
+}
+
+#=====================================================================================================================
+# Batch 2 — 2026-03-20, source cerner-fhir.  Correction of onset.
+#=====================================================================================================================
+GRAPH <https://ontology.healix.example.org/graph/cerner-fhir/2026-03-20/01J9R1T5N7P3W8XY2Z4V6B9CDE> {
+
+  id:condition\/cerner\/12345678
+      clin:onsetDateTime "2025-11-14T06:00:00Z"^^xsd:dateTime .     # 2025-11-14 00:00 America/Chicago (day precision)
+
+  << id:condition\/cerner\/12345678 clin:onsetDateTime "2025-11-14T06:00:00Z"^^xsd:dateTime
+     ~ asrt:01J9R1T5N7P3W8XY2Z4V6B9CDE\/1 >>
+      a healix-time:BitemporalAssertion ;
+      healix:assertionId            "01J9R1T5N7P3W8XY2Z4V6B9CDE:sha256:9988776655443322110000112233445566778899aabbccddeeff001122334455" ;
+      healix-time:validFrom         "2025-11-14T06:00:00Z"^^xsd:dateTime ;
+      healix-time:recordedAt        "2026-03-20T09:41:30.088Z"^^xsd:dateTime ;
+      # supersededAt absent: current knowledge
+      healix-time:changeKind        healix-time:ChangeKind_correction ;   # how this assertion came to exist
+      healix-time:supersedes        asrt:01J8Q6Z3M9K2V7XW4R5T6Y8ABC\/1 ;
+      healix-time:eventTime         "2026-03-20T09:41:02Z"^^xsd:dateTime ;
+      healix-time:sourceTime        "2026-03-20T09:41:02Z"^^xsd:dateTime ;
+      healix-time:decisionTime      "2026-03-20T09:38:00Z"^^xsd:dateTime ;   # cardiologist signed the amendment
+      healix-time:validTimeSource   "Condition.onsetDateTime" ;
+      healix-time:validTimePrecision healix-time:Precision_day ;
+      healix-time:sourceTimeZone    "America/Chicago" ;
+      prov:wasGeneratedBy           provact:01J9R1T5N7P3W8XY2Z4V6B9CDE .
+}
+
+#=====================================================================================================================
+# Current view (derived, rebuildable) — only base triples of current assertions.  No annotations here.
+#=====================================================================================================================
+GRAPH <https://ontology.healix.example.org/graph/current/G2> {
+  id:condition\/cerner\/12345678
+      a clin:Condition , fhir:Condition ;
+      healix:businessKey "cerner:condition:12345678" ;
+      healix:group "G2" ;
+      clin:subject id:patient\/cerner\/MERCY-MAIN\/00412345 ;
+      clin:code sct:49436004 ;
+      clin:clinicalStatus clin:ClinicalStatus_active ;
+      clin:verificationStatus clin:VerificationStatus_confirmed ;
+      clin:onsetDateTime "2025-11-14T06:00:00Z"^^xsd:dateTime .
+}
+
+#=====================================================================================================================
+# Provenance graph — one activity per batch; offsets committed in the same transaction (TKG-04 §5, §6)
+#=====================================================================================================================
+GRAPH <https://ontology.healix.example.org/graph/prov> {
+
+  provact:01J8Q6Z3M9K2V7XW4R5T6Y8ABC
+      a prov:Activity , healix-time:IngestionBatch ;
+      prov:startedAtTime    "2026-03-02T14:07:09.900Z"^^xsd:dateTime ;
+      prov:endedAtTime      "2026-03-02T14:07:11.412Z"^^xsd:dateTime ;
+      prov:wasAssociatedWith healix:agent\/kg_builder\/v2026.3 , healix:service\/kg-sink\/prod-2 ;
+      prov:used             <urn:healix:kafka:hc.canonical.clinical.condition.fhir.v1:7:9911002-9912387> ;
+      healix:kafkaTopic     "hc.canonical.clinical.condition.fhir.v1" ;
+      healix:kafkaOffsetRange "7:9911002-9912387" ;
+      healix:ontologyVersion "2026.03" ;
+      healix:mappingVersion  "fhir-healix-2026.3" ;
+      healix:shaclVersion    "2026.03" ;
+      healix:batchGraph     graph:cerner-fhir\/2026-03-02\/01J8Q6Z3M9K2V7XW4R5T6Y8ABC .
+
+  graph:cerner-fhir\/2026-03-02\/01J8Q6Z3M9K2V7XW4R5T6Y8ABC
+      a healix:BatchGraph ;
+      prov:wasGeneratedBy   provact:01J8Q6Z3M9K2V7XW4R5T6Y8ABC ;
+      healix:group          "G2" ;
+      healix:phiClassMax    "PHI-CLINICAL" ;
+      healix:assertionCount 3 ;
+      healix:contentHash    "sha256:5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8" .
+
+  provact:01J9R1T5N7P3W8XY2Z4V6B9CDE
+      a prov:Activity , healix-time:IngestionBatch ;
+      prov:startedAtTime    "2026-03-20T09:41:28.510Z"^^xsd:dateTime ;
+      prov:endedAtTime      "2026-03-20T09:41:30.088Z"^^xsd:dateTime ;
+      prov:wasAssociatedWith healix:agent\/kg_builder\/v2026.3 , healix:service\/kg-sink\/prod-2 ;
+      prov:used             <urn:healix:kafka:hc.canonical.clinical.condition.fhir.v1:7:10477210-10477980> ;
+      prov:wasInformedBy    provact:01J8Q6Z3M9K2V7XW4R5T6Y8ABC ;     # it closed an assertion from batch 1
+      healix:kafkaTopic     "hc.canonical.clinical.condition.fhir.v1" ;
+      healix:kafkaOffsetRange "7:10477210-10477980" ;
+      healix:ontologyVersion "2026.03" ;
+      healix:mappingVersion  "fhir-healix-2026.3" ;
+      healix:shaclVersion    "2026.03" ;
+      healix:batchGraph     graph:cerner-fhir\/2026-03-20\/01J9R1T5N7P3W8XY2Z4V6B9CDE .
+
+  graph:cerner-fhir\/2026-03-20\/01J9R1T5N7P3W8XY2Z4V6B9CDE
+      a healix:BatchGraph ;
+      prov:wasGeneratedBy   provact:01J9R1T5N7P3W8XY2Z4V6B9CDE ;
+      healix:group          "G2" ;
+      healix:phiClassMax    "PHI-CLINICAL" ;
+      healix:assertionCount 1 ;
+      healix:contentHash    "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae" .
+}
+
+#=====================================================================================================================
+# Entity-resolution link (TKG-03 §5–6): the Cerner source record is linked to the EMPI golden record.
+#=====================================================================================================================
+GRAPH <https://ontology.healix.example.org/graph/er/links> {
+  id:patient\/cerner\/MERCY-MAIN\/00412345 healix:linkedTo id:patient\/empi\/01HZX7K3 .
+
+  << id:patient\/cerner\/MERCY-MAIN\/00412345 healix:linkedTo id:patient\/empi\/01HZX7K3
+     ~ asrt:01HZ0ERLINK0000000000000001\/1 >>
+      a healix-time:BitemporalAssertion ;
+      healix:assertionId    "01HZ0ERLINK0000000000000001:sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd" ;
+      healix:linkConfidence 1.0 ;
+      healix:linkMethod     "deterministic:D-PAT-01" ;
+      healix:linkState      "auto" ;
+      healix-time:validFrom  "2019-06-03T05:00:00Z"^^xsd:dateTime ;   # registration date at Mercy Main
+      healix-time:recordedAt "2026-01-10T03:12:44.000Z"^^xsd:dateTime ;
+      healix-time:changeKind healix-time:ChangeKind_merge ;
+      prov:wasGeneratedBy    provact:01HZ0ERLINK0000000000000001 .
+}

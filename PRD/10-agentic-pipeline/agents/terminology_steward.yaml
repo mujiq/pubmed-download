@@ -1,0 +1,115 @@
+manifest_version: 0.1.0
+id: agent.terminology_steward
+role: Terminology Steward
+mission: >-
+  Maintain enterprise FHIR ValueSets and ConceptMaps on the Terminology Service, classify and map new or
+  unmapped source codes (Cerner code sets, Oracle Fusion lookups, LIS/pharmacy local codes) to SNOMED CT,
+  LOINC, RxNorm, ICD-10, CPT/HCPCS, NDC, CVX and UCUM, and keep bindings current with external releases.
+pipeline_stage: [1, 3]
+owns_modules: ["06", "G8"]
+autonomy_level: L2
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_CLASSIFICATION}"
+  recommended_default: claude-haiku-5-5
+  fallback_ref: "${MODEL_MAPPING}"
+  temperature: 0.0
+  max_output_tokens: 4096
+  structured_output: true
+tools:
+  - server: terminology-service
+    operations: [lookup, validate_code, translate, expand, subsumes, closure, propose_value_set, propose_concept_map, get_release_manifest]
+    permission: propose
+    phi_access: none
+  - server: ontology-registry
+    operations: [get_concept, search_concepts]
+    permission: read
+    phi_access: none
+  - server: source-registry
+    operations: [get_element, get_code_set_values]
+    permission: read
+    phi_access: none
+  - server: sql-sandbox
+    operations: [profile_column, run_query]
+    permission: read
+    phi_access: masked
+  - server: dq-engine
+    operations: [list_results]
+    permission: read
+    phi_access: none
+  - server: cr-engine
+    operations: [create_cr, get_cr, withdraw_cr]
+    permission: propose
+    phi_access: none
+  - server: git
+    operations: [read_file, create_branch, commit, open_pr]
+    permission: propose
+    phi_access: none
+triggers:
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: unmapped_code
+    description: Canonicaliser or DQ monitor saw a code not in the bound value set.
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: terminology_release
+    description: Monthly external release synced (SNOMED CT, LOINC, RxNorm weekly, ICD-10 annual, CVX).
+  - kind: schedule
+    cron: "0 6 1 * *"
+    description: Monthly release sync — expand all value sets, detect retired/moved concepts, propose updates.
+  - kind: manual
+inputs:
+  - Unmapped code events (system, code, display text as untrusted, frequency)
+  - Current ValueSets, ConceptMaps and their bindings in FHIR profiles
+  - External terminology release manifests and delta files
+  - Cerner CODE_VALUE / Oracle lookup metadata
+outputs:
+  - artefact: ValueSet compose/expansion changes
+    cr_type: value_set
+    destination: cr-engine
+  - artefact: ConceptMap element additions with equivalence (equivalent/wider/narrower/inexact/unmatched)
+    cr_type: value_set
+    destination: cr-engine
+  - artefact: Release-sync impact report (retired concepts in use, moved codes, new codes)
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+  - artefact: Unmapped code backlog with suggested targets and confidence
+    cr_type: null
+    destination: ticketing
+risk_classes: [low, medium, high]
+evaluation:
+  rubric_ids: [RUB-VS-01, RUB-VS-02, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: 0.92
+  human_agreement_target: 0.95
+  golden_sets: [golden-conceptmap-cerner-lab-loinc-v1, golden-conceptmap-pharmacy-rxnorm-v1, golden-valueset-encounter-class-v1]
+  regression_suites: [valueset-expansion-regression, conceptmap-roundtrip]
+budgets:
+  tokens_per_run: 60000
+  runs_per_day: 1000
+  daily_token_cap: 30000000
+  max_tool_calls_per_run: 100
+  wall_clock_minutes_per_run: 15
+  max_concurrent_runs: 10
+  max_open_change_requests: 300
+escalation:
+  to: [Terminology Steward, Data Steward (clinical)]
+  sla_hours: 48
+  on_low_score: Mark mapping 'inexact' and request steward decision; never silently default.
+  on_budget_exhausted: Queue remaining codes; publish backlog size metric.
+  on_veto: Withdraw CR.
+  on_conflict: Merge into open CR for the same ValueSet; one CR per ValueSet per release.
+memory:
+  working: true
+  episodic: true
+  semantic_write: true
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: L3
+  criteria:
+    - ">= 2000 evaluated value_set CRs over >= 90 days"
+    - "ConceptMap equivalence precision on golden sets >= 0.98"
+    - "Rollback rate <= 0.3 %"
+  demotion_triggers:
+    - A released ConceptMap that changes clinical meaning (e.g. wrong LOINC specimen/system) found in DQ incident (immediate L1).

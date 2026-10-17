@@ -1,0 +1,122 @@
+# HEALIX agent manifest — validated against agent.schema.json
+manifest_version: 0.1.0
+id: agent.orchestrator
+role: Orchestrator
+mission: >-
+  Plan and schedule pipeline runs across the six Ontology Pipeline stages, route every change request
+  (CR) to the right specialist, evaluator and gate, enforce autonomy-level policy, and keep the control
+  plane within budget. The orchestrator never edits a semantic artefact itself.
+pipeline_stage: [0, 1, 2, 3, 4, 5]
+owns_modules: ["10"]
+autonomy_level: L3
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_ORCHESTRATION}"
+  recommended_default: claude-fable-5-1
+  fallback_ref: "${MODEL_MAPPING}"
+  temperature: 0.1
+  max_output_tokens: 8192
+  structured_output: true
+tools:
+  - server: cr-engine
+    operations: [get_cr, list_crs, route_cr, transition_cr, detect_conflicts, lock_target]
+    permission: apply
+    phi_access: none
+  - server: source-registry
+    permission: read
+    phi_access: none
+  - server: ontology-registry
+    operations: [get_release, diff, list_schemes]
+    permission: read
+    phi_access: none
+  - server: kafka-admin
+    operations: [list_topics, describe_topic, get_consumer_lag]
+    permission: read
+    phi_access: none
+  - server: dq-engine
+    operations: [list_results, get_scorecard]
+    permission: read
+    phi_access: none
+  - server: lineage
+    operations: [impact_analysis, emit_run_event]
+    permission: apply
+    phi_access: none
+  - server: ticketing
+    operations: [create_issue, update_issue, link_cr]
+    permission: apply
+    phi_access: none
+  - server: git
+    operations: [read_file, get_diff]
+    permission: read
+    phi_access: none
+triggers:
+  - kind: schedule
+    cron: "0 1 * * *"
+    description: Nightly plan — build the run DAG for the next 24 h from pending triggers and SLAs.
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: "*"
+    description: Any pipeline trigger (new_source_discovered, schema_drift, unmapped_code, dq_anomaly, ontology_release, terminology_release).
+  - kind: event
+    topic: hc.ops.agent.changerequest.v1
+    event_type: state_changed
+    description: Route CRs to the next gate on each transition.
+  - kind: event
+    topic: hc.ops.agent.evaluation.v1
+    event_type: evaluation_completed
+  - kind: manual
+    description: Agent Operator requests a run, pause, resume or kill-switch.
+inputs:
+  - Pending trigger events and their priorities
+  - Agent manifests, autonomy levels and budgets (this folder)
+  - Gate policy matrix (03-orchestration-and-workflows.md §4)
+  - Open CR set with target locks and dependency edges
+  - SLA table and release calendar
+outputs:
+  - artefact: Run plan (Temporal workflow instances with inputs and budgets)
+    cr_type: null
+    destination: workflow engine
+  - artefact: CR routing decisions and gate assignments
+    cr_type: null
+    destination: hc.ops.agent.changerequest.v1
+  - artefact: Decision-log entries
+    cr_type: null
+    destination: hc.ops.agent.decision.v1
+  - artefact: Daily control-plane report (runs, CR throughput, budget burn, escalations)
+    cr_type: null
+    destination: ticketing / dashboard
+risk_classes: [low]
+evaluation:
+  rubric_ids: [RUB-OPS-01, RUB-EVD-01]
+  auto_approve_threshold: 0.90
+  human_agreement_target: 0.95
+  regression_suites: [orch-routing-golden-v1, orch-gate-policy-tests]
+budgets:
+  tokens_per_run: 60000
+  runs_per_day: 500
+  daily_token_cap: 15000000
+  max_tool_calls_per_run: 120
+  wall_clock_minutes_per_run: 30
+  max_concurrent_runs: 8
+  max_open_change_requests: 0
+escalation:
+  to: [Agent Operator, Platform SRE]
+  sla_hours: 4
+  on_low_score: Pause routing for the affected CR type and page the Agent Operator.
+  on_budget_exhausted: Stop launching new runs; keep gate processing alive; notify SRE.
+  on_veto: Mark CR vetoed, notify proposer and steward, record veto rule ids in decision log.
+  on_tool_failure: Retry with backoff (3x); then park the workflow and open a ticket.
+  on_conflict: Serialise CRs on the same target by creation order; notify both proposers.
+memory:
+  working: true
+  episodic: true
+  semantic_write: false
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: none
+  criteria: [L3 is the ceiling for the orchestrator in the first release.]
+  demotion_triggers:
+    - Any routing decision that bypasses a required gate (automatic demotion to L2 and incident).
+    - Decision-log completeness below 99.9 % in a 7-day window.

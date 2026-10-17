@@ -1,0 +1,264 @@
+# HEALIX Ontology Pipeline — Stage 1/2/3 SKOS skeleton
+# Reference concept scheme: encounter-class (G2 Clinical Care)
+# Shows every mandatory property per 02-controlled-vocabularies.md and the Stage 2/3 additions.
+# Source evidence: Cerner Millennium CODE_VALUE code set 72 (Encounter class), HL7 v3 ActCode, HL7 v2 table 0004.
+
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix healix:  <https://ontology.healix.example.org/core/> .
+@prefix scheme:  <https://ontology.healix.example.org/scheme/> .
+@prefix encc:    <https://ontology.healix.example.org/concept/encounter-class/> .
+@prefix cs:      <https://ontology.healix.example.org/codesystem/> .
+@prefix cerner:  <https://ontology.healix.example.org/codesystem/cerner/> .
+@prefix v3act:   <http://terminology.hl7.org/CodeSystem/v3-ActCode#> .
+@prefix v20004:  <http://terminology.hl7.org/CodeSystem/v2-0004#> .
+@prefix sct:     <http://snomed.info/id/> .
+@prefix grp:     <https://ontology.healix.example.org/group/> .
+@prefix role:    <https://ontology.healix.example.org/role/> .
+
+###############################################################################
+# Datatypes used for skos:notation
+###############################################################################
+
+cerner:CodeValueMeaning a rdfs:Datatype ;
+    rdfs:label "Cerner CODE_VALUE notation (CODE_SET^CDF_MEANING)"@en .
+
+cerner:CodeValue a rdfs:Datatype ;
+    rdfs:label "Cerner CODE_VALUE surrogate key"@en .
+
+healix:HL7ActCode a rdfs:Datatype ;
+    rdfs:label "HL7 v3 ActCode code"@en .
+
+healix:HL7v2Table0004 a rdfs:Datatype ;
+    rdfs:label "HL7 v2 table 0004 Patient Class code"@en .
+
+###############################################################################
+# Concept scheme
+###############################################################################
+
+scheme:encounter-class a skos:ConceptScheme ;
+    dcterms:title "Encounter class"@en ;
+    dcterms:description "Enterprise classification of the setting and intensity of a healthcare encounter, harmonised across Cerner Millennium encounter class (code set 72), HL7 v3 ActCode encounter classes and HL7 v2 patient class."@en ;
+    dcterms:creator role:terminology-steward-clinical ;
+    dcterms:publisher healix:OntologyGovernanceBoard ;
+    dcterms:created "2026-10-17"^^xsd:date ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    owl:versionInfo "v2026.11.0" ;
+    owl:versionIRI <https://ontology.healix.example.org/scheme/encounter-class/v2026.11.0> ;
+    healix:group grp:G2 ;
+    healix:steward role:terminology-steward-clinical ;
+    healix:sourceCodeSet <https://ontology.healix.example.org/codesystem/cerner/code-set/72> , <http://terminology.hl7.org/CodeSystem/v3-ActCode> , <http://terminology.hl7.org/CodeSystem/v2-0004> ;
+    skos:hasTopConcept encc:inpatient , encc:outpatient , encc:emergency , encc:virtual , encc:home-health ;
+    prov:wasGeneratedBy <https://ontology.healix.example.org/cr/CR-CV-NEW-SCHEME-01J9> .
+
+###############################################################################
+# Top concepts
+###############################################################################
+
+encc:inpatient a skos:Concept ;
+    skos:inScheme scheme:encounter-class ;
+    skos:topConceptOf scheme:encounter-class ;
+    skos:prefLabel "Inpatient encounter"@en ;
+    skos:prefLabel "Encuentro hospitalario"@es ;
+    skos:altLabel "Inpatient"@en , "Admission"@en , "IP"@en ;
+    skos:hiddenLabel "INPATIENT"@en , "Inpt"@en ;
+    skos:definition "An encounter in which the patient is formally admitted to a hospital bed under a physician order with the expectation of an overnight stay, and the facility assumes responsibility for room, board and continuous nursing care."@en ;
+    skos:scopeNote "Use for all admitted stays regardless of length, including same-day discharges after admission. Do not use for observation status, which is classified under Outpatient encounter."@en ;
+    skos:notation "72^INPATIENT"^^cerner:CodeValueMeaning ;
+    skos:notation "IMP"^^healix:HL7ActCode ;
+    skos:notation "I"^^healix:HL7v2Table0004 ;
+    skos:exactMatch v3act:IMP ;
+    skos:exactMatch v20004:I ;
+    skos:closeMatch sct:32485007 ;
+    skos:narrower encc:acute-inpatient , encc:rehabilitation-inpatient ;
+    healix:bindingStatus healix:bound ;
+    healix:sourceEvidence <https://ontology.healix.example.org/element/src.cerner.millennium.oracle/ENCOUNTER/ENCNTR_CLASS_CD> ;
+    dcterms:created "2026-10-17"^^xsd:date ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    prov:wasGeneratedBy <https://ontology.healix.example.org/cr/CR-CV-ADD-01J9A> .
+
+encc:outpatient a skos:Concept ;
+    skos:inScheme scheme:encounter-class ;
+    skos:topConceptOf scheme:encounter-class ;
+    skos:prefLabel "Outpatient encounter"@en ;
+    skos:prefLabel "Encuentro ambulatorio"@es ;
+    skos:altLabel "Outpatient"@en , "Ambulatory"@en , "OP"@en ;
+    skos:hiddenLabel "OUTPATIENT"@en ;
+    skos:definition "An encounter in which the patient receives scheduled or unscheduled services at a facility without being admitted to an inpatient bed, including clinic visits, day procedures and observation status."@en ;
+    skos:scopeNote "Includes observation status encounters billed as outpatient. Excludes emergency department visits, which are classified as Emergency encounter even when the patient is not admitted."@en ;
+    skos:notation "72^OUTPATIENT"^^cerner:CodeValueMeaning ;
+    skos:notation "AMB"^^healix:HL7ActCode ;
+    skos:notation "O"^^healix:HL7v2Table0004 ;
+    skos:exactMatch v3act:AMB ;
+    skos:exactMatch v20004:O ;
+    skos:narrower encc:observation ;
+    healix:bindingStatus healix:bound ;
+    healix:sourceEvidence <https://ontology.healix.example.org/element/src.cerner.millennium.oracle/ENCOUNTER/ENCNTR_CLASS_CD> ;
+    dcterms:created "2026-10-17"^^xsd:date ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    prov:wasGeneratedBy <https://ontology.healix.example.org/cr/CR-CV-ADD-01J9A> .
+
+encc:emergency a skos:Concept ;
+    skos:inScheme scheme:encounter-class ;
+    skos:topConceptOf scheme:encounter-class ;
+    skos:prefLabel "Emergency encounter"@en ;
+    skos:altLabel "Emergency department visit"@en , "ED visit"@en , "ED"@en , "ER"@en ;
+    skos:hiddenLabel "EMERGENCY"@en ;
+    skos:definition "An encounter that begins with the patient presenting to an emergency department for unscheduled evaluation and treatment of an acute condition, and that ends at discharge from the department or at conversion to an inpatient admission."@en ;
+    skos:scopeNote "When the patient is admitted from the emergency department, Cerner creates a new inpatient encounter or converts the class; the emergency encounter remains classified as Emergency for its own valid period."@en ;
+    skos:notation "72^EMERGENCY"^^cerner:CodeValueMeaning ;
+    skos:notation "EMER"^^healix:HL7ActCode ;
+    skos:notation "E"^^healix:HL7v2Table0004 ;
+    skos:exactMatch v3act:EMER ;
+    skos:exactMatch v20004:E ;
+    skos:closeMatch sct:4525004 ;
+    skos:related encc:observation ;
+    healix:bindingStatus healix:bound ;
+    healix:sourceEvidence <https://ontology.healix.example.org/element/src.cerner.millennium.oracle/ENCOUNTER/ENCNTR_CLASS_CD> ;
+    dcterms:created "2026-10-17"^^xsd:date ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    prov:wasGeneratedBy <https://ontology.healix.example.org/cr/CR-CV-ADD-01J9A> .
+
+encc:virtual a skos:Concept ;
+    skos:inScheme scheme:encounter-class ;
+    skos:topConceptOf scheme:encounter-class ;
+    skos:prefLabel "Virtual encounter"@en ;
+    skos:altLabel "Telehealth visit"@en , "Video visit"@en , "Telemedicine"@en ;
+    skos:hiddenLabel "VIRTUAL"@en ;
+    skos:definition "An encounter in which the patient and the practitioner interact synchronously through audio or video telecommunication rather than being physically present at the same location."@en ;
+    skos:scopeNote "Asynchronous portal messaging is not a virtual encounter; it is a communication. Telephone-only visits are included when billed as a visit."@en ;
+    skos:notation "72^VIRTUAL"^^cerner:CodeValueMeaning ;
+    skos:notation "VR"^^healix:HL7ActCode ;
+    skos:exactMatch v3act:VR ;
+    healix:bindingStatus healix:bound ;
+    healix:sourceEvidence <https://ontology.healix.example.org/element/src.cerner.millennium.oracle/ENCOUNTER/ENCNTR_CLASS_CD> ;
+    dcterms:created "2026-10-17"^^xsd:date ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    prov:wasGeneratedBy <https://ontology.healix.example.org/cr/CR-CV-ADD-01J9A> .
+
+encc:home-health a skos:Concept ;
+    skos:inScheme scheme:encounter-class ;
+    skos:topConceptOf scheme:encounter-class ;
+    skos:prefLabel "Home health encounter"@en ;
+    skos:altLabel "Home visit"@en , "Home care visit"@en ;
+    skos:hiddenLabel "HOMEHEALTH"@en , "HOME HEALTH"@en ;
+    skos:definition "An encounter in which licensed clinical staff deliver skilled nursing, therapy or aide services to the patient at the patient's place of residence under a plan of care."@en ;
+    skos:notation "72^HOMEHEALTH"^^cerner:CodeValueMeaning ;
+    skos:notation "HH"^^healix:HL7ActCode ;
+    skos:exactMatch v3act:HH ;
+    healix:bindingStatus healix:bound ;
+    healix:sourceEvidence <https://ontology.healix.example.org/element/src.cerner.millennium.oracle/ENCOUNTER/ENCNTR_CLASS_CD> ;
+    dcterms:created "2026-10-17"^^xsd:date ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    prov:wasGeneratedBy <https://ontology.healix.example.org/cr/CR-CV-ADD-01J9A> .
+
+###############################################################################
+# Narrower concepts (Stage 2 hierarchy)
+###############################################################################
+
+encc:acute-inpatient a skos:Concept ;
+    skos:inScheme scheme:encounter-class ;
+    skos:prefLabel "Acute inpatient encounter"@en ;
+    skos:altLabel "Acute admission"@en ;
+    skos:definition "An inpatient encounter in an acute-care hospital unit for the treatment of a severe or sudden-onset condition, as distinct from rehabilitation, long-term or psychiatric inpatient stays."@en ;
+    skos:notation "72^ACUTE"^^cerner:CodeValueMeaning ;
+    skos:broader encc:inpatient ;
+    skos:broadMatch v3act:IMP ;
+    skos:exactMatch v3act:ACUTE ;
+    healix:primaryBroader encc:inpatient ;
+    healix:bindingStatus healix:bound ;
+    healix:sourceEvidence <https://ontology.healix.example.org/element/src.cerner.millennium.oracle/ENCOUNTER/ENCNTR_CLASS_CD> ;
+    dcterms:created "2026-10-17"^^xsd:date ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    prov:wasGeneratedBy <https://ontology.healix.example.org/cr/CR-TAX-ADD-BROADER-01J9B> .
+
+encc:rehabilitation-inpatient a skos:Concept ;
+    skos:inScheme scheme:encounter-class ;
+    skos:prefLabel "Inpatient rehabilitation encounter"@en ;
+    skos:altLabel "Rehab admission"@en , "IRF stay"@en ;
+    skos:definition "An inpatient encounter in an inpatient rehabilitation facility or unit in which the patient receives intensive, coordinated therapy services following an acute illness or injury."@en ;
+    skos:scopeNote "Local-only at the Cerner level: the site defines a distinct encounter class for rehabilitation; HL7 ActCode has no finer class, so the binding is broadMatch to IMP."@en ;
+    skos:notation "72^REHAB"^^cerner:CodeValueMeaning ;
+    skos:broader encc:inpatient ;
+    skos:broadMatch v3act:IMP ;
+    healix:primaryBroader encc:inpatient ;
+    healix:bindingStatus healix:local-only ;
+    healix:sourceEvidence <https://ontology.healix.example.org/element/src.cerner.millennium.oracle/ENCOUNTER/ENCNTR_CLASS_CD> ;
+    dcterms:created "2026-10-17"^^xsd:date ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    prov:wasGeneratedBy <https://ontology.healix.example.org/cr/CR-TAX-ADD-BROADER-01J9B> .
+
+encc:observation a skos:Concept ;
+    skos:inScheme scheme:encounter-class ;
+    skos:prefLabel "Observation encounter"@en ;
+    skos:altLabel "Observation status"@en , "Obs"@en ;
+    skos:hiddenLabel "OBSERVATION"@en ;
+    skos:definition "An outpatient encounter in which the patient is placed in a hospital bed for monitoring and short-term treatment, typically under 48 hours, to decide whether inpatient admission is required."@en ;
+    skos:scopeNote "Billed as outpatient under CMS rules even when the patient occupies an inpatient bed. Related to Emergency encounter because most observation stays originate in the emergency department."@en ;
+    skos:notation "72^OBSERVATION"^^cerner:CodeValueMeaning ;
+    skos:notation "OBSENC"^^healix:HL7ActCode ;
+    skos:broader encc:outpatient ;
+    skos:exactMatch v3act:OBSENC ;
+    skos:related encc:emergency ;
+    healix:primaryBroader encc:outpatient ;
+    healix:bindingStatus healix:bound ;
+    healix:sourceEvidence <https://ontology.healix.example.org/element/src.cerner.millennium.oracle/ENCOUNTER/ENCNTR_CLASS_CD> ;
+    dcterms:created "2026-10-17"^^xsd:date ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    prov:wasGeneratedBy <https://ontology.healix.example.org/cr/CR-TAX-ADD-BROADER-01J9B> .
+
+###############################################################################
+# Deprecated concept (Stage 1 deprecation policy — never deleted)
+###############################################################################
+
+encc:preadmit a skos:Concept ;
+    skos:inScheme scheme:encounter-class ;
+    skos:prefLabel "Pre-admission encounter"@en ;
+    skos:altLabel "Preadmit"@en ;
+    skos:hiddenLabel "PREADMIT"@en ;
+    skos:definition "A legacy encounter class used for registration activity occurring before an inpatient admission; superseded by recording pre-admission as an encounter status rather than a class."@en ;
+    skos:notation "72^PREADMIT"^^cerner:CodeValueMeaning ;
+    skos:notation "P"^^healix:HL7v2Table0004 ;
+    skos:broader encc:inpatient ;
+    skos:exactMatch v20004:P ;
+    skos:historyNote "Deprecated 2026-10-17 after Cerner CODE_VALUE 72^PREADMIT was end-dated; retained for historical encounters."@en ;
+    healix:primaryBroader encc:inpatient ;
+    healix:bindingStatus healix:bound ;
+    owl:deprecated true ;
+    healix:deprecatedOn "2026-10-17"^^xsd:date ;
+    healix:deprecationReason "Source code value end-dated; semantics moved to encounter status."@en ;
+    dcterms:isReplacedBy encc:inpatient ;
+    healix:validTo "2026-10-17T00:00:00Z"^^xsd:dateTime ;
+    dcterms:created "2026-10-17"^^xsd:date ;
+    dcterms:modified "2026-10-17"^^xsd:date ;
+    prov:wasGeneratedBy <https://ontology.healix.example.org/cr/CR-CV-DEPRECATE-01J9C> .
+
+###############################################################################
+# Stage 3 mapping record (reified, ISO 25964-2 style)
+###############################################################################
+
+<https://ontology.healix.example.org/mapping/encounter-class/inpatient/v3act-IMP> a healix:Mapping ;
+    healix:source encc:inpatient ;
+    healix:target v3act:IMP ;
+    healix:mappingType skos:exactMatch ;
+    healix:confidence "1.00"^^xsd:decimal ;
+    healix:method healix:steward ;
+    healix:direction healix:bidirectional ;
+    healix:codeSystemVersion "http://terminology.hl7.org/CodeSystem/v3-ActCode|9.0.0" ;
+    healix:verifiedBy role:terminology-steward-clinical ;
+    prov:wasGeneratedBy <https://ontology.healix.example.org/cr/CR-THS-MAP-01J9D> .
+
+# Stage 3 association record (reified so the relation category can be recorded)
+<https://ontology.healix.example.org/association/encounter-class/emergency/observation> a healix:Association ;
+    healix:source encc:emergency ;
+    healix:target encc:observation ;
+    healix:relationCategory healix:cause-effect ;
+    healix:confidence "0.95"^^xsd:decimal ;
+    healix:method healix:steward ;
+    skos:editorialNote "Most observation encounters originate from an emergency department disposition decision."@en ;
+    prov:wasGeneratedBy <https://ontology.healix.example.org/cr/CR-THS-RELATED-01J9E> .

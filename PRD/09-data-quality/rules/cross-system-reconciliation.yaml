@@ -1,0 +1,374 @@
+# HEALIX DQ rule pack — Cross-system reconciliation (group XSYS)
+# Validated by rule.schema.json; indexed in 02-rule-catalog.md §3.10
+# All rules follow the FULL OUTER JOIN set-difference pattern of 03-dq-pipelines.md §5.3 so issue detail is unmatched keys, never only a delta.
+pack: cross-system-reconciliation
+version: 0.1.0
+group: XSYS
+owner: steward.dq_lead
+description: Reconciliation rules comparing Cerner Millennium against Oracle Fusion ERP/HCM/SCM, EMPI, credentialing, pharmacy, LIS and the KG/EDW dual projection, at declared grain and tolerance.
+rules:
+  - id: DQR-CONSISTENCY-XSYS-001
+    name: Cerner posted charges reconcile to Oracle AR per facility per day
+    description: Daily sum of Cerner posted charge amounts per facility must equal the sum of Oracle Fusion AR transaction amounts sourced from the charge interface for the same facility and service date within 0.5 percent. Breaks indicate dropped interface batches or mapping defects between CDM and AR memo lines.
+    dimension: consistency
+    group: XSYS
+    domain: finance
+    source_systems: [cerner, oracle_erp]
+    cde: [ChargeItem.priceOverride, Invoice.totalGross]
+    targets:
+      - plane: warehouse
+        table: edw_g3_finance.fact_charge
+        grain: facility_sk, service_dt
+        language: sql
+        key_columns: [facility_sk, service_dt]
+        schedule: daily
+        sql: |
+          WITH a AS (SELECT facility_sk, CAST(service_dt_tm AS DATE) AS service_dt, SUM(charge_amt) AS amt FROM {{ ref('fact_charge') }} WHERE source_system_bk = 'cerner' AND posted_dt_tm >= {{ window_start }} GROUP BY 1,2),
+               b AS (SELECT facility_sk, trx_dt AS service_dt, SUM(amount) AS amt FROM {{ ref('fact_ar_transaction') }} WHERE source_system_bk = 'oracle_erp' AND interface_source_cd = 'CERNER_CHARGE' AND trx_dt >= {{ window_start }} GROUP BY 1,2)
+          SELECT COALESCE(a.facility_sk, b.facility_sk) AS facility_sk, COALESCE(a.service_dt, b.service_dt) AS service_dt, a.amt AS cerner_amt, b.amt AS oracle_amt
+          FROM a FULL OUTER JOIN b ON a.facility_sk = b.facility_sk AND a.service_dt = b.service_dt
+          WHERE a.amt IS NULL OR b.amt IS NULL OR ABS(a.amt - b.amt) > 0.005 * GREATEST(a.amt, b.amt)
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/finance/ChargeItem
+        sparql: |
+          PREFIX finance: <https://ontology.healix.example.org/finance/>
+          PREFIX prov: <http://www.w3.org/ns/prov#>
+          SELECT ?focus ("charge without AR transaction after 48h" AS ?detail) WHERE {
+            ?focus a finance:ChargeItem ; finance:postedAt ?t ; prov:wasAttributedTo <https://ontology.healix.example.org/source/cerner> .
+            FILTER(?t < NOW() - "PT48H"^^xsd:duration)
+            FILTER NOT EXISTS { ?ar a finance:ARTransaction ; finance:settlesCharge ?focus }
+          }
+    severity: critical
+    threshold: {metric: value, max: 0.005, window: P1D}
+    owner: steward.finance
+    derivation: policy
+    derived_from: https://policy.healix.example.org/revenue-cycle/charge-ar-reconciliation
+    remediation: {action: steward, hint: Revenue integrity analyst reviews unmatched facility-days; replay missed charge interface batch or open mapping defect, policy_ref: https://policy.healix.example.org/revenue-cycle/charge-ar-reconciliation}
+    version: 1.0.0
+    status: active
+    tags: [sox, reconciliation]
+
+  - id: DQR-CONSISTENCY-XSYS-002
+    name: Cerner charged supply usage reconciles to Oracle inventory issues
+    description: Per item per day, the quantity of chargeable supplies documented in Cerner (supply charges and implant logs) must match the quantity issued from Oracle Inventory to patient-care sub-inventories within 2 percent. Breaks indicate unbilled supplies, un-issued stock or item crosswalk errors.
+    dimension: consistency
+    group: XSYS
+    domain: supply
+    source_systems: [cerner, oracle_scm]
+    cde: [Item.identifier, ChargeItem.quantity]
+    targets:
+      - plane: warehouse
+        table: edw_g4_supply.fact_inventory_transaction
+        grain: item_sk, trx_dt
+        language: sql
+        key_columns: [item_sk, trx_dt]
+        schedule: daily
+        sql: |
+          WITH a AS (SELECT x.item_sk, CAST(c.service_dt_tm AS DATE) AS trx_dt, SUM(c.quantity) AS qty FROM {{ ref('fact_charge') }} c JOIN {{ ref('bridge_cdm_item') }} x ON x.cdm_item_cd = c.cdm_item_cd WHERE c.source_system_bk = 'cerner' AND c.charge_category_cd = 'SUPPLY' AND c.service_dt_tm >= {{ window_start }} GROUP BY 1,2),
+               b AS (SELECT item_sk, trx_dt, SUM(-1 * transaction_qty) AS qty FROM {{ ref('fact_inventory_transaction') }} WHERE source_system_bk = 'oracle_scm' AND transaction_type_cd IN ('ISSUE_TO_PATIENT','PAR_REPLENISH_CONSUME') AND trx_dt >= {{ window_start }} GROUP BY 1,2)
+          SELECT COALESCE(a.item_sk, b.item_sk) AS item_sk, COALESCE(a.trx_dt, b.trx_dt) AS trx_dt, a.qty AS cerner_qty, b.qty AS oracle_qty
+          FROM a FULL OUTER JOIN b ON a.item_sk = b.item_sk AND a.trx_dt = b.trx_dt
+          WHERE a.qty IS NULL OR b.qty IS NULL OR ABS(a.qty - b.qty) > 0.02 * GREATEST(a.qty, b.qty)
+    severity: major
+    threshold: {metric: value, max: 0.02, window: P1D}
+    owner: steward.supply
+    derivation: policy
+    derived_from: https://policy.healix.example.org/supply/usage-reconciliation
+    remediation: {action: steward, hint: Supply chain analyst reviews unmatched item-days; typical causes are missing CDM-to-item crosswalk rows and un-scanned implants}
+    version: 1.0.0
+    status: active
+    tags: [reconciliation]
+
+  - id: DQR-CONSISTENCY-XSYS-003
+    name: Active Cerner practitioners exist as HCM workers or contracted providers
+    description: Every Cerner practitioner (PRSNL) who authored an order, result or note in the last 90 days must be linked to an active Oracle HCM worker or to a contracted-provider record in credentialing. Unlinked practitioners indicate ghost accounts or onboarding gaps.
+    dimension: consistency
+    group: XSYS
+    domain: party
+    source_systems: [cerner, oracle_hcm, credentialing]
+    cde: ['Practitioner.identifier[NPI]', Worker.personNumber]
+    targets:
+      - plane: warehouse
+        table: edw_g1_party.dim_practitioner
+        grain: practitioner_bk
+        language: sql
+        key_columns: [practitioner_bk]
+        schedule: daily
+        sql: |
+          SELECT p.practitioner_bk
+          FROM {{ ref('dim_practitioner') }} p
+          JOIN (SELECT DISTINCT ordering_practitioner_sk AS practitioner_sk FROM {{ ref('fact_service_request') }} WHERE authored_dt >= CURRENT_DATE - 90) act ON act.practitioner_sk = p.practitioner_sk
+          LEFT JOIN {{ ref('bridge_practitioner_worker') }} bw ON bw.practitioner_sk = p.practitioner_sk
+          LEFT JOIN {{ ref('dim_worker') }} w ON w.worker_sk = bw.worker_sk AND w.is_current = 1 AND w.status_cd = 'ACTIVE'
+          LEFT JOIN {{ ref('fact_provider_contract') }} c ON c.practitioner_sk = p.practitioner_sk AND CURRENT_DATE BETWEEN c.contract_start_dt AND COALESCE(c.contract_end_dt, DATE '9999-12-31')
+          WHERE p.is_current = 1 AND p.source_system_bk = 'cerner' AND w.worker_sk IS NULL AND c.practitioner_sk IS NULL
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/party/Practitioner
+        sparql: |
+          PREFIX party: <https://ontology.healix.example.org/party/>
+          PREFIX workforce: <https://ontology.healix.example.org/workforce/>
+          SELECT ?focus ("no active worker or contract" AS ?detail) WHERE {
+            ?focus a party:Practitioner ; party:activeInSource <https://ontology.healix.example.org/source/cerner> .
+            FILTER NOT EXISTS { ?focus party:isWorker ?w . ?w workforce:status "ACTIVE" }
+            FILTER NOT EXISTS { ?focus party:hasContract ?c . ?c workforce:status "ACTIVE" }
+          }
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.party
+    derivation: policy
+    derived_from: https://policy.healix.example.org/identity/practitioner-worker-linkage
+    remediation: {action: steward, hint: Provider master steward links practitioner to worker or contract; unlinkable active accounts escalated to IAM for deprovisioning review}
+    version: 1.0.0
+    status: active
+    tags: [compliance, reconciliation]
+
+  - id: DQR-CONSISTENCY-XSYS-004
+    name: Practitioners with active privileges hold an active licence
+    description: Every practitioner with active clinical privileges in the credentialing system must have an active, unexpired licence of the required type recorded in credentialing or HCM. A privileged practitioner without a licence is a regulatory blocker.
+    dimension: consistency
+    group: XSYS
+    domain: workforce
+    source_systems: [credentialing, oracle_hcm]
+    cde: [Licence.expiryDate, 'Practitioner.identifier[NPI]']
+    targets:
+      - plane: warehouse
+        table: edw_g5_workforce.fact_privilege
+        grain: practitioner_bk
+        language: sql
+        key_columns: [practitioner_bk]
+        schedule: daily
+        sql: |
+          SELECT DISTINCT p.practitioner_bk
+          FROM {{ ref('fact_privilege') }} pv
+          JOIN {{ ref('dim_practitioner') }} p ON p.practitioner_sk = pv.practitioner_sk AND p.is_current = 1
+          JOIN {{ ref('ref_privilege_licence_requirement') }} r ON r.privilege_cd = pv.privilege_cd
+          WHERE pv.status_cd = 'ACTIVE'
+            AND NOT EXISTS (SELECT 1 FROM {{ ref('fact_licence') }} l WHERE l.practitioner_sk = pv.practitioner_sk AND l.licence_type_cd = r.licence_type_cd AND l.expiry_dt >= CURRENT_DATE)
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/party/Practitioner
+        sparql: |
+          PREFIX party: <https://ontology.healix.example.org/party/>
+          PREFIX workforce: <https://ontology.healix.example.org/workforce/>
+          SELECT ?focus (STR(?priv) AS ?detail) WHERE {
+            ?focus a party:Practitioner ; workforce:hasPrivilege ?priv .
+            ?priv workforce:status "ACTIVE" ; workforce:requiresLicenceType ?lt .
+            FILTER NOT EXISTS { ?focus workforce:holdsLicence ?lic . ?lic workforce:licenceType ?lt ; workforce:expiryDate ?e . FILTER(?e >= NOW()) }
+          }
+    severity: blocker
+    quarantine: false
+    issue_grain: record
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.workforce
+    derivation: policy
+    derived_from: https://policy.healix.example.org/compliance/privileging
+    remediation: {action: source_fix, hint: Medical staff office verifies licence and updates credentialing; privileges suspended per bylaws if lapsed, policy_ref: https://policy.healix.example.org/compliance/privileging}
+    version: 1.0.0
+    status: active
+    tags: [compliance, reconciliation, cde]
+
+  - id: DQR-CONSISTENCY-XSYS-005
+    name: Cerner active patient count reconciles to EMPI linked persons per facility
+    description: Per facility, the count of Cerner patients with an active MRN must equal the count of EMPI enterprise persons holding a linked active MRN for that facility within 0.1 percent. Breaks indicate EMPI feed lag or unlinked registrations.
+    dimension: consistency
+    group: XSYS
+    domain: party
+    source_systems: [cerner, empi]
+    cde: ['Patient.identifier[MRN]']
+    targets:
+      - plane: warehouse
+        table: edw_g1_party.bridge_patient_identifier
+        grain: assigner_org_sk
+        language: sql
+        key_columns: [assigner_org_sk]
+        schedule: daily
+        sql: |
+          WITH a AS (SELECT assigner_org_sk, COUNT(DISTINCT patient_sk) AS cnt FROM {{ ref('bridge_patient_identifier') }} WHERE identifier_type_cd = 'MR' AND status_cd = 'active' AND source_system_bk = 'cerner' GROUP BY 1),
+               b AS (SELECT assigner_org_sk, COUNT(DISTINCT enterprise_person_id) AS cnt FROM {{ ref('bridge_empi_link') }} WHERE link_status_cd = 'active' GROUP BY 1)
+          SELECT COALESCE(a.assigner_org_sk, b.assigner_org_sk) AS assigner_org_sk, a.cnt AS cerner_cnt, b.cnt AS empi_cnt
+          FROM a FULL OUTER JOIN b ON a.assigner_org_sk = b.assigner_org_sk
+          WHERE a.cnt IS NULL OR b.cnt IS NULL OR ABS(a.cnt - b.cnt) > 0.001 * GREATEST(a.cnt, b.cnt)
+    severity: major
+    threshold: {metric: value, max: 0.001, window: P1D}
+    owner: steward.party
+    derivation: policy
+    derived_from: https://policy.healix.example.org/identity/empi-reconciliation
+    remediation: {action: steward, hint: EMPI steward reviews unlinked MRNs; replay EMPI feed if lagging}
+    version: 1.0.0
+    status: active
+    tags: [empi, reconciliation]
+
+  - id: DQR-CONSISTENCY-XSYS-006
+    name: 835 remittance totals reconcile to Oracle AR receipts per payer per deposit date
+    description: Sum of 835 payment amounts (BPR02) per payer per deposit date must equal Oracle Fusion AR receipts applied from the lockbox for the same payer and deposit date within 0.01. Breaks indicate unposted remittances or misapplied receipts.
+    dimension: consistency
+    group: XSYS
+    domain: finance
+    source_systems: [clearinghouse, oracle_erp]
+    cde: [ClaimResponse.payment.amount]
+    targets:
+      - plane: warehouse
+        table: edw_g3_finance.fact_remittance
+        grain: payer_sk, deposit_dt
+        language: sql
+        key_columns: [payer_sk, deposit_dt]
+        schedule: daily
+        sql: |
+          WITH a AS (SELECT payer_sk, deposit_dt, SUM(bpr02_payment_amt) AS amt FROM {{ ref('fact_remittance') }} WHERE deposit_dt >= {{ window_start }} GROUP BY 1,2),
+               b AS (SELECT payer_sk, receipt_dt AS deposit_dt, SUM(amount) AS amt FROM {{ ref('fact_ar_receipt') }} WHERE source_system_bk = 'oracle_erp' AND receipt_method_cd = 'LOCKBOX' AND receipt_dt >= {{ window_start }} GROUP BY 1,2)
+          SELECT COALESCE(a.payer_sk, b.payer_sk) AS payer_sk, COALESCE(a.deposit_dt, b.deposit_dt) AS deposit_dt, a.amt AS remit_amt, b.amt AS ar_amt
+          FROM a FULL OUTER JOIN b ON a.payer_sk = b.payer_sk AND a.deposit_dt = b.deposit_dt
+          WHERE a.amt IS NULL OR b.amt IS NULL OR ABS(a.amt - b.amt) > 0.01
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.finance
+    derivation: policy
+    derived_from: https://policy.healix.example.org/revenue-cycle/remittance-reconciliation
+    remediation: {action: steward, hint: Cash posting analyst reconciles lockbox to 835; unposted remittances re-processed}
+    version: 1.0.0
+    status: active
+    tags: [sox, reconciliation]
+
+  - id: DQR-CONSISTENCY-XSYS-007
+    name: Cerner bed and room locations map to Oracle Fusion facility hierarchy
+    description: Every active Cerner bed or room Location must map to a node in the Oracle Fusion facility/asset location hierarchy so space, asset and census reporting share one hierarchy (ontology equivalence party:Location owl:sameAs supply:FacilityLocation via ConceptMap).
+    dimension: consistency
+    group: XSYS
+    domain: party
+    source_systems: [cerner, oracle_erp]
+    targets:
+      - plane: warehouse
+        table: edw_g1_party.dim_location
+        grain: location_bk
+        language: sql
+        key_columns: [location_bk]
+        schedule: daily
+        sql: |
+          SELECT l.location_bk FROM {{ ref('dim_location') }} l
+          LEFT JOIN {{ ref('bridge_location_facility_node') }} m ON m.location_sk = l.location_sk
+          WHERE l.is_current = 1 AND l.source_system_bk = 'cerner' AND l.physical_type_cd IN ('bd','ro') AND l.status_cd = 'active' AND m.location_sk IS NULL
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/party/Location
+        sparql: |
+          PREFIX party: <https://ontology.healix.example.org/party/>
+          PREFIX supply: <https://ontology.healix.example.org/supply/>
+          PREFIX owl: <http://www.w3.org/2002/07/owl#>
+          SELECT ?focus ("unmapped to facility hierarchy" AS ?detail) WHERE {
+            ?focus a party:Location ; party:physicalType ?pt ; party:status "active" .
+            FILTER(?pt IN ("bd","ro"))
+            FILTER NOT EXISTS { ?focus owl:sameAs ?n . ?n a supply:FacilityLocation }
+          }
+    severity: minor
+    threshold: {metric: pass_rate, min: 0.98, window: P7D}
+    owner: steward.party
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/party/Location#facilityEquivalence
+    remediation: {action: steward, hint: Facilities data steward adds mapping row in location ConceptMap}
+    version: 1.0.0
+    status: active
+    tags: [reconciliation]
+
+  - id: DQR-CONSISTENCY-XSYS-008
+    name: Pharmacy dispense has a matching administration or return within 24 hours
+    description: Every pharmacy dispense (MedicationDispense) for an inpatient must be followed within 24 hours by a Cerner MedicationAdministration for the same patient and medication, or by a return-to-stock transaction. Unmatched dispenses indicate undocumented administrations or diversion risk.
+    dimension: consistency
+    group: XSYS
+    domain: clinical
+    source_systems: [pharmacy, cerner]
+    cde: [MedicationRequest.medication]
+    targets:
+      - plane: warehouse
+        table: edw_g2_clinical.fact_medication_dispense
+        grain: medication_dispense_bk
+        language: sql
+        key_columns: [medication_dispense_bk]
+        schedule: daily
+        sql: |
+          SELECT d.medication_dispense_bk FROM {{ ref('fact_medication_dispense') }} d
+          JOIN {{ ref('fact_encounter') }} e ON e.encounter_sk = d.encounter_sk AND e.encounter_class_cd = 'IMP'
+          WHERE d.dispensed_dt_tm BETWEEN {{ window_start }} AND CURRENT_TIMESTAMP - INTERVAL '24' HOUR
+            AND NOT EXISTS (SELECT 1 FROM {{ ref('fact_medication_administration') }} a WHERE a.patient_sk = d.patient_sk AND a.rxnorm_cui = d.rxnorm_cui AND a.administered_dt_tm BETWEEN d.dispensed_dt_tm AND d.dispensed_dt_tm + INTERVAL '24' HOUR)
+            AND NOT EXISTS (SELECT 1 FROM {{ ref('fact_medication_return') }} r WHERE r.medication_dispense_sk = d.medication_dispense_sk)
+    severity: major
+    threshold: {metric: pass_rate, min: 0.97, window: P1D}
+    owner: steward.clinical
+    derivation: policy
+    derived_from: https://policy.healix.example.org/pharmacy/dispense-administration-reconciliation
+    remediation: {action: steward, hint: Pharmacy informatics reviews unmatched dispenses with nursing; repeated patterns go to the diversion committee}
+    version: 1.0.0
+    status: active
+    tags: [medication-safety, reconciliation]
+
+  - id: DQR-CONSISTENCY-XSYS-009
+    name: LIS verified results reconcile to Cerner lab observations per day per section
+    description: Per laboratory section per day, the count of results verified in the LIS must equal the count of laboratory Observations canonicalised from Cerner within 0.5 percent. Breaks indicate dropped ORU messages or interface filters.
+    dimension: consistency
+    group: XSYS
+    domain: clinical
+    source_systems: [lis, cerner]
+    cde: [Observation.code]
+    targets:
+      - plane: warehouse
+        table: edw_g2_clinical.fact_lab_result
+        grain: lab_section_cd, result_dt
+        language: sql
+        key_columns: [lab_section_cd, result_dt]
+        schedule: daily
+        sql: |
+          WITH a AS (SELECT lab_section_cd, CAST(verified_dt_tm AS DATE) AS result_dt, COUNT(*) AS cnt FROM {{ ref('fact_lis_result') }} WHERE verified_dt_tm >= {{ window_start }} GROUP BY 1,2),
+               b AS (SELECT lab_section_cd, CAST(effective_dt_tm AS DATE) AS result_dt, COUNT(*) AS cnt FROM {{ ref('fact_lab_result') }} WHERE source_system_bk = 'cerner' AND effective_dt_tm >= {{ window_start }} GROUP BY 1,2)
+          SELECT COALESCE(a.lab_section_cd, b.lab_section_cd) AS lab_section_cd, COALESCE(a.result_dt, b.result_dt) AS result_dt, a.cnt AS lis_cnt, b.cnt AS cerner_cnt
+          FROM a FULL OUTER JOIN b ON a.lab_section_cd = b.lab_section_cd AND a.result_dt = b.result_dt
+          WHERE a.cnt IS NULL OR b.cnt IS NULL OR ABS(a.cnt - b.cnt) > 0.005 * GREATEST(a.cnt, b.cnt)
+    severity: major
+    threshold: {metric: value, max: 0.005, window: P1D}
+    owner: steward.clinical
+    derivation: policy
+    derived_from: https://policy.healix.example.org/interfaces/lis-result-reconciliation
+    remediation: {action: source_fix, hint: Interface engine dropped or filtered ORU messages; integration team to replay from LIS outbound queue}
+    version: 1.0.0
+    status: active
+    tags: [reconciliation]
+
+  - id: DQR-CONSISTENCY-XSYS-010
+    name: KG and EDW entity counts reconcile per group as of load time
+    description: For each subject-area group and core entity, the number of current entities in the knowledge graph must exactly equal the number of current rows in the corresponding EDW dimension or fact as of the same transaction time (ADR-07 dual projection). Any difference indicates a sink failure or idempotency defect.
+    dimension: consistency
+    group: XSYS
+    domain: governance
+    source_systems: [platform]
+    cde: [prov_activity_iri]
+    targets:
+      - plane: warehouse
+        table: edw_g9_governance.fact_projection_count
+        grain: group_code, entity_name, as_of_ts
+        language: sql
+        key_columns: [group_code, entity_name, as_of_ts]
+        schedule: daily
+        sql: |
+          SELECT COALESCE(k.group_code, e.group_code) AS group_code, COALESCE(k.entity_name, e.entity_name) AS entity_name, COALESCE(k.as_of_ts, e.as_of_ts) AS as_of_ts, k.entity_cnt AS kg_cnt, e.entity_cnt AS edw_cnt
+          FROM (SELECT * FROM {{ ref('fact_projection_count') }} WHERE projection_cd = 'kg') k
+          FULL OUTER JOIN (SELECT * FROM {{ ref('fact_projection_count') }} WHERE projection_cd = 'edw') e
+            ON k.group_code = e.group_code AND k.entity_name = e.entity_name AND k.as_of_ts = e.as_of_ts
+          WHERE k.entity_cnt IS NULL OR e.entity_cnt IS NULL OR k.entity_cnt <> e.entity_cnt
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/governance/ProjectionCount
+        sparql: |
+          PREFIX gov: <https://ontology.healix.example.org/governance/>
+          SELECT ?focus (CONCAT('kg=', STR(?kg), ' edw=', STR(?edw)) AS ?detail) WHERE {
+            ?focus a gov:ProjectionCount ; gov:group ?g ; gov:entity ?e ; gov:asOf ?t ; gov:kgCount ?kg ; gov:edwCount ?edw .
+            FILTER(?kg != ?edw)
+          }
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: policy
+    derived_from: https://policy.healix.example.org/platform/dual-projection-reconciliation
+    remediation: {action: steward, hint: Data platform replays the affected canonical partition into the lagging sink; idempotent upsert guarantees convergence}
+    version: 1.0.0
+    status: active
+    tags: [platform, reconciliation]

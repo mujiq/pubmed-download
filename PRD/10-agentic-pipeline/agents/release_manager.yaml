@@ -1,0 +1,123 @@
+manifest_version: 0.1.0
+id: agent.release_manager
+role: Release Manager
+mission: >-
+  Assemble approved and applied change requests into versioned releases of the ontology (owl:versionIRI,
+  dcterms:modified), EDW migrations, topic catalog and FHIR profiles; generate changelogs, run the release
+  gate suite, publish within release windows and execute rollbacks by compensating release.
+pipeline_stage: [1, 2, 3, 4, 5]
+owns_modules: ["02", "05", "07"]
+autonomy_level: L2
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_MAPPING}"
+  recommended_default: claude-sonnet-5-5
+  fallback_ref: "${MODEL_ORCHESTRATION}"
+  temperature: 0.0
+  max_output_tokens: 16384
+  structured_output: true
+tools:
+  - server: cr-engine
+    operations: [list_crs, get_cr, transition_cr, create_cr]
+    permission: apply
+    phi_access: none
+  - server: ontology-registry
+    operations: [get_release, diff, run_reasoner, validate_shacl, publish_release]
+    permission: admin
+    phi_access: none
+  - server: edw-metadata
+    operations: [ddl_dry_run, apply_migration, list_migrations]
+    permission: apply
+    phi_access: none
+  - server: schema-registry
+    operations: [check_compatibility, register_schema]
+    permission: apply
+    phi_access: none
+  - server: kafka-admin
+    operations: [list_topics, describe_topic, apply_topic_change]
+    permission: apply
+    phi_access: none
+  - server: terminology-service
+    operations: [publish_value_set, publish_concept_map, get_release_manifest]
+    permission: apply
+    phi_access: none
+  - server: fhir-validator
+    operations: [validate_profile, publish_ig]
+    permission: apply
+    phi_access: none
+  - server: git
+    operations: [read_file, get_diff, merge_pr, tag_release, create_branch, commit]
+    permission: apply
+    phi_access: none
+  - server: lineage
+    operations: [emit_run_event, impact_analysis]
+    permission: apply
+    phi_access: none
+  - server: ticketing
+    operations: [create_issue, update_issue, link_cr]
+    permission: apply
+    phi_access: none
+triggers:
+  - kind: schedule
+    cron: "0 22 * * 2,4"
+    description: Release windows (Tue/Thu 22:00 local) — bundle applied CRs into a release candidate.
+  - kind: change_request
+    cr_types: [vocabulary, taxonomy, thesaurus, ontology, mapping, value_set, dq_rule, edw_ddl, topic, profile]
+    description: CR reached 'applied' — stage into next release.
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: rollback_requested
+  - kind: manual
+inputs:
+  - CRs in 'applied' state since last release, grouped by artefact family
+  - Release gate suite (reasoner, SHACL, golden tests, dry-runs, compatibility)
+  - Release calendar, freeze windows, consumer notification list
+outputs:
+  - artefact: Release manifests, version IRIs, tags, changelogs
+    cr_type: null
+    destination: git / ontology-registry / schema-registry
+  - artefact: Release gate report
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+  - artefact: Compensating (rollback) CRs
+    cr_type: ontology
+    destination: cr-engine
+  - artefact: Consumer notifications (ontology_release, terminology_release events)
+    cr_type: null
+    destination: hc.ops.agent.trigger.v1
+risk_classes: [low, medium, high]
+evaluation:
+  rubric_ids: [RUB-REL-01, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: 0.95
+  human_agreement_target: 0.95
+  regression_suites: [release-gate-suite, changelog-completeness]
+budgets:
+  tokens_per_run: 150000
+  runs_per_day: 20
+  daily_token_cap: 3000000
+  max_tool_calls_per_run: 500
+  wall_clock_minutes_per_run: 120
+  max_concurrent_runs: 1
+  max_open_change_requests: 10
+escalation:
+  to: [Agent Operator, Data Warehouse Architect, Ontologist / Taxonomist]
+  sla_hours: 4
+  on_low_score: Hold release; publish gate failures; human release approval required.
+  on_budget_exhausted: Hold release until next window.
+  on_veto: Remove vetoed CR from release candidate; re-run gate suite.
+  on_tool_failure: Abort release atomically; nothing partially published.
+  on_conflict: Releases are serialised (max_concurrent_runs 1).
+memory:
+  working: true
+  episodic: true
+  semantic_write: true
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: L3
+  criteria:
+    - ">= 60 releases over >= 180 days with zero rollbacks caused by release assembly"
+    - "Changelog completeness 100 % on audit"
+  demotion_triggers:
+    - A release published with a failing gate (immediate L1).

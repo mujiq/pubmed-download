@@ -1,0 +1,108 @@
+manifest_version: 0.1.0
+id: agent.taxonomist
+role: Taxonomist (Stage 2)
+mission: >-
+  Arrange approved concepts into broader/narrower hierarchies and facets per concept scheme, detect cycles,
+  orphans, polyhierarchy and depth anomalies, align hierarchies with SNOMED CT / LOINC / ICD subsumption and
+  with the G1–G9 subject-area groups, and validate the taxonomy nightly.
+pipeline_stage: [2]
+owns_modules: ["02"]
+autonomy_level: L2
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_MAPPING}"
+  recommended_default: claude-sonnet-5-5
+  fallback_ref: "${MODEL_REASONING}"
+  temperature: 0.1
+  max_output_tokens: 8192
+  structured_output: true
+tools:
+  - server: ontology-registry
+    operations: [get_scheme, get_concept, search_concepts, get_hierarchy, diff, propose_change, detect_cycles, list_orphans]
+    permission: propose
+    phi_access: none
+  - server: terminology-service
+    operations: [subsumes, closure, lookup, expand]
+    permission: read
+    phi_access: none
+  - server: graph-query
+    operations: [sparql_select, sparql_ask]
+    permission: read
+    phi_access: none
+  - server: source-registry
+    operations: [get_element, get_code_set_values]
+    permission: read
+    phi_access: none
+  - server: cr-engine
+    operations: [create_cr, get_cr, withdraw_cr]
+    permission: propose
+    phi_access: none
+  - server: git
+    operations: [read_file, create_branch, commit, open_pr]
+    permission: propose
+    phi_access: none
+triggers:
+  - kind: change_request
+    cr_types: [vocabulary]
+    description: A vocabulary CR was applied — place the new/changed concept in the hierarchy.
+  - kind: schedule
+    cron: "0 4 * * *"
+    description: Nightly taxonomy validation (cycles, orphans, depth, polyhierarchy, label-hierarchy coherence).
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: terminology_release
+    description: Re-check alignment after a SNOMED CT / LOINC / ICD release sync.
+  - kind: manual
+inputs:
+  - Applied vocabulary concepts lacking skos:broader
+  - Concept scheme facet definitions and depth policies
+  - External subsumption (SNOMED CT is-a, LOINC multiaxial hierarchy, ICD-10-CM chapters)
+  - Nightly validation report from the previous run
+outputs:
+  - artefact: skos:broader / skos:narrower assertions and facet (skos:Collection) memberships
+    cr_type: taxonomy
+    destination: cr-engine
+  - artefact: Hierarchy repair proposals (cycle breaks, orphan placement, re-parenting)
+    cr_type: taxonomy
+    destination: cr-engine
+  - artefact: Nightly taxonomy validation report
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+risk_classes: [low, medium, high]
+evaluation:
+  rubric_ids: [RUB-TAX-01, RUB-TAX-02, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: 0.92
+  human_agreement_target: 0.95
+  golden_sets: [golden-taxonomy-encounter-v1, golden-taxonomy-supply-item-v1]
+  regression_suites: [taxonomy-no-cycles, taxonomy-single-top-concept-per-scheme]
+budgets:
+  tokens_per_run: 120000
+  runs_per_day: 100
+  daily_token_cap: 8000000
+  max_tool_calls_per_run: 250
+  wall_clock_minutes_per_run: 60
+  max_concurrent_runs: 4
+  max_open_change_requests: 100
+escalation:
+  to: [Ontologist / Taxonomist]
+  sla_hours: 48
+  on_low_score: Route to human taxonomist with the evaluator's counter-example.
+  on_budget_exhausted: Emit partial validation report flagged incomplete.
+  on_veto: Withdraw CR.
+  on_conflict: Re-parenting conflicts on the same concept are serialised; later CR is rebased.
+memory:
+  working: true
+  episodic: true
+  semantic_write: true
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: L3
+  criteria:
+    - ">= 300 evaluated taxonomy CRs over >= 90 days"
+    - "Human agreement >= 0.97; rollback rate <= 0.5 %"
+    - "Nightly validation green for 60 consecutive days"
+  demotion_triggers:
+    - A cycle or multi-root scheme reaches a release (immediate demotion to L1).
+    - Rollback rate > 2 % in any 30-day window.

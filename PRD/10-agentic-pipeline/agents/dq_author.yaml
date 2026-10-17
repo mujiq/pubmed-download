@@ -1,0 +1,115 @@
+manifest_version: 0.1.0
+id: agent.dq_author
+role: Data Quality Rule Author
+mission: >-
+  Derive DQ rules (completeness, validity, consistency, timeliness, uniqueness, accuracy, conformance) from
+  ontology constraints, SHACL shapes, value-set bindings and FHIR invariants; profile masked data to propose
+  thresholds; backtest rules against history before they enter the rule pack.
+pipeline_stage: [4, 5]
+owns_modules: ["09"]
+autonomy_level: L2
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_MAPPING}"
+  recommended_default: claude-sonnet-5-5
+  fallback_ref: "${MODEL_CLASSIFICATION}"
+  temperature: 0.1
+  max_output_tokens: 8192
+  structured_output: true
+tools:
+  - server: ontology-registry
+    operations: [get_shapes, list_properties, get_concept, get_release]
+    permission: read
+    phi_access: none
+  - server: terminology-service
+    operations: [expand, validate_code]
+    permission: read
+    phi_access: none
+  - server: dq-engine
+    operations: [profile_dataset, backtest_rule, run_rule, list_rules, propose_rule, list_results]
+    permission: propose
+    phi_access: masked
+  - server: sql-sandbox
+    operations: [run_query, profile_column]
+    permission: read
+    phi_access: masked
+  - server: fhir-validator
+    operations: [get_structure_definition]
+    permission: read
+    phi_access: none
+  - server: source-registry
+    operations: [get_element, get_steward]
+    permission: read
+    phi_access: none
+  - server: cr-engine
+    operations: [create_cr, get_cr, withdraw_cr]
+    permission: propose
+    phi_access: none
+  - server: git
+    operations: [read_file, create_branch, commit, open_pr]
+    permission: propose
+    phi_access: none
+triggers:
+  - kind: change_request
+    cr_types: [ontology, value_set, profile]
+    description: A constraint changed — derive, update or retire the rules bound to it.
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: dq_anomaly
+    description: dq_monitor found an anomaly with no covering rule.
+  - kind: schedule
+    cron: "0 4 * * 3"
+    description: Weekly coverage review of critical data elements without rules.
+  - kind: manual
+inputs:
+  - SHACL shapes, OWL cardinalities, FHIR invariants and value-set bindings
+  - Critical data element list and steward thresholds (module 09)
+  - Masked profiling statistics and 90-day backtest windows
+  - Existing rule pack (rules/*.yaml) and rule results
+outputs:
+  - artefact: DQ rules (DQR-<DIMENSION>-<DOMAIN>-<NNN>) with expression, severity, threshold, owner
+    cr_type: dq_rule
+    destination: cr-engine
+  - artefact: Backtest report (hit rate, precision proxy, seasonality)
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+  - artefact: Coverage report of critical data elements
+    cr_type: null
+    destination: hc.ops.agent.decision.v1
+risk_classes: [low, medium, high]
+evaluation:
+  rubric_ids: [RUB-DQR-01, RUB-DQR-02, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: 0.90
+  human_agreement_target: 0.95
+  golden_sets: [golden-dq-rules-encounter-v1, golden-dq-rules-claims-v1]
+  regression_suites: [dq-rule-backtest-90d, dq-rule-syntax]
+budgets:
+  tokens_per_run: 120000
+  runs_per_day: 100
+  daily_token_cap: 8000000
+  max_tool_calls_per_run: 300
+  wall_clock_minutes_per_run: 60
+  max_concurrent_runs: 4
+  max_open_change_requests: 100
+escalation:
+  to: [Data Steward (domain)]
+  sla_hours: 48
+  on_low_score: Lower severity to 'warn' and resubmit once; else human review.
+  on_budget_exhausted: Flush completed rules; checkpoint coverage review.
+  on_veto: Withdraw CR.
+  on_conflict: One CR per rule id; threshold changes rebase.
+memory:
+  working: true
+  episodic: true
+  semantic_write: false
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: L3
+  criteria:
+    - ">= 400 evaluated dq_rule CRs over >= 90 days"
+    - "Rules released with false-positive rate < 5 % on steward-reviewed samples"
+    - "Rollback rate <= 0.5 %"
+  demotion_triggers:
+    - A released rule quarantining > 1 % of a critical stream falsely (immediate L1 for 30 days).

@@ -1,0 +1,311 @@
+# HEALIX DQ rule pack — G3 Revenue Cycle & Finance
+# Validated by rule.schema.json; indexed in 02-rule-catalog.md §3.3
+pack: g3-finance
+version: 0.1.0
+group: G3
+owner: steward.finance
+description: Revenue cycle and finance rules for Claim, ClaimResponse (835), ChargeItem (Cerner) and GL journals (Oracle Fusion ERP, HEALIX-ERP GLJournalBatch and GLJournalLine profiles).
+rules:
+  - id: DQR-COMPLETENESS-CLAIM-001
+    name: Claim has identifier, patient, insurer and total
+    description: Every Claim (from 837 or RCM) must carry a claim identifier, patient reference, insurer reference and total amount (ClaimShape sh:minCount 1 on each). Incomplete claims cannot be adjudicated or reconciled.
+    dimension: completeness
+    group: G3
+    domain: finance
+    source_systems: [rcm, clearinghouse]
+    cde: [Claim.identifier, Claim.patient, Claim.insurer, Claim.total]
+    targets:
+      - plane: stream
+        resource: Claim
+        language: fhirpath
+        expression: "identifier.value.exists() and patient.exists() and insurer.exists() and total.value.exists()"
+      - plane: warehouse
+        table: edw_g3_finance.fact_claim
+        language: sql
+        key_columns: [claim_bk]
+        sql: SELECT claim_bk FROM {{ ref('fact_claim') }} WHERE claim_bk IS NULL OR patient_sk IS NULL OR payer_sk IS NULL OR total_billed_amt IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: PT1H}
+    owner: steward.finance
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shapes/finance/ClaimShape
+    remediation: {action: source_fix, hint: "837 missing CLM01, subscriber or payer loop; return to RCM billing queue", policy_ref: https://policy.healix.example.org/dq/claims}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-INTEGRITY-CLAIM-002
+    name: Claim insurer resolves to a payer organization
+    description: Claim.insurer must resolve to an Organization of type payer in the payer master (range of finance:billedTo). Unknown payers cause misrouted claims and unreconciled remittances.
+    dimension: integrity
+    group: G3
+    domain: finance
+    source_systems: [rcm, clearinghouse]
+    cde: [Claim.insurer]
+    targets:
+      - plane: stream
+        resource: Claim
+        language: fhirpath
+        expression: "%ref_exists(insurer) and insurer.resolve().type.coding.where(code='pay').exists()"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/finance/ClaimShape#insurer
+      - plane: warehouse
+        table: edw_g3_finance.fact_claim
+        language: sql
+        key_columns: [claim_bk]
+        sql: SELECT c.claim_bk FROM {{ ref('fact_claim') }} c LEFT JOIN {{ ref('dim_payer') }} p ON p.payer_sk = c.payer_sk WHERE p.payer_sk IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.finance
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/finance/billedTo
+    remediation: {action: auto_fix, fix_class: reference_resolution, hint: Resolve payer id via payer master crosswalk when unique; otherwise payer master steward adds payer, tool: entity_resolution.lookup}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-VALIDITY-CLAIM-003
+    name: Claim line procedure code in CPT/HCPCS value set
+    description: Claim.item.productOrService must be a member of the HEALIX CPT/HCPCS value set for the service date, and modifiers must be in the CPT/HCPCS modifier value set.
+    dimension: validity
+    group: G3
+    domain: finance
+    source_systems: [rcm, clearinghouse]
+    cde: [Claim.item.productOrService]
+    targets:
+      - plane: stream
+        resource: Claim
+        language: fhirpath
+        expression: "item.all(productOrService.memberOf('https://ontology.healix.example.org/vs/cpt-hcpcs') and modifier.all(memberOf('https://ontology.healix.example.org/vs/cpt-hcpcs-modifier')))"
+      - plane: warehouse
+        table: edw_g3_finance.fact_claim_line
+        language: sql
+        key_columns: [claim_line_bk]
+        sql: SELECT l.claim_line_bk FROM {{ ref('fact_claim_line') }} l LEFT JOIN {{ ref('ref_value_set_member') }} v ON v.value_set_url = 'https://ontology.healix.example.org/vs/cpt-hcpcs' AND v.code = l.procedure_cd AND l.service_dt BETWEEN v.valid_from AND COALESCE(v.valid_to, DATE '9999-12-31') WHERE v.code IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.995, window: P1D}
+    owner: steward.finance
+    derivation: terminology
+    derived_from: https://ontology.healix.example.org/vs/cpt-hcpcs
+    remediation: {action: steward, hint: Revenue integrity reviews invalid or retired codes; charge master update if systemic}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-INTEGRITY-CLAIM-004
+    name: Claim patient resolves to a patient with an active MRN
+    description: Claim.patient must resolve to a canonical Patient that has an active MRN at the facility of service. Claims for unresolved patients are quarantined because they cannot be posted to a guarantor account.
+    dimension: integrity
+    group: G3
+    domain: finance
+    source_systems: [rcm, clearinghouse]
+    cde: [Claim.patient]
+    targets:
+      - plane: stream
+        resource: Claim
+        language: fhirpath
+        expression: "%ref_exists(patient) and patient.resolve().identifier.where(type.coding.code='MR' and (period.end.empty() or period.end > %now)).exists()"
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shapes/finance/ClaimShape#patient
+      - plane: warehouse
+        table: edw_g3_finance.fact_claim
+        language: sql
+        key_columns: [claim_bk]
+        sql: SELECT c.claim_bk FROM {{ ref('fact_claim') }} c LEFT JOIN {{ ref('dim_patient') }} p ON p.patient_sk = c.patient_sk AND p.is_current = 1 WHERE p.patient_sk IS NULL
+    severity: blocker
+    quarantine: true
+    threshold: {metric: pass_rate, min: 0.9999, window: PT1H}
+    owner: steward.finance
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/finance/Claim#patient
+    remediation: {action: auto_fix, fix_class: late_arrival_wait, hint: Hold up to 24 h for the Patient to arrive then resolve via EMPI; still unresolved claims go to the patient access team, tool: entity_resolution.lookup}
+    version: 1.0.0
+    status: active
+    tags: [cde]
+
+  - id: DQR-CONSISTENCY-CLAIM-005
+    name: Claim total equals sum of line net amounts
+    description: Claim.total.value must equal the sum of Claim.item.net.value within 0.01 in the same currency (finance:totalEqualsLines axiom).
+    dimension: consistency
+    group: G3
+    domain: finance
+    source_systems: [rcm, clearinghouse]
+    cde: [Claim.total]
+    targets:
+      - plane: stream
+        resource: Claim
+        language: fhirpath
+        expression: "item.net.value.empty() or (total.value - item.net.value.sum()).abs() <= 0.01"
+      - plane: warehouse
+        table: edw_g3_finance.fact_claim
+        language: sql
+        key_columns: [claim_bk]
+        sql: SELECT c.claim_bk FROM {{ ref('fact_claim') }} c JOIN (SELECT claim_sk, SUM(line_net_amt) AS line_total FROM {{ ref('fact_claim_line') }} GROUP BY claim_sk) l ON l.claim_sk = c.claim_sk WHERE ABS(c.total_billed_amt - l.line_total) > 0.01
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.finance
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/finance/Claim#totalEqualsLines
+    remediation: {action: source_fix, hint: Claim scrubber or 837 generation defect; RCM vendor ticket}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-ACCURACY-CLAIMRESPONSE-001
+    name: Adjudicated payment consistent with claim and 835
+    description: ClaimResponse.payment.amount must not exceed the billed Claim.total, and must equal the 835 CLP04 claim payment amount for the same claim control number.
+    dimension: accuracy
+    group: G3
+    domain: finance
+    source_systems: [clearinghouse]
+    cde: [ClaimResponse.payment.amount]
+    targets:
+      - plane: warehouse
+        table: edw_g3_finance.fact_claim_adjudication
+        language: sql
+        key_columns: [claim_bk]
+        sql: SELECT a.claim_bk FROM {{ ref('fact_claim_adjudication') }} a JOIN {{ ref('fact_claim') }} c ON c.claim_sk = a.claim_sk LEFT JOIN {{ ref('fact_remittance_claim') }} r ON r.claim_control_number = c.claim_bk WHERE a.paid_amt > c.total_billed_amt OR (r.clp04_paid_amt IS NOT NULL AND ABS(r.clp04_paid_amt - a.paid_amt) > 0.01)
+        schedule: daily
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.finance
+    derivation: policy
+    derived_from: https://policy.healix.example.org/dq/remittance-posting
+    remediation: {action: steward, hint: Cash posting analyst reconciles 835 to adjudication; overpayments trigger payer follow-up}
+    version: 1.0.0
+    status: active
+    tags: [sox]
+
+  - id: DQR-VALIDITY-GL-001
+    name: GL account combination valid and enabled
+    description: Every Oracle Fusion GL journal line must reference an account code combination that exists and is enabled in the chart of accounts for the ledger on the accounting date (HEALIX-ERP GLJournalLine profile; range finance:postsTo).
+    dimension: validity
+    group: G3
+    domain: finance
+    source_systems: [oracle_erp]
+    cde: [GLJournalLine.accountCombination]
+    targets:
+      - plane: stream
+        resource: GLJournalLine
+        language: fhirpath
+        expression: "extension('https://ontology.healix.example.org/erp/StructureDefinition/accountCombination').value.memberOf('https://ontology.healix.example.org/vs/gl-code-combinations-enabled')"
+      - plane: warehouse
+        table: edw_g3_finance.fact_gl_journal_line
+        language: sql
+        key_columns: [gl_journal_line_bk]
+        sql: SELECT l.gl_journal_line_bk FROM {{ ref('fact_gl_journal_line') }} l LEFT JOIN {{ ref('dim_gl_code_combination') }} cc ON cc.code_combination_id = l.code_combination_id AND cc.enabled_flag = 'Y' AND l.accounting_dt BETWEEN cc.start_date_active AND COALESCE(cc.end_date_active, DATE '9999-12-31') WHERE cc.code_combination_id IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.9999, window: P1D}
+    owner: steward.finance
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/finance/postsTo
+    remediation: {action: source_fix, hint: Disabled or invalid code combination used in Oracle GL; GL controller to correct journal before posting, policy_ref: https://policy.healix.example.org/finance/chart-of-accounts}
+    version: 1.0.0
+    status: active
+    tags: [sox]
+
+  - id: DQR-ACCURACY-GL-002
+    name: Journal batch debits equal credits
+    description: For every Oracle Fusion GL journal batch the sum of entered debits equals the sum of entered credits, and the same holds in accounted (ledger) currency. An unbalanced batch is a blocker because it cannot be posted and corrupts trial balance derivations.
+    dimension: accuracy
+    group: G3
+    domain: finance
+    source_systems: [oracle_erp]
+    cde: [GLJournalLine.enteredDebit, GLJournalLine.enteredCredit]
+    targets:
+      - plane: stream
+        resource: GLJournalBatch
+        language: fhirpath
+        expression: "(extension('https://ontology.healix.example.org/erp/StructureDefinition/enteredDebitTotal').value - extension('https://ontology.healix.example.org/erp/StructureDefinition/enteredCreditTotal').value).abs() <= 0.005 and (extension('https://ontology.healix.example.org/erp/StructureDefinition/accountedDebitTotal').value - extension('https://ontology.healix.example.org/erp/StructureDefinition/accountedCreditTotal').value).abs() <= 0.005"
+      - plane: warehouse
+        table: edw_g3_finance.fact_gl_journal_line
+        language: sql
+        key_columns: [je_batch_id]
+        sql: SELECT je_batch_id, SUM(entered_dr) AS dr, SUM(entered_cr) AS cr FROM {{ ref('fact_gl_journal_line') }} WHERE recorded_at >= {{ window_start }} GROUP BY je_batch_id HAVING ABS(SUM(entered_dr) - SUM(entered_cr)) > 0.005 OR ABS(SUM(accounted_dr) - SUM(accounted_cr)) > 0.005
+    severity: blocker
+    quarantine: true
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.finance
+    derivation: policy
+    derived_from: https://policy.healix.example.org/finance/journal-balancing
+    remediation: {action: source_fix, hint: Unbalanced journal batch extracted from Oracle GL (likely partial BICC extract or suspense posting); re-extract batch and notify GL controller, policy_ref: https://policy.healix.example.org/finance/journal-balancing}
+    version: 1.0.0
+    status: active
+    tags: [sox, cde]
+
+  - id: DQR-TEMPORAL-GL-003
+    name: Accounting date within an open or future-enterable period
+    description: GL journal line accounting date must fall in a period whose status is Open or Future-Enterable for the ledger at the time of entry. Posting to closed periods indicates back-dating or extract misalignment.
+    dimension: temporal
+    group: G3
+    domain: finance
+    source_systems: [oracle_erp]
+    cde: [GLJournalLine.accountingDate]
+    targets:
+      - plane: stream
+        resource: GLJournalLine
+        language: fhirpath
+        expression: "%period_status(extension('https://ontology.healix.example.org/erp/StructureDefinition/ledger').value, extension('https://ontology.healix.example.org/erp/StructureDefinition/accountingDate').value) in ('O' | 'F')"
+      - plane: warehouse
+        table: edw_g3_finance.fact_gl_journal_line
+        language: sql
+        key_columns: [gl_journal_line_bk]
+        sql: SELECT l.gl_journal_line_bk FROM {{ ref('fact_gl_journal_line') }} l JOIN {{ ref('dim_gl_period') }} p ON p.ledger_id = l.ledger_id AND l.accounting_dt BETWEEN p.period_start_dt AND p.period_end_dt WHERE p.closing_status NOT IN ('O','F') AND l.recorded_at >= {{ window_start }}
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.9999, window: P1D}
+    owner: steward.finance
+    derivation: policy
+    derived_from: https://policy.healix.example.org/finance/period-close
+    remediation: {action: source_fix, hint: Journal dated in a closed period; GL controller to reverse and re-enter in open period}
+    version: 1.0.0
+    status: active
+    tags: [sox]
+
+  - id: DQR-COMPLETENESS-CHARGE-001
+    name: Charge item complete
+    description: Every Cerner ChargeItem must carry a charge code (CDM item), quantity, occurrence date-time and account reference (ChargeItemShape). Incomplete charges cannot be billed.
+    dimension: completeness
+    group: G3
+    domain: finance
+    source_systems: [cerner]
+    cde: [ChargeItem.code, ChargeItem.quantity, ChargeItem.occurrence, ChargeItem.account]
+    targets:
+      - plane: stream
+        resource: ChargeItem
+        language: fhirpath
+        expression: "code.coding.exists() and quantity.value.exists() and occurrence.exists() and account.exists()"
+      - plane: warehouse
+        table: edw_g3_finance.fact_charge
+        language: sql
+        key_columns: [charge_bk]
+        sql: SELECT charge_bk FROM {{ ref('fact_charge') }} WHERE cdm_item_cd IS NULL OR quantity IS NULL OR service_dt_tm IS NULL OR account_sk IS NULL
+    severity: critical
+    threshold: {metric: pass_rate, min: 0.999, window: PT1H}
+    owner: steward.finance
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shapes/finance/ChargeItemShape
+    remediation: {action: source_fix, hint: Charge missing CDM or account in Cerner CHARGE; charge capture team to correct}
+    version: 1.0.0
+    status: active
+
+  - id: DQR-TIMELINESS-CHARGE-002
+    name: Charge posted within 72 hours of service
+    description: Cerner charges must be posted (ChargeItem.enteredDate) within 72 hours of the service date (occurrence). Late charges delay claims and increase denials.
+    dimension: timeliness
+    group: G3
+    domain: finance
+    source_systems: [cerner]
+    cde: [ChargeItem.occurrence]
+    targets:
+      - plane: warehouse
+        table: edw_g3_finance.fact_charge
+        language: sql
+        key_columns: [charge_bk]
+        sql: SELECT charge_bk FROM {{ ref('fact_charge') }} WHERE posted_dt_tm > service_dt_tm + INTERVAL '72' HOUR AND service_dt_tm >= {{ window_start }}
+        schedule: daily
+    severity: major
+    threshold: {metric: pass_rate, min: 0.97, window: P1D}
+    owner: steward.finance
+    derivation: policy
+    derived_from: https://policy.healix.example.org/revenue-cycle/charge-lag
+    remediation: {action: source_fix, hint: Late charge entry by department; revenue integrity to review charge lag by department}
+    version: 1.0.0
+    status: active

@@ -1,0 +1,113 @@
+manifest_version: 0.1.0
+id: agent.vocabulary_curator
+role: Controlled Vocabulary Curator (Stage 1)
+mission: >-
+  Harvest candidate terms from registered data elements, code sets and clinical/financial documentation;
+  propose SKOS concepts with preferred and alternate labels, definitions, scope notes and code bindings to
+  SNOMED CT, LOINC, RxNorm, ICD-10-CM/PCS, CPT/HCPCS, NDC, CVX, UCUM or enterprise code systems.
+pipeline_stage: [1]
+owns_modules: ["02"]
+autonomy_level: L2
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_MAPPING}"
+  recommended_default: claude-sonnet-5-5
+  fallback_ref: "${MODEL_CLASSIFICATION}"
+  temperature: 0.2
+  max_output_tokens: 8192
+  structured_output: true
+tools:
+  - server: source-registry
+    operations: [get_element, list_elements, get_code_set_values]
+    permission: read
+    phi_access: none
+  - server: ontology-registry
+    operations: [search_concepts, get_concept, get_scheme, list_schemes, diff, propose_change, check_label_collision]
+    permission: propose
+    phi_access: none
+  - server: terminology-service
+    operations: [lookup, validate_code, translate, expand, subsumes]
+    permission: read
+    phi_access: none
+  - server: kafka-admin
+    operations: [sample_records]
+    permission: read
+    phi_access: masked
+  - server: sql-sandbox
+    operations: [profile_column]
+    permission: read
+    phi_access: masked
+  - server: cr-engine
+    operations: [create_cr, get_cr, withdraw_cr]
+    permission: propose
+    phi_access: none
+  - server: git
+    operations: [read_file, create_branch, commit, open_pr]
+    permission: propose
+    phi_access: none
+triggers:
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: new_element_registered
+  - kind: event
+    topic: hc.ops.agent.trigger.v1
+    event_type: unmapped_code
+    description: Terminology steward or DQ monitor found a code value with no concept.
+  - kind: schedule
+    cron: "0 3 * * 1-5"
+    description: Weekday harvest of newly observed CODE_VALUE rows and Oracle Fusion lookup types.
+  - kind: manual
+inputs:
+  - Data Element Catalog entries flagged 'needs_vocabulary'
+  - Cerner CODE_VALUE display/description/definition text (treated as untrusted text)
+  - Oracle Fusion FND_LOOKUP_VALUES meanings and descriptions
+  - Masked frequency distributions of observed values
+  - Existing SKOS concept schemes and the enterprise label style guide
+outputs:
+  - artefact: SKOS concept proposals (skos:prefLabel, altLabel, definition, scopeNote, notation, exactMatch/closeMatch)
+    cr_type: vocabulary
+    destination: cr-engine
+  - artefact: Deprecation / merge proposals for duplicate concepts
+    cr_type: vocabulary
+    destination: cr-engine
+  - artefact: Harvest report (terms seen, proposed, skipped with reason)
+    cr_type: null
+    destination: hc.ops.agent.decision.v1
+risk_classes: [low, medium, phi_affecting]
+evaluation:
+  rubric_ids: [RUB-VOC-01, RUB-VOC-02, RUB-VOC-03, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: 0.90
+  human_agreement_target: 0.95
+  golden_sets: [golden-vocab-encounter-class-v1, golden-vocab-lab-analytes-v1, golden-vocab-fusion-lookups-v1]
+budgets:
+  tokens_per_run: 150000
+  runs_per_day: 200
+  daily_token_cap: 20000000
+  max_tool_calls_per_run: 300
+  wall_clock_minutes_per_run: 45
+  max_concurrent_runs: 6
+  max_open_change_requests: 200
+escalation:
+  to: [Ontologist / Taxonomist, Data Steward (domain)]
+  sla_hours: 48
+  on_low_score: Revise once using evaluator notes; if still below threshold, route to human review.
+  on_budget_exhausted: Stop harvesting; flush completed proposals; resume next run.
+  on_veto: Withdraw CR; record masked evidence pointers only.
+  on_conflict: Attach to the earlier open CR on the same concept as a comment instead of creating a duplicate.
+memory:
+  working: true
+  episodic: true
+  semantic_write: true
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: L3
+  criteria:
+    - ">= 500 evaluated vocabulary CRs over >= 90 days"
+    - "Human agreement with evaluator verdicts >= 0.97 on sampled CRs"
+    - "Rollback rate <= 0.5 % over trailing 90 days"
+    - "Zero privacy_guardian vetoes in trailing 90 days"
+  demotion_triggers:
+    - Rollback rate > 2 % in any 30-day window.
+    - Any PHI leakage into a label, definition or scope note (immediate demotion to L1).
