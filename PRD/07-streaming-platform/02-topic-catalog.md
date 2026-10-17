@@ -135,7 +135,7 @@ Deviation from a default is permitted only through the catalog entry and must be
 ## 6. Initial topic list
 
 Counts: 48 `raw`, 50 `std` (48 parsed counterparts + 2 outbound), 61 `canonical` (52 event/compact-only + 9 snapshots),
-22 `dq` (5 cross-domain + 9 quarantine + 8 passed), 5 `kg`, 9 `edw`, 24 `ops` — **219 topics**, 18 compacted.
+22 `dq` (5 cross-domain + 9 quarantine + 8 passed), 5 `kg`, 9 `edw`, 25 `ops` — **220 topics**, 19 compacted.
 The PHI column holds the module 11 `phi_class` tag (§1).
 
 ### 6.1 Raw and standardised layers (per source and feed)
@@ -348,12 +348,13 @@ columns populated and surrogate keys resolved (STR-05 §2.6).
 | `hc.ops.audit.break-glass.v1` | `correlation_id` | avro | 3 | phi:quasi | 30 d | Emergency (break-glass) access events: operator, purpose of use, scope, time box and the records touched by reference; notifies the privacy office and is sunk to immutable storage within 60 s (module 08 TKG-02 section 7, module 11). |
 | `hc.ops.agent.trigger.v1` | `dedup_key (event_type\|subject)` | json | 6 | internal | 7 d | Normalised agent-facing events (event_type: new_source_discovered, schema_drift, unmapped_code, dq_anomaly, ontology_release ...) with per-type debounce key; the orchestrator deduplicates and derives workflow ids from the key (module 10 AGT-01 section 4.1). |
 | `hc.ops.agent.decision.v1` | `decision_id` | json | 6 | internal | 7 y | Append-only episodic decision log: every consequential agent decision (propose, approve, apply, rollback, budget stop) with CR id, target, prompt and model version, trace id and PHI-scan verdict; 7-year retention, PHI-free by construction (module 10 AGT-06 section 1.2). |
-| `hc.ops.heal.incident.v1` | `incident_id` | avro | 3 | internal | 30 d | Self-healing incident lifecycle: detected, diagnosed, playbook selected, acting, verified, resolved or escalated, with symptom fingerprint and blast-radius budget; mirrored to fact_healing_incident (module 14). |
-| `hc.ops.heal.action.v1` | `incident_id\|step` | avro | 3 | internal | 30 d | Self-healing playbook actions per incident step: action kind, target, blast-radius check result, outcome and rollback pointer; every action is PROV-O linked to its incident (module 14). |
-| `hc.ops.agent.memory.episode.v1` | `record_id` | avro | 6 | internal | compact | Compacted event-sourced agent memory write log (episodes, reflections, corrections, tombstones) emitted by the Memory API write-gate after PHI and injection scans; Mem0 and Graphiti are derived projections rebuilt from it (module 14 MEM-01 section 8). |
+| `hc.ops.healing.incident.event.v1` | `incident_id` | avro | 3 | internal | 30 d | Self-healing incident lifecycle: detected, diagnosed, playbook selected, acting, verified, resolved or escalated, with symptom fingerprint and blast-radius budget; mirrored to fact_healing_incident (module 14). |
+| `hc.ops.healing.playbookrun.event.v1` | `playbook_run_id` | avro | 3 | internal | 30 d | Self-healing playbook actions per incident step: action kind, target, blast-radius check result, outcome and rollback pointer; every action is PROV-O linked to its incident (module 14). |
+| `hc.ops.memory.write.v1` | `record_id` | avro | 6 | internal | compact | Compacted event-sourced agent memory write log (episodes, reflections, corrections, tombstones) emitted by the Memory API write-gate after PHI and injection scans; Mem0 and Graphiti are derived projections rebuilt from it (module 14 MEM-01 section 8). |
 | `hc.ops.agent.policy.release.v1` | `agent_id\|artifact_id` | avro | 3 | internal | compact | Compacted release events for agent prompts, policies, playbooks and rubrics (artifact id, version, signed tag, autonomy level); source of cache invalidation and of the procedural-memory index (module 14 MEM-04/05). |
+| `hc.ops.agent.policy.v1` | `agent_id` | avro | 3 | internal | compact | Current active agent policy (prompt, few-shots, thresholds, tool allow-list) per agent, compacted to latest; release events are on hc.ops.agent.policy.release.v1 (module 14). |
 | `hc.ops.registry.release.v1` | `version_iri` | avro | 3 | internal | compact | Compacted ontology registry release events (version IRI, SemVer, diff reference, breaking flag, affected consumers) so modules 05, 06, 08 and 09 regenerate R2RML, re-sync the TS and re-derive DQ shapes (module 02 ONT-GOV-007); `FULL` compatibility. |
-| `hc.ops.improve.canary.v1` | `candidate_id` | avro | 3 | internal | 30 d | Improvement-candidate canary lifecycle (proposed, canary 5 %, canary 25 %, promoted, rolled back) with evaluation scores, guard results and rollback pointer; mirrored to G9 facts (module 14 MEM-05). |
+| `hc.ops.improvement.canary.event.v1` | `canary_id` | avro | 3 | internal | 30 d | Improvement-candidate canary lifecycle (proposed, canary 5 %, canary 25 %, promoted, rolled back) with evaluation scores, guard results and rollback pointer; mirrored to G9 facts (module 14 MEM-05). |
 | `hc.ops.cache.invalidate.v1` | `namespace\|version_tag` | json | 3 | internal | 7 d | Cache invalidation commands per cache namespace (C0–C4) and version tag on ontology, policy, rule-pack and mapping releases (module 14 MEM-03). |
 | `hc.ops.connector.file.manifest.v1` | `source\|file_id` | avro | 3 | internal | 30 d | Bulk file manifests for non-BICC file sources (source, object-store URI, schema version, row count, SHA-256) for exactly-once file processing and completeness checks (module 06 IOP-03 §8). |
 
@@ -375,7 +376,7 @@ python3 -I -c "import json,sys,yaml,jsonschema; \
 ```
 
 followed by the linter rules in §3 step 2 (plus: every `phi_class` is in `defaults.phi_classes`; the cross-module topics
-named by modules 08, 09, 10 and 14 are present). Result for this version: 219 topics valid, 0 lint findings.
+named by modules 08, 09, 10 and 14 are present). Result for this version: 220 topics valid, 0 lint findings.
 
 ## 9. Requirements
 

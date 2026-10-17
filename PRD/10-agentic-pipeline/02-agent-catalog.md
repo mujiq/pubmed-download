@@ -319,7 +319,7 @@ change request that the evaluator and a human approve.
 
 - **Mission.** Consolidate episodic memory (Mem0 + Graphiti temporal graph) into playbooks and semantic insights;
   expire and prune; enforce no-PHI-in-memory. See `agents/memory_curator.yaml`.
-- **Triggers.** Nightly consolidation (03:17); `episode_batch_threshold` on `hc.ops.agent.memory.episode.v1`; manual.
+- **Triggers.** Nightly consolidation (03:17); `episode_batch_threshold` on `hc.ops.memory.write.v1`; manual.
 - **Inputs / outputs.** Episodes and memory edges, resolved incidents, CR outcomes → consolidated playbooks and
   insights (`memory-api`), proposed playbook promotions (CR), memory-hygiene report.
 - **Tools.** `memory-api` (apply), `lineage`, `ticketing` (apply), `cr-engine` (propose).
@@ -332,9 +332,9 @@ change request that the evaluator and a human approve.
 - **Mission.** Detect platform faults and run the matching healing playbook within blast-radius policy, verify
   recovery, escalate when no playbook fits; learn new playbooks from resolved incidents. See
   `agents/self_healer.yaml` and module 14 `healing-playbooks/`.
-- **Triggers.** `fault_detected` on `hc.ops.heal.incident.v1`; health scan every 5 min; manual.
+- **Triggers.** `fault_detected` on `hc.ops.healing.incident.event.v1`; health scan every 5 min; manual.
 - **Inputs / outputs.** Fault signals and health metrics, playbooks, connector/topic/schema/load status → healing
-  actions with verification/rollback (`hc.ops.heal.action.v1`), incident records, proposed playbooks, escalations.
+  actions with verification/rollback (`hc.ops.healing.playbookrun.event.v1`), incident records, proposed playbooks, escalations.
 - **Tools.** `healing-orchestrator` (apply), `kafka-admin` (apply, masked), `schema-registry`, `dq-engine`,
   `lineage`, `ticketing`, `cr-engine` (propose).
 - **Autonomy.** L3, ceiling L3. Bound by the global kill switch, per-action cooldowns and blast-radius classes.

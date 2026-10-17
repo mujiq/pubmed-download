@@ -181,14 +181,14 @@ evidence artefact attached to the release record.
 | Retention | ARC-NFR-005 | `raw` ≥ 30 d; compacted `canonical` indefinitely; audit per policy | Config audit | Report |
 | Observability | — | Every pipeline stage emits metrics, logs, traces with correlation to `prov_activity_iri` | Inspection | Report |
 | Capacity | ARC-NFR-002 | ×3 headroom proven | Load test | Report |
-| Memory stack recoverability | ARC-NFR-007 | Mem0/Graphiti rebuilt from `hc.ops.agent.memory.episode.v1` ≤ 4 h with record counts ±0; Redis cold start with bypass ≤ 50 ms and ARC-NFR-001 unaffected | Quarterly rebuild drill; cold-start chaos test (OPS-04 §9) | Drill report |
+| Memory stack recoverability | ARC-NFR-007 | Mem0/Graphiti rebuilt from `hc.ops.memory.write.v1` ≤ 4 h with record counts ±0; Redis cold start with bypass ≤ 50 ms and ARC-NFR-001 unaffected | Quarterly rebuild drill; cold-start chaos test (OPS-04 §9) | Drill report |
 
 ### 2.12 Module 14 — Agent Memory, Caching & Self-Improvement
 
 | Criterion | Goal / ADR | Threshold | Test approach | Evidence |
 |-----------|------------|-----------|---------------|----------|
 | No PHI in memory or caches | ADR-08, G-06 | 0 values above `internal` (GOV-01 §3 Table 3-A) in any memory tier M0–M4 or cache tier C0–C4; write-gate rejects 100 % of PHI honeytokens and injection seeds; scanner zero findings for 30 days before each gate | Memory PHI scanner + honeytoken probes; adversarial episode set | Scanner and probe report |
-| Write-gate and sole-writer | ADR-08 | 100 % of writes pass the write-gate and are acknowledged on `hc.ops.agent.memory.episode.v1` before materialisation; 0 components other than the Memory API hold write credentials to Mem0/Graphiti | Credential inventory; write-path test | Audit report |
+| Write-gate and sole-writer | ADR-08 | 100 % of writes pass the write-gate and are acknowledged on `hc.ops.memory.write.v1` before materialisation; 0 components other than the Memory API hold write credentials to Mem0/Graphiti | Credential inventory; write-path test | Audit report |
 | Rebuild from write log | ARC-NFR-007 | Mem0 and Graphiti rebuilt ≤ 4 h with record counts ±0 and identical `record_id` sets; drill ≤ 1 quarter old | Rebuild drill (OPS-04 §9) | Drill report |
 | Bitemporal alignment | G-05 | 100 % of Graphiti edges map `valid_at/invalid_at/created_at/expired_at` to TKG-01 §4 terms; as-of (valid and as-known) fixtures pass | MEM-GRA fixture suite | Fixture report |
 | Memory SLO (S23) | — | Write availability 99.9 %; recall p95 ≤ 200 ms; Graphiti hybrid recall p95 ≤ 500 ms; episode recallable ≤ 60 s p95; `memory_quarantine_total` = 0 | SLO engine over 28 days in `uat` then `prod` | SLO report |
@@ -354,7 +354,7 @@ Each item must have evidence linked in the release record. Items marked **P0** b
 | **RMP-ACC-122** | P1 | demo | A DR drill MUST demonstrate RPO ≤ 15 min and RTO ≤ 4 h (ARC-NFR-007) before gate M2 and annually thereafter. |
 | **RMP-ACC-123** | P1 | analysis | Monthly SLO reports MUST show availability ≥ 99.9 % for the ingestion/canonical plane and ≥ 99.5 % for KG/EDW query. |
 | **RMP-ACC-130** | P0 | test | No memory tier (M0–M4 as used by agents) and no cache tier (C0–C4) SHALL contain any value classified above `internal` in GOV-01 §3 Table 3-A; the memory PHI scanner and honeytoken probes MUST report zero findings for 30 consecutive days before each gate, and the write-gate MUST reject 100 % of honeytoken and injection seeds (MEM-ARCH-025, MEM-CACHE-001). |
-| **RMP-ACC-131** | P0 | test | Mem0 and Graphiti MUST be rebuilt from `hc.ops.agent.memory.episode.v1` within 4 h with record counts ±0 and identical `record_id` sets in a drill no older than one quarter at every gate (MEM-ARCH-008, MEM-ARCH-039). |
+| **RMP-ACC-131** | P0 | test | Mem0 and Graphiti MUST be rebuilt from `hc.ops.memory.write.v1` within 4 h with record counts ±0 and identical `record_id` sets in a drill no older than one quarter at every gate (MEM-ARCH-008, MEM-ARCH-039). |
 | **RMP-ACC-132** | P1 | analysis | Memory-lift ablation MUST show evaluator–human agreement κ and CR acceptance with memory enabled ≥ those with memory disabled, and the memory-influenced vs non-influenced acceptance comparison MUST be published monthly (MEM-GOV-038). |
 | **RMP-ACC-133** | P1 | test | Cache SLO S24 MUST be met: invalidation lag p95 ≤ 60 s, bypass-on-failure ≤ 0.1 % of calls, semantic-cache divergence ≤ 0.5 %, every C2 mapping hit re-validated against the Terminology Service, and no cache entry used as evidence for a memory write or change request (MEM-CACHE-003, 009, 030). |
 | **RMP-ACC-134** | P0 | test | The chaos and fault-injection suite MUST pass for every playbook in a release: detection ≤ MTTD and healing ≤ MTTR of its fault class, blast-radius budget never exceeded, zero autonomous `schema`/`data_mutation` actions, kill switch halting runs ≤ 30 s and recursion depth ≤ 2 (MEM-HEAL-001, 002, 007, 009). |

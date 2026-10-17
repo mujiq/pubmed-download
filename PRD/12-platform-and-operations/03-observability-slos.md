@@ -37,7 +37,7 @@ flowchart LR
   COL -->|metrics| PROM[(Prometheus → Mimir · 30 d hot · 13 mo cold)]
   COL -->|logs| LOKI[(Loki · 90 d)]
   COL -->|traces| TEMPO[(Tempo · 14 d · tail sampling)]
-  KAFKA[(Kafka)] -->|hc.ops.audit.v1 · hc.dq.* · hc.ops.lineage.openlineage.v1 · hc.ops.agent.memory.episode.v1 · healing and canary events| KEXP[Kafka exporters · DQ metrics bridge]
+  KAFKA[(Kafka)] -->|hc.ops.audit.v1 · hc.dq.* · hc.ops.lineage.openlineage.v1 · hc.ops.memory.write.v1 · healing and canary events| KEXP[Kafka exporters · DQ metrics bridge]
   KEXP --> PROM
   PROM & LOKI & TEMPO --> GRAF[Grafana · SLO engine · dashboards]
   PROM --> AM[Alertmanager → on-call paging · chat · ticketing]
@@ -50,7 +50,7 @@ flowchart LR
 | Metrics | OpenTelemetry metrics → Prometheus remote write; exemplars link to traces | 30 days raw, 13 months downsampled (5 min) | Cardinality budget per service; patient-level labels forbidden |
 | Logs | OTel logs, JSON structured, `trace_id` and `span_id` injected | 90 days | PHI scrubbing processor (GOV-01 §2 detectors) drops or hashes `phi:direct` patterns before export; a scrubbed-field counter is itself a metric |
 | Traces | W3C Trace Context propagated in Kafka headers (`traceparent`) end to end; tail sampling keeps 100 % of errors and slow traces, 1 % of healthy | 14 days | Span attributes carry record keys as tokens, never MRNs |
-| Business events | `hc.dq.*`, `hc.ops.audit.v1`, `hc.ops.lineage.openlineage.v1`, `hc.ops.agent.memory.episode.v1`, `hc.ops.heal.incident.v1`, `hc.ops.heal.action.v1`, `hc.ops.improve.canary.v1` bridged to metrics | Per module 07/11/14 | Source for DQ, consent, audit, lineage, memory, healing and canary SLIs |
+| Business events | `hc.dq.*`, `hc.ops.audit.v1`, `hc.ops.lineage.openlineage.v1`, `hc.ops.memory.write.v1`, `hc.ops.healing.incident.event.v1`, `hc.ops.healing.playbookrun.event.v1`, `hc.ops.improvement.canary.event.v1` bridged to metrics | Per module 07/11/14 | Source for DQ, consent, audit, lineage, memory, healing and canary SLIs |
 
 ## 2. HEALIX semantic conventions
 
@@ -109,7 +109,7 @@ SLOs are measured over rolling 28-day windows unless stated; error budgets drive
 | S22 | **Consent propagation** | Consent changes enforced on all projections ≤ 15 min | 100 % | Consent engine probe | Module 11 | GOV-PHI-009 |
 | S23 | **Agent memory availability and latency** | Memory API `remember`/`recall` requests succeeding (policy rejections excluded); recall p95 ≤ 200 ms at the API, Graphiti hybrid recall p95 ≤ 500 ms, write-gate p95 ≤ 300 ms; episode recallable ≤ 60 s p95 after append | Write availability 99.9 %; latency targets met in 99 % of 5-min windows; `memory_quarantine_total` = 0 (any quarantine is an incident) | `healix.memory.*` metrics (MEM-01 §11, MEM-02 §9) | Module 14 / Agent operator | ADR-08; MEM-ARCH-012, 040; MEM-GRA-017, 023 |
 | S24 | **Cache health** | Cache calls answered within tier budget (C1 p95 < 5 ms, C2 p95 < 25 ms, C3 p95 ≤ 5 ms, C4 p95 < 5 ms) with bypass only on policy; invalidation propagated ≤ 60 s | Bypass-on-failure ≤ 0.1 % of calls; invalidation lag p95 ≤ 60 s; semantic-cache divergence (1 % shadow recompute) ≤ 0.5 % | `healix.cache.*` metrics (MEM-03 §9) | Module 14 / SRE | ARC-NFR-001; MEM-CACHE-004, 009 |
-| S25 | **Self-healing and improvement safety** | Incidents in autonomous playbook scope healed within their fault-class MTTR (MEM-04 §2); blast-radius budget never exceeded; canary rollbacks complete ≤ 5 min | ≥ 90 % of in-scope incidents within MTTR; 0 budget breaches; 0 autonomous `schema`/`data_mutation` actions; 100 % of rollbacks ≤ 5 min | `hc.ops.heal.*.v1` and `hc.ops.improve.canary.v1` bridges | Module 14 / Agent operator | ADR-09; MEM-HEAL-001, 002, 054; MEM-IMP-004 |
+| S25 | **Self-healing and improvement safety** | Incidents in autonomous playbook scope healed within their fault-class MTTR (MEM-04 §2); blast-radius budget never exceeded; canary rollbacks complete ≤ 5 min | ≥ 90 % of in-scope incidents within MTTR; 0 budget breaches; 0 autonomous `schema`/`data_mutation` actions; 100 % of rollbacks ≤ 5 min | `hc.ops.heal.*.v1` and `hc.ops.improvement.canary.event.v1` bridges | Module 14 / Agent operator | ADR-09; MEM-HEAL-001, 002, 054; MEM-IMP-004 |
 
 Error budget: `1 − SLO` of the window. Example: S21 at 99.9 % over 28 days = 40.3 minutes.
 

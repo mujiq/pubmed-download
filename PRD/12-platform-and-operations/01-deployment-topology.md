@@ -88,7 +88,7 @@ flowchart TB
   MEM0 -->|streaming replica| MEMB
   GRA -->|online backup every 15 min| OBJ
   MEMAPI --> MEM0 & GRA
-  MEMAPI -.->|hc.ops.agent.memory.episode.v1| KAF
+  MEMAPI -.->|hc.ops.memory.write.v1| KAF
   AGR --> MCP --> MEMAPI & RC
   OBJ --> OBJB
   FLK --> OBJ
@@ -166,7 +166,7 @@ entities use the same path. Credentials are OAuth 2.0 client credentials stored 
 | MCP servers | 2+ replicas each behind gateway | Pod loss | Immediate |
 | Observability | Prometheus HA pair + long-term store; Loki/Tempo on object storage | Pod loss | Seconds; gaps ≤ scrape interval |
 | Object storage | Provider durability; versioning; cross-region replication | AZ loss | — |
-| Memory API / write-gate (C26) | 3 stateless replicas; every write appended to `hc.ops.agent.memory.episode.v1` and acknowledged before materialisation (MEM-ARCH-007); on store outage agents run memoryless and CRs carry `memory_degraded=true` (MEM-ARCH-034) | Pod loss; downstream store loss | Immediate; degraded mode detected ≤ 60 s |
+| Memory API / write-gate (C26) | 3 stateless replicas; every write appended to `hc.ops.memory.write.v1` and acknowledged before materialisation (MEM-ARCH-007); on store outage agents run memoryless and CRs carry `memory_degraded=true` (MEM-ARCH-034) | Pod loss; downstream store loss | Immediate; degraded mode detected ≤ 60 s |
 | Mem0 store (C26) | HA PostgreSQL + pgvector (CloudNativePG, synchronous replica, automated failover) or 3-node Qdrant; derived state rebuildable from the write log ≤ 4 h (MEM-ARCH-008) | DB primary loss | ≤ 60 s |
 | Graphiti graph (C27) | Neo4j 5.x causal cluster, 3 core members across 3 AZs, one database per environment (FalkorDB / Neptune swappable, MEM-GRA-001); online backup every 15 min; asynchronous episode ingestion buffers in the write log | Node loss | Seconds (leader election); backlog ≥ 10 min sets `graphiti: degraded` and healing falls back to the Git playbook index (MEM-ARCH-035) |
 | Redis cache (C28) | Redis Cluster across 3 AZs, 1 replica per shard, automatic failover ≤ 30 s; clients time out at 20 ms and bypass within 50 ms after 5 consecutive failures (MEM-CACHE-004) | Shard or whole-cluster loss | ≤ 30 s failover; pipeline latency unaffected (bypass) |

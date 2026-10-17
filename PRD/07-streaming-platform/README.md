@@ -44,7 +44,7 @@ Out of scope (owned elsewhere): field-level mapping specifications and FHIR prof
 | STR-03 | [`03-schema-registry.md`](03-schema-registry.md) | Formats per layer, subjects, compatibility, evolution, envelope and headers, linting | `STR-SR-001`–`018` |
 | STR-04 | [`04-cdc-and-connectors.md`](04-cdc-and-connectors.md) | Source and sink connector catalog, DLQ, exactly-once, monitoring | `STR-CDC-001`–`022`, `STR-OPS-006`–`010` |
 | STR-05 | [`05-stream-processing.md`](05-stream-processing.md) | Processor catalog, event time, state, exactly-once, idempotency, replay, scaling | `STR-PROC-001`–`020`, `STR-OPS-011`–`015` |
-| — | [`topics.yaml`](topics.yaml) | Machine-readable topic catalog (219 topics) | validated by `topics.schema.json` |
+| — | [`topics.yaml`](topics.yaml) | Machine-readable topic catalog (220 topics) | validated by `topics.schema.json` |
 | — | [`topics.schema.json`](topics.schema.json) | JSON Schema 2020-12 for the catalog | — |
 
 ## 3. Streaming architecture

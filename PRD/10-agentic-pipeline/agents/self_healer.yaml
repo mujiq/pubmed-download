@@ -48,7 +48,7 @@ tools:
     phi_access: none
 triggers:
   - kind: event
-    topic: hc.ops.heal.incident.v1
+    topic: hc.ops.healing.incident.event.v1
     event_type: fault_detected
     description: Observability or a stream processor raised a fault signal.
   - kind: schedule
@@ -63,7 +63,7 @@ inputs:
 outputs:
   - artefact: Healing actions with verification and rollback outcome
     cr_type: null
-    destination: hc.ops.heal.action.v1
+    destination: hc.ops.healing.playbookrun.event.v1
   - artefact: Incident records (open/close, root cause, playbook used)
     cr_type: null
     destination: healing-orchestrator

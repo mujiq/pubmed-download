@@ -38,7 +38,7 @@ triggers:
     cron: "17 3 * * *"
     description: Nightly consolidation of the prior day's episodes into playbooks and insights; expiry sweep.
   - kind: event
-    topic: hc.ops.agent.memory.episode.v1
+    topic: hc.ops.memory.write.v1
     event_type: episode_batch_threshold
     description: Episode volume for a scope crossed the consolidation threshold.
   - kind: manual

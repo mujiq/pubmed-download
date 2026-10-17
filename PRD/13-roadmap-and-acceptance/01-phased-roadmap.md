@@ -65,7 +65,7 @@ data in `dev`/`test`.
 | 10 Agentic Pipeline | Agent runtime, MCP tool servers for registry/terminology/git, change-request schema, `agent.orchestrator`, `agent.inventory`, `agent.evaluator` at L1; evaluation harness | Domain agents acting on real data |
 | 11 Governance | PHI classification scheme, topic-level ACL model, audit event schema, OpenLineage collector, non-prod masking standard, stewardship RACI | Steward onboarding for G1–G7 |
 | 12 Platform & Ops | `dev`/`test`/`uat`/`prod` environments, CI/CD with artefact validation (YAML schema, SQL parse, SHACL, reasoner), observability stack, SLO definitions, backup; memory stack components C26–C29 provisioned per environment | DR drill at full scale |
-| 14 Memory & Self-Improvement | Memory API (MCP `memory`) with write-gate and PHI firewall; `hc.ops.agent.memory.episode.v1` and the other five module 14 `ops` topics registered in `topics.yaml`; Mem0 (pgvector, `enable_graph: false`) and Graphiti (Neo4j 5.x) deployed per environment; Redis cache cluster with `cache-policy.yaml` C1/C3 namespaces; `memory-schema.yaml`, `cache-policy.yaml`, `playbook.schema.json` linted in CI; seven seed playbooks in `shadow`; honeytoken probes | C2 semantic cache; consolidation; `agent.improver`; any `assisted`/`autonomous` healing |
+| 14 Memory & Self-Improvement | Memory API (MCP `memory`) with write-gate and PHI firewall; `hc.ops.memory.write.v1` and the other five module 14 `ops` topics registered in `topics.yaml`; Mem0 (pgvector, `enable_graph: false`) and Graphiti (Neo4j 5.x) deployed per environment; Redis cache cluster with `cache-policy.yaml` C1/C3 namespaces; `memory-schema.yaml`, `cache-policy.yaml`, `playbook.schema.json` linted in CI; seven seed playbooks in `shadow`; honeytoken probes | C2 semantic cache; consolidation; `agent.improver`; any `assisted`/`autonomous` healing |
 | 15 Adversarial Review | Findings register schema and severity scale (`critical`/`high`/`medium`/`low`, SLA per severity); threat model and red-team plan for the thin slice; legacy/tech-debt outlier inventory (interface engine, Millennium replica lag, BICC PVO gaps) | Red-team execution against real data flows |
 
 ### 2.3 Deliverables
@@ -98,7 +98,7 @@ data in `dev`/`test`.
 | E0-5 | Source Registry holds 100 % of in-scope Phase 1 interfaces with steward assigned | RMP-ACC-030 |
 | E0-6 | Agent evaluation harness runs end-to-end on seeded cases with `agent.evaluator` producing scored verdicts | RMP-ACC-100 |
 | E0-7 | PHI policy, ACL matrix and audit schema approved by Privacy & Security Officer | RMP-ACC-110 |
-| E0-8 | Memory write-gate rejects 100 % of PHI honeytokens; Mem0 and Graphiti rebuilt from `hc.ops.agent.memory.episode.v1` in `test` with record counts ±0; every playbook `shadow` | RMP-ACC-130, RMP-ACC-131, RMP-ACC-135 |
+| E0-8 | Memory write-gate rejects 100 % of PHI honeytokens; Mem0 and Graphiti rebuilt from `hc.ops.memory.write.v1` in `test` with record counts ±0; every playbook `shadow` | RMP-ACC-130, RMP-ACC-131, RMP-ACC-135 |
 | E0-9 | Adversarial review gate defined: findings register live, severity scale and SLAs approved by DGC, thin-slice threat model recorded | RMP-ACC-140 |
 
 ### 2.6 Dependencies

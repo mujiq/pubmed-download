@@ -67,10 +67,10 @@ the policy itself is owned elsewhere and referenced by requirement ID.
 | C23 | **GitOps and CI** | Argo CD / Flux reconcilers; CI runners | Argo CD, GitHub Actions / GitLab CI runners in management zone | Git | 12 | Pipeline duration |
 | C24 | **Object storage** | Flink checkpoints, backups, de-identified extracts, Parquet landing | S3 / ADLS / OCI Object Storage, versioned, encrypted | Yes | 12 | Durability 11 nines |
 | C25 | **Edge connectivity** | IPsec VPN / private link to Cerner Millennium on-prem; private endpoint to Oracle Cloud | Cloud VPN gateways / Direct Connect / ExpressRoute / FastConnect | — | 12 | Link availability 99.9 % |
-| C26 | **Agent memory service (Memory API + Mem0)** | MCP `memory` server with write-gate / PHI firewall (sole writer to all memory stores, MEM-ARCH-002); Mem0 OSS for M1 preferences, decisions and steward feedback; event-sourced from `hc.ops.agent.memory.episode.v1` (ADR-08) | Mem0 OSS self-hosted in-VPC (`enable_graph: false`) on PostgreSQL + pgvector (default) or Qdrant; one instance per environment | Yes (derived; rebuildable from the write log ≤ 4 h) | 14 | Memory write availability 99.9 %; recall p95 ≤ 200 ms (S23) |
+| C26 | **Agent memory service (Memory API + Mem0)** | MCP `memory` server with write-gate / PHI firewall (sole writer to all memory stores, MEM-ARCH-002); Mem0 OSS for M1 preferences, decisions and steward feedback; event-sourced from `hc.ops.memory.write.v1` (ADR-08) | Mem0 OSS self-hosted in-VPC (`enable_graph: false`) on PostgreSQL + pgvector (default) or Qdrant; one instance per environment | Yes (derived; rebuildable from the write log ≤ 4 h) | 14 | Memory write availability 99.9 %; recall p95 ≤ 200 ms (S23) |
 | C27 | **Agent memory graph (Graphiti)** | M1 episodes and M2 bitemporal entity graph of the agent layer (`valid_at/invalid_at/created_at/expired_at` aligned to TKG-01 §4); hybrid search; index of M3 playbooks and prompt versions; never stores PHI or patient instance IRIs (MEM-GRA-014) | Graphiti (Zep) on Neo4j 5.x Enterprise causal cluster, one database per environment; FalkorDB or Amazon Neptune swappable behind the Graphiti driver (MEM-GRA-001) | Yes (derived; rebuildable from the write log) | 14 | Hybrid recall p95 ≤ 500 ms; ingest lag p95 ≤ 60 s (S23) |
 | C28 | **Semantic / response cache (Redis)** | Cache tiers C1 exact-match, C2 semantic (Redis vector index), C4 memory-recall cache; C3 Terminology Service gateway cache shares the Redis-compatible tier (`ts.*`); fail-open bypass ≤ 50 ms; provider prompt cache (C0) is external to the platform | Redis Cluster with vector search (Redis Stack-compatible), 3 AZ, 1 replica per shard, one cluster per environment, keyspaces `rc.*` / `sc.*` / `mc.*` / `ts.*`, per-agent ACL users | Yes (ephemeral; never backed up — rebuilt from origin) | 14 | Hit ratio; bypass-on-failure ≤ 0.1 %; invalidation lag p95 ≤ 60 s (S24) |
-| C29 | **Self-healing and improvement controllers** | Temporal workflows `healing-incident-v1` (playbook engine, blast-radius budget check, kill-switch hierarchy) and `improvement-candidate-v1` (canary controller 5 % → 25 % → promoted, rollback ≤ 5 min); `playbook-runner` MCP server; recursion ledger (ADR-09) | Temporal workflows on C14; playbooks, prompts and policies as signed Git artefacts (M3); events on `hc.ops.heal.incident.v1`, `hc.ops.heal.action.v1`, `hc.ops.improve.canary.v1`, `hc.ops.agent.policy.release.v1` | State in C14 and Git | 14 | Healing MTTR per fault class; canary rollback ≤ 5 min (S25) |
+| C29 | **Self-healing and improvement controllers** | Temporal workflows `healing-incident-v1` (playbook engine, blast-radius budget check, kill-switch hierarchy) and `improvement-candidate-v1` (canary controller 5 % → 25 % → promoted, rollback ≤ 5 min); `playbook-runner` MCP server; recursion ledger (ADR-09) | Temporal workflows on C14; playbooks, prompts and policies as signed Git artefacts (M3); events on `hc.ops.healing.incident.event.v1`, `hc.ops.healing.playbookrun.event.v1`, `hc.ops.improvement.canary.event.v1`, `hc.ops.agent.policy.release.v1` | State in C14 and Git | 14 | Healing MTTR per fault class; canary rollback ≤ 5 min (S25) |
 
 ### 2.1 Component interaction (control and data paths)
 
@@ -118,7 +118,7 @@ flowchart LR
   MCP --> OR & TS & KG & EDW & TV
   MCP --> MEM & RC
   MEM --> GRA
-  MEM -. hc.ops.agent.memory.episode.v1 .-> K
+  MEM -. hc.ops.memory.write.v1 .-> K
   HEAL --> WF
   HEAL -. healing and canary events .-> K
   OBS -. signals .-> HEAL
@@ -198,5 +198,5 @@ stores; C29 holds no credential that writes to sources, `canonical`/`kg`/`edw` t
 3. SLO dashboards for every SLI in OPS-03 exist with error-budget burn alerts wired to on-call.
 4. A full DR test has restored `prod` to the secondary region within RTO and RPO (OPS-04 §7) at least once.
 5. Non-prod PHI scanner (GOV-PHI-011) has run daily for 30 days with zero findings.
-6. Memory stores (C26, C27) have been rebuilt from `hc.ops.agent.memory.episode.v1` within RTO in a drill (OPS-04 §9), the
+6. Memory stores (C26, C27) have been rebuilt from `hc.ops.memory.write.v1` within RTO in a drill (OPS-04 §9), the
    Redis cold-start bypass test has passed, and SLOs S23–S25 are on dashboards with burn alerts (OPS-03).
