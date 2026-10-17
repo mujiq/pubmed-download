@@ -35,6 +35,9 @@ and the per-agent `graduation` block. Rubric ids are defined in AGT-05 §4.3; PG
 | 15 | `agent.privacy_guardian` | cross | L4 (L4) | `${MODEL_CRITIQUE}` | topic (ACL/mask) |
 | 16 | `agent.evaluator` | cross | n/a | `${MODEL_CRITIQUE}` | — (evaluates) |
 | 17 | `agent.release_manager` | all | L2 (L3) | `${MODEL_MAPPING}` | ontology (compensating) |
+| 18 | `agent.memory_curator` | cross | L3 (L3) | `${MODEL_REASONING}` | dq_rule (playbook promotion) |
+| 19 | `agent.self_healer` | cross | L3 (L3) | `${MODEL_REASONING}` | dq_rule (playbook promotion) |
+| 20 | `agent.improver` | cross | L1 (L2) | `${MODEL_CRITIQUE}` | ontology (policy) |
 
 ## 1. `agent.orchestrator`
 
@@ -306,6 +309,54 @@ and the per-agent `graduation` block. Rubric ids are defined in AGT-05 §4.3; PG
 - **Failure modes.** Gate failure → hold release, human approval; partial publish → atomic abort, nothing
   published; vetoed CR in candidate → removed, gate suite re-run.
 
+## 18. Memory and self-improvement agents (module 14)
+
+These three cross-cutting agents are defined in module 14 and run on the same control plane, manifests and gates as
+the rest of the roster. They never touch PHI and never mutate ontology, schema or DQ artefacts except by proposing a
+change request that the evaluator and a human approve.
+
+### 18.1 `agent.memory_curator`
+
+- **Mission.** Consolidate episodic memory (Mem0 + Graphiti temporal graph) into playbooks and semantic insights;
+  expire and prune; enforce no-PHI-in-memory. See `agents/memory_curator.yaml`.
+- **Triggers.** Nightly consolidation (03:17); `episode_batch_threshold` on `hc.ops.agent.memory.episode.v1`; manual.
+- **Inputs / outputs.** Episodes and memory edges, resolved incidents, CR outcomes → consolidated playbooks and
+  insights (`memory-api`), proposed playbook promotions (CR), memory-hygiene report.
+- **Tools.** `memory-api` (apply), `lineage`, `ticketing` (apply), `cr-engine` (propose).
+- **Autonomy.** L3, ceiling L3. Immediate demotion to L1 on any confirmed PHI leak into memory.
+- **Risk classes.** `low`. **Rubrics.** RUB-MEM-01, RUB-PHI-01, RUB-EVD-01.
+- **Failure modes → fallbacks.** Over-consolidation → hold output in review; memory-api down → keep expiry only.
+
+### 18.2 `agent.self_healer`
+
+- **Mission.** Detect platform faults and run the matching healing playbook within blast-radius policy, verify
+  recovery, escalate when no playbook fits; learn new playbooks from resolved incidents. See
+  `agents/self_healer.yaml` and module 14 `healing-playbooks/`.
+- **Triggers.** `fault_detected` on `hc.ops.heal.incident.v1`; health scan every 5 min; manual.
+- **Inputs / outputs.** Fault signals and health metrics, playbooks, connector/topic/schema/load status → healing
+  actions with verification/rollback (`hc.ops.heal.action.v1`), incident records, proposed playbooks, escalations.
+- **Tools.** `healing-orchestrator` (apply), `kafka-admin` (apply, masked), `schema-registry`, `dq-engine`,
+  `lineage`, `ticketing`, `cr-engine` (propose).
+- **Autonomy.** L3, ceiling L3. Bound by the global kill switch, per-action cooldowns and blast-radius classes.
+- **Risk classes.** `low`, `medium`. **Rubrics.** RUB-HEAL-01, RUB-EVD-01, RUB-PHI-01.
+- **Failure modes → fallbacks.** Action causes a secondary incident → demote to diagnose-only, page SRE; no playbook
+  match → escalate with findings, never improvise a mutating action.
+
+### 18.3 `agent.improver`
+
+- **Mission.** Offline, evaluation-driven optimisation of agent prompts, exemplars, tool policies and thresholds;
+  propose canary rollouts. Propose-only; may never alter permission matrices, risk-class gates or the privacy
+  guardian. See `agents/improver.yaml`.
+- **Triggers.** Weekly optimisation pass (Mon 04:33); `evaluator_drift` on `hc.ops.agent.evaluation.v1`; manual.
+- **Inputs / outputs.** Traces, evaluator scores, human overrides, eval datasets, current policies → proposed
+  policy changes with canary plan (CR), gated canary requests (`policy-registry`), optimisation report.
+- **Tools.** `policy-registry` (propose), `memory-api` (read), `dq-engine` (read), `cr-engine` (propose),
+  `git` (propose), `lineage`.
+- **Autonomy.** L1, ceiling L2. Graduates only after 20 regression-free promoted rollouts.
+- **Risk classes.** `medium`, `high` (changes agent behaviour). **Rubrics.** RUB-IMP-01, RUB-REG-01, RUB-PHI-01.
+- **Failure modes → fallbacks.** Candidate regresses → discard and log; promoted policy causes an incident →
+  auto-rollback and return to L1.
+
 ## 19. End-to-end scenario: a new Cerner encounter type
 
 (Section numbered to match references from AGT-03; §18 is intentionally unused.)
@@ -347,7 +398,7 @@ and the per-agent `graduation` block. Rubric ids are defined in AGT-05 §4.3; PG
 
 ## 20. Requirements
 
-> **AGT-CAT-001** (P0, inspection) — The 17 agents in this catalog MUST be exactly the roster of ARC-01 §5 with the
+> **AGT-CAT-001** (P0, inspection) — The 20 agents in this catalog MUST be exactly the roster of ARC-01 §5 with the
 > same ids and initial autonomy levels; adding, removing or renaming an agent MUST be a revision of ARC-01 first.
 
 > **AGT-CAT-002** (P0, test) — Each agent's manifest MUST declare only the CR types listed for it in the summary

@@ -2,56 +2,116 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ontology.healix.example.org/schema/agent-manifest/0.1.0",
   "title": "HEALIX Agent Manifest",
-  "description": "Schema for PRD/10-agentic-pipeline/agents/<role>.yaml. One manifest per agent in the authoritative roster (01-architecture-overview.md §5). Enforced by the agent runtime at load time and by the PRD linter in CI.",
+  "description": "Schema for PRD/10-agentic-pipeline/agents/<role>.yaml. One manifest per agent in the authoritative roster (01-architecture-overview.md \u00a75). Enforced by the agent runtime at load time and by the PRD linter in CI.",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "id", "role", "mission", "autonomy_level", "model", "tools", "triggers",
-    "inputs", "outputs", "risk_classes", "evaluation", "budgets", "escalation"
+    "id",
+    "role",
+    "mission",
+    "autonomy_level",
+    "model",
+    "tools",
+    "triggers",
+    "inputs",
+    "outputs",
+    "risk_classes",
+    "evaluation",
+    "budgets",
+    "escalation"
   ],
   "properties": {
-    "manifest_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "default": "0.1.0" },
+    "manifest_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "default": "0.1.0"
+    },
     "id": {
       "type": "string",
       "pattern": "^agent\\.[a-z][a-z0-9_]*$",
-      "description": "Agent id per CONVENTIONS §3, e.g. agent.taxonomist. Must match the file name <role>.yaml."
+      "description": "Agent id per CONVENTIONS \u00a73, e.g. agent.taxonomist. Must match the file name <role>.yaml."
     },
-    "role": { "type": "string", "minLength": 3, "maxLength": 80 },
-    "mission": { "type": "string", "minLength": 40, "maxLength": 600 },
+    "role": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 80
+    },
+    "mission": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 600
+    },
     "pipeline_stage": {
       "description": "Ontology Pipeline stage(s) the agent serves: 0 inventory, 1 vocabulary, 2 taxonomy, 3 thesaurus, 4 ontology, 5 knowledge graph. Omit for cross-cutting agents.",
       "type": "array",
-      "items": { "type": "integer", "minimum": 0, "maximum": 5 },
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 5
+      },
       "uniqueItems": true
     },
     "owns_modules": {
       "type": "array",
-      "items": { "type": "string", "pattern": "^(0[0-9]|1[0-3]|99|G[1-9])$" },
+      "items": {
+        "type": "string",
+        "pattern": "^(0[0-9]|1[0-6]|99|G[1-9])$"
+      },
       "uniqueItems": true
     },
     "autonomy_level": {
       "description": "Current level from the autonomy ladder. L1 propose only; L2 propose and auto-apply low-risk above threshold; L3 act within policy and report; L4 act and veto. not_applicable is reserved for agent.evaluator, which never proposes change requests.",
-      "enum": ["L1", "L2", "L3", "L4", "not_applicable"]
+      "enum": [
+        "L1",
+        "L2",
+        "L3",
+        "L4",
+        "not_applicable"
+      ]
     },
     "autonomy_ceiling": {
       "description": "Highest level this agent may graduate to without a PRD revision.",
-      "enum": ["L1", "L2", "L3", "L4"]
+      "enum": [
+        "L1",
+        "L2",
+        "L3",
+        "L4"
+      ]
     },
     "model": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ref", "recommended_default"],
+      "required": [
+        "ref",
+        "recommended_default"
+      ],
       "properties": {
         "ref": {
           "type": "string",
           "pattern": "^\\$\\{MODEL_[A-Z_]+\\}$",
           "description": "Configuration reference resolved per environment (dev/test/uat/prod). Never a literal model id."
         },
-        "recommended_default": { "type": "string", "minLength": 3 },
-        "fallback_ref": { "type": "string", "pattern": "^\\$\\{MODEL_[A-Z_]+\\}$" },
-        "temperature": { "type": "number", "minimum": 0, "maximum": 1 },
-        "max_output_tokens": { "type": "integer", "minimum": 256 },
-        "structured_output": { "type": "boolean", "default": true }
+        "recommended_default": {
+          "type": "string",
+          "minLength": 3
+        },
+        "fallback_ref": {
+          "type": "string",
+          "pattern": "^\\$\\{MODEL_[A-Z_]+\\}$"
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 256
+        },
+        "structured_output": {
+          "type": "boolean",
+          "default": true
+        }
       }
     },
     "tools": {
@@ -60,28 +120,57 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["server", "permission"],
+        "required": [
+          "server",
+          "permission"
+        ],
         "properties": {
           "server": {
             "enum": [
-              "source-registry", "ontology-registry", "terminology-service", "schema-registry",
-              "kafka-admin", "graph-query", "edw-metadata", "sql-sandbox", "dq-engine",
-              "fhir-validator", "git", "ticketing", "lineage", "cr-engine"
+              "source-registry",
+              "ontology-registry",
+              "terminology-service",
+              "schema-registry",
+              "kafka-admin",
+              "graph-query",
+              "edw-metadata",
+              "sql-sandbox",
+              "dq-engine",
+              "fhir-validator",
+              "git",
+              "ticketing",
+              "lineage",
+              "cr-engine",
+              "memory-api",
+              "healing-orchestrator",
+              "policy-registry"
             ]
           },
           "operations": {
             "type": "array",
-            "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$"
+            },
             "uniqueItems": true,
             "description": "Explicit allow-list of MCP tool names on the server. Absent means every operation at the stated permission level."
           },
           "permission": {
             "description": "read: read-only. propose: may create artefacts that enter a change request. apply: may apply approved change requests / mutate state via the CR engine. admin: lifecycle operations (release, veto, kill switch).",
-            "enum": ["read", "propose", "apply", "admin"]
+            "enum": [
+              "read",
+              "propose",
+              "apply",
+              "admin"
+            ]
           },
           "phi_access": {
             "description": "Data visibility through this tool. none: metadata and aggregates only. masked: de-identified / masked samples (Safe Harbor + tokenised identifiers). audited_raw: row-level PHI via break-glass, every call audited (GOV-PHI).",
-            "enum": ["none", "masked", "audited_raw"],
+            "enum": [
+              "none",
+              "masked",
+              "audited_raw"
+            ],
             "default": "none"
           }
         }
@@ -93,122 +182,334 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["kind"],
+        "required": [
+          "kind"
+        ],
         "properties": {
-          "kind": { "enum": ["event", "schedule", "manual", "change_request"] },
-          "topic": { "type": "string", "pattern": "^hc\\.[a-z]+\\.[a-z0-9_.-]+\\.v[0-9]+$" },
-          "event_type": { "type": "string" },
-          "cron": { "type": "string", "pattern": "^(@(hourly|daily|weekly|monthly)|([0-9*/,-]+\\s+){4}[0-9*/,-]+)$" },
-          "cr_types": { "type": "array", "items": { "$ref": "#/$defs/crType" }, "uniqueItems": true },
-          "description": { "type": "string" }
+          "kind": {
+            "enum": [
+              "event",
+              "schedule",
+              "manual",
+              "change_request"
+            ]
+          },
+          "topic": {
+            "type": "string",
+            "pattern": "^hc\\.[a-z]+\\.[a-z0-9_.-]+\\.v[0-9]+$"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "cron": {
+            "type": "string",
+            "pattern": "^(@(hourly|daily|weekly|monthly)|([0-9*/,-]+\\s+){4}[0-9*/,-]+)$"
+          },
+          "cr_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/crType"
+            },
+            "uniqueItems": true
+          },
+          "description": {
+            "type": "string"
+          }
         }
       }
     },
-    "inputs": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
     "outputs": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["artefact"],
+        "required": [
+          "artefact"
+        ],
         "properties": {
-          "artefact": { "type": "string" },
-          "cr_type": { "anyOf": [ { "$ref": "#/$defs/crType" }, { "type": "null" } ] },
-          "destination": { "type": "string" }
+          "artefact": {
+            "type": "string"
+          },
+          "cr_type": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/crType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "destination": {
+            "type": "string"
+          }
         }
       }
     },
     "risk_classes": {
       "type": "array",
-      "items": { "$ref": "#/$defs/riskClass" },
+      "items": {
+        "$ref": "#/$defs/riskClass"
+      },
       "uniqueItems": true,
       "description": "Risk classes the agent's change requests may carry. An agent that never proposes uses an empty list."
     },
     "evaluation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["rubric_ids", "auto_approve_threshold"],
+      "required": [
+        "rubric_ids",
+        "auto_approve_threshold"
+      ],
       "properties": {
         "rubric_ids": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^RUB-[A-Z]{2,4}-[0-9]{2}$" },
+          "items": {
+            "type": "string",
+            "pattern": "^RUB-[A-Z]{2,4}-[0-9]{2}$"
+          },
           "uniqueItems": true
         },
         "auto_approve_threshold": {
           "description": "Minimum aggregate evaluator score in [0,1] for auto-approval of a low-risk CR. null when the agent is never auto-approved.",
-          "anyOf": [ { "type": "number", "minimum": 0.5, "maximum": 1 }, { "type": "null" } ]
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
-        "human_agreement_target": { "type": "number", "minimum": 0, "maximum": 1 },
-        "golden_sets": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-        "regression_suites": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+        "human_agreement_target": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "golden_sets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "regression_suites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
       }
     },
     "budgets": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["tokens_per_run", "runs_per_day"],
+      "required": [
+        "tokens_per_run",
+        "runs_per_day"
+      ],
       "properties": {
-        "tokens_per_run": { "type": "integer", "minimum": 1000 },
-        "runs_per_day": { "type": "integer", "minimum": 1 },
-        "daily_token_cap": { "type": "integer", "minimum": 1000 },
-        "max_tool_calls_per_run": { "type": "integer", "minimum": 1 },
-        "wall_clock_minutes_per_run": { "type": "integer", "minimum": 1 },
-        "max_concurrent_runs": { "type": "integer", "minimum": 1 },
-        "max_open_change_requests": { "type": "integer", "minimum": 0 }
+        "tokens_per_run": {
+          "type": "integer",
+          "minimum": 1000
+        },
+        "runs_per_day": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "daily_token_cap": {
+          "type": "integer",
+          "minimum": 1000
+        },
+        "max_tool_calls_per_run": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "wall_clock_minutes_per_run": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_concurrent_runs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_open_change_requests": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "escalation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["to", "sla_hours"],
+      "required": [
+        "to",
+        "sla_hours"
+      ],
       "properties": {
-        "to": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-        "sla_hours": { "type": "integer", "minimum": 1 },
-        "on_low_score": { "type": "string" },
-        "on_budget_exhausted": { "type": "string" },
-        "on_veto": { "type": "string" },
-        "on_tool_failure": { "type": "string" },
-        "on_conflict": { "type": "string" }
+        "to": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "sla_hours": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "on_low_score": {
+          "type": "string"
+        },
+        "on_budget_exhausted": {
+          "type": "string"
+        },
+        "on_veto": {
+          "type": "string"
+        },
+        "on_tool_failure": {
+          "type": "string"
+        },
+        "on_conflict": {
+          "type": "string"
+        }
       }
     },
     "memory": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["phi_retention"],
+      "required": [
+        "phi_retention"
+      ],
       "properties": {
-        "working": { "type": "boolean" },
-        "episodic": { "type": "boolean" },
-        "semantic_write": { "type": "boolean", "description": "May write to the ontology/KG (semantic memory) — only via applied CRs." },
-        "procedural": { "type": "boolean" },
-        "phi_retention": { "const": "none" },
-        "episodic_retention_days": { "type": "integer", "minimum": 30 }
+        "working": {
+          "type": "boolean"
+        },
+        "episodic": {
+          "type": "boolean"
+        },
+        "semantic_write": {
+          "type": "boolean",
+          "description": "May write to the ontology/KG (semantic memory) \u2014 only via applied CRs."
+        },
+        "procedural": {
+          "type": "boolean"
+        },
+        "phi_retention": {
+          "const": "none"
+        },
+        "episodic_retention_days": {
+          "type": "integer",
+          "minimum": 30
+        }
       }
     },
     "graduation": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "next_level": { "enum": ["L1", "L2", "L3", "L4", "none"] },
-        "criteria": { "type": "array", "items": { "type": "string" } },
-        "demotion_triggers": { "type": "array", "items": { "type": "string" } }
+        "next_level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3",
+            "L4",
+            "none"
+          ]
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "demotion_triggers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     }
   },
   "allOf": [
     {
-      "if": { "properties": { "autonomy_level": { "const": "not_applicable" } } },
-      "then": { "properties": { "risk_classes": { "maxItems": 0 }, "evaluation": { "properties": { "auto_approve_threshold": { "type": "null" } } } } }
+      "if": {
+        "properties": {
+          "autonomy_level": {
+            "const": "not_applicable"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "risk_classes": {
+            "maxItems": 0
+          },
+          "evaluation": {
+            "properties": {
+              "auto_approve_threshold": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
     },
     {
-      "if": { "properties": { "autonomy_level": { "const": "L1" } } },
-      "then": { "properties": { "evaluation": { "properties": { "auto_approve_threshold": { "type": "null" } } } } }
+      "if": {
+        "properties": {
+          "autonomy_level": {
+            "const": "L1"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "evaluation": {
+            "properties": {
+              "auto_approve_threshold": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "$defs": {
     "crType": {
-      "enum": ["vocabulary", "taxonomy", "thesaurus", "ontology", "mapping", "value_set", "dq_rule", "edw_ddl", "topic", "profile"]
+      "enum": [
+        "vocabulary",
+        "taxonomy",
+        "thesaurus",
+        "ontology",
+        "mapping",
+        "value_set",
+        "dq_rule",
+        "edw_ddl",
+        "topic",
+        "profile"
+      ]
     },
-    "riskClass": { "enum": ["low", "medium", "high", "phi_affecting"] }
+    "riskClass": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "phi_affecting"
+      ]
+    }
   }
 }

@@ -19,7 +19,7 @@ graph), keep source mappings, value sets, DQ rules, EDW DDL, Kafka topics and FH
 under evaluation, privacy veto and human gates. It owns:
 
 - the **agent architecture and runtime** (durable workflows, sandboxed tools, model routing, budgets) — `01`;
-- the **agent catalog**: the 17 agents of `01-architecture-overview.md` §5 — `02`;
+- the **agent catalog**: the 20 agents of `01-architecture-overview.md` §5 — `02`;
 - the **Change Request (CR) contract** and the standard orchestration workflows — `03` (cross-module contract per
   ARC-01 §6, consumed by modules 02, 05, 06, 09, 11);
 - the **tool layer** exposed through MCP servers and the permission matrix — `04`;
@@ -35,12 +35,12 @@ proposes `hc.ops.agent.*` topics), deployment and SLOs (module 12), acceptance t
 |------|--------|---------|
 | `README.md` | AGT-00 | Scope, control-plane architecture, autonomy ladder, requirement index |
 | `01-agent-architecture.md` | AGT-01 | Agent anatomy, runtime, triggers, observability, environments |
-| `02-agent-catalog.md` | AGT-02 | 17 agents: mission, triggers, tools, level, rubrics, failure modes; end-to-end scenario |
+| `02-agent-catalog.md` | AGT-02 | 20 agents: mission, triggers, tools, level, rubrics, failure modes; end-to-end scenario |
 | `03-orchestration-and-workflows.md` | AGT-03 | CR schema and example, state machine, gates, six workflows, concurrency, SLAs |
 | `04-tools-and-mcp.md` | AGT-04 | MCP tool catalog, permission matrix, PHI policy, I/O schemas, rate limits |
 | `05-guardrails-hitl-evals.md` | AGT-05 | PGV veto rules, PHI minimisation, injection defence, evaluator, datasets, thresholds, HITL, kill switch, red team |
 | `06-memory-and-state.md` | AGT-06 | Memory tiers, state stores, PHI (none), retention, graduation statistics |
-| `agents/<role>.yaml` ×17 | — | Agent manifests (validated by `agents/agent.schema.json`) |
+| `agents/<role>.yaml` ×20 | — | Agent manifests (validated by `agents/agent.schema.json`) |
 | `agents/change-request.schema.json` | — | CR JSON Schema 1.0.0 (the cross-module contract) |
 
 ## 2. Control-plane architecture
