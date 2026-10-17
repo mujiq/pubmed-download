@@ -47,6 +47,7 @@ modules in any order; dependencies are declared in each module's front matter.
 | 14 | [Agent Memory, Caching & Self-Improvement](14-memory-and-self-improvement/README.md) | Mem0 + Graphiti memory layers, semantic/prompt caching, recursive self-healing and self-improving loops | `memory-schema.yaml`, `healing-playbooks/` |
 | 11 | [Governance, Security & Compliance](11-governance-security-compliance/README.md) | HIPAA/PHI, access control, lineage/provenance/audit, stewardship | Policy matrices |
 | 12 | [Platform & Operations](12-platform-and-operations/README.md) | Deployment topology, environments, CI/CD, observability, DR/retention | SLO tables |
+| 16 | [User Experience & Role Workspaces](16-user-experience/README.md) | Role-based UI for ontologists, stewards, engineers, architects, analysts, privacy, SRE, agent operators and executives; design system; clickable prototype | `prototype/` (static HTML) |
 | 15 | [Adversarial Review & Production Readiness](15-adversarial-review/README.md) | Red-team findings, Fortune-100 legacy/tech-debt outliers, remediation log | Findings register |
 | 13 | [Roadmap & Acceptance](13-roadmap-and-acceptance/README.md) | Phased delivery, acceptance criteria, risks and open questions | — |
 | 99 | [Appendices](99-appendices/) | Glossary, code-system reference, bibliography | — |
