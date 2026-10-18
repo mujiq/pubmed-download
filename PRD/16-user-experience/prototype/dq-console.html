@@ -1,0 +1,1227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>HEALIX Console — Quality & Warehouse</title>
+  <meta name="description" content="Data-quality console: scorecards G1–G9 (four DQ bands), rules, issues, quarantine, exceptions, and the entitled break-glass remediation workspace. Synthetic data only.">
+  <link rel="stylesheet" href="assets/app.css">
+  <style>
+    /* Page-local layout only. All colour comes from app.css tokens.
+       The DQ console is a five-tab surface (Scorecards · Rules · Issues ·
+       Quarantine · Exceptions) with object detail pages (scorecard / rule /
+       issue / exception) and an entitled, red-framed break-glass remediation
+       workspace reached only from an issue. Everything reflows to one column
+       at phone width with a 16px gutter and no horizontal page scroll. */
+    .dq-tabs { position: sticky; top: var(--topbar-h); z-index: 15; background: var(--bg-canvas); padding-top: var(--sp-1); }
+    .dq-breadcrumb { margin-bottom: var(--sp-2); }
+    /* keep the sticky object header clear of the sticky tab bar (both would otherwise pin at --topbar-h) */
+    #dq-root .hx-object-header { top: calc(var(--topbar-h) + 42px); z-index: 14; }
+    @media (max-width: 768px) { #dq-root .hx-object-header { top: auto; } }
+
+    .dq-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-3); align-items: start; }
+    .dq-scorecard-tile { text-align: left; width: 100%; cursor: pointer; border-left: 4px solid var(--band-color, var(--neutral-fg)); display: flex; flex-direction: column; gap: var(--sp-2); }
+    .dq-scorecard-tile:hover { border-color: var(--border-strong); }
+    .dq-scorecard-tile .hx-tile__band { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
+    .dq-sc-dqi { font-size: var(--fs-h2); line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .dq-sc-breaches { display: flex; gap: 4px; flex-wrap: wrap; }
+
+    .dq-detail-head { display: flex; align-items: flex-start; gap: var(--sp-4); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+    .dq-detail-head__band { display: flex; flex-direction: column; gap: 2px; }
+    .dq-detail-head__band .dq-sc-dqi { font-size: var(--fs-h1); }
+    .dq-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-4); align-items: start; }
+
+    .dq-subtabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: var(--sp-3); overflow-x: auto; }
+
+    .dq-kv { display: grid; grid-template-columns: auto 1fr; gap: 4px var(--sp-3); font-size: var(--fs-dense); }
+    .dq-kv dt { color: var(--fg-muted); white-space: nowrap; }
+    .dq-kv dd { margin: 0; font-family: var(--font-mono); font-size: var(--fs-caption); }
+
+    .dq-contrib { width: 100%; border-collapse: collapse; font-size: var(--fs-dense); }
+    .dq-contrib th, .dq-contrib td { text-align: left; padding: 6px var(--sp-2); border-bottom: 1px solid var(--border); }
+    .dq-contrib td:last-child, .dq-contrib th:last-child { text-align: right; font-family: var(--font-mono); }
+    .dq-delta-neg { color: var(--danger-fg); } .dq-delta-pos { color: var(--ok-fg); }
+
+    .dq-derivation { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: var(--fs-caption); }
+    .dq-derivation__sep { color: var(--fg-faint); }
+
+    .dq-action-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-2); }
+    .dq-action-card { display: flex; flex-direction: column; gap: 6px; padding: var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-card); background: var(--bg-surface); text-align: left; cursor: pointer; }
+    .dq-action-card:hover:not([aria-disabled="true"]) { border-color: var(--accent); background: var(--bg-sunken); }
+    .dq-action-card[aria-disabled="true"] { opacity: .7; cursor: not-allowed; background: var(--bg-sunken); }
+    .dq-action-card__reason { font-size: var(--fs-micro); color: var(--warn-fg); font-family: var(--font-mono); }
+    .dq-action-card--entitled { border-color: var(--frame-emergency); }
+    .dq-action-card--entitled:hover { background: var(--danger-bg); }
+
+    .dq-sim { display: grid; grid-template-columns: 1fr; gap: var(--sp-3); }
+    .dq-sim__out { display: flex; gap: var(--sp-6); flex-wrap: wrap; }
+    .dq-sim__big { font-size: var(--fs-h2); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    .dq-failing { width: 100%; border-collapse: collapse; font-size: var(--fs-dense); }
+    .dq-failing th, .dq-failing td { text-align: left; padding: 6px var(--sp-2); border-bottom: 1px solid var(--border); }
+    .dq-failing td.num, .dq-failing th.num { text-align: right; font-family: var(--font-mono); }
+
+    .dq-records { width: 100%; border-collapse: collapse; font-size: var(--fs-dense); }
+    .dq-records th, .dq-records td { text-align: left; padding: 6px var(--sp-2); border-bottom: 1px solid var(--border); }
+    .dq-records td { font-family: var(--font-mono); font-size: var(--fs-caption); }
+
+    .dq-chart-legend { display: flex; gap: var(--sp-4); flex-wrap: wrap; font-size: var(--fs-caption); margin-top: var(--sp-2); }
+    .dq-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .dq-chart-legend i { width: 18px; height: 0; border-top: 2px solid var(--accent); display: inline-block; }
+    .dq-chart-legend i.ghost { border-top-style: dashed; border-top-color: var(--fg-muted); }
+
+    .dq-mini-list { border: 1px solid var(--border); border-radius: var(--r-card); overflow: hidden; }
+    .dq-mini-row { display: flex; align-items: center; gap: var(--sp-2); justify-content: space-between; padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); font-size: var(--fs-dense); }
+    .dq-mini-row:last-child { border-bottom: 0; }
+
+    .sr-skip { position: absolute; left: -999px; top: 0; }
+    .sr-skip:focus { left: 8px; top: 8px; z-index: 100; background: var(--accent); color: var(--accent-fg); padding: 6px 10px; border-radius: var(--r-ctl); }
+    @media (max-width: 768px) { .dq-detail-head { gap: var(--sp-2); } }
+  </style>
+</head>
+<body>
+  <a class="sr-skip" href="#dq-root">Skip to quality content</a>
+  <main id="hx-main">
+    <nav class="dq-tabs" id="dq-tabs" aria-label="Quality views"></nav>
+    <div id="dq-root" tabindex="-1"></div>
+  </main>
+
+  <!-- Synthetic-data fallback so the page renders over file:// (README §How to open).
+       Served over http, HX.data.load fetches data/dq.json (the same superset) instead. -->
+  <script type="application/json" id="hx-data-dq">
+{"scorecards":[{"group":"G1","label":"Party & Identity","window":"28d","dqi":99.4,"band":"Green","coverage":96,"certified":true,"certificationRevokedAt":null,"breaches":{"blocker":0,"critical":0,"major":2,"minor":9},"trend":[99.2,99.3,99.3,99.4,99.4,99.4],"trend28d":[99.2,99.35,99.29,99.12,99.1,99.27,99.39,99.3,99.14,99.15,99.34,99.43,99.31,99.16,99.21,99.4,99.46,99.31,99.19,99.28,99.46,99.48,99.31,99.22,99.35,99.52,99.5,99.32],"packVersion":"g1-party@2026.10.0","topContributors":[{"rule":"DQR-COMPLETENESS-PATIENT-002","deltaPp":-0.2,"source":"oracle-fusion-hcm","since":"2026-10-11T00:00:00Z"}],"explain":"G1 is Green: all critical identity rules pass; the two major breaches are address completeness in Oracle HCM worker records.","attribution":[{"source":"oracle-fusion-hcm","deltaPp":-0.2}],"denominator":{"recordsEvaluated":812000,"rulesEvaluated":41},"planes":{"stream":99.1,"warehouse":99.5,"graph":99.4},"stewardRole":"role.steward_g1"},{"group":"G2","label":"Clinical Care","window":"28d","dqi":97.6,"band":"Amber","coverage":91,"certified":false,"certificationRevokedAt":null,"breaches":{"blocker":0,"critical":3,"major":7,"minor":12},"trend":[99.1,99.2,99.0,98.4,97.9,97.6],"trend28d":[99.1,99.19,99.07,98.83,98.75,98.85,98.92,98.76,98.53,98.49,98.61,98.64,98.45,98.24,98.23,98.36,98.35,98.14,97.95,97.98,98.1,98.06,97.83,97.67,97.73,97.84,97.76,97.52],"packVersion":"g2-clinical@2026.11.0","topContributors":[{"rule":"DQR-VALIDITY-ENCOUNTER-004","deltaPp":-1.2,"source":"cerner-millennium-prod","since":"2026-10-16T02:10:00Z"},{"rule":"DQR-COMPLETENESS-ENCOUNTER-001","deltaPp":-0.4,"source":"cerner-millennium-prod","since":"2026-10-09T00:00:00Z"},{"rule":"DQR-ACCURACY-OBSERVATION-005","deltaPp":-0.2,"source":"lis-sunquest","since":"2026-10-14T00:00:00Z"}],"explain":"G2 is Amber because DQR-VALIDITY-ENCOUNTER-004 has failed on the stream plane since 2026-10-16 02:10 UTC: 48 210 encounters from cerner-millennium-prod carry CODE_VALUE 309308, which had no ConceptMap entry until v4 was applied. Coverage is 91 % (threshold 90 %). Recovery is expected within 24 h of remediation.","attribution":[{"source":"cerner-millennium-prod","deltaPp":-1.2},{"source":"cerner-millennium-prod","deltaPp":-0.4},{"source":"lis-sunquest","deltaPp":-0.2}],"denominator":{"recordsEvaluated":4210000,"rulesEvaluated":118},"planes":{"stream":97.3,"warehouse":97.7,"graph":97.6},"stewardRole":"role.steward_g2"},{"group":"G3","label":"Revenue Cycle & Finance","window":"28d","dqi":99.1,"band":"Green","coverage":93,"certified":true,"certificationRevokedAt":null,"breaches":{"blocker":0,"critical":0,"major":3,"minor":6},"trend":[98.8,98.9,99.0,99.0,99.1,99.1],"trend28d":[98.8,98.96,98.9,98.73,98.71,98.89,99.02,98.93,98.76,98.79,98.97,99.07,98.95,98.81,98.86,99.06,99.12,98.97,98.85,98.95,99.14,99.16,99.0,98.91,99.03,99.21,99.19,99.02],"packVersion":"g3-finance@2026.10.0","topContributors":[{"rule":"DQR-ACCURACY-GL-002","deltaPp":-0.3,"source":"oracle-fusion-erp","since":"2026-10-05T00:00:00Z"}],"explain":"G3 is Green; GL journal accuracy improved after the cost-centre value-set release.","attribution":[{"source":"oracle-fusion-erp","deltaPp":-0.3}],"denominator":{"recordsEvaluated":1890000,"rulesEvaluated":66},"planes":{"stream":98.8,"warehouse":99.2,"graph":99.1},"stewardRole":"role.steward_g3"},{"group":"G4","label":"Supply Chain & Operations","window":"28d","dqi":98.2,"band":"Amber","coverage":89,"certified":false,"certificationRevokedAt":null,"breaches":{"blocker":0,"critical":1,"major":4,"minor":8},"trend":[98.6,98.5,98.4,98.3,98.2,98.2],"trend28d":[98.6,98.73,98.65,98.45,98.41,98.56,98.66,98.54,98.36,98.35,98.51,98.59,98.44,98.27,98.3,98.47,98.5,98.33,98.19,98.26,98.42,98.41,98.23,98.11,98.21,98.36,98.32,98.12],"packVersion":"g4-supply@2026.10.0","topContributors":[{"rule":"DQR-ACCURACY-INVENTORY-001","deltaPp":-0.9,"source":"oracle-fusion-scm","since":"2026-10-08T00:00:00Z"}],"explain":"G4 is Amber because inventory balance accuracy against Oracle SCM drifted after the consignment-vendor supplier type was introduced without a binding. Coverage 89 % is below the 90 % threshold.","attribution":[{"source":"oracle-fusion-scm","deltaPp":-0.9}],"denominator":{"recordsEvaluated":640000,"rulesEvaluated":38},"planes":{"stream":97.9,"warehouse":98.3,"graph":98.2},"stewardRole":"role.steward_g4"},{"group":"G5","label":"Workforce","window":"28d","dqi":96.1,"band":"Red","coverage":81,"certified":false,"certificationRevokedAt":null,"breaches":{"blocker":0,"critical":4,"major":9,"minor":5},"trend":[97.4,97.0,96.8,96.5,96.3,96.1],"trend28d":[97.4,97.5,97.38,97.15,97.07,97.19,97.26,97.11,96.89,96.85,96.98,97.02,96.84,96.63,96.64,96.77,96.77,96.57,96.39,96.42,96.55,96.51,96.29,96.14,96.21,96.33,96.25,96.02],"packVersion":"g5-workforce@2026.09.0","topContributors":[{"rule":"DQR-COMPLETENESS-POSITION-001","deltaPp":-1.8,"source":"oracle-fusion-hcm","since":"2026-09-20T00:00:00Z"},{"rule":"DQR-ACCURACY-TIMECARD-001","deltaPp":-0.7,"source":"timekeeping","since":"2026-10-02T00:00:00Z"}],"explain":"G5 is Red: position completeness has been failing since Oracle HCM lookup POSITION_TYPE gained codes without covering concepts. 27 of 38 unbound G5 attributes are HCM lookup codes awaiting CR-CV-BIND; coverage is 81 %.","attribution":[{"source":"oracle-fusion-hcm","deltaPp":-1.8},{"source":"timekeeping","deltaPp":-0.7}],"denominator":{"recordsEvaluated":128000,"rulesEvaluated":22},"planes":{"stream":95.8,"warehouse":96.2,"graph":96.1},"stewardRole":"role.steward_g5"},{"group":"G6","label":"Population Health & Quality","window":"28d","dqi":99.6,"band":"Green","coverage":95,"certified":true,"certificationRevokedAt":null,"breaches":{"blocker":0,"critical":0,"major":1,"minor":3},"trend":[99.5,99.5,99.6,99.6,99.6,99.6],"trend28d":[99.5,99.65,99.58,99.41,99.38,99.55,99.67,99.57,99.41,99.42,99.6,99.69,99.56,99.41,99.46,99.65,99.7,99.55,99.42,99.51,99.69,99.7,99.53,99.44,99.56,99.73,99.7,99.52],"packVersion":"g6-pophealth@2026.10.0","topContributors":[],"explain":"G6 is Green.","attribution":[],"denominator":{"recordsEvaluated":210000,"rulesEvaluated":19},"planes":{"stream":99.3,"warehouse":99.7,"graph":99.6},"stewardRole":"role.dw_architect"},{"group":"G7","label":"Research & Analytics","window":"28d","dqi":94.2,"band":"Black","coverage":72,"certified":false,"certificationRevokedAt":"2026-10-14T00:00:00Z","breaches":{"blocker":2,"critical":3,"major":2,"minor":1},"trend":[98.1,97.6,96.9,95.8,94.9,94.2],"trend28d":[98.1,98.1,97.89,97.56,97.39,97.41,97.38,97.14,96.82,96.69,96.72,96.66,96.38,96.08,95.99,96.02,95.93,95.63,95.35,95.29,95.33,95.19,94.87,94.63,94.6,94.62,94.45,94.12],"packVersion":"g7-research@2026.09.0","topContributors":[{"rule":"DQR-COMPLETENESS-PROV-001","deltaPp":-2.6,"source":"research-ctms","since":"2026-10-12T00:00:00Z"}],"explain":"G7 is Black and certification is revoked: two blocker breaches on research consent completeness (DQR-COMPLETENESS-PROV-001 and consent propagation) after the research-consent CDC connector stalled on 2026-10-12. Coverage 72 %.","attribution":[{"source":"research-ctms","deltaPp":-2.6}],"denominator":{"recordsEvaluated":36000,"rulesEvaluated":14},"planes":{"stream":93.9,"warehouse":94.3,"graph":94.2},"stewardRole":"role.dw_architect"},{"group":"G8","label":"Reference & Terminology","window":"28d","dqi":99.8,"band":"Green","coverage":99,"certified":true,"certificationRevokedAt":null,"breaches":{"blocker":0,"critical":0,"major":0,"minor":2},"trend":[99.7,99.8,99.8,99.8,99.8,99.8],"trend28d":[99.7,99.85,99.78,99.61,99.58,99.75,99.87,99.77,99.61,99.62,99.8,99.89,99.76,99.61,99.66,99.85,99.9,99.75,99.62,99.71,99.89,99.9,99.73,99.64,99.76,99.93,99.9,99.72],"packVersion":"g8-reference@2026.10.0","topContributors":[],"explain":"G8 is Green.","attribution":[],"denominator":{"recordsEvaluated":92000,"rulesEvaluated":27},"planes":{"stream":99.5,"warehouse":99.9,"graph":99.8},"stewardRole":"role.steward_g8"},{"group":"G9","label":"Metadata, Quality & Governance","window":"28d","dqi":99.7,"band":"Green","coverage":98,"certified":true,"certificationRevokedAt":null,"breaches":{"blocker":0,"critical":0,"major":1,"minor":1},"trend":[99.6,99.7,99.7,99.7,99.7,99.7],"trend28d":[99.6,99.75,99.68,99.51,99.48,99.65,99.77,99.67,99.51,99.52,99.7,99.79,99.66,99.51,99.56,99.75,99.8,99.65,99.52,99.61,99.79,99.8,99.63,99.54,99.66,99.83,99.8,99.62],"packVersion":"g9-governance@2026.10.0","topContributors":[{"rule":"DQR-COMPLETENESS-DQRESULT-001","deltaPp":-0.1,"source":"platform","since":"2026-10-17T09:00:00Z"}],"explain":"G9 is Green; one major breach on DQ result completeness during the kg-sink incident window.","attribution":[{"source":"platform","deltaPp":-0.1}],"denominator":{"recordsEvaluated":2300000,"rulesEvaluated":31},"planes":{"stream":99.4,"warehouse":99.8,"graph":99.7},"stewardRole":"role.dw_architect"}],"rules":[{"id":"DQR-VALIDITY-ENCOUNTER-004","label":"Encounter class is a member of healix-encounter-class","dimension":"validity","severity":"critical","cde":true,"group":"G2","targets":[{"plane":"stream","path":"Encounter.class","authoritative":true},{"plane":"warehouse","path":"edw_g2_clinical.fact_encounter.encounter_class_sk","authoritative":false}],"expression":"memberOf(valueSet('healix-encounter-class'))","threshold":{"min":0.999,"window":"PT1H"},"derivedFrom":{"valueSet":"healix-encounter-class","axiom":"axiom/3f9a1c","shape":"clinical/EncounterShape"},"owner":"role.steward_g2","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-13T00:00Z","stream":0.9996,"warehouse":0.9995},{"t":"2026-10-14T00:00Z","stream":0.9995,"warehouse":0.9995},{"t":"2026-10-15T00:00Z","stream":0.9995,"warehouse":0.9994},{"t":"2026-10-16T00:00Z","stream":0.9994,"warehouse":0.9994},{"t":"2026-10-16T03:00Z","stream":0.988,"warehouse":0.9994},{"t":"2026-10-16T06:00Z","stream":0.986,"warehouse":0.9993},{"t":"2026-10-16T12:00Z","stream":0.985,"warehouse":0.9991},{"t":"2026-10-17T00:00Z","stream":0.9971,"warehouse":0.999},{"t":"2026-10-17T09:00Z","stream":0.9989,"warehouse":0.9992}],"markers":[{"t":"2026-10-16T02:10:00Z","kind":"breach","label":"ISS-01JA0Q7 opened"},{"t":"2026-10-16T09:14:00Z","kind":"release","label":"ConceptMap v4 applied"},{"t":"2026-10-10T02:20:00Z","kind":"release","label":"valueset 1.4.0"}],"version":3,"status":"active","versions":[{"version":1,"at":"2026-06-01T00:00:00Z","cr":"CR-20260601-01H9DQ","change":"created"},{"version":2,"at":"2026-08-22T04:11:00Z","cr":"CR-20260822-01HZ77","change":"value set re-expanded after merge"},{"version":3,"at":"2026-10-10T02:20:00Z","cr":"CR-20261010-01J2BB","change":"value set 1.4.0"}],"fixtures":[{"id":"fx-enc-class-001","input":"class=IMP","expected":"pass","result":"pass"},{"id":"fx-enc-class-002","input":"class=XYZ","expected":"fail","result":"pass"},{"id":"fx-enc-class-003","input":"class=309308","expected":"pass (v4)","result":"pass"}],"tuning":{"simulate":{"thresholds":[0.999,0.997,0.995],"dqi":[97.6,97.8,98.0],"breachesSuppressed":[0,2,3]}}},{"id":"DQR-COMPLETENESS-ENCOUNTER-001","label":"Discharged encounters have a discharge time","dimension":"completeness","severity":"major","cde":true,"group":"G2","targets":[{"plane":"stream","path":"Encounter.period.end","authoritative":true},{"plane":"warehouse","path":"edw_g2_clinical.fact_encounter.discharge_dt","authoritative":false}],"expression":"status = 'finished' implies period.end is not null","threshold":{"min":0.995,"window":"P1D"},"derivedFrom":{"shape":"clinical/EncounterShape"},"owner":"role.steward_g2","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-13T00:00Z","stream":0.996,"warehouse":0.997},{"t":"2026-10-14T00:00Z","stream":0.995,"warehouse":0.997},{"t":"2026-10-15T00:00Z","stream":0.993,"warehouse":0.996},{"t":"2026-10-16T00:00Z","stream":0.994,"warehouse":0.996},{"t":"2026-10-17T00:00Z","stream":0.995,"warehouse":0.997}],"markers":[],"version":2,"status":"active","versions":[],"fixtures":[],"tuning":null},{"id":"DQR-CONSISTENCY-ENCOUNTER-002","label":"Encounter class consistent with bed type","dimension":"consistency","severity":"major","cde":false,"group":"G2","targets":[{"plane":"graph","path":"clinical:hasEncounterClass \u00d7 clinical:hasLocation","authoritative":true}],"expression":"inpatient implies location.bedType in {acute-bed, icu-bed}","threshold":{"min":0.98,"window":"P1D"},"derivedFrom":{"axiom":"axiom/3f9a1c"},"owner":"role.steward_g2","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-13T00:00Z","stream":0.991,"warehouse":0.991},{"t":"2026-10-17T00:00Z","stream":0.989,"warehouse":0.989}],"markers":[],"version":1,"status":"active","versions":[],"fixtures":[],"tuning":null},{"id":"DQR-ACCURACY-OBSERVATION-005","label":"Lab result status maps to a FHIR observation-status","dimension":"accuracy","severity":"critical","cde":true,"group":"G2","targets":[{"plane":"stream","path":"Observation.status","authoritative":true},{"plane":"warehouse","path":"edw_g2_diagnostics.fact_lab_result.result_status_sk","authoritative":false}],"expression":"translate(OBX-11, 'cerner-cs1901-to-fhir-status') is not null","threshold":{"min":0.999,"window":"PT1H"},"derivedFrom":{"valueSet":"healix-lab-result-status"},"owner":"role.steward_g2","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-13T00:00Z","stream":0.9993,"warehouse":0.9994},{"t":"2026-10-15T00:00Z","stream":0.999,"warehouse":0.9994},{"t":"2026-10-17T00:00Z","stream":0.9988,"warehouse":0.9993}],"markers":[{"t":"2026-10-14T06:00:00Z","kind":"breach","label":"ISS-01JA0R3"}],"version":2,"status":"active","versions":[],"fixtures":[],"tuning":null},{"id":"DQR-COMPLETENESS-PATIENT-001","label":"Patient has an MRN identifier","dimension":"completeness","severity":"blocker","cde":true,"group":"G1","targets":[{"plane":"stream","path":"Patient.identifier[MRN]","authoritative":true}],"expression":"identifier.where(type='MR').exists()","threshold":{"min":1.0,"window":"PT1H"},"derivedFrom":{"shape":"party/PatientShape"},"owner":"role.steward_g1","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-13T00:00Z","stream":1.0,"warehouse":1.0},{"t":"2026-10-17T00:00Z","stream":1.0,"warehouse":1.0}],"markers":[],"version":1,"status":"active","versions":[],"fixtures":[],"tuning":null},{"id":"DQR-COMPLETENESS-PATIENT-002","label":"Patient has a postal address","dimension":"completeness","severity":"major","cde":false,"group":"G1","targets":[{"plane":"stream","path":"Patient.address","authoritative":true}],"expression":"address.exists()","threshold":{"min":0.98,"window":"P1D"},"derivedFrom":{},"owner":"role.steward_g1","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-13T00:00Z","stream":0.983,"warehouse":0.984},{"t":"2026-10-17T00:00Z","stream":0.979,"warehouse":0.981}],"markers":[],"version":1,"status":"active","versions":[],"fixtures":[],"tuning":null},{"id":"DQR-ACCURACY-GL-002","label":"GL journal cost centre exists in cost-centre value set","dimension":"accuracy","severity":"major","cde":true,"group":"G3","targets":[{"plane":"warehouse","path":"edw_g3_finance.fact_gl_journal.cost_center_sk","authoritative":true}],"expression":"memberOf(valueSet('healix-cost-center'))","threshold":{"min":0.995,"window":"P1D"},"derivedFrom":{"valueSet":"healix-cost-center"},"owner":"role.steward_g3","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-13T00:00Z","stream":0.996,"warehouse":0.996},{"t":"2026-10-17T00:00Z","stream":0.997,"warehouse":0.997}],"markers":[],"version":1,"status":"active","versions":[],"fixtures":[],"tuning":null},{"id":"DQR-ACCURACY-INVENTORY-001","label":"Inventory balance reconciles to Oracle SCM within 0.5 %","dimension":"accuracy","severity":"critical","cde":true,"group":"G4","targets":[{"plane":"warehouse","path":"edw_g4_supply.fact_inventory_balance.on_hand_qty","authoritative":true}],"expression":"abs(edw - scm) / scm <= 0.005","threshold":{"min":0.99,"window":"P1D"},"derivedFrom":{},"owner":"role.steward_g4","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-13T00:00Z","stream":0.984,"warehouse":0.984},{"t":"2026-10-17T00:00Z","stream":0.981,"warehouse":0.981}],"markers":[{"t":"2026-10-08T00:00:00Z","kind":"breach","label":"ISS-01JA0P1"}],"version":1,"status":"active","versions":[],"fixtures":[],"tuning":null},{"id":"DQR-COMPLETENESS-POSITION-001","label":"Worker assignment has a bound position type","dimension":"completeness","severity":"critical","cde":true,"group":"G5","targets":[{"plane":"warehouse","path":"edw_g5_workforce.dim_position.position_type_code","authoritative":true}],"expression":"position_type_code memberOf valueSet('healix-position-type')","threshold":{"min":0.99,"window":"P1D"},"derivedFrom":{"valueSet":"healix-position-type"},"owner":"role.steward_g5","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-13T00:00Z","stream":0.962,"warehouse":0.962},{"t":"2026-10-17T00:00Z","stream":0.958,"warehouse":0.958}],"markers":[{"t":"2026-09-20T00:00:00Z","kind":"breach","label":"ISS-01J9ZP5"}],"version":1,"status":"active","versions":[],"fixtures":[],"tuning":null},{"id":"DQR-ACCURACY-TIMECARD-001","label":"Timecard hours within shift bounds","dimension":"accuracy","severity":"major","cde":false,"group":"G5","targets":[{"plane":"warehouse","path":"edw_g5_workforce.fact_timecard.hours","authoritative":true}],"expression":"hours between 0 and 24","threshold":{"min":0.999,"window":"P1D"},"derivedFrom":{},"owner":"role.steward_g5","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-13T00:00Z","stream":0.9981,"warehouse":0.9981},{"t":"2026-10-17T00:00Z","stream":0.9984,"warehouse":0.9984}],"markers":[],"version":1,"status":"tuning","versions":[],"fixtures":[],"tuning":{"simulate":{"thresholds":[0.999,0.998],"dqi":[96.1,96.4],"breachesSuppressed":[0,4]}}},{"id":"DQR-COMPLETENESS-PROV-001","label":"Research subject record carries a consent reference","dimension":"completeness","severity":"blocker","cde":true,"group":"G7","targets":[{"plane":"graph","path":"research:ResearchSubject/research:hasConsent","authoritative":true}],"expression":"hasConsent.exists()","threshold":{"min":1.0,"window":"P1D"},"derivedFrom":{"shape":"research/ResearchSubjectShape"},"owner":"role.privacy_officer","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-11T00:00Z","stream":1.0,"warehouse":1.0},{"t":"2026-10-12T00:00Z","stream":0.91,"warehouse":0.91},{"t":"2026-10-17T00:00Z","stream":0.89,"warehouse":0.89}],"markers":[{"t":"2026-10-12T00:00:00Z","kind":"breach","label":"ISS-01JA0N8 blocker"}],"version":1,"status":"active","versions":[],"fixtures":[],"tuning":null},{"id":"DQR-COMPLETENESS-TEMPORAL-001","label":"Every row carries valid_from and recorded_at","dimension":"completeness","severity":"blocker","cde":true,"group":"G9","targets":[{"plane":"warehouse","path":"edw_*.*.valid_from","authoritative":true}],"expression":"valid_from is not null and recorded_at is not null","threshold":{"min":1.0,"window":"P1D"},"derivedFrom":{"shape":"core/BitemporalShape"},"owner":"role.dw_architect","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-13T00:00Z","stream":1.0,"warehouse":1.0},{"t":"2026-10-17T00:00Z","stream":1.0,"warehouse":1.0}],"markers":[],"version":1,"status":"active","versions":[],"fixtures":[],"tuning":null},{"id":"DQR-COMPLETENESS-DQRESULT-001","label":"Every evaluated record produces a DQ result","dimension":"completeness","severity":"major","cde":false,"group":"G9","targets":[{"plane":"stream","path":"hc.dq.result.v1","authoritative":true}],"expression":"count(dq.result) = count(canonical)","threshold":{"min":0.999,"window":"PT1H"},"derivedFrom":{},"owner":"role.platform_sre","authorAgent":"agent.dq_author","passRate":[{"t":"2026-10-17T08:00Z","stream":0.9995,"warehouse":0.9995},{"t":"2026-10-17T09:00Z","stream":0.991,"warehouse":0.9995}],"markers":[{"t":"2026-10-17T09:00:00Z","kind":"breach","label":"INC-01JA0S9"}],"version":1,"status":"active","versions":[],"fixtures":[],"tuning":null}],"issues":[{"id":"ISS-01JA0Q7","rule":"DQR-VALIDITY-ENCOUNTER-004","group":"G2","state":"steward_review","severity":"critical","detectedAt":"2026-10-16T02:25:00Z","detectedBy":"agent.dq_monitor","sla":{"ackDueAt":"2026-10-16T06:25:00Z","ackedAt":"2026-10-16T02:40:00Z","fixDueAt":"2026-10-17T10:25:00Z","source":"DQ-REM-005"},"affectedKeys":48210,"affectedKeysHashed":["h:8f3a92\u2026","h:1c7be0\u2026","h:a07d55\u2026"],"plane":"stream","source":"cerner-millennium-prod","topFailingValues":[{"value":"309308","display":"Observation Unit","count":48210,"suppressed":false},{"value":"309412","display":"Clinical Decision Unit","count":9,"suppressed":true}],"proposedAction":{"by":"agent.remediator","kind":"code_remapping","conceptMap":"cerner-cs71-to-healix-encounter-class@v4","cr":"CR-20261016-01J8XY","evaluatorScore":0.93,"policyThreshold":0.95,"autoFixAllowed":false,"reason":"evaluator 0.93 < 0.95 (DQ-REM-002)"},"actions":[{"kind":"auto_fix","label":"Auto-fix within policy","enabled":false,"reason":"evaluator 0.93 < 0.95 (DQ-REM-002)"},{"kind":"steward_assisted","label":"Steward-assisted remediation","enabled":true,"reason":null},{"kind":"source_fix","label":"Request source fix","enabled":true,"reason":null},{"kind":"accept_exception","label":"Accept with exception","enabled":true,"reason":"critical severity: single approver"}],"steward":"role.steward_g2","timeline":[{"t":"2026-10-16T02:25:00Z","event":"detected","by":"agent.dq_monitor","note":"pass rate 0.988 < 0.999"},{"t":"2026-10-16T02:30:00Z","event":"cr_proposed","by":"agent.terminology_steward","note":"CR-20261016-01J8XY"},{"t":"2026-10-16T02:40:00Z","event":"acknowledged","by":"role.steward_g2"},{"t":"2026-10-16T09:14:00Z","event":"mapping_applied","by":"agent.orchestrator","note":"ConceptMap v4"},{"t":"2026-10-16T09:20:00Z","event":"remediation_proposed","by":"agent.remediator","note":"replay 48 210 quarantined records; evaluator 0.93"},{"t":"2026-10-16T09:21:00Z","event":"steward_review","by":"agent.orchestrator","note":"auto-fix not allowed (DQ-REM-002)"}],"records":[{"token":"tok_8f3a92c1","mrnSyn":"SYN-000017","nameSyn":"Zz-Test Patient 00017","field":"PV1-2","value":"309308","proposed":"observation-unit","facility":"Example Medical Center \u2013 North"},{"token":"tok_1c7be044","mrnSyn":"SYN-000342","nameSyn":"Zz-Test Patient 00342","field":"PV1-2","value":"309308","proposed":"observation-unit","facility":"Example Medical Center \u2013 North"},{"token":"tok_a07d5519","mrnSyn":"SYN-004871","nameSyn":"Zz-Test Patient 04871","field":"PV1-2","value":"309308","proposed":"observation-unit","facility":"Example Community Hospital \u2013 East"},{"token":"tok_5be2d7a3","mrnSyn":"SYN-010204","nameSyn":"Zz-Test Patient 10204","field":"PV1-2","value":"309308","proposed":"observation-unit","facility":"Example Medical Center \u2013 North"},{"token":"tok_e91f0c28","mrnSyn":"SYN-022019","nameSyn":"Zz-Test Patient 22019","field":"PV1-2","value":"309412","proposed":null,"facility":"Example Children's Hospital"}],"quarantineTopic":"hc.dq.quarantine.clinical.v1","exceptions":[]},{"id":"ISS-01JA0R3","rule":"DQR-ACCURACY-OBSERVATION-005","group":"G2","state":"source_requested","severity":"critical","detectedAt":"2026-10-14T06:10:00Z","detectedBy":"agent.dq_monitor","sla":{"ackDueAt":"2026-10-14T10:10:00Z","ackedAt":"2026-10-14T07:00:00Z","fixDueAt":"2026-10-21T06:10:00Z","source":"DQ-REM-005"},"affectedKeys":1240,"affectedKeysHashed":["h:33d1\u2026"],"plane":"stream","source":"lis-sunquest","topFailingValues":[{"value":"PENDING","display":null,"count":1240,"suppressed":false}],"proposedAction":{"by":"agent.remediator","kind":"source_fix","cr":null,"evaluatorScore":null,"policyThreshold":0.95,"autoFixAllowed":false,"reason":"no covering concept; CR-CV-ADD CR-20261017-01J9B1 pending"},"actions":[],"steward":"role.steward_g2","timeline":[{"t":"2026-10-14T06:10:00Z","event":"detected","by":"agent.dq_monitor"},{"t":"2026-10-14T07:00:00Z","event":"source_requested","by":"role.steward_g2","note":"LIS vendor ticket SYN-TKT-0091"}],"records":[],"quarantineTopic":"hc.dq.quarantine.clinical.v1","exceptions":[]},{"id":"ISS-01JA0P1","rule":"DQR-ACCURACY-INVENTORY-001","group":"G4","state":"verifying","severity":"critical","detectedAt":"2026-10-08T01:00:00Z","detectedBy":"agent.dq_monitor","sla":{"ackDueAt":"2026-10-08T05:00:00Z","ackedAt":"2026-10-08T02:10:00Z","fixDueAt":"2026-10-15T01:00:00Z","source":"DQ-REM-005"},"affectedKeys":312,"affectedKeysHashed":["h:9a0c\u2026"],"plane":"warehouse","source":"oracle-fusion-scm","topFailingValues":[{"value":"CONSIGNMENT","display":"Consignment vendor","count":312,"suppressed":false}],"proposedAction":{"by":"agent.remediator","kind":"binding","cr":"CR-20261009-01J2SP","evaluatorScore":0.96,"policyThreshold":0.95,"autoFixAllowed":true,"reason":null},"actions":[],"steward":"role.steward_g4","timeline":[{"t":"2026-10-08T01:00:00Z","event":"detected","by":"agent.dq_monitor"},{"t":"2026-10-09T03:00:00Z","event":"auto_fixing","by":"agent.remediator"},{"t":"2026-10-16T00:00:00Z","event":"verifying","by":"agent.dq_monitor"}],"records":[],"quarantineTopic":"hc.dq.quarantine.supply.v1","exceptions":[]},{"id":"ISS-01J9ZP5","rule":"DQR-COMPLETENESS-POSITION-001","group":"G5","state":"escalated","severity":"critical","detectedAt":"2026-09-20T00:30:00Z","detectedBy":"agent.dq_monitor","sla":{"ackDueAt":"2026-09-20T04:30:00Z","ackedAt":"2026-09-22T09:00:00Z","fixDueAt":"2026-09-27T00:30:00Z","source":"DQ-REM-005","breached":true},"affectedKeys":4120,"affectedKeysHashed":["h:77ef\u2026"],"plane":"warehouse","source":"oracle-fusion-hcm","topFailingValues":[{"value":"CWK","display":"Contingent Worker","count":3980,"suppressed":false},{"value":"INTERN","display":"Intern","count":140,"suppressed":false}],"proposedAction":{"by":"agent.remediator","kind":"binding","cr":"CR-20261008-01J2PT","evaluatorScore":0.94,"policyThreshold":0.95,"autoFixAllowed":false,"reason":"evaluator 0.94 < 0.95 (DQ-REM-002); HR steward gate waiting 9 days"},"actions":[],"steward":"role.steward_g5","timeline":[{"t":"2026-09-20T00:30:00Z","event":"detected","by":"agent.dq_monitor"},{"t":"2026-09-27T00:30:00Z","event":"escalated","by":"agent.orchestrator","note":"fix SLA breached; backup reviewer notified"}],"records":[],"quarantineTopic":"hc.dq.quarantine.workforce.v1","exceptions":[]},{"id":"ISS-01JA0N8","rule":"DQR-COMPLETENESS-PROV-001","group":"G7","state":"acknowledged","severity":"blocker","detectedAt":"2026-10-12T00:45:00Z","detectedBy":"agent.dq_monitor","sla":{"ackDueAt":"2026-10-12T02:45:00Z","ackedAt":"2026-10-12T01:10:00Z","fixDueAt":"2026-10-13T00:45:00Z","source":"DQ-REM-005","breached":true},"affectedKeys":212,"affectedKeysHashed":["h:0b1d\u2026"],"plane":"graph","source":"research-ctms","topFailingValues":[{"value":"<null>","display":"missing consent reference","count":212,"suppressed":false}],"proposedAction":{"by":"agent.remediator","kind":"source_fix","cr":null,"evaluatorScore":null,"policyThreshold":0.95,"autoFixAllowed":false,"reason":"blocker severity requires second approver (DQ-REM-007)"},"actions":[],"steward":"role.privacy_officer","timeline":[{"t":"2026-10-12T00:45:00Z","event":"detected","by":"agent.dq_monitor"},{"t":"2026-10-12T01:10:00Z","event":"acknowledged","by":"role.privacy_officer"},{"t":"2026-10-14T00:00:00Z","event":"certification_revoked","by":"agent.orchestrator","note":"G7 Black"}],"records":[],"quarantineTopic":"hc.dq.quarantine.research.v1","exceptions":[]},{"id":"ISS-01JA0M2","rule":"DQR-COMPLETENESS-PATIENT-002","group":"G1","state":"accepted","severity":"major","detectedAt":"2026-10-11T00:30:00Z","detectedBy":"agent.dq_monitor","sla":{"ackDueAt":"2026-10-11T08:30:00Z","ackedAt":"2026-10-11T07:00:00Z","fixDueAt":"2026-10-18T00:30:00Z","source":"DQ-REM-005"},"affectedKeys":1880,"affectedKeysHashed":["h:c4a2\u2026"],"plane":"stream","source":"oracle-fusion-hcm","topFailingValues":[{"value":"<null>","display":"no address","count":1880,"suppressed":false}],"proposedAction":null,"actions":[],"steward":"role.steward_g1","timeline":[{"t":"2026-10-11T00:30:00Z","event":"detected","by":"agent.dq_monitor"},{"t":"2026-10-12T10:00:00Z","event":"accepted","by":"role.steward_g1","note":"exception EXC-01JA0X1"}],"records":[],"quarantineTopic":null,"exceptions":["EXC-01JA0X1"]},{"id":"ISS-01JA0T7","rule":"DQR-COMPLETENESS-DQRESULT-001","group":"G9","state":"auto_fixing","severity":"major","detectedAt":"2026-10-17T09:05:00Z","detectedBy":"agent.dq_monitor","sla":{"ackDueAt":"2026-10-17T13:05:00Z","ackedAt":"2026-10-17T09:06:00Z","fixDueAt":"2026-10-18T09:05:00Z","source":"DQ-REM-005"},"affectedKeys":30400,"affectedKeysHashed":[],"plane":"stream","source":"platform","topFailingValues":[],"proposedAction":{"by":"agent.self_healer","kind":"replay","cr":null,"evaluatorScore":0.98,"policyThreshold":0.95,"autoFixAllowed":true,"reason":null},"actions":[],"steward":"role.platform_sre","timeline":[{"t":"2026-10-17T09:05:00Z","event":"detected","by":"agent.dq_monitor"},{"t":"2026-10-17T09:06:00Z","event":"auto_fixing","by":"agent.self_healer","note":"PBK-SINK-001 step 3 replay"}],"records":[],"quarantineTopic":null,"exceptions":[]},{"id":"ISS-01JA0K4","rule":"DQR-COMPLETENESS-ENCOUNTER-001","group":"G2","state":"resolved","severity":"major","detectedAt":"2026-10-09T00:30:00Z","detectedBy":"agent.dq_monitor","sla":{"ackDueAt":"2026-10-09T08:30:00Z","ackedAt":"2026-10-09T06:00:00Z","fixDueAt":"2026-10-16T00:30:00Z","source":"DQ-REM-005"},"affectedKeys":610,"affectedKeysHashed":[],"plane":"stream","source":"cerner-millennium-prod","topFailingValues":[],"proposedAction":null,"actions":[],"steward":"role.steward_g2","timeline":[{"t":"2026-10-09T00:30:00Z","event":"detected","by":"agent.dq_monitor"},{"t":"2026-10-15T12:00:00Z","event":"resolved","by":"agent.dq_monitor","note":"source fixed A08 update feed"}],"records":[],"quarantineTopic":null,"exceptions":[]}],"exceptions":[{"id":"EXC-01JA0X1","issue":"ISS-01JA0M2","rule":"DQR-COMPLETENESS-PATIENT-002","group":"G1","requestedBy":"role.steward_g1","approvedBy":["role.steward_g1"],"secondApproverRequired":false,"reason":"Workforce-sourced person records legitimately lack a home address until onboarding completes.","expiresAt":"2026-11-10T00:00:00Z","state":"active"},{"id":"EXC-01JA0X2","issue":"ISS-01J9ZP5","rule":"DQR-COMPLETENESS-POSITION-001","group":"G5","requestedBy":"role.steward_g5","approvedBy":[],"secondApproverRequired":true,"reason":"Contingent workers to be bound after CR-20261008-01J2PT.","expiresAt":"2026-10-31T00:00:00Z","state":"awaiting_second_approver"},{"id":"EXC-01JA0W9","issue":null,"rule":"DQR-ACCURACY-TIMECARD-001","group":"G5","requestedBy":"role.steward_g5","approvedBy":["role.steward_g5","role.dw_architect"],"secondApproverRequired":true,"reason":"Rule in tuning; 24.5 h shifts exist for on-call.","expiresAt":"2026-10-25T00:00:00Z","state":"expiring_soon"},{"id":"EXC-01JA0V2","issue":null,"rule":"DQR-COMPLETENESS-IMAGING-001","group":"G2","requestedBy":"role.steward_g2","approvedBy":["role.steward_g2"],"secondApproverRequired":false,"reason":"Legacy PACS studies before 2020 lack modality.","expiresAt":"2027-01-01T00:00:00Z","state":"active"}],"quarantine":[{"topic":"hc.dq.quarantine.clinical.v1","count":48219,"oldest":"2026-10-16T02:11:00Z","group":"G2"},{"topic":"hc.dq.quarantine.workforce.v1","count":4120,"oldest":"2026-09-20T00:31:00Z","group":"G5"},{"topic":"hc.dq.quarantine.supply.v1","count":12,"oldest":"2026-10-16T22:00:00Z","group":"G4"},{"topic":"hc.dq.quarantine.research.v1","count":212,"oldest":"2026-10-12T00:46:00Z","group":"G7"}],"bands":[{"band":"Green","min":99.0},{"band":"Amber","min":97.0,"max":98.9},{"band":"Red","min":95.0,"max":96.9},{"band":"Black","max":94.9}]}
+  </script>
+
+  <script src="assets/app.js"></script>
+  <script>
+  /* ====================================================================
+     dq-console.html — page-local controller (no app.js edits).
+     Builds the Quality & Warehouse surface on top of the shared HX runtime:
+     five tabs, object detail pages, SVG charts drawn with small local
+     helpers (tokens only, each ships a data table), a threshold simulator,
+     the issue remediation chooser, and the entitled red-framed break-glass
+     workspace. All state changes (issue states, exceptions, created CRs,
+     tuned thresholds) live in memory for the session only.
+     ==================================================================== */
+  (function () {
+    "use strict";
+    var E = HX.util.el, I = HX.icon, SVG = HX.util.svgEl, CLEAR = HX.util.clear, TC = HX.util.titleCase;
+
+    HX.mount({ page: "dq-console", area: "quality", title: "Quality & Warehouse" });
+
+    var tabsEl = document.getElementById("dq-tabs");
+    var root = document.getElementById("dq-root");
+
+    var D = { scorecards: [], rules: [], issues: [], exceptions: [], quarantine: [], bands: [] };
+    var IX = { rule: {}, issue: {}, sc: {}, exc: {} };
+    var loaded = false;
+
+    // in-memory, session-only overlay (AC-17: no result payloads persisted)
+    var MEM = { issueState: {}, exceptions: {}, createdCr: {}, tunedThreshold: {} };
+
+    var TABS = [
+      { id: "scorecards", label: "Scorecards", route: "/dq" },
+      { id: "rules", label: "Rules", route: "/dq/rules" },
+      { id: "issues", label: "Issues", route: "/dq/issues" },
+      { id: "quarantine", label: "Quarantine", route: "/dq/quarantine" },
+      { id: "exceptions", label: "Exceptions", route: "/dq/exceptions" }
+    ];
+
+    var BANDS = [
+      { band: "Green", min: 99.0, glyph: "check" },
+      { band: "Amber", min: 97.0, max: 98.9, glyph: "warn" },
+      { band: "Red", min: 95.0, max: 96.9, glyph: "danger" },
+      { band: "Black", max: 94.9, glyph: "danger" }
+    ];
+    function bandOf(dqi) { return dqi >= 99.0 ? "Green" : dqi >= 97.0 ? "Amber" : dqi >= 95.0 ? "Red" : "Black"; }
+    function bandChipMod(band) { return "band-" + String(band).toLowerCase(); }
+    function bandColorVar(band) { return ({ Green: "var(--ok-fg)", Amber: "var(--warn-fg)", Red: "var(--danger-fg)", Black: "var(--black-band-bg)" })[band] || "var(--neutral-fg)"; }
+    function bandGlyph(band) { return ({ Green: "check", Amber: "warn", Red: "danger", Black: "danger" })[band] || "info"; }
+
+    var SEV_RANK = { blocker: 0, critical: 1, major: 2, minor: 3 };
+    function sevChip(sev) {
+      var map = { blocker: "fail", critical: "fail", major: "warn", minor: "neutral" };
+      return HX.chip(map[sev] || "neutral", TC(sev), { title: "Severity: " + sev });
+    }
+
+    /* ---------------------------------------------------------------- routing */
+    function routeParts() {
+      var h = location.hash.slice(1);
+      var qi = h.indexOf("?"); var route = (qi < 0 ? h : h.slice(0, qi)) || "/dq";
+      return route.replace(/^#/, "").split("/").filter(Boolean); // e.g. ["dq","rules"] or ["rule","DQR-..."] or ["issue","ISS-...","records"? no]
+    }
+    function go(route) { HX.nav(route); }
+
+    /* ---------------------------------------------------------------- SVG helpers */
+    // Scorecard trend: single accent line over the 28-day window with the four
+    // DQ-band boundaries as labelled dashed reference lines. One series → the
+    // heading names it, so no legend box; a data table ships alongside.
+    function trendChart(host, sc) {
+      CLEAR(host);
+      var v = (sc.trend28d || sc.trend || []).map(Number);
+      if (!v.length) { host.appendChild(E("div", { class: "hx-muted hx-caption", text: "No trend recorded." })); return; }
+      var w = 560, h = 180, padL = 34, padR = 58, padT = 12, padB = 24;
+      var lo = Math.min.apply(null, v.concat([94])), hi = Math.max.apply(null, v.concat([100]));
+      lo = Math.floor(lo - 0.3); hi = Math.ceil(hi + 0.3);
+      var sx = function (i) { return padL + (i / Math.max(1, v.length - 1)) * (w - padL - padR); };
+      var sy = function (x) { return padT + (1 - (x - lo) / Math.max(1e-9, hi - lo)) * (h - padT - padB); };
+      var svg = SVG("svg", { viewBox: "0 0 " + w + " " + h, role: "img", "aria-label": "G" + sc.group + " DQI trend over " + v.length + " days, latest " + v[v.length - 1] });
+      // band boundary reference lines
+      [{ y: 99.0, label: "Green 99.0", cls: "hx-chart__band-ok" }, { y: 97.0, label: "Amber 97.0", cls: "hx-chart__band-warn" }, { y: 95.0, label: "Red 95.0", cls: "hx-chart__band-fail" }].forEach(function (b) {
+        if (b.y < lo || b.y > hi) return;
+        svg.appendChild(SVG("line", { x1: padL, x2: w - padR, y1: sy(b.y), y2: sy(b.y), stroke: "currentColor", "stroke-width": "1", "stroke-dasharray": "4 3", class: b.cls, opacity: "0.8" }));
+        var t = SVG("text", { x: w - padR + 4, y: sy(b.y) + 3, "font-size": "9", class: b.cls }); t.textContent = b.label; svg.appendChild(t);
+      });
+      // y ticks
+      [lo, (lo + hi) / 2, hi].forEach(function (yv) {
+        var t = SVG("text", { x: padL - 4, y: sy(yv) + 3, "text-anchor": "end", "font-size": "9", class: "hx-chart__axis" }); t.textContent = yv.toFixed(1); svg.appendChild(t);
+      });
+      // line + area
+      var dline = v.map(function (x, i) { return (i ? "L" : "M") + sx(i).toFixed(1) + " " + sy(x).toFixed(1); }).join(" ");
+      svg.appendChild(SVG("path", { d: dline, class: "hx-chart__line" }));
+      v.forEach(function (x, i) { if (i === v.length - 1) svg.appendChild(SVG("circle", { cx: sx(i), cy: sy(x), r: 3, class: "hx-chart__dot" })); });
+      var last = SVG("text", { x: sx(v.length - 1), y: sy(v[v.length - 1]) - 7, "text-anchor": "end", "font-size": "10", class: "hx-chart__label" }); last.textContent = v[v.length - 1]; svg.appendChild(last);
+      var chart = E("div", { class: "hx-chart hx-chart--line hx-chart-wrap" });
+      chart.appendChild(svg);
+      chart.appendChild(E("div", { class: "hx-caption hx-muted", text: "DQI %, 28-day window · band boundaries shown dashed (Green ≥ 99.0 · Amber 97.0–98.9 · Red 95.0–96.9 · Black < 95.0)." }));
+      chart.appendChild(dataTableToggle(["Day", "DQI %"], v.map(function (x, i) { return [i + 1, x]; })));
+      host.appendChild(chart);
+    }
+
+    // Rule per-plane pass-rate: stream (accent, authoritative-aware) vs warehouse
+    // (muted grey, dashed), threshold as a labelled dashed line, breach/release
+    // markers as vertical reference lines. Two series → legend + direct labels.
+    function planeChart(host, rule) {
+      CLEAR(host);
+      var pr = rule.passRate || [];
+      if (!pr.length) { host.appendChild(E("div", { class: "hx-muted hx-caption", text: "No pass-rate history recorded." })); return; }
+      var authPlane = (rule.targets || []).filter(function (t) { return t.authoritative; }).map(function (t) { return t.plane; })[0] || "stream";
+      var planes = [];
+      if (pr.some(function (p) { return p.stream != null; })) planes.push({ key: "stream", label: "Stream", color: "var(--accent)", dash: null });
+      if (pr.some(function (p) { return p.warehouse != null; })) planes.push({ key: "warehouse", label: "Warehouse", color: "var(--fg-muted)", dash: "5 3" });
+      var all = []; pr.forEach(function (p) { planes.forEach(function (pl) { if (p[pl.key] != null) all.push(p[pl.key]); }); });
+      var thr = rule.threshold ? rule.threshold.min : null;
+      if (thr != null) all.push(thr);
+      var lo = Math.min.apply(null, all), hi = Math.max.apply(null, all.concat([1]));
+      var pad = (hi - lo) * 0.15 || 0.002; lo = Math.max(0, lo - pad); hi = Math.min(1, hi + pad);
+      var w = 560, h = 190, padL = 46, padR = 16, padT = 14, padB = 40;
+      var t0 = Date.parse(pr[0].t), t1 = Date.parse(pr[pr.length - 1].t), span = Math.max(1, t1 - t0);
+      var sx = function (iso) { return padL + ((Date.parse(iso) - t0) / span) * (w - padL - padR); };
+      var sy = function (v) { return padT + (1 - (v - lo) / Math.max(1e-9, hi - lo)) * (h - padT - padB); };
+      var svg = SVG("svg", { viewBox: "0 0 " + w + " " + h, role: "img", "aria-label": rule.id + " pass rate by plane; authoritative plane " + authPlane });
+      // y ticks
+      [lo, (lo + hi) / 2, hi].forEach(function (yv) { var t = SVG("text", { x: padL - 5, y: sy(yv) + 3, "text-anchor": "end", "font-size": "9", class: "hx-chart__axis" }); t.textContent = (yv * 100).toFixed(2) + "%"; svg.appendChild(t); });
+      // threshold
+      if (thr != null) {
+        svg.appendChild(SVG("line", { x1: padL, x2: w - padR, y1: sy(thr), y2: sy(thr), class: "hx-chart__threshold" }));
+        var tt = SVG("text", { x: padL + 2, y: sy(thr) - 3, "font-size": "9", class: "hx-chart__threshold", fill: "var(--warn-fg)" }); tt.textContent = "threshold " + (thr * 100).toFixed(1) + "%"; svg.appendChild(tt);
+      }
+      // markers
+      (rule.markers || []).forEach(function (m) {
+        var mt = Date.parse(m.t); if (mt < t0 || mt > t1) return;
+        var x = sx(m.t); var col = m.kind === "breach" ? "var(--danger-fg)" : "var(--info-fg)";
+        svg.appendChild(SVG("line", { x1: x, x2: x, y1: padT, y2: h - padB, stroke: col, "stroke-width": "1", "stroke-dasharray": "2 2", opacity: "0.8" }));
+        var g = SVG("text", { x: x, y: h - padB + 10, "text-anchor": "middle", "font-size": "8", fill: col }); g.textContent = m.kind === "breach" ? "✕ breach" : "▲ release"; svg.appendChild(g);
+      });
+      // series
+      planes.forEach(function (pl) {
+        var pts = pr.filter(function (p) { return p[pl.key] != null; });
+        var d = pts.map(function (p, i) { return (i ? "L" : "M") + sx(p.t).toFixed(1) + " " + sy(p[pl.key]).toFixed(1); }).join(" ");
+        var path = SVG("path", { d: d, fill: "none", stroke: pl.color, "stroke-width": "2" });
+        if (pl.dash) path.setAttribute("stroke-dasharray", pl.dash);
+        svg.appendChild(path);
+        pts.forEach(function (p) { svg.appendChild(SVG("circle", { cx: sx(p.t), cy: sy(p[pl.key]), r: 2.5, fill: pl.color })); });
+      });
+      var chart = E("div", { class: "hx-chart hx-chart--line hx-chart-wrap" });
+      chart.appendChild(svg);
+      var legend = E("div", { class: "dq-chart-legend" });
+      planes.forEach(function (pl) {
+        var star = pl.key === authPlane ? " ★ authoritative" : "";
+        var line = E("i"); if (pl.dash) { line.classList.add("ghost"); } line.style.borderTopColor = pl.color;
+        legend.appendChild(E("span", {}, [line, pl.label + star]));
+      });
+      legend.appendChild(E("span", {}, [(function () { var i = E("i"); i.style.borderTopColor = "var(--warn-fg)"; i.style.borderTopStyle = "dashed"; return i; })(), "threshold"]));
+      chart.appendChild(legend);
+      chart.appendChild(dataTableToggle(["Time", "Stream %", "Warehouse %"], pr.map(function (p) { return [p.t, p.stream != null ? (p.stream * 100).toFixed(2) : "—", p.warehouse != null ? (p.warehouse * 100).toFixed(2) : "—"]; })));
+      host.appendChild(chart);
+    }
+
+    function dataTableToggle(headers, rows) {
+      var wrap = E("div");
+      var btn = E("button", { class: "hx-chart__toggle", "aria-expanded": "false" }, ["Show data table"]);
+      var tbl = E("table", { class: "hx-chart__table", hidden: true });
+      tbl.appendChild(E("thead", {}, [E("tr", {}, headers.map(function (hd) { return E("th", { text: hd }); }))]));
+      tbl.appendChild(E("tbody", {}, rows.map(function (r) { return E("tr", {}, r.map(function (c) { return E("td", { text: c }); })); })));
+      btn.addEventListener("click", function () { var show = tbl.hidden; tbl.hidden = !show; btn.textContent = show ? "Hide data table" : "Show data table"; btn.setAttribute("aria-expanded", show ? "true" : "false"); });
+      wrap.appendChild(btn); wrap.appendChild(tbl); return wrap;
+    }
+
+    /* ---------------------------------------------------------------- shared bits */
+    function slaFor(issue) {
+      var fix = issue.sla && issue.sla.fixDueAt ? Date.parse(issue.sla.fixDueAt) : null;
+      var acked = issue.sla && issue.sla.ackedAt ? Date.parse(issue.sla.ackedAt) : (issue.detectedAt ? Date.parse(issue.detectedAt) : null);
+      if (!fix) return HX.chip("neutral", "no SLA");
+      var now = Date.now();
+      var start = acked || (issue.detectedAt ? Date.parse(issue.detectedAt) : fix - 86400000);
+      var pct = Math.round(((now - start) / Math.max(1, fix - start)) * 100);
+      if (issue.sla.breached || now > fix) pct = 100;
+      var txt = now > fix ? "breached" : HX.format.rel(issue.sla.fixDueAt).replace(" ago", "");
+      return HX.sla(pct, { text: txt, title: "Fix due " + HX.format.time(issue.sla.fixDueAt, "known") });
+    }
+    function effectiveIssueState(issue) { return MEM.issueState[issue.id] || issue.state; }
+
+    function crumb(items) {
+      var bc = E("div", { class: "hx-breadcrumb dq-breadcrumb", "aria-label": "Breadcrumb" });
+      items.forEach(function (it, i) {
+        if (i) bc.appendChild(E("span", { class: "hx-breadcrumb__sep", "aria-hidden": "true", text: "›" }));
+        if (it.route) { var a = E("a", { href: "#" + it.route, class: "home-link" }, [it.label]); a.addEventListener("click", function (e) { e.preventDefault(); go(it.route); }); bc.appendChild(a); }
+        else bc.appendChild(E("span", { class: "hx-muted", text: it.label }));
+      });
+      return bc;
+    }
+
+    function peekChip(label, kind, route) {
+      var c = HX.chip(kind || "neutral", label, { button: true });
+      c.addEventListener("click", function (e) { if (e.shiftKey) { HX.inspector.peek(route); } else go(route); });
+      c.title = "Open " + label + " (Shift-click to peek)";
+      return c;
+    }
+
+    /* ================================================================ TABS */
+    function renderTabs(active) {
+      CLEAR(tabsEl);
+      var bar = E("div", { class: "hx-tabs", role: "tablist", "aria-label": "Quality views" });
+      TABS.forEach(function (t) {
+        var count = t.id === "rules" ? D.rules.length : t.id === "issues" ? openIssueCount() : t.id === "quarantine" ? D.quarantine.length : t.id === "exceptions" ? D.exceptions.length : D.scorecards.length;
+        var tab = E("button", { class: "hx-tab" + (t.id === active ? "" : ""), role: "tab", "aria-selected": t.id === active ? "true" : "false", id: "dqtab-" + t.id }, [t.label, E("span", { class: "hx-tab__badge", text: String(count) })]);
+        tab.addEventListener("click", function () { go(t.route); });
+        bar.appendChild(tab);
+      });
+      tabsEl.appendChild(bar);
+    }
+    function openIssueCount() { return D.issues.filter(function (i) { return ["resolved", "accepted"].indexOf(effectiveIssueState(i)) < 0; }).length; }
+
+    /* ================================================================ SCORECARDS */
+    function viewScorecards() {
+      renderTabs("scorecards"); CLEAR(root);
+      root.appendChild(E("div", { class: "hx-page-title" }, [E("h1", { text: "Scorecards" }), E("span", { class: "hx-muted hx-dense", text: "DQ Index by subject-area group G1–G9 · 28-day window · four bands" })]));
+
+      // band legend
+      var legend = E("div", { class: "hx-row", style: "margin-bottom:var(--sp-3)" });
+      [["Green", "≥ 99.0"], ["Amber", "97.0–98.9"], ["Red", "95.0–96.9"], ["Black", "< 95.0"]].forEach(function (b) {
+        legend.appendChild(HX.chip(bandChipMod(b[0]), b[0] + " " + b[1], { glyph: bandGlyph(b[0]) === "check" ? "✓" : bandGlyph(b[0]) === "warn" ? "△" : "⬣" }));
+      });
+      root.appendChild(legend);
+
+      var grid = E("div", { class: "dq-cards" });
+      D.scorecards.forEach(function (sc) {
+        var band = sc.band || bandOf(sc.dqi);
+        var card = E("button", { class: "hx-tile hx-tile--band dq-scorecard-tile", "aria-label": "Scorecard " + sc.group + " " + sc.label + ", " + band + " " + sc.dqi });
+        card.style.setProperty("--band-color", bandColorVar(band));
+        var head = E("div", { class: "hx-row", style: "justify-content:space-between" });
+        head.appendChild(HX.groupChip(sc.group));
+        if (!sc.certified) head.appendChild(HX.chip("warn", sc.certificationRevokedAt ? "cert revoked" : "not certified", { title: sc.certificationRevokedAt ? "Certification revoked " + HX.format.time(sc.certificationRevokedAt, "known") : "Not certified" }));
+        else head.appendChild(HX.chip("ok", "certified"));
+        card.appendChild(head);
+        var bandrow = E("div", { class: "hx-tile__band" });
+        bandrow.appendChild(E("span", { class: "dq-sc-dqi", style: "color:" + (band === "Black" ? "var(--fg)" : bandColorVar(band)), text: String(sc.dqi) }));
+        bandrow.appendChild(HX.chip(bandChipMod(band), band, { glyph: band === "Green" ? "✓" : band === "Amber" ? "△" : "⬣" }));
+        bandrow.appendChild(E("span", { class: "hx-tile__coverage", text: "coverage " + sc.coverage + "%" }));
+        card.appendChild(bandrow);
+        var spark = E("span", { class: "hx-sparkline" }); card.appendChild(spark);
+        HX.chart.sparkline(spark, sc.trend28d || sc.trend, { label: sc.group + " DQI trend" });
+        var breaches = E("div", { class: "dq-sc-breaches" });
+        ["blocker", "critical", "major", "minor"].forEach(function (sev) { var n = (sc.breaches || {})[sev] || 0; if (n) breaches.appendChild(HX.chip(sev === "blocker" || sev === "critical" ? "fail" : sev === "major" ? "warn" : "neutral", n + " " + sev)); });
+        if (!breaches.childNodes.length) breaches.appendChild(HX.chip("ok", "no open breaches"));
+        card.appendChild(breaches);
+        card.appendChild(E("div", { class: "hx-caption hx-muted", text: sc.stewardRole }));
+        card.addEventListener("click", function () { go("/scorecard/" + sc.group); });
+        grid.appendChild(card);
+      });
+      root.appendChild(grid);
+      focusRoot();
+    }
+
+    function viewScorecardDetail(group) {
+      renderTabs("scorecards"); CLEAR(root);
+      var sc = IX.sc[group];
+      if (!sc) { root.appendChild(emptyState("No scorecard for " + group, "Pick a group from Scorecards.")); return; }
+      var band = sc.band || bandOf(sc.dqi);
+      root.appendChild(crumb([{ label: "Scorecards", route: "/dq" }, { label: "G" + sc.group.replace("G", "") + " " + sc.label }]));
+      if (sc.certificationRevokedAt) {
+        root.appendChild(E("div", { class: "hx-banner hx-banner--cert-revoked", role: "alert" }, [I("danger"), E("span", { text: "Certification revoked " + HX.format.time(sc.certificationRevokedAt, "known") + " — this group is below the certifiable band (" + band + ")." })]));
+      }
+
+      var head = E("div", { class: "dq-detail-head" });
+      var bandBox = E("div", { class: "dq-detail-head__band" });
+      bandBox.appendChild(E("span", { class: "dq-sc-dqi", style: "color:" + (band === "Black" ? "var(--fg)" : bandColorVar(band)), text: String(sc.dqi) }));
+      var br = E("div", { class: "hx-row" });
+      br.appendChild(HX.chip(bandChipMod(band), band + " band", { glyph: band === "Green" ? "✓" : band === "Amber" ? "△" : "⬣", lg: true }));
+      br.appendChild(E("span", { class: "hx-tile__coverage", text: "coverage " + sc.coverage + "%" }));
+      bandBox.appendChild(br);
+      head.appendChild(bandBox);
+      var meta = E("div", { style: "flex:1;min-width:0" });
+      meta.appendChild(E("div", { class: "hx-row" }, [HX.groupChip(sc.group), sc.certified ? HX.chip("ok", "certified") : HX.chip("warn", "not certified"), E("span", { class: "hx-version-chip", text: sc.packVersion })]));
+      meta.appendChild(E("div", { class: "hx-caption hx-muted", style: "margin-top:6px", text: "Denominator: " + HX.format.num(sc.denominator.recordsEvaluated, 0) + " records · " + sc.denominator.rulesEvaluated + " rules · window " + sc.window + " · steward " + sc.stewardRole }));
+      var planes = E("div", { class: "hx-row", style: "margin-top:6px" });
+      Object.keys(sc.planes || {}).forEach(function (p) { planes.appendChild(HX.chip("neutral", p + " " + sc.planes[p], { title: "plane DQI" })); });
+      meta.appendChild(planes);
+      head.appendChild(meta);
+      root.appendChild(head);
+
+      // breach counts by severity
+      var sect = E("section", { class: "hx-section" });
+      sect.appendChild(E("div", { class: "hx-section__head" }, [E("h2", { text: "Breaches by severity" })]));
+      var barHost = E("div", { class: "hx-chart hx-chart--bar hx-chart-wrap", style: "max-width:420px" });
+      sect.appendChild(barHost);
+      root.appendChild(sect);
+      HX.chart.bar(barHost, ["blocker", "critical", "major", "minor"].map(function (sev) { return { label: TC(sev), value: (sc.breaches || {})[sev] || 0, band: sev === "blocker" || sev === "critical" ? "fail" : sev === "major" ? "warn" : null }; }), { label: "Open breaches by severity for " + sc.group });
+
+      // sub tabs
+      var subState = { tab: "explain" };
+      var subNav = E("div", { class: "dq-subtabs", role: "tablist", "aria-label": "Scorecard detail" });
+      var subPanel = E("div", { id: "dq-sc-panel", role: "tabpanel" });
+      var SUBS = [["explain", "Explain this band"], ["trend", "Trend"], ["attribution", "Attribution"], ["simulate", "Simulate"]];
+      SUBS.forEach(function (s) {
+        var b = E("button", { class: "hx-tab", role: "tab", "aria-selected": s[0] === subState.tab ? "true" : "false" }, [s[1]]);
+        b.addEventListener("click", function () { subState.tab = s[0]; Array.prototype.forEach.call(subNav.children, function (c, i) { c.setAttribute("aria-selected", SUBS[i][0] === s[0] ? "true" : "false"); }); renderSub(); });
+        subNav.appendChild(b);
+      });
+      root.appendChild(subNav); root.appendChild(subPanel);
+
+      function renderSub() {
+        CLEAR(subPanel);
+        if (subState.tab === "explain") {
+          subPanel.appendChild(E("div", { class: "hx-explain-band" }, [E("p", { text: sc.explain, style: "margin:0" })]));
+          if (sc.topContributors && sc.topContributors.length) {
+            subPanel.appendChild(E("h3", { style: "margin-top:var(--sp-3);font-size:var(--fs-dense)", text: "Top contributors" }));
+            var t = E("table", { class: "dq-contrib" });
+            t.appendChild(E("thead", {}, [E("tr", {}, [E("th", { text: "Rule" }), E("th", { text: "Source" }), E("th", { text: "Since" }), E("th", { text: "Δpp" })])]));
+            var tb = E("tbody");
+            sc.topContributors.forEach(function (c) {
+              var tr = E("tr");
+              var td1 = E("td"); td1.appendChild(peekChip(c.rule, "info", "/rule/" + c.rule)); tr.appendChild(td1);
+              tr.appendChild(E("td", { class: "hx-mono hx-caption", text: c.source }));
+              tr.appendChild(E("td", { class: "hx-caption", text: HX.format.rel(c.since) }));
+              tr.appendChild(E("td", { class: c.deltaPp < 0 ? "dq-delta-neg" : "dq-delta-pos", text: (c.deltaPp > 0 ? "+" : "") + c.deltaPp }));
+              tb.appendChild(tr);
+            });
+            t.appendChild(tb); subPanel.appendChild(t);
+          }
+        } else if (subState.tab === "trend") {
+          var th = E("div"); subPanel.appendChild(th); trendChart(th, sc);
+        } else if (subState.tab === "attribution") {
+          subPanel.appendChild(E("p", { class: "hx-caption hx-muted", text: "Monthly DQI movement attributed to source systems (percentage points)." }));
+          var bh = E("div", { class: "hx-chart hx-chart--bar hx-chart-wrap", style: "max-width:460px" }); subPanel.appendChild(bh);
+          var agg = {}; (sc.attribution || []).forEach(function (a) { agg[a.source] = (agg[a.source] || 0) + a.deltaPp; });
+          var series = Object.keys(agg).map(function (s) { return { label: s.replace("oracle-fusion-", "fusion-").replace("cerner-millennium-prod", "cerner"), value: Math.abs(agg[s]), band: "fail" }; });
+          if (!series.length) subPanel.appendChild(E("div", { class: "hx-muted hx-caption", text: "No attribution recorded this window." }));
+          else HX.chart.bar(bh, series, { label: "DQI loss attributed to source (" + sc.group + ")" });
+        } else if (subState.tab === "simulate") {
+          renderScorecardSimulate(subPanel, sc, band);
+        }
+      }
+      renderSub();
+      focusRoot();
+    }
+
+    function renderScorecardSimulate(host, sc, band) {
+      host.appendChild(E("p", { class: "hx-caption hx-muted", text: "Simulate a coverage change and see the band move. This is a what-if only; nothing is written until a steward raises a CR." }));
+      var out = E("div", { class: "dq-sim" });
+      var covField = E("div", { class: "hx-field" });
+      covField.appendChild(E("label", { for: "dq-sim-cov", text: "Coverage %" }));
+      var slider = E("input", { type: "range", id: "dq-sim-cov", min: "60", max: "100", value: String(sc.coverage), "aria-valuetext": "coverage " + sc.coverage + " percent" });
+      covField.appendChild(slider);
+      out.appendChild(covField);
+      var result = E("div", { class: "dq-sim__out" });
+      var dqiEl = E("div", { class: "dq-sim__big" });
+      var bandEl = E("div", { style: "margin-top:6px" });
+      result.appendChild(E("div", {}, [E("div", { class: "hx-tile__label", text: "Projected DQI" }), dqiEl]));
+      result.appendChild(E("div", {}, [E("div", { class: "hx-tile__label", text: "Band" }), bandEl]));
+      out.appendChild(result);
+      host.appendChild(out);
+      function update() {
+        var cov = +slider.value;
+        // naive what-if: DQI moves ~0.12pp per coverage point from current
+        var projected = Math.max(90, Math.min(100, (sc.dqi + (cov - sc.coverage) * 0.12)));
+        projected = Math.round(projected * 10) / 10;
+        var b = bandOf(projected);
+        dqiEl.textContent = projected + " · coverage " + cov + "%";
+        CLEAR(bandEl); bandEl.appendChild(HX.chip(bandChipMod(b), b, { glyph: b === "Green" ? "✓" : b === "Amber" ? "△" : "⬣", lg: true }));
+        slider.setAttribute("aria-valuetext", "coverage " + cov + " percent, projected band " + b);
+      }
+      slider.addEventListener("input", update); update();
+    }
+
+    /* ================================================================ RULES */
+    function viewRules() {
+      renderTabs("rules"); CLEAR(root);
+      root.appendChild(E("div", { class: "hx-page-title" }, [E("h1", { text: "DQ rules" }), E("span", { class: "hx-muted hx-dense", text: D.rules.length + " rules · typed filter e.g. group:G2 severity:critical dimension:validity" })]));
+      var state = { filter: "", sel: 0, rows: D.rules.slice() };
+      var table = E("div", { class: "hx-datatable hx-datatable--cards" });
+      var toolbar = E("div", { class: "hx-datatable__toolbar" });
+      var filt = E("div", { class: "hx-datatable__filter" }, [I("search")]);
+      var finput = E("input", { type: "text", placeholder: "group:G2 severity:critical …", "aria-label": "Filter rules" });
+      filt.appendChild(finput); toolbar.appendChild(filt);
+      toolbar.appendChild(E("span", { class: "hx-caption hx-muted", id: "dq-rules-count" }));
+      table.appendChild(toolbar);
+      var tblWrap = E("div", { class: "hx-scroll-x" });
+      var tbl = E("table"); tblWrap.appendChild(tbl); table.appendChild(tblWrap);
+      root.appendChild(table);
+      function draw() {
+        CLEAR(tbl);
+        var f = HX.data.parseFilter(state.filter);
+        state.rows = D.rules.filter(function (r) { return matchRule(r, f); });
+        tbl.appendChild(E("thead", {}, [E("tr", {}, ["Rule", "Dimension", "Severity", "Group", "CDE", "Planes", "Status", "Pass (auth)"].map(function (h) { return E("th", { text: h }); }))]));
+        var tb = E("tbody");
+        state.rows.forEach(function (r, i) {
+          var tr = E("tr", { "aria-selected": i === state.sel ? "true" : "false", tabindex: "0" });
+          var auth = (r.targets || []).filter(function (t) { return t.authoritative; })[0] || (r.targets || [])[0] || {};
+          var latest = (r.passRate || [])[(r.passRate || []).length - 1] || {};
+          var passVal = auth.plane && latest[auth.plane] != null ? latest[auth.plane] : (latest.stream != null ? latest.stream : null);
+          var below = passVal != null && r.threshold && passVal < r.threshold.min;
+          addCell(tr, "Rule", [E("span", { class: "hx-mono hx-caption", text: r.id })]);
+          addCell(tr, "Dimension", [E("span", { class: "hx-caption", text: r.dimension })]);
+          addCell(tr, "Severity", [sevChip(r.severity)]);
+          addCell(tr, "Group", [HX.groupChip(r.group)]);
+          addCell(tr, "CDE", [r.cde ? HX.chip("info", "CDE") : E("span", { class: "hx-faint", text: "—" })]);
+          addCell(tr, "Planes", (r.targets || []).map(function (t) { return HX.chip("neutral", t.plane + (t.authoritative ? " ★" : ""), { title: t.path }); }));
+          addCell(tr, "Status", [r.status === "tuning" ? HX.chip("pending", "tuning") : HX.chip("ok", r.status)]);
+          addCell(tr, "Pass (auth)", [passVal != null ? E("span", { class: below ? "hx-mono dq-delta-neg" : "hx-mono", text: (passVal * 100).toFixed(2) + "%" }) : E("span", { class: "hx-faint", text: "—" })]);
+          tr.addEventListener("click", function () { go("/rule/" + r.id); });
+          tr.addEventListener("keydown", function (e) { if (e.key === "Enter") { go("/rule/" + r.id); } });
+          tb.appendChild(tr);
+        });
+        tbl.appendChild(tb);
+        document.getElementById("dq-rules-count").textContent = state.rows.length + " of " + D.rules.length;
+      }
+      finput.addEventListener("input", function () { state.filter = finput.value; state.sel = 0; draw(); });
+      draw(); focusRoot();
+    }
+    function matchRule(r, f) {
+      for (var k in f) {
+        if (k === "_q") { if (JSON.stringify(r).toLowerCase().indexOf(f._q.toLowerCase()) < 0) return false; continue; }
+        var v = (k === "severity" ? r.severity : k === "group" ? r.group : k === "dimension" ? r.dimension : k === "status" ? r.status : k === "plane" ? (r.targets || []).map(function (t) { return t.plane; }).join(" ") : r[k]);
+        if (v == null) return false;
+        if (String(v).toLowerCase().indexOf(String(f[k]).toLowerCase()) < 0) return false;
+      }
+      return true;
+    }
+
+    function viewRuleDetail(id) {
+      renderTabs("rules"); CLEAR(root);
+      var rule = IX.rule[id];
+      if (!rule) { root.appendChild(emptyState("No rule " + id, "Pick a rule from the Rules tab.")); return; }
+      root.appendChild(crumb([{ label: "Rules", route: "/dq/rules" }, { label: id }]));
+      var head = E("div", { class: "hx-object-header" });
+      var top = E("div", { class: "hx-object-header__top" });
+      var titles = E("div", { class: "hx-object-header__titles" });
+      titles.appendChild(E("div", { class: "hx-object-header__label", text: rule.label }));
+      titles.appendChild(E("div", { class: "hx-object-header__id", text: id }));
+      var chips = E("div", { class: "hx-object-header__chips" });
+      chips.appendChild(HX.chip("type", rule.dimension));
+      chips.appendChild(sevChip(rule.severity));
+      chips.appendChild(HX.groupChip(rule.group));
+      if (rule.cde) chips.appendChild(HX.chip("info", "Critical data element"));
+      chips.appendChild(rule.status === "tuning" ? HX.chip("pending", "tuning") : HX.chip("ok", rule.status));
+      chips.appendChild(E("span", { class: "hx-version-chip", text: "v" + rule.version }));
+      chips.appendChild(E("span", { class: "hx-caption hx-muted", text: "owner " + rule.owner }));
+      titles.appendChild(chips);
+      top.appendChild(titles);
+      head.appendChild(top);
+      root.appendChild(head);
+
+      var grid = E("div", { class: "dq-detail-grid" });
+
+      // Results (per-plane pass rate chart)
+      var cResults = E("section", { class: "hx-card" });
+      cResults.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Results — pass rate by plane" })]));
+      var chartHost = E("div"); cResults.appendChild(chartHost);
+      planeChart(chartHost, rule);
+      cResults.appendChild(E("div", { class: "hx-caption hx-muted", style: "margin-top:6px", text: "Expression: " + rule.expression + " · threshold ≥ " + (rule.threshold.min * 100).toFixed(1) + "% over " + rule.threshold.window }));
+      grid.appendChild(cResults);
+
+      // Derivation chain + targets + versions + fixtures
+      var cSide = E("section", { class: "hx-card" });
+      cSide.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Derivation & targets" })]));
+      var der = E("div", { class: "dq-derivation" });
+      var d = rule.derivedFrom || {};
+      if (d.valueSet) { der.appendChild(peekChip("value set " + d.valueSet, "neutral", "/valueset/" + d.valueSet)); der.appendChild(E("span", { class: "dq-derivation__sep", text: "→" })); }
+      if (d.axiom) { der.appendChild(peekChip("axiom " + d.axiom, "neutral", "/axiom/" + d.axiom.replace("axiom/", ""))); der.appendChild(E("span", { class: "dq-derivation__sep", text: "→" })); }
+      if (d.shape) der.appendChild(peekChip("shape " + d.shape, "neutral", "/shape/" + d.shape));
+      if (!der.childNodes.length) der.appendChild(E("span", { class: "hx-chip hx-chip--gap", text: "No upstream derivation recorded" }));
+      der.appendChild(E("span", { class: "dq-derivation__sep", text: "⇒" }));
+      der.appendChild(HX.chip("info", "this rule"));
+      cSide.appendChild(der);
+      cSide.appendChild(E("h4", { style: "margin-top:var(--sp-3);font-size:var(--fs-caption);color:var(--fg-muted)", text: "TARGETS" }));
+      (rule.targets || []).forEach(function (t) {
+        cSide.appendChild(E("div", { class: "dq-mini-row" }, [E("span", { class: "hx-row" }, [HX.chip("neutral", t.plane), t.authoritative ? HX.chip("info", "★ authoritative") : null].filter(Boolean)), E("span", { class: "hx-mono hx-caption", text: t.path })]));
+      });
+      if (rule.versions && rule.versions.length) {
+        cSide.appendChild(E("h4", { style: "margin-top:var(--sp-3);font-size:var(--fs-caption);color:var(--fg-muted)", text: "VERSIONS" }));
+        var vl = E("div", { class: "dq-mini-list" });
+        rule.versions.forEach(function (v) { var row = E("div", { class: "dq-mini-row" }); row.appendChild(E("span", {}, ["v" + v.version + " · " + v.change])); var cc = E("span"); cc.appendChild(peekChip(v.cr, "neutral", "/cr/" + v.cr)); row.appendChild(cc); vl.appendChild(row); });
+        cSide.appendChild(vl);
+      }
+      if (rule.fixtures && rule.fixtures.length) {
+        cSide.appendChild(E("h4", { style: "margin-top:var(--sp-3);font-size:var(--fs-caption);color:var(--fg-muted)", text: "GOLDEN FIXTURES" }));
+        rule.fixtures.forEach(function (fx) { var ok = fx.result === "pass"; cSide.appendChild(E("div", { class: "dq-mini-row" }, [E("span", { class: "hx-mono hx-caption", text: fx.input + " → " + fx.expected }), ok ? HX.chip("ok", "pass") : HX.chip("fail", fx.result)])); });
+      }
+      grid.appendChild(cSide);
+      root.appendChild(grid);
+
+      // Open issues for this rule
+      var relatedIssues = D.issues.filter(function (i) { return i.rule === id; });
+      if (relatedIssues.length) {
+        var si = E("section", { class: "hx-section", style: "margin-top:var(--sp-4)" });
+        si.appendChild(E("div", { class: "hx-section__head" }, [E("h2", { text: "Issues from this rule" })]));
+        var il = E("div", { class: "dq-mini-list" });
+        relatedIssues.forEach(function (iss) { var row = E("div", { class: "dq-mini-row" }); var left = E("span", { class: "hx-row" }, [peekChip(iss.id, "info", "/issue/" + iss.id), sevChip(iss.severity), HX.chip("neutral", TC(effectiveIssueState(iss)))]); row.appendChild(left); row.appendChild(slaFor(iss)); il.appendChild(row); });
+        si.appendChild(il); root.appendChild(si);
+      }
+
+      // Tuning (simulate)
+      var sect = E("section", { class: "hx-section", style: "margin-top:var(--sp-4)" });
+      sect.appendChild(E("div", { class: "hx-section__head" }, [E("h2", { text: "Tuning — simulate a threshold change" })]));
+      if (rule.tuning && rule.tuning.simulate) { sect.appendChild(buildTuning(rule)); }
+      else {
+        sect.appendChild(E("div", { class: "hx-empty" }, [E("div", { text: "No simulation surface recorded for this rule." }), E("div", { class: "hx-empty__cta" }, [(function () { var b = E("button", { class: "hx-btn hx-btn--sm" }, ["Propose a tuning CR (dq_rule)"]); b.addEventListener("click", function () { createDqRuleCr(rule, null); }); return b; })()])]));
+      }
+      root.appendChild(sect);
+
+      // provenance footer
+      root.appendChild(E("div", { class: "hx-prov-footer", text: "generated by dq.ruleEval · author " + rule.authorAgent + " · owner " + rule.owner + " · v" + rule.version }));
+      focusRoot();
+    }
+
+    function buildTuning(rule) {
+      var sim = rule.tuning.simulate;
+      var wrap = E("div", { class: "dq-sim" });
+      wrap.appendChild(E("p", { class: "hx-caption hx-muted", style: "margin:0", text: "Move the threshold to preview the resulting group DQI, breaches suppressed, and index impact. Submitting drafts a dq_rule CR for the evaluator and steward gate." }));
+      var field = E("div", { class: "hx-field" });
+      field.appendChild(E("label", { for: "dq-tune", text: "Threshold (min pass rate)" }));
+      var slider = E("input", { type: "range", id: "dq-tune", min: "0", max: String(sim.thresholds.length - 1), value: "0", step: "1", "aria-valuetext": "threshold " + sim.thresholds[0] });
+      field.appendChild(slider);
+      wrap.appendChild(field);
+      var outRow = E("div", { class: "dq-sim__out" });
+      var thrEl = E("div", { class: "dq-sim__big hx-mono" });
+      var dqiEl = E("div", { class: "dq-sim__big" });
+      var supEl = E("div", { class: "dq-sim__big" });
+      outRow.appendChild(E("div", {}, [E("div", { class: "hx-tile__label", text: "Threshold" }), thrEl]));
+      outRow.appendChild(E("div", {}, [E("div", { class: "hx-tile__label", text: "Group DQI" }), dqiEl]));
+      outRow.appendChild(E("div", {}, [E("div", { class: "hx-tile__label", text: "Breaches suppressed" }), supEl]));
+      wrap.appendChild(outRow);
+      var impactEl = E("div", { class: "hx-caption hx-muted" });
+      wrap.appendChild(impactEl);
+      var submit = E("button", { class: "hx-btn hx-btn--primary", style: "align-self:flex-start" }, ["Draft dq_rule CR"]);
+      submit.addEventListener("click", function () { var idx = +slider.value; createDqRuleCr(rule, sim.thresholds[idx]); });
+      wrap.appendChild(submit);
+      function update() {
+        var idx = +slider.value;
+        thrEl.textContent = (sim.thresholds[idx] * 100).toFixed(1) + "%";
+        dqiEl.textContent = sim.dqi[idx];
+        supEl.textContent = sim.breachesSuppressed[idx];
+        var delta = (sim.dqi[idx] - sim.dqi[0]).toFixed(1);
+        impactEl.textContent = "Simulated index impact: group DQI " + (delta >= 0 ? "+" : "") + delta + " pp · " + sim.breachesSuppressed[idx] + " breach(es) suppressed vs the current threshold " + (rule.threshold.min * 100).toFixed(1) + "%. Lowering a CDE rule threshold is a medium-risk dq_rule CR.";
+        slider.setAttribute("aria-valuetext", "threshold " + sim.thresholds[idx] + ", projected DQI " + sim.dqi[idx]);
+      }
+      slider.addEventListener("input", update); update();
+      return wrap;
+    }
+
+    function createDqRuleCr(rule, threshold) {
+      HX.env.confirmWrite().then(function (ok) {
+        if (!ok) return;
+        var crId = "CR-DRAFT-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+        MEM.createdCr[crId] = { rule: rule.id, threshold: threshold, at: new Date().toISOString() };
+        HX.audit.write({ type: "CR_DRAFTED", crType: "dq_rule", rule: rule.id, threshold: threshold, by: HX.role.principal() });
+        HX.live("Draft dq_rule CR " + crId + " created for " + rule.id, "polite");
+        HX.toast("Drafted " + crId + (threshold != null ? " — lower " + rule.id + " threshold to " + (threshold * 100).toFixed(1) + "%" : " for " + rule.id) + ". Routed to evaluator → steward gate.", {
+          kind: "ok",
+          undo: function () { delete MEM.createdCr[crId]; HX.audit.write({ type: "CR_DRAFT_UNDONE", cr: crId }); HX.toast("Draft " + crId + " discarded.", { kind: "warn", timeout: 3000 }); }
+        });
+      });
+    }
+
+    /* ================================================================ ISSUES */
+    function viewIssues() {
+      renderTabs("issues"); CLEAR(root);
+      root.appendChild(E("div", { class: "hx-page-title" }, [E("h1", { text: "Issues" }), E("span", { class: "hx-muted hx-dense", text: "Open DQ breaches · typed filter e.g. severity:critical group:G2 state:steward_review" })]));
+      var state = { filter: "", sel: 0 };
+      var table = E("div", { class: "hx-datatable hx-datatable--cards" });
+      var toolbar = E("div", { class: "hx-datatable__toolbar" });
+      var filt = E("div", { class: "hx-datatable__filter" }, [I("search")]);
+      var finput = E("input", { type: "text", placeholder: "severity:critical state:escalated …", "aria-label": "Filter issues" });
+      filt.appendChild(finput); toolbar.appendChild(filt);
+      toolbar.appendChild(E("span", { class: "hx-caption hx-muted", id: "dq-iss-count" }));
+      table.appendChild(toolbar);
+      var tblWrap = E("div", { class: "hx-scroll-x" }); var tbl = E("table"); tblWrap.appendChild(tbl); table.appendChild(tblWrap);
+      root.appendChild(table);
+      var rowsRef = [];
+      function draw() {
+        CLEAR(tbl);
+        var f = HX.data.parseFilter(state.filter);
+        rowsRef = D.issues.filter(function (iss) { return matchIssue(iss, f); });
+        tbl.appendChild(E("thead", {}, [E("tr", {}, ["Issue", "Rule", "Severity", "State", "Group", "Plane", "Affected", "SLA"].map(function (h) { return E("th", { text: h }); }))]));
+        var tb = E("tbody");
+        rowsRef.forEach(function (iss, i) {
+          var st = effectiveIssueState(iss);
+          var tr = E("tr", { "aria-selected": i === state.sel ? "true" : "false", tabindex: "0", "data-i": i });
+          addCell(tr, "Issue", [E("span", { class: "hx-mono hx-caption", text: iss.id })]);
+          addCell(tr, "Rule", [E("span", { class: "hx-mono hx-caption", text: iss.rule })]);
+          addCell(tr, "Severity", [sevChip(iss.severity)]);
+          addCell(tr, "State", [HX.chip(stateChipKind(st), TC(st))]);
+          addCell(tr, "Group", [HX.groupChip(iss.group)]);
+          addCell(tr, "Plane", [HX.chip("neutral", iss.plane)]);
+          addCell(tr, "Affected", [E("span", { class: "hx-mono hx-caption", text: HX.format.num(iss.affectedKeys, 0) })]);
+          addCell(tr, "SLA", [slaFor(iss)]);
+          tr.addEventListener("click", function () { go("/issue/" + iss.id); });
+          tr.addEventListener("keydown", function (e) { if (e.key === "Enter") go("/issue/" + iss.id); });
+          tb.appendChild(tr);
+        });
+        tbl.appendChild(tb);
+        document.getElementById("dq-iss-count").textContent = rowsRef.length + " of " + D.issues.length;
+      }
+      finput.addEventListener("input", function () { state.filter = finput.value; state.sel = 0; draw(); });
+      HX.keys.bind({
+        j: function () { if (!rowsRef.length) return; state.sel = Math.min(rowsRef.length - 1, state.sel + 1); syncSel(); },
+        k: function () { if (!rowsRef.length) return; state.sel = Math.max(0, state.sel - 1); syncSel(); },
+        o: function () { if (rowsRef[state.sel]) go("/issue/" + rowsRef[state.sel].id); }
+      });
+      function syncSel() { Array.prototype.forEach.call(tbl.querySelectorAll("tbody tr"), function (tr) { var on = +tr.getAttribute("data-i") === state.sel; tr.setAttribute("aria-selected", on ? "true" : "false"); if (on) tr.focus(); }); }
+      draw(); focusRoot();
+    }
+    function matchIssue(iss, f) {
+      var st = effectiveIssueState(iss);
+      for (var k in f) {
+        if (k === "_q") { if (JSON.stringify(iss).toLowerCase().indexOf(f._q.toLowerCase()) < 0) return false; continue; }
+        var v = (k === "state" ? st : k === "severity" ? iss.severity : k === "group" ? iss.group : k === "plane" ? iss.plane : k === "rule" ? iss.rule : iss[k]);
+        if (v == null) return false;
+        if (String(v).toLowerCase().indexOf(String(f[k]).toLowerCase()) < 0) return false;
+      }
+      return true;
+    }
+    function stateChipKind(st) {
+      return ({ detected: "warn", acknowledged: "info", auto_fixing: "pending", steward_review: "warn", source_requested: "info", escalated: "fail", verifying: "pending", resolved: "ok", accepted: "ok", reopened: "warn" })[st] || "neutral";
+    }
+
+    var ISSUE_STATES = ["detected", "acknowledged", "auto_fixing", "steward_review", "source_requested", "verifying", "resolved", "accepted", "reopened"];
+
+    function viewIssueDetail(id) {
+      renderTabs("issues"); CLEAR(root);
+      var iss = IX.issue[id];
+      if (!iss) { root.appendChild(emptyState("No issue " + id, "Pick an issue from the Issues tab.")); return; }
+      var st = effectiveIssueState(iss);
+      var rule = IX.rule[iss.rule];
+      root.appendChild(crumb([{ label: "Issues", route: "/dq/issues" }, { label: id }]));
+
+      // header
+      var head = E("div", { class: "hx-object-header" });
+      var top = E("div", { class: "hx-object-header__top" });
+      var titles = E("div", { class: "hx-object-header__titles" });
+      titles.appendChild(E("div", { class: "hx-object-header__label", text: (rule ? rule.label : iss.rule) }));
+      titles.appendChild(E("div", { class: "hx-object-header__id", text: id + " · rule " + iss.rule }));
+      var chips = E("div", { class: "hx-object-header__chips" });
+      chips.appendChild(sevChip(iss.severity));
+      chips.appendChild(HX.chip(stateChipKind(st), TC(st), { lg: true }));
+      chips.appendChild(HX.groupChip(iss.group));
+      chips.appendChild(HX.chip("neutral", "plane " + iss.plane));
+      chips.appendChild(peekChip(iss.rule, "info", "/rule/" + iss.rule));
+      if (iss.source) chips.appendChild(E("span", { class: "hx-caption hx-muted", text: "source " + iss.source }));
+      titles.appendChild(chips);
+      top.appendChild(titles);
+      head.appendChild(top);
+      root.appendChild(head);
+
+      // state rail
+      var railSect = E("section", { class: "hx-card", style: "margin-bottom:var(--sp-3)" });
+      railSect.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Lifecycle" })]));
+      var rail = E("div", { class: "hx-state-rail", role: "list", "aria-label": "Issue lifecycle" });
+      var railStates = ["detected", "acknowledged", (st === "source_requested" ? "source_requested" : st === "auto_fixing" ? "auto_fixing" : "steward_review"), "verifying", (st === "accepted" ? "accepted" : "resolved")];
+      var curIdx = railStates.indexOf(st);
+      if (curIdx < 0) { if (st === "escalated") { railStates = ["detected", "acknowledged", "steward_review", "escalated", "resolved"]; curIdx = 3; } else if (st === "reopened") { railStates = ["detected", "acknowledged", "steward_review", "verifying", "reopened"]; curIdx = 4; } }
+      railStates.forEach(function (rs, i) {
+        var mod = i < curIdx ? "done" : i === curIdx ? "current" : "";
+        var step = E("span", { class: "hx-state-rail__step" + (mod ? " hx-state-rail__step--" + mod : ""), role: "listitem", "aria-current": i === curIdx ? "step" : null });
+        step.appendChild(E("span", { text: TC(rs) }));
+        rail.appendChild(step);
+      });
+      railSect.appendChild(rail);
+      var slaRow = E("div", { class: "hx-row", style: "margin-top:var(--sp-2)" });
+      if (iss.sla) {
+        slaRow.appendChild(E("span", { class: "hx-caption hx-muted", text: "Ack due" })); slaRow.appendChild(E("span", { class: "hx-time", text: HX.format.time(iss.sla.ackDueAt, "known") }));
+        slaRow.appendChild(E("span", { class: "hx-caption hx-muted", text: "· Fix due" })); slaRow.appendChild(E("span", { class: "hx-time", text: HX.format.time(iss.sla.fixDueAt, "known") }));
+        slaRow.appendChild(slaFor(iss));
+        if (iss.sla.breached) slaRow.appendChild(HX.chip("fail", "SLA breached"));
+      }
+      railSect.appendChild(slaRow);
+      root.appendChild(railSect);
+
+      var grid = E("div", { class: "dq-detail-grid" });
+
+      // affected keys + failing values
+      var cKeys = E("section", { class: "hx-card" });
+      cKeys.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Affected records" })]));
+      cKeys.appendChild(E("div", { class: "hx-row", style: "margin-bottom:var(--sp-2)" }, [E("span", { class: "dq-sim__big", text: HX.format.num(iss.affectedKeys, 0) }), E("span", { class: "hx-caption hx-muted", text: "records · keys hashed (minimum necessary)" })]));
+      if (iss.affectedKeysHashed && iss.affectedKeysHashed.length) {
+        var kr = E("div", { class: "hx-row" });
+        iss.affectedKeysHashed.forEach(function (h) { kr.appendChild(E("span", { class: "hx-masked", title: "hashed surrogate key" }, [E("span", { "aria-hidden": "true", text: h }), E("span", { class: "hx-sr", text: "hashed key " + h })])); });
+        kr.appendChild(E("span", { class: "hx-caption hx-faint", text: "…" + HX.format.num(iss.affectedKeys - iss.affectedKeysHashed.length, 0) + " more" }));
+        cKeys.appendChild(kr);
+      }
+      cKeys.appendChild(E("h4", { style: "margin-top:var(--sp-3);font-size:var(--fs-caption);color:var(--fg-muted)", text: "TOP FAILING VALUES" }));
+      if (iss.topFailingValues && iss.topFailingValues.length) {
+        var ft = E("table", { class: "dq-failing" });
+        ft.appendChild(E("thead", {}, [E("tr", {}, [E("th", { text: "Value" }), E("th", { text: "Display" }), E("th", { class: "num", text: "Count" })])]));
+        var ftb = E("tbody");
+        iss.topFailingValues.forEach(function (fv) {
+          var tr = E("tr");
+          tr.appendChild(E("td", { class: "hx-mono", text: fv.value }));
+          tr.appendChild(E("td", { class: "hx-caption", text: fv.display || "—" }));
+          var td = E("td", { class: "num" });
+          if (fv.suppressed) td.appendChild(HX.masked(null, null, { smallCell: true }));
+          else td.appendChild(E("span", { text: HX.format.num(fv.count, 0) }));
+          tr.appendChild(td);
+          ftb.appendChild(tr);
+        });
+        ft.appendChild(ftb); cKeys.appendChild(ft);
+        cKeys.appendChild(E("div", { class: "hx-caption hx-faint", style: "margin-top:4px", text: "Small cells (n < 11) are suppressed. No patient identifiers are shown here — those live only in the entitled remediation workspace." }));
+      } else cKeys.appendChild(E("div", { class: "hx-muted hx-caption", text: "No per-value breakdown recorded." }));
+      grid.appendChild(cKeys);
+
+      // timeline + proposed action
+      var cTl = E("section", { class: "hx-card" });
+      cTl.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Timeline" })]));
+      var tl = E("ul", { class: "hx-incident-timeline" });
+      (iss.timeline || []).forEach(function (ev) {
+        var li = E("li");
+        li.appendChild(E("div", {}, [E("b", { text: TC(ev.event) }), ev.by ? E("span", { class: "hx-caption hx-muted", text: " · " + ev.by }) : null].filter(Boolean)));
+        li.appendChild(E("div", { class: "hx-time", text: HX.format.time(ev.t, "known") }));
+        if (ev.note) li.appendChild(E("div", { class: "hx-caption hx-muted", text: ev.note }));
+        tl.appendChild(li);
+      });
+      cTl.appendChild(tl);
+      grid.appendChild(cTl);
+      root.appendChild(grid);
+
+      // remediation chooser
+      var remSect = E("section", { class: "hx-section", style: "margin-top:var(--sp-4)" });
+      remSect.appendChild(E("div", { class: "hx-section__head" }, [E("h2", { text: "Remediation" })]));
+      if (iss.proposedAction) {
+        var pa = iss.proposedAction;
+        var paCard = E("div", { class: "hx-card", style: "margin-bottom:var(--sp-3)" });
+        paCard.appendChild(E("div", { class: "hx-row" }, [HX.chip("agent-text", "proposed by " + pa.by, { class: "hx-chip--agent-text" }), HX.chip("neutral", TC(pa.kind))]));
+        if (pa.conceptMap) { var r2 = E("div", { class: "hx-row", style: "margin-top:6px" }); r2.appendChild(E("span", { class: "hx-caption hx-muted", text: "ConceptMap" })); r2.appendChild(E("span", { class: "hx-code-chip", text: pa.conceptMap })); paCard.appendChild(r2); }
+        if (pa.cr) { var r3 = E("div", { class: "hx-row", style: "margin-top:6px" }); r3.appendChild(E("span", { class: "hx-caption hx-muted", text: "Change request" })); r3.appendChild(peekChip(pa.cr, "info", "/cr/" + pa.cr)); paCard.appendChild(r3); }
+        if (pa.evaluatorScore != null) { var r4 = E("div", { class: "hx-row", style: "margin-top:6px" }); r4.appendChild(E("span", { class: "hx-caption hx-muted", text: "Evaluator" })); r4.appendChild(HX.score(pa.evaluatorScore, pa.policyThreshold)); paCard.appendChild(r4); }
+        remSect.appendChild(paCard);
+      }
+      var actions = (iss.actions && iss.actions.length) ? iss.actions : defaultActions(iss);
+      var ac = E("div", { class: "dq-action-cards" });
+      actions.forEach(function (a) {
+        var card = E("button", { class: "dq-action-card", "aria-disabled": a.enabled === false ? "true" : "false" });
+        card.appendChild(E("div", { class: "hx-row" }, [I(a.kind === "auto_fix" ? "agents" : a.kind === "source_fix" ? "sources" : a.kind === "accept_exception" ? "governance" : "review"), E("b", { text: a.label })]));
+        if (a.reason) card.appendChild(E("div", { class: "dq-action-card__reason", text: a.reason }));
+        else card.appendChild(E("div", { class: "hx-caption hx-muted", text: actionHint(a.kind) }));
+        if (a.enabled !== false) card.addEventListener("click", function () { chooseRemediation(iss, a); });
+        else card.title = a.reason || "Not available";
+        ac.appendChild(card);
+      });
+      // entitled remediation workspace (break-glass) — the ONLY PHI surface
+      var bgCard = E("button", { class: "dq-action-card dq-action-card--entitled" });
+      bgCard.appendChild(E("div", { class: "hx-row" }, [I("lock"), E("b", { text: "Open in remediation workspace" })]));
+      bgCard.appendChild(E("div", { class: "hx-caption", text: "Entitled, record-level fix. Requires break-glass (reason code + MFA); 4-hour, red-framed, audited per record. Synthetic SYN- identifiers only." }));
+      bgCard.addEventListener("click", function () { go("/remediation/" + iss.id + "/records"); });
+      ac.appendChild(bgCard);
+      remSect.appendChild(ac);
+      if (iss.severity === "blocker") remSect.appendChild(E("div", { class: "hx-row", style: "margin-top:var(--sp-2)" }, [I("warn"), E("span", { class: "hx-caption hx-warn", style: "color:var(--warn-fg)", text: "Blocker severity: acceptance or source-fix sign-off needs a second approver (DQ-REM-007)." })]));
+      root.appendChild(remSect);
+
+      // related exceptions
+      if (iss.exceptions && iss.exceptions.length) {
+        var exSect = E("section", { class: "hx-section", style: "margin-top:var(--sp-4)" });
+        exSect.appendChild(E("div", { class: "hx-section__head" }, [E("h2", { text: "Exceptions" })]));
+        var el2 = E("div", { class: "dq-mini-list" });
+        iss.exceptions.forEach(function (eid) { var row = E("div", { class: "dq-mini-row" }); row.appendChild(peekChip(eid, "neutral", "/exception/" + eid)); var exc = IX.exc[eid]; if (exc) row.appendChild(E("span", { class: "hx-caption hx-muted", text: "expires " + HX.format.rel(exc.expiresAt) })); el2.appendChild(row); });
+        exSect.appendChild(el2); root.appendChild(exSect);
+      }
+
+      // provenance
+      root.appendChild(E("div", { class: "hx-prov-footer", text: "detected by " + iss.detectedBy + " · steward " + iss.steward + " · quarantine " + (iss.quarantineTopic || "none") + " · SLA source " + (iss.sla && iss.sla.source || "—") }));
+
+      // DecisionBar (sticky) — verbs from the PDP for the real principal
+      var decHost = E("div");
+      root.appendChild(decHost);
+      var verbs = HX.role.verbs("issue", iss).filter(function (v) { return ["acknowledge", "assign", "request_source_fix", "accept_with_exception", "watch"].indexOf(v) >= 0; });
+      if (["resolved", "accepted"].indexOf(st) >= 0) verbs = ["watch"];
+      HX.decisionBar(decHost, verbs, function (verb, payload) { onIssueDecision(iss, verb, payload); });
+
+      focusRoot();
+    }
+    function actionHint(kind) { return ({ auto_fix: "Agent applies the ConceptMap and replays quarantined records within policy.", steward_assisted: "You review each proposed mapping and apply in batch.", source_fix: "Raise a ticket to the source system owner; issue stays open pending the feed correction.", accept_exception: "Record a time-boxed exception with a reason; the breach stops counting until it expires." })[kind] || ""; }
+    function defaultActions(iss) {
+      return [
+        { kind: "steward_assisted", label: "Steward-assisted remediation", enabled: true },
+        { kind: "source_fix", label: "Request source fix", enabled: true },
+        { kind: "accept_exception", label: "Accept with exception", enabled: true, reason: iss.severity === "blocker" ? "blocker severity: needs a second approver" : null }
+      ];
+    }
+    function chooseRemediation(iss, a) {
+      if (a.kind === "steward_assisted") { HX.toast("Steward-assisted remediation opened for " + iss.id + " — review proposed mappings, then apply in batch.", { kind: "ok" }); }
+      else if (a.kind === "source_fix") { setIssueState(iss, "source_requested", "Source-fix requested for " + iss.id); }
+      else if (a.kind === "accept_exception") { acceptWithException(iss); }
+      else if (a.kind === "auto_fix") { HX.toast("Auto-fix applied within policy.", { kind: "ok" }); setIssueState(iss, "verifying", null); }
+    }
+    function acceptWithException(iss) {
+      HX.env.confirmWrite().then(function (ok) {
+        if (!ok) return;
+        HX.confirm({ title: "Accept with exception", body: "Record a time-boxed exception for " + iss.id + ". The breach stops counting until the exception expires.", consequence: iss.severity === "blocker" ? "Blocker severity — this requires a second approver before it takes effect (DQ-REM-007)." : null, danger: iss.severity === "blocker", confirmLabel: "Accept" }).then(function (conf) {
+          if (!conf) return;
+          var excId = "EXC-DRAFT-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+          MEM.exceptions[excId] = { issue: iss.id, rule: iss.rule, group: iss.group, state: iss.severity === "blocker" ? "awaiting_second_approver" : "active" };
+          HX.audit.write({ type: "EXCEPTION_REQUESTED", exception: excId, issue: iss.id, by: HX.role.principal() });
+          var prev = effectiveIssueState(iss);
+          setIssueState(iss, "accepted", null, prev);
+          HX.toast("Exception " + excId + " recorded for " + iss.id + (iss.severity === "blocker" ? " — awaiting second approver." : "."), { kind: "ok", undo: function () { delete MEM.exceptions[excId]; MEM.issueState[iss.id] = prev; HX.audit.write({ type: "EXCEPTION_UNDONE", exception: excId }); if (currentOn(iss.id)) viewIssueDetail(iss.id); } });
+        });
+      });
+    }
+    function onIssueDecision(iss, verb, payload) {
+      var prev = effectiveIssueState(iss);
+      if (verb === "acknowledge") { setIssueState(iss, "acknowledged", "Acknowledged " + iss.id, prev); }
+      else if (verb === "request_source_fix") { setIssueState(iss, "source_requested", "Source fix requested for " + iss.id, prev); }
+      else if (verb === "accept_with_exception") { acceptWithException(iss); }
+      else if (verb === "assign") { HX.toast("Assigned " + iss.id + " to " + iss.steward + ".", { kind: "ok" }); }
+      else if (verb === "watch") { HX.toast("Watching " + iss.id + ".", { kind: "ok" }); }
+      if (payload && payload.comment) HX.audit.write({ type: "ISSUE_DECISION", issue: iss.id, verb: verb, comment: payload.comment, env: payload.env, by: HX.role.principal() });
+    }
+    function setIssueState(iss, newState, toastMsg, prev) {
+      prev = prev || effectiveIssueState(iss);
+      MEM.issueState[iss.id] = newState;
+      HX.audit.write({ type: "ISSUE_STATE", issue: iss.id, from: prev, to: newState, by: HX.role.principal() });
+      HX.live(iss.id + " → " + TC(newState), "polite");
+      if (toastMsg !== null) HX.toast(toastMsg || (iss.id + " → " + TC(newState)), { kind: "ok", undo: function () { MEM.issueState[iss.id] = prev; HX.audit.write({ type: "ISSUE_STATE_UNDONE", issue: iss.id, to: prev }); if (currentOn(iss.id)) viewIssueDetail(iss.id); } });
+      if (currentOn(iss.id)) viewIssueDetail(iss.id);
+    }
+    function currentOn(id) { return routeParts().indexOf(id) >= 0; }
+
+    /* ================================================================ BREAK-GLASS REMEDIATION WORKSPACE */
+    function viewRemediation(issueId) {
+      renderTabs("issues"); CLEAR(root);
+      var iss = IX.issue[issueId];
+      if (!iss) { root.appendChild(emptyState("No issue " + issueId, "Pick an issue first.")); return; }
+      root.appendChild(crumb([{ label: "Issues", route: "/dq/issues" }, { label: issueId, route: "/issue/" + issueId }, { label: "Remediation workspace" }]));
+
+      if (!HX.breakglass.active || HX.breakglass.active.issue !== issueId) {
+        // gate: show the request panel; opening the break-glass sheet is mandatory
+        var gate = E("div", { class: "hx-card", style: "border:2px solid var(--frame-emergency);max-width:640px" });
+        gate.appendChild(E("div", { class: "hx-card__head" }, [I("lock"), E("h3", { style: "color:var(--frame-emergency)", text: "Entitled remediation workspace — break-glass required" })]));
+        gate.appendChild(E("p", { text: "This is the only surface in the console that shows record-level values. It requires a reason code and an MFA re-prompt, is time-boxed to 4 hours, red-framed, and writes an AuditEvent for every record you view. Reviewed by the Privacy Officer within 2 business days (DQ-REM-013, GOV-ACC-012)." }));
+        gate.appendChild(E("p", { class: "hx-caption hx-muted", text: "Prototype: identifiers are synthetic (SYN-nnnnnn, Zz-Test names) only." }));
+        var openBtn = E("button", { class: "hx-btn hx-btn--danger" }, [I("lock"), "Request break-glass access"]);
+        openBtn.addEventListener("click", function () {
+          HX.breakglass.open(issueId).then(function (session) {
+            if (session) { persistBreakGlassOpen(session); viewRemediation(issueId); }
+            else { HX.toast("Break-glass cancelled.", { kind: "warn", timeout: 3000 }); }
+          });
+        });
+        gate.appendChild(openBtn);
+        var back = E("button", { class: "hx-btn", style: "margin-left:var(--sp-2)" }, ["Back to issue"]);
+        back.addEventListener("click", function () { go("/issue/" + issueId); });
+        gate.appendChild(back);
+        root.appendChild(gate);
+        focusRoot();
+        try { openBtn.focus(); } catch (e) {}
+        return;
+      }
+
+      // ACTIVE break-glass — red framed workspace
+      addBreakGlassMeta();
+      var session = HX.breakglass.active;
+      persistBreakGlassOpen(session); // idempotent: covers re-entry / re-render after open
+      var frame = E("div", { class: "hx-breakglass-frame" });
+      var bar = E("div", { class: "hx-breakglass-frame__bar", role: "alert" });
+      bar.appendChild(I("lock"));
+      bar.appendChild(E("span", { text: "BREAK-GLASS ACTIVE — " + issueId + " · reason " + session.reasonCode + " · every record you view is audited" }));
+      var countdown = E("span", { class: "hx-breakglass-frame__countdown", id: "dq-bg-countdown" });
+      bar.appendChild(countdown);
+      var leave = E("button", { class: "hx-btn hx-btn--sm", id: "dq-bg-leave" }, [I("close"), "Leave break-glass"]);
+      leave.addEventListener("click", leaveBreakGlass);
+      bar.appendChild(leave);
+      frame.appendChild(bar);
+
+      frame.appendChild(E("p", { class: "hx-caption", text: "Minimum necessary. These are the records failing " + iss.rule + ". Reveal a record only when you must act on it; each reveal writes an AuditEvent. Synthetic identifiers only." }));
+
+      var tbl = E("table", { class: "dq-records" });
+      tbl.appendChild(E("thead", {}, [E("tr", {}, ["Token", "MRN", "Patient", "Field", "Value", "Proposed", "Facility", ""].map(function (h) { return E("th", { text: h }); }))]));
+      var tb = E("tbody");
+      (iss.records || []).forEach(function (rec) {
+        var tr = E("tr");
+        tr.appendChild(E("td", { text: rec.token }));
+        var mrnTd = E("td"); var nameTd = E("td"); var facTd = E("td");
+        var mrnMask = HX.masked(rec.mrnSyn, "phi:direct"); mrnTd.appendChild(mrnMask);
+        var nameMask = HX.masked(rec.nameSyn, "phi:direct"); nameTd.appendChild(nameMask);
+        facTd.appendChild(HX.masked(rec.facility, "phi:quasi"));
+        tr.appendChild(mrnTd); tr.appendChild(nameTd);
+        tr.appendChild(E("td", { class: "hx-mono", text: rec.field }));
+        tr.appendChild(E("td", { class: "hx-mono", text: rec.value }));
+        tr.appendChild(E("td", { text: rec.proposed || "—" }));
+        tr.appendChild(facTd);
+        var actTd = E("td");
+        var reveal = E("button", { class: "hx-btn hx-btn--sm hx-btn--danger" }, [I("watch"), "Reveal"]);
+        reveal.addEventListener("click", function () {
+          CLEAR(mrnTd); mrnTd.appendChild(E("span", { class: "hx-masked hx-masked--revealed", text: rec.mrnSyn }));
+          CLEAR(nameTd); nameTd.appendChild(E("span", { class: "hx-masked hx-masked--revealed", text: rec.nameSyn }));
+          CLEAR(facTd); facTd.appendChild(E("span", { class: "hx-masked hx-masked--revealed", text: rec.facility }));
+          HX.breakglass.viewRecord();
+          HX.live("Record " + rec.token + " revealed and audited.", "assertive");
+          CLEAR(actTd); actTd.appendChild(HX.chip("vetoed", "audited", { title: "AuditEvent written for " + rec.token }));
+          updateCountdown();
+        });
+        actTd.appendChild(reveal);
+        tr.appendChild(actTd);
+        tb.appendChild(tr);
+      });
+      tbl.appendChild(tb);
+      if (!(iss.records || []).length) frame.appendChild(E("div", { class: "hx-empty", text: "No record-level rows captured for this issue." }));
+      else frame.appendChild(E("div", { class: "hx-scroll-x" }, [tbl]));
+
+      var leave2 = E("button", { class: "hx-btn", style: "margin-top:var(--sp-3)" }, [I("close"), "Leave break-glass and send review to Privacy Officer"]);
+      leave2.addEventListener("click", leaveBreakGlass);
+      frame.appendChild(leave2);
+      root.appendChild(frame);
+
+      // countdown ticker
+      startCountdown(session);
+      focusRoot();
+      function leaveBreakGlass() { var s = HX.breakglass.active; removeBreakGlassMeta(); stopCountdown(); closeBreakGlass(s, "buttons", true); HX.breakglass.leave(); go("/issue/" + issueId); }
+    }
+    var bgTimer = null;
+    function startCountdown(session) { stopCountdown(); updateCountdown(); bgTimer = setInterval(updateCountdown, 1000); }
+    function stopCountdown() { if (bgTimer) { clearInterval(bgTimer); bgTimer = null; } }
+    function updateCountdown() {
+      var el = document.getElementById("dq-bg-countdown"); if (!el || !HX.breakglass.active) return;
+      var ms = Date.parse(HX.breakglass.active.expiresAt) - Date.now();
+      if (ms <= 0) { el.textContent = "expired"; stopCountdown(); closeBreakGlass(HX.breakglass.active, "expired", true); HX.breakglass.leave(); return; }
+      var h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
+      el.textContent = h + "h " + String(m).padStart(2, "0") + "m " + String(s).padStart(2, "0") + "s · viewed " + HX.breakglass.active.recordsViewed;
+    }
+    function addBreakGlassMeta() {
+      if (!document.getElementById("dq-bg-meta")) { var m = document.createElement("meta"); m.id = "dq-bg-meta"; m.setAttribute("http-equiv", "cache-control"); m.content = "no-store, no-cache, must-revalidate"; document.head.appendChild(m); }
+    }
+    function removeBreakGlassMeta() { var m = document.getElementById("dq-bg-meta"); if (m) m.remove(); }
+
+    /* ----------------------------------------------------------------
+       Break-glass session durability (UX-DQ-003 P0).
+       HX.breakglass.active is in-memory by design — no PHI payload is ever
+       persisted. But the mandated post-hoc Privacy review must survive EVERY
+       exit, not only the two "Leave break-glass" buttons: a rail/palette jump
+       (full page load), a closed tab, or Back all destroy the in-memory
+       session otherwise, silently skipping both the exit AuditEvent and the
+       PRIVACY_REVIEW_QUEUED item. So at open time we persist a payload-free
+       "open session" marker (ids, viewed role, reason code, timestamps and the
+       reveal count — never record values) to a durable store keyed by session
+       id; we write PRIVACY_REVIEW_QUEUED on pagehide/beforeunload as well as
+       the Leave buttons; and on the next load we reconcile any marker that
+       never got a clean close into a queued Privacy review. Close is therefore
+       mandatory — an abandoned session is detected and reviewed, not dropped.
+       dq-console is the console's only record-level (PHI) surface, so the
+       marker store and its reconciliation live here. */
+    var BG_STORE = "hx.bg.sessions";
+    function bgLoad() { try { return JSON.parse(localStorage.getItem(BG_STORE)) || {}; } catch (e) { return {}; } }
+    function bgSave(map) { try { localStorage.setItem(BG_STORE, JSON.stringify(map)); } catch (e) { /* private mode / blocked: live-path audit still fires; reconcile is best-effort */ } }
+    function bgRec(s) {
+      // payload-free marker: session + governance metadata only, no record values (AC-17)
+      return { id: s.id, issue: s.issue, principal: s.principal, reasonCode: s.reasonCode, startedAt: s.startedAt, expiresAt: s.expiresAt, recordsViewed: s.recordsViewed || 0, closedAt: null, exitVia: null, reviewQueuedAt: null, reviewSurfaced: false };
+    }
+    // Persist the open marker the moment a session becomes active. Idempotent:
+    // a re-render must never clobber a marker that has already been closed.
+    function persistBreakGlassOpen(session) {
+      if (!session || !session.id) return;
+      var m = bgLoad();
+      if (!m[session.id]) { m[session.id] = bgRec(session); bgSave(m); }
+    }
+    // Durably close a session and queue the Privacy review. `surface` true also
+    // writes the PRIVACY_REVIEW_QUEUED AuditEvent into the live in-memory log
+    // now (Leave-button path, page stays alive); false defers surfacing to
+    // reconcileOpenSessions() on the next load (pagehide path, where this
+    // document context is about to be destroyed and the in-memory log with it).
+    function closeBreakGlass(session, via, surface) {
+      if (!session || !session.id) return;
+      var now = new Date().toISOString();
+      var m = bgLoad();
+      var rec = m[session.id] || bgRec(session);
+      if (rec.closedAt) return; // already closed on another exit path — never double-queue
+      rec.closedAt = now; rec.exitVia = via; rec.recordsViewed = session.recordsViewed || rec.recordsViewed || 0; rec.reviewQueuedAt = now;
+      if (surface) { HX.audit.write({ type: "PRIVACY_REVIEW_QUEUED", session: session.id, issue: session.issue, exitVia: via, recordsViewed: rec.recordsViewed }); rec.reviewSurfaced = true; }
+      m[session.id] = rec; bgSave(m);
+    }
+    // On load: surface any durably-queued review this fresh context has not yet
+    // logged, and force-close any marker that never got ANY close (hard tab kill
+    // or crash where even pagehide did not fire) into an unreconciled-exit
+    // review. Fully-reconciled markers are then pruned to bound storage.
+    function reconcileOpenSessions() {
+      var m = bgLoad(); var changed = false;
+      Object.keys(m).forEach(function (id) {
+        var rec = m[id]; if (!rec) return;
+        if (!rec.closedAt) { rec.closedAt = new Date().toISOString(); rec.exitVia = "unreconciled_exit"; rec.reviewQueuedAt = rec.reviewQueuedAt || rec.closedAt; changed = true; }
+        if (rec.reviewQueuedAt && !rec.reviewSurfaced) {
+          HX.audit.write({ type: "PRIVACY_REVIEW_QUEUED", session: rec.id, issue: rec.issue, exitVia: rec.exitVia, recordsViewed: rec.recordsViewed, reconciled: true });
+          rec.reviewSurfaced = true; changed = true;
+        }
+      });
+      var pruned = {}; Object.keys(m).forEach(function (id) { if (!m[id].closedAt || !m[id].reviewSurfaced) pruned[id] = m[id]; });
+      if (changed || Object.keys(pruned).length !== Object.keys(m).length) bgSave(pruned);
+    }
+    // pagehide/beforeunload: the common non-button exits. Record the mandatory
+    // close durably now; the next load surfaces the PRIVACY_REVIEW_QUEUED item.
+    function onBreakGlassPageExit() {
+      var s = HX.breakglass && HX.breakglass.active;
+      if (s) closeBreakGlass(s, "pagehide", false);
+    }
+
+    /* ================================================================ QUARANTINE */
+    function viewQuarantine() {
+      renderTabs("quarantine"); CLEAR(root);
+      root.appendChild(E("div", { class: "hx-page-title" }, [E("h1", { text: "Quarantine" }), E("span", { class: "hx-muted hx-dense", text: "Records held out of the warehouse pending remediation, by topic" })]));
+      if (!D.quarantine.length) { root.appendChild(emptyState("Nothing quarantined", "No records are held out right now.")); return; }
+      var grid = E("div", { class: "dq-cards" });
+      D.quarantine.forEach(function (q) {
+        var card = E("div", { class: "hx-card" });
+        card.appendChild(E("div", { class: "hx-row", style: "justify-content:space-between" }, [HX.groupChip(q.group), HX.chip(q.count > 1000 ? "warn" : "neutral", HX.format.num(q.count, 0) + " held")]));
+        card.appendChild(E("div", { class: "hx-mono hx-caption", style: "margin:6px 0", text: q.topic }));
+        card.appendChild(E("div", { class: "hx-caption hx-muted", text: "oldest " + HX.format.time(q.oldest, "event") }));
+        var row = E("div", { class: "hx-row", style: "margin-top:var(--sp-2)" });
+        var t = peekChip("Open topic", "info", "/topic/" + q.topic); row.appendChild(t);
+        var rel = E("a", { href: "#", class: "home-link" }, ["Related issues"]);
+        rel.addEventListener("click", function (e) { e.preventDefault(); go("/dq/issues"); });
+        row.appendChild(rel);
+        card.appendChild(row);
+        grid.appendChild(card);
+      });
+      root.appendChild(grid);
+      focusRoot();
+    }
+
+    /* ================================================================ EXCEPTIONS */
+    function allExceptions() {
+      var list = D.exceptions.slice();
+      Object.keys(MEM.exceptions).forEach(function (id) { var m = MEM.exceptions[id]; list.unshift({ id: id, issue: m.issue, rule: m.rule, group: m.group, requestedBy: HX.role.principal(), approvedBy: [], secondApproverRequired: m.state === "awaiting_second_approver", reason: "Session draft exception.", expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(), state: m.state }); });
+      return list;
+    }
+    function viewExceptions() {
+      renderTabs("exceptions"); CLEAR(root);
+      root.appendChild(E("div", { class: "hx-page-title" }, [E("h1", { text: "Exceptions" }), E("span", { class: "hx-muted hx-dense", text: "Accepted DQ breaches, time-boxed, with a reason" })]));
+      var list = allExceptions();
+      var table = E("div", { class: "hx-datatable hx-datatable--cards" });
+      var tblWrap = E("div", { class: "hx-scroll-x" }); var tbl = E("table"); tblWrap.appendChild(tbl); table.appendChild(tblWrap);
+      tbl.appendChild(E("thead", {}, [E("tr", {}, ["Exception", "Rule", "Group", "State", "Approvers", "Expires", ""].map(function (h) { return E("th", { text: h }); }))]));
+      var tb = E("tbody");
+      list.forEach(function (exc) {
+        var tr = E("tr", { tabindex: "0" });
+        addCell(tr, "Exception", [E("span", { class: "hx-mono hx-caption", text: exc.id })]);
+        addCell(tr, "Rule", [E("span", { class: "hx-mono hx-caption", text: exc.rule })]);
+        addCell(tr, "Group", [HX.groupChip(exc.group)]);
+        var stKind = exc.state === "active" ? "ok" : exc.state === "expiring_soon" ? "warn" : exc.state === "awaiting_second_approver" ? "pending" : "neutral";
+        addCell(tr, "State", [HX.chip(stKind, TC(exc.state))]);
+        addCell(tr, "Approvers", [E("span", { class: "hx-caption", text: (exc.approvedBy || []).length + (exc.secondApproverRequired ? " / 2" : " / 1") })]);
+        addCell(tr, "Expires", [E("span", { class: "hx-time", text: HX.format.time(exc.expiresAt, "valid") })]);
+        var actTd = E("td", { "data-label": "" });
+        if (exc.secondApproverRequired && (exc.approvedBy || []).length < 2) {
+          var ap = E("button", { class: "hx-btn hx-btn--sm" }, ["Second approve"]);
+          ap.addEventListener("click", function (e) { e.stopPropagation(); secondApprove(exc); });
+          actTd.appendChild(ap);
+        }
+        tr.appendChild(actTd);
+        tb.appendChild(tr);
+      });
+      tbl.appendChild(tb); table.appendChild(tblWrap); root.appendChild(table);
+      focusRoot();
+    }
+    function secondApprove(exc) {
+      HX.env.confirmWrite().then(function (ok) { if (!ok) return; HX.confirm({ title: "Second approval", body: "Co-sign exception " + exc.id + " for " + exc.rule + "?", confirmLabel: "Co-sign" }).then(function (c) { if (!c) return; if (MEM.exceptions[exc.id]) MEM.exceptions[exc.id].state = "active"; HX.audit.write({ type: "EXCEPTION_SECOND_APPROVAL", exception: exc.id, by: HX.role.principal() }); HX.toast(exc.id + " co-signed and now active.", { kind: "ok" }); viewExceptions(); }); });
+    }
+    function viewExceptionDetail(id) {
+      renderTabs("exceptions"); CLEAR(root);
+      var exc = allExceptions().filter(function (e) { return e.id === id; })[0];
+      if (!exc) { root.appendChild(emptyState("No exception " + id, "Pick an exception from the Exceptions tab.")); return; }
+      root.appendChild(crumb([{ label: "Exceptions", route: "/dq/exceptions" }, { label: id }]));
+      var card = E("div", { class: "hx-card", style: "max-width:640px" });
+      card.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: id })]));
+      var kv = E("dl", { class: "dq-kv" });
+      [["Rule", exc.rule], ["Group", exc.group], ["Requested by", exc.requestedBy], ["Approvers", (exc.approvedBy || []).join(", ") || "—"], ["Second approver", exc.secondApproverRequired ? "required" : "not required"], ["State", exc.state], ["Expires", HX.format.time(exc.expiresAt, "valid")]].forEach(function (p) { kv.appendChild(E("dt", { text: p[0] })); kv.appendChild(E("dd", { text: p[1] })); });
+      card.appendChild(kv);
+      card.appendChild(E("p", { style: "margin-top:var(--sp-3)", text: exc.reason }));
+      if (exc.issue) { var ir = E("div", { class: "hx-row" }); ir.appendChild(E("span", { class: "hx-caption hx-muted", text: "From issue" })); ir.appendChild(peekChip(exc.issue, "info", "/issue/" + exc.issue)); card.appendChild(ir); }
+      root.appendChild(card);
+      focusRoot();
+    }
+
+    /* ---------------------------------------------------------------- utilities */
+    function addCell(tr, label, nodes) { var td = E("td", { "data-label": label }); nodes.forEach(function (n) { if (n) td.appendChild(n); }); tr.appendChild(td); }
+    function emptyState(title, hint) { return E("div", { class: "hx-empty" }, [E("div", { text: title }), E("div", { class: "hx-empty__cta hx-caption", text: hint })]); }
+    function focusRoot() { try { root.focus({ preventScroll: true }); } catch (e) {} }
+
+    /* ---------------------------------------------------------------- router */
+    function render() {
+      HX.keys.bind({ j: null, k: null, o: null }); // reset list chords between views
+      var p = routeParts();
+      // p like ["dq"], ["dq","rules"], ["scorecard","G2"], ["rule","DQR-..."], ["issue","ISS-..."], ["issue","ISS-...","?"], ["remediation","ISS-...","records"], ["exception","EXC-..."], ["quarantine"]...
+      var a = p[0];
+      if (a === "scorecard") return viewScorecardDetail(p[1]);
+      if (a === "rule") return viewRuleDetail(p.slice(1).join("/"));
+      if (a === "issue") return viewIssueDetail(p[1]);
+      if (a === "remediation") return viewRemediation(p[1]);
+      if (a === "exception") return viewExceptionDetail(p[1]);
+      // /dq and /dq/<tab>
+      var tab = p[1] || "scorecards";
+      if (a === "quarantine") tab = "quarantine";
+      if (a === "exceptions") tab = "exceptions";
+      if (a === "rules") tab = "rules";
+      if (a === "issues") tab = "issues";
+      switch (tab) {
+        case "rules": return viewRules();
+        case "issues": return viewIssues();
+        case "quarantine": return viewQuarantine();
+        case "exceptions": return viewExceptions();
+        default: return viewScorecards();
+      }
+    }
+
+    function buildIndexes() {
+      D.rules.forEach(function (r) { IX.rule[r.id] = r; });
+      D.issues.forEach(function (i) { IX.issue[i.id] = i; });
+      D.scorecards.forEach(function (s) { IX.sc[s.group] = s; });
+      D.exceptions.forEach(function (e) { IX.exc[e.id] = e; });
+    }
+
+    // palette provider: resolve DQ ids and labels
+    HX.palette.register(function (q) {
+      if (!loaded || !q) return null;
+      var n = q.toLowerCase(); var items = [];
+      D.rules.filter(function (r) { return (r.id + " " + r.label).toLowerCase().indexOf(n) >= 0; }).slice(0, 5).forEach(function (r) { items.push({ label: r.label, id: r.id, route: "/rule/" + r.id, chips: [r.severity, r.group] }); });
+      D.issues.filter(function (i) { return i.id.toLowerCase().indexOf(n) >= 0 || i.rule.toLowerCase().indexOf(n) >= 0; }).slice(0, 5).forEach(function (i) { items.push({ label: i.id + " · " + i.rule, id: effectiveIssueState(i), route: "/issue/" + i.id, chips: [i.severity, i.group] }); });
+      D.scorecards.filter(function (s) { return ("scorecard " + s.group + " " + s.label).toLowerCase().indexOf(n) >= 0; }).slice(0, 3).forEach(function (s) { items.push({ label: "Scorecard " + s.group + " · " + s.label, id: s.band, route: "/scorecard/" + s.group, chips: [s.band] }); });
+      return items.length ? { group: "Quality", items: items } : null;
+    });
+
+    window.addEventListener("hashchange", render);
+    // Break-glass close is mandatory on every exit, not a UI courtesy: cover the
+    // non-button paths (rail/palette full load, tab close, Back) and reconcile
+    // any session a prior load left open. Runs independently of DQ data loading.
+    window.addEventListener("pagehide", onBreakGlassPageExit);
+    window.addEventListener("beforeunload", onBreakGlassPageExit);
+    reconcileOpenSessions();
+
+    // boot
+    root.appendChild(E("div", { class: "hx-stack" }, [E("div", { class: "hx-skeleton", style: "height:120px" }), E("div", { class: "hx-skeleton", style: "height:200px" })]));
+    HX.data.load("dq").then(function (d) {
+      D.scorecards = d.scorecards || []; D.rules = d.rules || []; D.issues = d.issues || [];
+      D.exceptions = d.exceptions || []; D.quarantine = d.quarantine || []; D.bands = d.bands || BANDS;
+      loaded = true; buildIndexes(); render();
+    }).catch(function (e) { loaded = true; console.warn("DQ data load issue:", e); render(); });
+  })();
+  </script>
+</body>
+</html>

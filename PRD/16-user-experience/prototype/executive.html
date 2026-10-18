@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>HEALIX Executive</title>
+  <meta name="description" content="Executive sponsor home for the HEALIX knowledge platform: programme health in under a minute with drill-down to KPIs, scorecard attribution and read-only change requests. Synthetic data only.">
+  <link rel="stylesheet" href="assets/app.css">
+  <style>
+    /* Page-local layout only. All colour comes from app.css tokens.
+       The home is a one-screen grid (six goal tiles · group band map ·
+       phase gates · decisions waiting · risk register · attribution).
+       It reflows from multi-column to one column at phone width with no
+       horizontal scroll at 390px. */
+    .exec { display: grid; gap: var(--sp-3); }
+    .exec__intro { display: flex; align-items: baseline; gap: var(--sp-2) var(--sp-3); flex-wrap: wrap; }
+    .exec__intro h1 { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+    .exec__intro p { color: var(--fg-muted); font-size: var(--fs-dense); margin: 0; }
+    .exec__intro-actions { margin-left: auto; display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+
+    .exec__goals { display: grid; grid-template-columns: repeat(auto-fit, minmax(176px, 1fr)); gap: var(--sp-2); }
+    .exec__mid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-3); align-items: start; }
+
+    /* goal tile as an actionable button */
+    .exec-goal { text-align: left; cursor: pointer; }
+    .exec-goal:hover { border-color: var(--border-strong); }
+    .exec-goal__top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+    .exec-goal__id { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--fg-faint); }
+    .exec-goal__label { font-size: var(--fs-caption); color: var(--fg-muted); min-height: 2.4em; }
+    .exec-goal__value { font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .exec-goal__value small { font-size: var(--fs-caption); font-weight: 400; color: var(--fg-muted); }
+    .exec-goal__target { font-size: var(--fs-micro); color: var(--fg-muted); font-family: var(--font-mono); }
+    .exec-goal__spark { height: 24px; margin: 2px 0; }
+    .exec-goal__companion { font-size: var(--fs-micro); color: var(--fg-muted); display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+    .exec-goal__companion.is-ok b { color: var(--ok-fg); }
+    .exec-goal__companion.is-bad b { color: var(--danger-fg); }
+
+    .exec-panel { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-raised); padding: var(--sp-3) var(--sp-4); min-width: 0; }
+    .exec-panel > h2 { font-size: var(--fs-dense); font-weight: 600; display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+    .exec-panel__sub { font-size: var(--fs-caption); color: var(--fg-muted); margin-bottom: var(--sp-2); }
+
+    .exec-kv { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: 5px 0; border-bottom: 1px solid var(--border); font-size: var(--fs-dense); }
+    .exec-kv:last-child { border-bottom: 0; }
+    .exec-kv__k { color: var(--fg-muted); display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .exec-kv__v { font-family: var(--font-mono); font-size: var(--fs-caption); white-space: nowrap; }
+
+    .exec-risk { display: flex; align-items: center; gap: var(--sp-2); padding: 5px 0; border-bottom: 1px solid var(--border); font-size: var(--fs-caption); }
+    .exec-risk:last-child { border-bottom: 0; }
+    .exec-risk__score { font-family: var(--font-mono); font-weight: 600; min-width: 2.4em; text-align: center; padding: 1px 4px; border-radius: var(--r-ctl); }
+    .exec-risk__score--hi { background: var(--danger-bg); color: var(--danger-fg); }
+    .exec-risk__score--md { background: var(--warn-bg); color: var(--warn-fg); }
+    .exec-risk__main { flex: 1; min-width: 0; }
+    .exec-risk__main b { font-weight: 600; }
+    .exec-risk__main span { color: var(--fg-muted); display: block; }
+    .exec-trend { font-size: 10px; }
+    .exec-trend--worsening { color: var(--danger-fg); }
+    .exec-trend--improving { color: var(--ok-fg); }
+    .exec-trend--stable { color: var(--fg-muted); }
+
+    /* attribution heat (DQI by group × month) */
+    .exec-heat { width: 100%; border-collapse: collapse; font-size: var(--fs-caption); }
+    .exec-heat th, .exec-heat td { border: 1px solid var(--border); padding: 3px 6px; text-align: center; font-family: var(--font-mono); }
+    .exec-heat th { background: var(--bg-sunken); color: var(--fg-muted); font-weight: 500; }
+    .exec-heat th[scope="row"] { text-align: left; }
+    .exec-heat td.is-green { background: var(--ok-bg); color: var(--ok-fg); }
+    .exec-heat td.is-amber { background: var(--warn-bg); color: var(--warn-fg); }
+    .exec-heat td.is-red { background: var(--danger-bg); color: var(--danger-fg); }
+    .exec-heat td.is-black { background: var(--black-band-bg); color: var(--black-band-fg); }
+
+    .exec-narr { font-size: var(--fs-dense); line-height: var(--lh-dense); border-left: 3px solid var(--accent); padding-left: var(--sp-3); }
+
+    .exec-nudge-note { font-size: var(--fs-micro); color: var(--fg-muted); }
+
+    /* KPI / CR drill views (not one-screen constrained) */
+    .exec-back { margin-bottom: var(--sp-3); }
+    .exec-kpi__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-3); align-items: start; }
+    .exec-bygroup__row { display: grid; grid-template-columns: 2.4em 1fr auto; align-items: center; gap: var(--sp-2); width: 100%; text-align: left; padding: 4px var(--sp-2); border: 1px solid transparent; border-radius: var(--r-ctl); font-size: var(--fs-dense); background: transparent; cursor: pointer; }
+    .exec-bygroup__row:hover { background: var(--bg-sunken); }
+    .exec-bygroup__row[aria-expanded="true"] { border-color: var(--border); background: var(--bg-sunken); }
+    .exec-bygroup__bar { height: 10px; border-radius: var(--r-pill); background: var(--border); overflow: hidden; }
+    .exec-bygroup__bar i { display: block; height: 100%; background: var(--accent); }
+    .exec-bygroup__v { font-family: var(--font-mono); font-size: var(--fs-caption); min-width: 3.2em; text-align: right; }
+    .exec-slider { width: 100%; }
+    .exec-month { font-family: var(--font-mono); font-weight: 600; }
+    .exec-readonly { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-micro); color: var(--fg-muted); border: 1px dashed var(--border-strong); border-radius: var(--r-pill); padding: 1px 8px; }
+
+    /* the exec home is a single screen: trim the tall default bottom padding */
+    body[data-exec-view="home"] .hx-main { padding-top: var(--sp-3); padding-bottom: var(--sp-6); }
+
+    @media print {
+      .hx-rail, .hx-inspector, .hx-topbar, .hx-banner--synthetic, .exec__intro-actions, .exec-nudge-note { display: none !important; }
+      .exec-panel { break-inside: avoid; }
+    }
+
+    .sr-skip { position: absolute; left: -999px; top: 0; }
+    .sr-skip:focus { left: 8px; top: 8px; z-index: 100; background: var(--accent); color: var(--accent-fg); padding: 6px 10px; border-radius: var(--r-ctl); }
+  </style>
+</head>
+<body>
+  <a class="sr-skip" href="#exec-root">Skip to executive content</a>
+  <main id="hx-main">
+    <div id="exec-root" tabindex="-1"></div>
+  </main>
+
+  <!-- Synthetic-data fallbacks so the page renders over file:// (README §How to open).
+       Served over http, HX.data.load fetches the full data/*.json supersets instead. -->
+  <script type="application/json" id="hx-data-kpis">
+{
+ "goals": [
+  {"id":"G-01","label":"Enterprise ontology covers all nine groups","value":93.4,"target":95,"unit":"% attributes bound","trend90d":[86.0,88.1,90.2,91.8,93.4],"band":"Amber","kpi":"semantic-coverage","companion":{"label":"OWL DL consistent","value":"yes","mustBe":"yes"}},
+  {"id":"G-02","label":"All events standardised to FHIR R4 on Kafka","value":96,"target":100,"unit":"% in-scope interfaces","trend90d":[71,80,88,92,96],"band":"Amber","kpi":"interface-coverage","companion":{"label":"FHIR validator pass rate","value":99.67,"target":99.5}},
+  {"id":"G-03","label":"DQ at ingestion with ontology-derived rules","value":93,"target":90,"unit":"% CDEs covered","trend90d":[78,84,88,91,93],"band":"Green","kpi":"dq-coverage","companion":{"label":"Mean time to detect","value":"6.2 min","target":"< 15 min"}},
+  {"id":"G-04","label":"EDW with grouped subject areas","value":9,"target":9,"unit":"groups populated","trend90d":[5,6,7,8,9],"band":"Green","kpi":"edw-groups","companion":{"label":"Conformed dims shared by ≥ 2 groups","value":10,"target":">= 1"}},
+  {"id":"G-05","label":"All facts bitemporal with provenance","value":99.98,"target":100,"unit":"% KG assertions","trend90d":[99.1,99.6,99.9,99.97,99.98],"band":"Amber","kpi":"bitemporal-completeness","companion":{"label":"Assertions missing prov_activity","value":3400,"mustBeZero":true}},
+  {"id":"G-06","label":"Autonomous with human gates","value":78,"target":80,"unit":"% auto-approved","trend90d":[61,66,70,74,78],"band":"Amber","kpi":"auto-approval-rate","companion":{"label":"Unreviewed PHI-affecting changes","value":0,"mustBeZero":true}}
+ ],
+ "kpis": [
+  {"slug":"semantic-coverage","label":"Semantic coverage","goal":"G-01","definition":"Share of EDW attributes bound to an ontology property.","formula":"bound_columns / total_columns","value":93.4,"target":95,"unit":"%","band":"Amber","byGroup":{"G1":97,"G2":96,"G3":95,"G4":92,"G5":81,"G6":94,"G7":90,"G8":99,"G9":98},"lineage":["edw_g9_governance.vw_binding_coverage","edw_g9_governance.dim_data_element"],"history":[{"month":"2026-05","value":84.0},{"month":"2026-06","value":86.0},{"month":"2026-07","value":88.1},{"month":"2026-08","value":90.2},{"month":"2026-09","value":91.8},{"month":"2026-10","value":93.4}],"lastMovedBy":"release ontology v2026.10.0","explain":"27 of 38 unbound G5 attributes are Oracle HCM lookup codes awaiting CR-CV-BIND; 11 await the HR steward gate (median wait 9 days).","drill":{"group":"G5","route":"/edw?group=G5&binding=unbound","gate":"steward_approval","gateRole":"role.steward_g5","unbound":38}},
+  {"slug":"interface-coverage","label":"Interface coverage","goal":"G-02","definition":"In-scope interfaces emitting canonical.* topics.","formula":"interfaces_with_canonical / interfaces_in_scope","value":96,"target":100,"unit":"%","band":"Amber","byGroup":{"G1":100,"G2":100,"G3":100,"G4":100,"G5":100,"G6":80,"G7":100,"G8":100,"G9":100},"lineage":["edw_g9_governance.dim_source_interface"],"history":[{"month":"2026-05","value":60},{"month":"2026-06","value":71},{"month":"2026-07","value":80},{"month":"2026-08","value":88},{"month":"2026-09","value":92},{"month":"2026-10","value":96}],"lastMovedBy":"onboarding oracle-fusion-scm step 10","explain":"One HIE FHIR subscription interface is at onboarding step 4 (PHI classification) with 11 unclassified elements.","drill":{"route":"/sources?lifecycle=onboarding"}},
+  {"slug":"dq-coverage","label":"DQ coverage of critical data elements","goal":"G-03","definition":"CDEs with at least one active rule evaluated in the window.","formula":"cdes_with_rule / cdes","value":93,"target":90,"unit":"%","band":"Green","byGroup":{"G1":96,"G2":95,"G3":94,"G4":90,"G5":84,"G6":95,"G7":88,"G8":99,"G9":100},"lineage":["edw_g9_governance.fact_dq_result","edw_g9_governance.dim_data_element"],"history":[{"month":"2026-05","value":70},{"month":"2026-06","value":78},{"month":"2026-07","value":84},{"month":"2026-08","value":88},{"month":"2026-09","value":91},{"month":"2026-10","value":93}],"lastMovedBy":"rulepack g2-clinical@2026.11.0","explain":"Above target; G5 and G7 trail because unbound attributes cannot derive rules.","drill":{"route":"/dq?tab=rules"}},
+  {"slug":"edw-groups","label":"EDW groups populated","goal":"G-04","definition":"Subject-area groups with at least one certified table.","formula":"count(groups with certified table)","value":9,"target":9,"unit":"groups","band":"Green","byGroup":{},"lineage":["edw_g9_governance.dim_table"],"history":[{"month":"2026-05","value":4},{"month":"2026-06","value":5},{"month":"2026-07","value":6},{"month":"2026-08","value":7},{"month":"2026-09","value":8},{"month":"2026-10","value":9}],"lastMovedBy":"G7 first load","explain":"All nine populated; G7 certification revoked 2026-10-14 (still counts as populated).","drill":{"route":"/edw"}},
+  {"slug":"bitemporal-completeness","label":"Bitemporal completeness","goal":"G-05","definition":"KG assertions carrying valid time, transaction time and PROV-O activity.","formula":"assertions_with_all_three / assertions","value":99.98,"target":100,"unit":"%","band":"Amber","byGroup":{"G1":100,"G2":99.97,"G3":100,"G4":100,"G5":100,"G6":100,"G7":99.9,"G8":100,"G9":100},"lineage":["edw_g9_governance.fact_kg_assertion_audit"],"history":[{"month":"2026-05","value":98.2},{"month":"2026-06","value":99.1},{"month":"2026-07","value":99.6},{"month":"2026-08","value":99.9},{"month":"2026-09","value":99.97},{"month":"2026-10","value":99.98}],"lastMovedBy":"CR-20261017-01J9KM rolled back","explain":"3 400 assertions loaded during the schema v5 window lack prov_activity_iri; replay RPL-01JA0U1 awaits approval.","drill":{"route":"/incident/INC-01JA0S9"}},
+  {"slug":"auto-approval-rate","label":"Auto-approval rate","goal":"G-06","definition":"Vocabulary, mapping and DQ-rule changes auto-approved after evaluation.","formula":"auto_approved / (auto_approved + human_dispositioned)","value":78,"target":80,"unit":"%","band":"Amber","byGroup":{},"byType":{"vocabulary":91,"mapping":82,"dq_rule":64},"lineage":["edw_g9_governance.fact_change_request"],"history":[{"month":"2026-05","value":52},{"month":"2026-06","value":61},{"month":"2026-07","value":66},{"month":"2026-08","value":70},{"month":"2026-09","value":74},{"month":"2026-10","value":78}],"lastMovedBy":"dq_rule κ 0.90 restored auto-approval","explain":"dq_rule auto-approval was suspended in September while κ was below 0.90.","drill":{"route":"/agents?tab=calibration"}},
+  {"slug":"unreviewed-phi-changes","label":"Unreviewed PHI-affecting changes","goal":"G-06","definition":"PHI-affecting CRs applied without privacy_officer_approval.","formula":"count","value":0,"target":0,"unit":"changes","band":"Green","mustBeZero":true,"byGroup":{},"lineage":["edw_g9_governance.fact_change_request","edw_g9_governance.fact_audit_event"],"history":[{"month":"2026-05","value":0},{"month":"2026-06","value":0},{"month":"2026-07","value":0},{"month":"2026-08","value":0},{"month":"2026-09","value":0},{"month":"2026-10","value":0}],"lastMovedBy":null,"explain":"Zero since programme start.","drill":{"route":"/cr?risk=phi_affecting"}},
+  {"slug":"lineage-coverage","label":"Lineage coverage","goal":"G-05","definition":"Columns, topics and properties with a recorded lineage edge.","formula":"objects_with_lineage / objects","value":96.1,"target":95,"unit":"%","band":"Green","byGroup":{"G1":100,"G2":97,"G3":95,"G4":93,"G5":88,"G6":96,"G7":90,"G8":100,"G9":100},"lineage":["edw_g9_governance.fact_lineage_edge"],"history":[{"month":"2026-05","value":80},{"month":"2026-06","value":86},{"month":"2026-07","value":90},{"month":"2026-08","value":93},{"month":"2026-09","value":95},{"month":"2026-10","value":96.1}],"lastMovedBy":"mapspec lis-oru registered","explain":"100 % for phi:direct as required by S19.","drill":{"route":"/gov?tab=lineage"}}
+ ],
+ "phases": [
+  {"id":"PH1","label":"Phase 1 · Foundation","window":"2026-Q2","state":"done","gates":{"met":6,"total":6}},
+  {"id":"PH2","label":"Phase 2 · Clinical core (G1, G2, G8)","window":"2026-Q3","state":"done","gates":{"met":8,"total":8}},
+  {"id":"PH3","label":"Phase 3 · Finance, supply, workforce (G3–G5)","window":"2026-Q4","state":"in_progress","gates":{"met":5,"total":9},"blocking":["G5 band Red","binding coverage 93.4 % < 95 %"]},
+  {"id":"PH4","label":"Phase 4 · Population health, research, autonomy L3","window":"2027-Q1","state":"pending","gates":{"met":0,"total":7}}
+ ],
+ "risks": [
+  {"id":"RSK-04","label":"HR steward capacity: G5 gate backlog","score":20,"likelihood":5,"impact":4,"owner":"role.executive","mitigation":"Second HR steward; backup reviewer escalation at day 7","trend":"worsening"},
+  {"id":"RSK-02","label":"Research consent CDC vendor dependency","score":16,"likelihood":4,"impact":4,"owner":"role.privacy_officer","mitigation":"Vendor ticket SYN-TKT-0088; G7 certification revoked until fixed","trend":"stable"},
+  {"id":"RSK-07","label":"Schema evolution without consumer defaults","score":15,"likelihood":3,"impact":5,"owner":"role.platform_sre","mitigation":"Canary consumers before FULL-compat releases","trend":"improving"},
+  {"id":"RSK-01","label":"SNOMED/CPT licence scope for display text","score":12,"likelihood":3,"impact":4,"owner":"role.ontologist","mitigation":"Licensed display hidden chip; affiliate licence renewal","trend":"stable"},
+  {"id":"RSK-05","label":"Evaluator drift on rare CR types","score":9,"likelihood":3,"impact":3,"owner":"role.agent_operator","mitigation":"Human review for κ < 0.90 types","trend":"improving"}
+ ],
+ "decisionsWaiting": {"gatesOver7Days":14,"queueAgeP50Days":4.2,"byRole":{"role.steward_g5":11,"role.ontologist":3},"byGate":{"steward_approval":11,"ontologist_approval":3},"oldest":{"cr":"CR-20261008-01J2PT","ageDays":9,"gate":"steward_approval","role":"role.steward_g5"},"note":"Capacity is the fix, not UI: the G5 steward queue has one approver."},
+ "attribution": [
+  {"month":"2026-08","G1":99.2,"G2":99.1,"G3":98.8,"G4":98.6,"G5":97.4,"G6":99.5,"G7":98.1,"G8":99.7,"G9":99.6},
+  {"month":"2026-09","G1":99.3,"G2":99.0,"G3":99.0,"G4":98.4,"G5":96.8,"G6":99.6,"G7":96.9,"G8":99.8,"G9":99.7},
+  {"month":"2026-10","G1":99.4,"G2":97.6,"G3":99.1,"G4":98.2,"G5":96.1,"G6":99.6,"G7":94.2,"G8":99.8,"G9":99.7}
+ ],
+ "narrative": {"week":"2026-W42","agentWritten":true,"author":"agent.release_manager","text":"This week the platform applied 61 change requests (47 auto-approved). G2 dropped to Amber on 16 Oct when 48 210 encounters carried an unmapped Cerner location class; the mapping fix (CR-20261016-01J8XY) is applied and remediation of quarantined records awaits steward review. The KG assertion schema v5 release was rolled back after consumer lag; a replay is pending approval. G7 remains Black pending a vendor fix to the research consent feed. The G5 steward gate holds 11 decisions older than 7 days."},
+ "nudges": [{"gate":"steward_approval","role":"role.steward_g5","lastAt":"2026-10-14T08:00:00Z","nextAllowedAt":"2026-10-21T08:00:00Z"}],
+ "reportMonth": "2026-10"
+}
+  </script>
+
+  <script type="application/json" id="hx-data-dq">
+{"scorecards":[
+  {"group":"G1","band":"Green","dqi":99.4,"coverage":96,"certified":true},
+  {"group":"G2","band":"Amber","dqi":97.6,"coverage":91,"certified":false},
+  {"group":"G3","band":"Green","dqi":99.1,"coverage":93,"certified":true},
+  {"group":"G4","band":"Amber","dqi":98.2,"coverage":89,"certified":false},
+  {"group":"G5","band":"Red","dqi":96.1,"coverage":81,"certified":false},
+  {"group":"G6","band":"Green","dqi":99.6,"coverage":95,"certified":true},
+  {"group":"G7","band":"Black","dqi":94.2,"coverage":72,"certified":false},
+  {"group":"G8","band":"Green","dqi":99.8,"coverage":99,"certified":true},
+  {"group":"G9","band":"Green","dqi":99.7,"coverage":98,"certified":true}
+]}
+  </script>
+
+  <script type="application/json" id="hx-data-execcr">
+{"changeRequests":[
+  {"id":"CR-20261008-01J2PT","title":"Bind Oracle HCM position_type lookup to workforce ontology","type":"vocabulary","subtype":"CR-CV-BIND","riskClass":"medium","state":"steward_review","group":"G5","gate":"steward_approval","role":"role.steward_g5","env":"uat","createdAt":"2026-10-08T08:00:00Z","ageDays":9,"proposer":{"agent":"agent.vocabulary_curator","level":"L2"},"approvals":[{"gate":"evaluation","by":"agent.evaluator","decision":"approve","at":"2026-10-08T08:05:00Z"}],"impact":{"breaking":false,"edwColumns":["edw_g5_workforce.dim_position.position_type_sk"],"dqRules":["DQR-COMPLETE-POSITION-002"],"kpi":"semantic-coverage"},"evaluation":{"aggregateScore":0.93,"kappaForType":0.91},"summary":"Binds 27 unbound Oracle HCM position_type codes to healix workforce concepts, unblocking G5 semantic coverage toward the 95% gate."}
+]}
+  </script>
+
+  <script src="assets/app.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    var E = HX.util.el, I = HX.icon, GROUP = HX.util.groupName, titleCase = HX.util.titleCase;
+    var TODAY = Date.now();
+
+    HX.mount({ page: "executive", title: "HEALIX Executive", area: "gov" });
+
+    var root = document.getElementById("exec-root");
+    var DATA = {};             // kpis bundle
+    var SCORES = [];           // dq scorecards (for band map)
+    var nudgeCooldown = {};    // gate -> ISO nextAllowed (in-memory, this session)
+
+    /* ---------- helpers ---------- */
+    function bandOf(dqi) { return dqi >= 99.0 ? "Green" : dqi >= 97.0 ? "Amber" : dqi >= 95.0 ? "Red" : "Black"; }
+    function bandKind(b) { return "band-" + String(b).toLowerCase(); }
+    function bandGlyph(b) { return ({ Green: "✓", Amber: "△", Red: "⬣", Black: "■" })[b] || "–"; }
+    function bandChip(b, text) { return HX.chip(bandKind(b), text, { glyph: bandGlyph(b) }); }
+    function kpiBySlug(slug) { return (DATA.kpis || []).filter(function (k) { return k.slug === slug; })[0]; }
+    function fmtMonth(m) {
+      if (!m) return "";
+      var parts = String(m).split("-");
+      var names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return (names[(+parts[1]) - 1] || parts[1]) + " " + parts[0];
+    }
+    function relDays(iso) {
+      var d = (Date.parse(iso) - TODAY) / 86400000;
+      var a = Math.abs(Math.round(d));
+      return a + " day" + (a === 1 ? "" : "s") + (d < 0 ? " ago" : "");
+    }
+
+    /* intra-page navigation preserving as-of */
+    function go(route) {
+      var a = HX.asof.get(); var q = [];
+      if (a.asOf) q.push("asOf=" + encodeURIComponent(a.asOf));
+      if (a.asKnownAt) q.push("asKnownAt=" + encodeURIComponent(a.asKnownAt));
+      location.hash = route + (q.length ? "?" + q.join("&") : "");
+    }
+    function shareView() {
+      var url = location.origin && location.origin !== "null"
+        ? location.href
+        : (location.pathname.split("/").pop() + location.hash);
+      try { navigator.clipboard.writeText(url); HX.toast("Link copied — opens this view at the same as-of.", { kind: "ok", timeout: 3000 }); }
+      catch (e) { HX.toast("Copy unavailable in this browser.", { kind: "warn", timeout: 3000 }); }
+    }
+    function exportSnapshot() {
+      var a = HX.asof.get();
+      var when = a.mode === "Current" ? "report month " + fmtMonth(DATA.reportMonth) : HX.format.time(a.asOf, "valid");
+      HX.audit.write({ type: "EXEC_SNAPSHOT_EXPORT", principal: HX.role.principal(), asOf: a.asOf || DATA.reportMonth, at: new Date().toISOString() });
+      HX.toast("Exporting snapshot (" + when + ") — masked data only, no PHI.", { kind: "ok", timeout: 4000 });
+      HX.live("Snapshot export prepared for " + when + ". Masked data only.", "polite");
+      setTimeout(function () { try { window.print(); } catch (e) {} }, 350);
+    }
+
+    /* ---------- NUDGE (rate-limited, audited, confirmed) ---------- */
+    function nudgeInfo(gate) {
+      var rec = (DATA.nudges || []).filter(function (n) { return n.gate === gate; })[0];
+      var next = nudgeCooldown[gate] || (rec && rec.nextAllowedAt) || null;
+      var last = nudgeCooldown[gate] ? null : (rec && rec.lastAt) || null;
+      var cooling = next && Date.parse(next) > TODAY;
+      return { next: next, last: last, cooling: cooling };
+    }
+    function nudgeButton(gate, role) {
+      var info = nudgeInfo(gate);
+      var wrap = E("div", { class: "hx-row hx-nudge", style: "margin-top:var(--sp-2)" });
+      var btn = E("button", {
+        class: "hx-btn hx-btn--sm" + (info.cooling ? "" : " hx-btn--primary"),
+        title: info.cooling ? "Rate-limited: next nudge allowed " + HX.format.time(info.next, "known") : "Send one nudge to the " + titleCase(gate) + " gate owner"
+      }, [I("bell"), "Nudge gate owner"]);
+      if (info.cooling) btn.setAttribute("aria-disabled", "true");
+      btn.addEventListener("click", function () { doNudge(gate, role, wrap); });
+      wrap.appendChild(btn);
+      var note = E("span", { class: "exec-nudge-note" });
+      if (info.cooling) note.textContent = (info.last ? "Nudged " + relDays(info.last) + " — " : "") + "next allowed in " + relDays(info.next).replace(" ago", "") + " · rate-limited (1 / gate / 7 days) · audited";
+      else note.textContent = "1 nudge per gate per 7 days · audited";
+      wrap.appendChild(note);
+      return wrap;
+    }
+    function doNudge(gate, role, wrap) {
+      var info = nudgeInfo(gate);
+      HX.confirm({
+        title: "Send nudge to " + titleCase(gate),
+        body: "This sends one rate-limited (1 / gate / 7 days), audited nudge to the owner of the " + titleCase(gate) + " gate (" + (role || "gate owner") + "). Capacity is the real fix — a nudge only flags the backlog.",
+        consequence: info.cooling ? "Rate-limited: a nudge was already sent. Next nudge is allowed " + HX.format.time(info.next, "known") + ". This attempt will be logged but not delivered." : null,
+        confirmLabel: info.cooling ? "Log attempt" : "Send nudge"
+      }).then(function (ok) {
+        if (!ok) return;
+        HX.audit.write({ type: "EXEC_NUDGE", gate: gate, role: role || null, principal: HX.role.principal(), blocked: !!info.cooling, nextAllowedAt: info.next, at: new Date().toISOString() });
+        if (info.cooling) {
+          HX.toast("Rate-limited — next nudge allowed " + HX.format.time(info.next, "known") + ". Attempt logged to audit.", { kind: "warn" });
+        } else {
+          var next = new Date(TODAY + 7 * 86400000).toISOString();
+          nudgeCooldown[gate] = next;
+          HX.toast("Nudge sent to " + titleCase(gate) + " owner — logged to audit. Next allowed " + HX.format.time(next, "known") + ".", { kind: "ok" });
+          if (wrap && wrap.parentNode) wrap.parentNode.replaceChild(nudgeButton(gate, role), wrap);
+        }
+        HX.live("Nudge recorded for " + titleCase(gate) + " gate.", "polite");
+      });
+    }
+
+    /* =================================================================== HOME */
+    function renderHome() {
+      HX.util.clear(root);
+      root.classList.add("exec-home");
+      document.body.setAttribute("data-exec-view", "home");
+      /* the home needs the full width for its one-screen grid; collapse the
+         inspector (not needed here, and the user can reopen it with ]). */
+      var shell = document.querySelector(".hx-shell"); if (shell) shell.classList.add("hx-inspector--closed");
+      var wrap = E("div", { class: "exec" });
+
+      /* intro */
+      var intro = E("div", { class: "exec__intro" });
+      intro.appendChild(E("h1", { text: "Programme health" }));
+      intro.appendChild(E("p", {}, ["Report month ", E("b", { class: "exec-month", text: fmtMonth(DATA.reportMonth) }), " · six goals, nine groups, in under a minute. Every tile drills to the operational page as-of the report month."]));
+      var actions = E("div", { class: "exec__intro-actions" });
+      var share = E("button", { class: "hx-btn hx-btn--sm", title: "Copy a link to this exact view (carries the as-of)" }, [I("copy"), "Share this view"]);
+      share.addEventListener("click", shareView);
+      var snap = E("button", { class: "hx-btn hx-btn--sm" }, [I("review"), "Export snapshot"]);
+      snap.addEventListener("click", exportSnapshot);
+      actions.appendChild(share); actions.appendChild(snap);
+      intro.appendChild(actions);
+      wrap.appendChild(intro);
+
+      /* six goal tiles */
+      var goals = E("section", { class: "exec__goals", "aria-label": "Goals G-01 to G-06" });
+      (DATA.goals || []).forEach(function (g) { goals.appendChild(goalTile(g)); });
+      wrap.appendChild(goals);
+
+      /* mid: band map · phase+decisions · risks+narrative · attribution
+         (one panel row so the home fits a single 1440×900 screen) */
+      var mid = E("div", { class: "exec__mid" });
+      mid.appendChild(bandMapPanel());
+      mid.appendChild(phaseAndDecisionsPanel());
+      mid.appendChild(riskAndNarrativePanel());
+      mid.appendChild(attributionPanel());
+      wrap.appendChild(mid);
+
+      root.appendChild(wrap);
+      HX.live("Executive home loaded for report month " + fmtMonth(DATA.reportMonth) + ".", "polite");
+    }
+
+    function goalTile(g) {
+      var tile = E("button", { class: "hx-tile hx-tile--stat exec-goal", "aria-label": g.id + " " + g.label + ": " + g.value + " " + g.unit + ", target " + g.target + ", band " + g.band });
+      var top = E("div", { class: "exec-goal__top" });
+      top.appendChild(E("span", { class: "exec-goal__id", text: g.id }));
+      top.appendChild(bandChip(g.band, g.band));
+      tile.appendChild(top);
+      tile.appendChild(E("div", { class: "exec-goal__label", text: g.label }));
+      tile.appendChild(E("div", { class: "exec-goal__value" }, [String(g.value), E("small", { text: " " + g.unit })]));
+      tile.appendChild(E("div", { class: "exec-goal__target", text: "target " + g.target + " · " + (g.value >= g.target ? "met" : "+" + (Math.round((g.target - g.value) * 100) / 100) + " to go") }));
+      var spark = E("div", { class: "exec-goal__spark" }); tile.appendChild(spark);
+      HX.chart.sparkline(spark, g.trend90d, { label: g.id + " 90-day trend, latest " + g.value });
+      /* companion metric — G-06 carries the mandatory "unreviewed PHI-affecting changes = 0" */
+      if (g.companion) {
+        var c = g.companion;
+        var isZeroRule = c.mustBeZero;
+        var bad = isZeroRule ? (c.value !== 0) : (c.mustBe ? String(c.value) !== String(c.mustBe) : false);
+        var comp = E("div", { class: "exec-goal__companion " + (isZeroRule || c.mustBe ? (bad ? "is-bad" : "is-ok") : "") });
+        comp.appendChild(I(bad ? "warn" : (isZeroRule || c.mustBe ? "check" : "info")));
+        comp.appendChild(document.createTextNode(c.label + " = "));
+        comp.appendChild(E("b", { text: String(c.value) + (c.target ? " (≥ " + c.target + ")" : "") }));
+        tile.appendChild(comp);
+      }
+      tile.addEventListener("click", function () { if (g.kpi) go("/kpi/" + g.kpi); });
+      return tile;
+    }
+
+    function bandMapPanel() {
+      var p = E("section", { class: "exec-panel", "aria-label": "Group data-quality band map" });
+      p.appendChild(E("h2", {}, [I("quality"), "Group band map (G1–G9)"]));
+      p.appendChild(E("div", { class: "exec-panel__sub", text: "DQI · four bands: Green ≥ 99.0 · Amber 97.0–98.9 · Red 95.0–96.9 · Black < 95.0. ✓ = certified." }));
+      var map = E("div", { class: "hx-band-map" });
+      SCORES.forEach(function (s) {
+        var cell = E("button", {
+          class: "hx-band-map__cell hx-band-map__cell--" + s.band.toLowerCase(),
+          "aria-label": GROUP(s.group) + " (" + s.group + "): " + s.band + " " + s.dqi + ", coverage " + s.coverage + "%, " + (s.certified ? "certified" : "certification not held"),
+          title: "Open " + GROUP(s.group) + " scorecard"
+        });
+        cell.appendChild(E("span", { class: "hx-band-map__g" }, [s.group + " ", E("span", { "aria-hidden": "true", text: bandGlyph(s.band) + " " }), s.band]));
+        cell.appendChild(E("span", { class: "hx-band-map__val", text: s.dqi }));
+        cell.appendChild(E("span", { class: "hx-band-map__cert", "aria-hidden": "true", title: s.certified ? "certified" : "not certified", text: s.certified ? "✓" : "–" }));
+        cell.addEventListener("click", function () { HX.nav("/scorecard/" + s.group); });
+        map.appendChild(cell);
+      });
+      p.appendChild(map);
+      return p;
+    }
+
+    function phaseAndDecisionsPanel() {
+      var p = E("section", { class: "exec-panel", "aria-label": "Phase gates and decisions waiting on humans" });
+      p.appendChild(E("h2", {}, [I("governance"), "Phase gates"]));
+      var pg = E("div", { class: "hx-phase-gates" });
+      (DATA.phases || []).forEach(function (ph) {
+        var mod = ph.state === "done" ? " hx-phase-gates__gate--done" : ph.state === "in_progress" ? " hx-phase-gates__gate--active" : "";
+        var gate = E("span", { class: "hx-phase-gates__gate" + mod, title: (ph.blocking || []).length ? "Blocking: " + ph.blocking.join("; ") : ph.window }, [
+          ph.label.split(" · ")[0], " · ", E("b", { text: ph.gates.met + "/" + ph.gates.total })
+        ]);
+        pg.appendChild(gate);
+      });
+      p.appendChild(pg);
+
+      var dw = DATA.decisionsWaiting || {};
+      p.appendChild(E("h2", { style: "margin-top:var(--sp-3)" }, [I("inbox"), "Decisions waiting on humans"]));
+      var kv = E("div", {});
+      kv.appendChild(kvRow("Gates open > 7 days", String(dw.gatesOver7Days), "danger"));
+      kv.appendChild(kvRow("Steward queue age (p50)", dw.queueAgeP50Days + " days", dw.queueAgeP50Days > 5 ? "warn" : "neutral"));
+      Object.keys(dw.byGate || {}).forEach(function (gate) {
+        kv.appendChild(kvRow(titleCase(gate) + " backlog", String(dw.byGate[gate]) + " CR" + (dw.byGate[gate] === 1 ? "" : "s"), "neutral"));
+      });
+      p.appendChild(kv);
+      if (dw.oldest) {
+        var oldest = E("div", { class: "hx-row", style: "margin-top:var(--sp-2);font-size:var(--fs-caption)" }, [
+          E("span", { class: "hx-muted", text: "Oldest:" }),
+          (function () { var a = E("a", { href: "#/exec-cr/" + dw.oldest.cr, class: "hx-mono" }, [dw.oldest.cr]); a.addEventListener("click", function (e) { e.preventDefault(); go("/exec-cr/" + dw.oldest.cr); }); return a; })(),
+          E("span", { class: "hx-muted", text: dw.oldest.ageDays + "d · " + titleCase(dw.oldest.gate) })
+        ]);
+        p.appendChild(oldest);
+      }
+      if (dw.note) p.appendChild(E("p", { class: "exec-panel__sub", style: "margin-top:var(--sp-2)", text: dw.note }));
+      return p;
+    }
+    function kvRow(k, v, kind) {
+      var row = E("div", { class: "exec-kv" });
+      row.appendChild(E("span", { class: "exec-kv__k", text: k }));
+      var vn = E("span", { class: "exec-kv__v" });
+      vn.appendChild(kind && kind !== "neutral" ? HX.chip(kind, v) : document.createTextNode(v));
+      row.appendChild(vn);
+      return row;
+    }
+
+    function riskAndNarrativePanel() {
+      var p = E("section", { class: "exec-panel", "aria-label": "Risk register and weekly narrative" });
+      p.appendChild(E("h2", {}, [I("warn"), "Risk register (score ≥ 15)"]));
+      var hi = (DATA.risks || []).filter(function (r) { return r.score >= 15; });
+      hi.forEach(function (r) {
+        var row = E("div", { class: "exec-risk" });
+        row.appendChild(E("span", { class: "exec-risk__score " + (r.score >= 15 ? "exec-risk__score--hi" : "exec-risk__score--md"), title: "likelihood " + r.likelihood + " × impact " + r.impact, text: String(r.score) }));
+        var main = E("div", { class: "exec-risk__main" });
+        main.appendChild(E("b", { text: r.id + " · " + r.label }));
+        main.appendChild(E("span", { text: "owner " + r.owner + " · " + r.mitigation }));
+        row.appendChild(main);
+        row.appendChild(E("span", { class: "exec-trend exec-trend--" + r.trend, title: "trend " + r.trend, text: r.trend === "worsening" ? "▲" : r.trend === "improving" ? "▼" : "▬" }));
+        p.appendChild(row);
+      });
+      var lower = (DATA.risks || []).filter(function (r) { return r.score < 15; }).length;
+      if (lower) p.appendChild(E("div", { class: "exec-panel__sub", style: "margin-top:var(--sp-2)", text: lower + " further item" + (lower === 1 ? "" : "s") + " below 15 (not escalated)." }));
+
+      var n = DATA.narrative || {};
+      p.appendChild(E("h2", { style: "margin-top:var(--sp-3)" }, [I("info"), "What changed this week", n.agentWritten ? HX.chip("agent-text", "agent-written", { class: "hx-chip--agent-text" }) : null]));
+      p.appendChild(E("div", { class: "exec-narr", text: n.text }));
+      if (n.author) p.appendChild(E("div", { class: "exec-panel__sub", style: "margin-top:4px", text: "Drafted by " + n.author + " · week " + n.week + " · agent text, treat as data." }));
+      return p;
+    }
+
+    function attributionPanel() {
+      var p = E("section", { class: "exec-panel", "aria-label": "Monthly DQI attribution by group" });
+      p.appendChild(E("h2", {}, [I("quality"), "Monthly DQI attribution"]));
+      p.appendChild(E("div", { class: "exec-panel__sub", text: "DQI by group across the last three report months; cell colour is the band at that DQI. G2, G5 and G7 are the movers." }));
+      var months = (DATA.attribution || []);
+      var groups = ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9"];
+      var table = E("table", { class: "exec-heat" });
+      var thead = E("thead", {});
+      var hr = E("tr", {}); hr.appendChild(E("th", { scope: "col", text: "Group" }));
+      months.forEach(function (m) { hr.appendChild(E("th", { scope: "col", text: fmtMonth(m.month) })); });
+      thead.appendChild(hr); table.appendChild(thead);
+      var tbody = E("tbody", {});
+      groups.forEach(function (gp) {
+        var tr = E("tr", {});
+        tr.appendChild(E("th", { scope: "row" }, [gp + " ", E("span", { class: "hx-muted hx-caption", text: GROUP(gp) })]));
+        months.forEach(function (m) {
+          var v = m[gp];
+          var band = bandOf(v);
+          tr.appendChild(E("td", { class: "is-" + band.toLowerCase(), title: GROUP(gp) + " " + fmtMonth(m.month) + ": " + v + " (" + band + ")", text: String(v) }));
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      p.appendChild(table);
+      return p;
+    }
+
+    /* =================================================================== KPI PAGE */
+    function renderKpi(slug, params) {
+      HX.util.clear(root);
+      root.classList.remove("exec-home");
+      document.body.setAttribute("data-exec-view", "kpi");
+      var k = kpiBySlug(slug);
+      if (!k) { root.appendChild(backBar()); root.appendChild(E("div", { class: "hx-empty" }, [I("warn"), " Unknown KPI “" + slug + "”. "])); return; }
+
+      root.appendChild(backBar());
+      /* breadcrumb + header */
+      var crumb = E("nav", { class: "hx-breadcrumb", "aria-label": "Breadcrumb" }, [
+        (function () { var a = E("a", { href: "#/w/exec", text: "Executive" }); a.addEventListener("click", function (e) { e.preventDefault(); go("/w/exec"); }); return a; })(),
+        E("span", { class: "hx-breadcrumb__sep", text: "›" }),
+        E("span", { text: "KPI" }),
+        E("span", { class: "hx-breadcrumb__sep", text: "›" }),
+        E("span", { text: k.label })
+      ]);
+      root.appendChild(crumb);
+
+      var header = E("header", { class: "hx-object-header" });
+      var top = E("div", { class: "hx-object-header__top" });
+      var titles = E("div", { class: "hx-object-header__titles" });
+      titles.appendChild(E("div", { class: "hx-object-header__label", text: k.label }));
+      titles.appendChild(E("div", { class: "hx-object-header__id", text: "/kpi/" + k.slug + " · goal " + k.goal }));
+      var chips = E("div", { class: "hx-object-header__chips" });
+      chips.appendChild(bandChip(k.band, k.band));
+      chips.appendChild(HX.chip(k.value >= k.target ? "ok" : "warn", k.value + " " + (k.unit || "") + " vs target " + k.target));
+      titles.appendChild(chips);
+      top.appendChild(titles);
+      var acts = E("div", { class: "hx-object-header__actions" });
+      var share = E("button", { class: "hx-btn hx-btn--sm" }, [I("copy"), "Share this view"]); share.addEventListener("click", shareView);
+      acts.appendChild(share);
+      top.appendChild(acts);
+      header.appendChild(top);
+      root.appendChild(header);
+
+      var grid = E("div", { class: "exec-kpi__grid" });
+
+      /* definition + formula + lineage + history slider */
+      var defp = E("section", { class: "exec-panel", "aria-label": "Definition and history" });
+      defp.appendChild(E("h2", {}, [I("info"), "Definition"]));
+      defp.appendChild(E("p", { style: "margin-bottom:var(--sp-2)", text: k.definition }));
+      defp.appendChild(E("div", { class: "hx-kpi-page__formula hx-mono", text: k.formula }));
+      defp.appendChild(E("div", { class: "exec-panel__sub", style: "margin-top:var(--sp-2)", text: "Last moved by: " + (k.lastMovedBy || "—") }));
+
+      /* history chart */
+      defp.appendChild(E("h2", { style: "margin-top:var(--sp-3)" }, [I("clock"), "History"]));
+      var chartHost = E("div", {}); defp.appendChild(chartHost);
+      var hist = k.history || [];
+      HX.chart.line(chartHost, hist.map(function (h) { return { label: fmtMonth(h.month), value: h.value }; }), { threshold: k.target, min: Math.min.apply(null, hist.map(function (h) { return h.value; }).concat([k.target])) - 1, max: Math.max.apply(null, hist.map(function (h) { return h.value; }).concat([k.target])) + 1, yLabel: k.unit || "value", label: k.label + " monthly history" });
+
+      /* history slider wired to as-of (keyboard-operable range, non-drag alternative to the top-bar as-of control) */
+      var sliderWrap = E("div", { style: "margin-top:var(--sp-2)" });
+      var out = E("div", { class: "hx-row", style: "justify-content:space-between" }, [
+        E("label", { class: "hx-caption hx-muted", for: "kpi-hist", text: "Scrub report month (as-of)" }),
+        E("span", { class: "exec-month", id: "kpi-hist-out" })
+      ]);
+      sliderWrap.appendChild(out);
+      var slider = E("input", { class: "exec-slider", id: "kpi-hist", type: "range", min: "0", max: String(hist.length - 1), step: "1", value: String(hist.length - 1), "aria-label": "Report month" });
+      var outVal = out.querySelector("#kpi-hist-out");
+      function reflect(i) {
+        var h = hist[i]; if (!h) return;
+        outVal.textContent = fmtMonth(h.month) + " · " + h.value + (k.unit ? " " + k.unit : "");
+        slider.setAttribute("aria-valuetext", fmtMonth(h.month) + ", " + h.value + " " + (k.unit || ""));
+      }
+      slider.addEventListener("input", function () { reflect(+slider.value); });
+      slider.addEventListener("change", function () {
+        var h = hist[+slider.value]; if (!h) return;
+        var iso = h.month + "-28T00:00:00Z";
+        if (+slider.value === hist.length - 1) HX.asof.clear();
+        else HX.asof.set({ asOf: iso, asKnownAt: iso, linked: true });
+      });
+      reflect(hist.length - 1);
+      sliderWrap.appendChild(slider);
+      defp.appendChild(sliderWrap);
+
+      defp.appendChild(E("h2", { style: "margin-top:var(--sp-3)" }, [I("lineage"), "Lineage to source"]));
+      var lin = E("div", { class: "hx-row" });
+      (k.lineage || []).forEach(function (t) {
+        var a = E("a", { href: "#", class: "hx-mono hx-caption" }, [t]);
+        a.addEventListener("click", function (e) { e.preventDefault(); HX.nav("/table/" + t.split(".")[0] + "/" + t.split(".").slice(1).join(".")); });
+        lin.appendChild(a);
+      });
+      defp.appendChild(lin);
+      grid.appendChild(defp);
+
+      /* breakdown by group + explain band + drill */
+      var bg = E("section", { class: "exec-panel", "aria-label": "Breakdown by group" });
+      bg.appendChild(E("h2", {}, [I("quality"), "Breakdown by group"]));
+      var byG = k.byGroup || {};
+      var keys = Object.keys(byG);
+      if (keys.length) {
+        var max = Math.max.apply(null, keys.map(function (g) { return byG[g]; }).concat([k.target]));
+        keys.forEach(function (gp) {
+          var val = byG[gp];
+          var drillable = k.drill && k.drill.group === gp;
+          var row = E("button", { class: "exec-bygroup__row", "aria-expanded": "false", "aria-label": GROUP(gp) + " " + val + (k.unit || "") + (drillable ? ", below target — open gate backlog" : "") });
+          row.appendChild(E("span", { class: "hx-mono", text: gp }));
+          var bar = E("div", { class: "exec-bygroup__bar" }); var fill = E("i"); fill.style.width = Math.round((val / max) * 100) + "%"; if (val < k.target) fill.style.background = "var(--warn-fg)"; bar.appendChild(fill); row.appendChild(bar);
+          row.appendChild(E("span", { class: "exec-bygroup__v", text: val + (k.unit === "%" ? "%" : "") }));
+          row.addEventListener("click", function () {
+            if (drillable) toggleGateBacklog(k, row);
+            else HX.toast(GROUP(gp) + ": " + val + (k.unit || "") + " — no human gate backlog attributed to this group.", { kind: "info", timeout: 3000 });
+          });
+          bg.appendChild(row);
+          if (drillable) bg.appendChild(E("div", { class: "exec-panel__sub", style: "margin:2px 0 var(--sp-2)", text: "↑ " + GROUP(gp) + " is below target — click to see the gate backlog that holds it." }));
+        });
+      } else if (k.byType) {
+        Object.keys(k.byType).forEach(function (t) {
+          bg.appendChild(kvRow(titleCase(t), k.byType[t] + "%", k.byType[t] < k.target ? "warn" : "ok"));
+        });
+      } else {
+        bg.appendChild(E("div", { class: "hx-chip hx-chip--gap", text: "No per-group breakdown" }));
+      }
+
+      bg.appendChild(E("h2", { style: "margin-top:var(--sp-3)" }, [I("info"), "Explain this band"]));
+      bg.appendChild(E("div", { class: "hx-explain-band", text: k.explain }));
+
+      if (k.drill) {
+        var drillWrap = E("div", { id: "kpi-gate-backlog", style: "margin-top:var(--sp-3)" });
+        bg.appendChild(drillWrap);
+      }
+      grid.appendChild(bg);
+
+      root.appendChild(grid);
+      root.appendChild(provFooter("kpi/" + k.slug, k.lineage && k.lineage[0]));
+      HX.live("KPI " + k.label + " loaded. " + k.value + " " + (k.unit || "") + " against target " + k.target + ".", "polite");
+    }
+
+    /* gate backlog read-only panel (reached from a below-target group) */
+    function toggleGateBacklog(k, rowBtn) {
+      var host = document.getElementById("kpi-gate-backlog"); if (!host) return;
+      var open = host.getAttribute("data-open") === "1";
+      if (open) { HX.util.clear(host); host.removeAttribute("data-open"); if (rowBtn) rowBtn.setAttribute("aria-expanded", "false"); return; }
+      HX.util.clear(host); host.setAttribute("data-open", "1"); if (rowBtn) rowBtn.setAttribute("aria-expanded", "true");
+      var d = k.drill, dw = DATA.decisionsWaiting || {};
+      var panel = E("section", { class: "exec-panel", style: "background:var(--bg-sunken)", "aria-label": "Gate backlog for " + GROUP(d.group) });
+      panel.appendChild(E("h2", {}, [I("inbox"), GROUP(d.group) + " gate backlog ", E("span", { class: "exec-readonly" }, [I("lock"), "read-only"])]));
+      panel.appendChild(E("div", { class: "exec-panel__sub", text: d.unbound + " unbound attributes in " + GROUP(d.group) + "; " + (dw.byGate[d.gate] || "?") + " at the " + titleCase(d.gate) + " gate (" + (d.gateRole || "") + "), median wait " + dw.queueAgeP50Days + " days." }));
+      var kv = E("div", {});
+      kv.appendChild(kvRow("Gate", titleCase(d.gate), "neutral"));
+      kv.appendChild(kvRow("Owner role", d.gateRole || "—", "neutral"));
+      kv.appendChild(kvRow("CRs waiting", String(dw.byGate[d.gate] || "?"), "warn"));
+      kv.appendChild(kvRow("Oldest CR age", (dw.oldest && dw.oldest.ageDays) + " days", dw.oldest && dw.oldest.ageDays > 7 ? "danger" : "neutral"));
+      panel.appendChild(kv);
+      if (dw.oldest) {
+        var a = E("a", { href: "#/exec-cr/" + dw.oldest.cr, class: "hx-mono hx-caption", style: "display:inline-block;margin-top:var(--sp-2)" }, ["Open oldest: " + dw.oldest.cr + " (read-only)"]);
+        a.addEventListener("click", function (e) { e.preventDefault(); go("/exec-cr/" + dw.oldest.cr); });
+        panel.appendChild(a);
+      }
+      panel.appendChild(E("p", { class: "exec-panel__sub", style: "margin-top:var(--sp-2)", text: dw.note || "Capacity is the fix, not UI." }));
+      panel.appendChild(nudgeButton(d.gate, d.gateRole));
+      host.appendChild(panel);
+      panel.scrollIntoView({ block: "nearest" });
+    }
+
+    /* =================================================================== READ-ONLY CR */
+    function renderCr(id) {
+      HX.util.clear(root);
+      root.classList.remove("exec-home");
+      document.body.setAttribute("data-exec-view", "cr");
+      root.appendChild(backBar());
+      HX.data.load("execcr").then(function (d) {
+        var cr = (d.changeRequests || []).filter(function (c) { return c.id === id; })[0];
+        if (!cr) {
+          var full = E("div", { class: "hx-empty" }, [I("warn"), " " + id + " is not summarised at executive depth. "]);
+          var open = E("button", { class: "hx-btn hx-btn--sm", style: "margin-left:var(--sp-2)" }, ["Open full CR in Review"]);
+          open.addEventListener("click", function () { HX.nav("/cr/" + id); });
+          full.appendChild(open);
+          root.appendChild(full); return;
+        }
+        var crumb = E("nav", { class: "hx-breadcrumb", "aria-label": "Breadcrumb" }, [
+          (function () { var a = E("a", { href: "#/w/exec", text: "Executive" }); a.addEventListener("click", function (e) { e.preventDefault(); go("/w/exec"); }); return a; })(),
+          E("span", { class: "hx-breadcrumb__sep", text: "›" }), E("span", { text: "Decisions waiting" }),
+          E("span", { class: "hx-breadcrumb__sep", text: "›" }), E("span", { text: cr.id })
+        ]);
+        root.appendChild(crumb);
+
+        var header = E("header", { class: "hx-object-header" });
+        var titles = E("div", { class: "hx-object-header__titles" });
+        titles.appendChild(E("div", { class: "hx-object-header__label", text: cr.title }));
+        titles.appendChild(E("div", { class: "hx-object-header__id", text: cr.id + " · " + (cr.subtype || cr.type) }));
+        var chips = E("div", { class: "hx-object-header__chips" });
+        chips.appendChild(HX.chip(cr.riskClass === "phi_affecting" ? "vetoed" : cr.riskClass === "high" ? "warn" : "info", "risk: " + cr.riskClass));
+        chips.appendChild(HX.groupChip(cr.group));
+        chips.appendChild(HX.chip("pending", titleCase(cr.state)));
+        chips.appendChild(E("span", { class: "exec-readonly" }, [I("lock"), "read-only · executive depth"]));
+        titles.appendChild(chips);
+        header.appendChild(E("div", { class: "hx-object-header__top" }, [titles]));
+        root.appendChild(header);
+
+        var grid = E("div", { class: "exec-kpi__grid" });
+        var left = E("section", { class: "exec-panel", "aria-label": "Summary and decision trail" });
+        left.appendChild(E("h2", {}, [I("review"), "Summary"]));
+        left.appendChild(E("p", { text: cr.summary || "—" }));
+        left.appendChild(E("h2", { style: "margin-top:var(--sp-3)" }, [I("governance"), "Who approved"]));
+        var tr = E("div", {});
+        (cr.approvals || []).forEach(function (ap) { tr.appendChild(kvRow(titleCase(ap.gate), titleCase(ap.decision) + " · " + ap.by, ap.decision === "approve" ? "ok" : "warn")); });
+        tr.appendChild(kvRow("Awaiting", titleCase(cr.gate) + " (" + (cr.role || "") + ")", "pending"));
+        tr.appendChild(kvRow("Evaluator score", (cr.evaluation ? cr.evaluation.aggregateScore + " · κ " + cr.evaluation.kappaForType : "—"), "neutral"));
+        tr.appendChild(kvRow("Age", cr.ageDays + " days in queue", cr.ageDays > 7 ? "danger" : "neutral"));
+        left.appendChild(tr);
+        grid.appendChild(left);
+
+        var right = E("section", { class: "exec-panel", "aria-label": "Impact" });
+        right.appendChild(E("h2", {}, [I("lineage"), "Impact"]));
+        right.appendChild(kvRow("Breaking change", cr.impact && cr.impact.breaking ? "yes" : "no", cr.impact && cr.impact.breaking ? "danger" : "ok"));
+        (cr.impact && cr.impact.edwColumns || []).forEach(function (c) { right.appendChild(E("div", { class: "exec-kv" }, [E("span", { class: "exec-kv__k", text: "EDW column" }), E("span", { class: "exec-kv__v hx-mono", text: c })])); });
+        (cr.impact && cr.impact.dqRules || []).forEach(function (c) { right.appendChild(E("div", { class: "exec-kv" }, [E("span", { class: "exec-kv__k", text: "DQ rule" }), E("span", { class: "exec-kv__v hx-mono", text: c })])); });
+        if (cr.impact && cr.impact.kpi) {
+          var a = E("a", { href: "#/kpi/" + cr.impact.kpi, class: "hx-caption" }, ["Contributes to KPI: " + cr.impact.kpi]);
+          a.addEventListener("click", function (e) { e.preventDefault(); go("/kpi/" + cr.impact.kpi); });
+          right.appendChild(E("div", { style: "margin-top:var(--sp-2)" }, [a]));
+        }
+        right.appendChild(E("div", { class: "exec-panel__sub", style: "margin-top:var(--sp-3)" }, [
+          "Executives read decisions; they do not dispose them. ",
+          (function () { var b = E("button", { class: "hx-btn hx-btn--sm" }, ["Open full CR in Review"]); b.addEventListener("click", function () { HX.nav("/cr/" + cr.id); }); return b; })()
+        ]));
+        grid.appendChild(right);
+        root.appendChild(grid);
+        root.appendChild(provFooter("cr/" + cr.id, "edw_g9_governance.fact_change_request"));
+        HX.live("Change request " + cr.id + " shown read-only at executive depth.", "polite");
+      });
+    }
+
+    /* ---------- shared bits ---------- */
+    function backBar() {
+      var bar = E("div", { class: "exec-back" });
+      var b = E("button", { class: "hx-btn hx-btn--sm hx-btn--ghost" }, [I("home"), "Executive home"]);
+      b.addEventListener("click", function () { go("/w/exec"); });
+      bar.appendChild(b);
+      return bar;
+    }
+    function provFooter(obj, table) {
+      return E("div", { class: "hx-prov-footer" }, [
+        "generated by prov:Activity report-render · run run_exec_" + (DATA.reportMonth || "") + " · agent.release_manager · release reporting v2026.10 · source " + (table || "edw_g9_governance") + " · masked API only · Explain this"
+      ]);
+    }
+
+    /* ---------- router ---------- */
+    function currentRoute() {
+      var h = location.hash.slice(1);
+      var qi = h.indexOf("?");
+      var route = qi < 0 ? h : h.slice(0, qi);
+      var params = {};
+      if (qi >= 0) h.slice(qi + 1).split("&").forEach(function (p) { var kv = p.split("="); if (kv[0]) params[kv[0]] = decodeURIComponent(kv[1] || ""); });
+      return { route: route || "/", params: params };
+    }
+    function route() {
+      var r = currentRoute().route;
+      var m;
+      if ((m = r.match(/^\/kpi\/([^/?]+)/))) { renderKpi(m[1], currentRoute().params); return; }
+      if ((m = r.match(/^\/exec-cr\/([^/?]+)/))) { renderCr(m[1]); return; }
+      renderHome();
+    }
+
+    /* palette provider: KPIs & goals (find mode) */
+    HX.palette.register(function (q) {
+      if (!DATA.kpis) return null;
+      var needle = String(q || "").toLowerCase();
+      var items = (DATA.kpis || []).filter(function (k) { return !needle || k.label.toLowerCase().indexOf(needle) >= 0 || k.slug.indexOf(needle) >= 0; })
+        .slice(0, 6).map(function (k) { return { label: k.label, id: k.slug, route: "/kpi/" + k.slug, chips: [k.band, k.value + (k.unit === "%" ? "%" : "")] }; });
+      if (!items.length) return null;
+      return { group: "KPIs", items: items };
+    });
+
+    /* re-render time-sensitive views when the as-of control changes */
+    HX.asof.on(function () {
+      var r = currentRoute().route;
+      if (r.indexOf("/kpi/") === 0) { /* history slider + banner already reflect; no full re-render needed */ }
+    });
+
+    /* boot */
+    Promise.all([HX.data.load("kpis"), HX.data.load("dq")]).then(function (res) {
+      DATA = res[0] || {};
+      SCORES = (res[1] && res[1].scorecards) || [];
+      route();
+      window.addEventListener("hashchange", route);
+    });
+  })();
+  </script>
+</body>
+</html>

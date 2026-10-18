@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>HEALIX Console</title>
+  <meta name="description" content="Role-aware home for the HEALIX knowledge-platform console: nine human roles, decision-first bands, synthetic data only.">
+  <link rel="stylesheet" href="assets/app.css">
+  <style>
+    /* Page-local layout only. All colour comes from app.css tokens.
+       Home concept: a role-switcher strip, then three decision bands
+       (Needs me · At risk · What changed) that reflow from multi-column
+       to one column at phone width. Executive renders a one-screen grid. */
+    .home-switch { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1; min-width: 0; }
+    .home-switch__perms { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: var(--fs-micro); color: var(--fg-muted); }
+    .home-switch__perms .hx-chip { min-height: 18px; }
+
+    .home-demos { margin: 0 0 var(--sp-4); border: 1px dashed var(--border-strong); border-radius: var(--r-ctl); background: var(--bg-sunken); }
+    .home-demos > summary { cursor: pointer; padding: var(--sp-2) var(--sp-3); font-size: var(--fs-caption); color: var(--fg-muted); font-weight: 500; }
+    .home-demos__row { display: flex; gap: var(--sp-2); flex-wrap: wrap; padding: 0 var(--sp-3) var(--sp-3); }
+
+    .home-greet { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+    .home-greet h1 { font-size: var(--fs-h2); line-height: var(--lh-h2); font-weight: 600; text-wrap: balance; }
+    .home-greet p { color: var(--fg-muted); font-size: var(--fs-dense); max-width: 68ch; }
+
+    /* reflowing tile / queue / card grids (app.css .hx-grid is a fixed 12-col and does not stack) */
+    .home-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--sp-3); }
+    .home-queues { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-3); align-items: start; }
+    .home-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--sp-3); align-items: start; }
+    .home-fleet { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--sp-2); }
+
+    .home-hero { display: flex; align-items: center; gap: var(--sp-3); width: 100%; padding: var(--sp-4); margin-bottom: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-card); background: var(--bg-surface); box-shadow: var(--shadow-raised); cursor: text; text-align: left; color: var(--fg-muted); font-size: var(--fs-lead); }
+    .home-hero:hover { border-color: var(--border-strong); }
+    .home-hero .hx-icon { width: 22px; height: 22px; color: var(--accent); }
+    .home-hero kbd { margin-left: auto; }
+
+    .home-mini { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); font-size: var(--fs-dense); }
+    .home-mini:last-child { border-bottom: 0; }
+    .home-mini__k { color: var(--fg-muted); display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .home-mini__v { font-family: var(--font-mono); font-size: var(--fs-caption); white-space: nowrap; }
+    .home-stage-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); }
+    .home-stage-row:last-child { border-bottom: 0; }
+
+    .home-slo { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-2); }
+
+    .home-link { color: var(--link); text-decoration: none; font-size: var(--fs-caption); }
+    .home-link:hover { text-decoration: underline; }
+
+    /* executive one-screen */
+    body[data-home="role.executive"] .hx-main { padding-bottom: var(--sp-6); }
+    .exec { display: grid; gap: var(--sp-3); }
+    .exec__goals { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: var(--sp-2); }
+    .exec__mid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-3); align-items: start; }
+    .exec .hx-tile--stat .hx-tile__value { font-size: var(--fs-h3); line-height: var(--lh-h3); }
+    .exec__goal-spark { margin-top: 2px; }
+
+    .sr-skip { position: absolute; left: -999px; top: 0; }
+    .sr-skip:focus { left: 8px; top: 8px; z-index: 100; background: var(--accent); color: var(--accent-fg); padding: 6px 10px; border-radius: var(--r-ctl); }
+  </style>
+</head>
+<body>
+  <a class="sr-skip" href="#home-root">Skip to home content</a>
+  <main id="hx-main">
+    <div id="home-switch" class="hx-role-switcher" aria-label="Role switcher"></div>
+    <div id="home-root" tabindex="-1"></div>
+  </main>
+
+  <!-- Synthetic-data fallbacks so the page renders over file:// (README §How to open).
+       Served over http, HX.data.load fetches the full data/*.json supersets instead. -->
+  <script type="application/json" id="hx-data-concepts">
+{"concepts":[
+  {"id":"encounter-class/inpatient","iri":"https://ontology.healix.example.org/concept/encounter-class/inpatient","scheme":"encounter-class","group":"G2","status":"released","stage":{"0":"released","1":"released","2":"released","3":"released","4":"released","5":"released"},"labels":[{"role":"pref","lang":"en","value":"Inpatient encounter"},{"role":"alt","lang":"en","value":"IP"}],"notations":[{"system":"cerner","code":"72^INPATIENT"},{"system":"v3","code":"IMP"}]},
+  {"id":"encounter-class/observation-unit","iri":"https://ontology.healix.example.org/concept/encounter-class/observation-unit","scheme":"encounter-class","group":"G2","status":"released","stage":{"0":"released","1":"released","2":"review","3":"draft","4":"draft","5":"draft"},"labels":[{"role":"pref","lang":"en","value":"Observation unit encounter"},{"role":"alt","lang":"en","value":"Obs unit"}],"notations":[{"system":"cerner","code":"71^309308"},{"system":"v3","code":"OBSENC"}]},
+  {"id":"encounter-class/emergency","iri":"https://ontology.healix.example.org/concept/encounter-class/emergency","scheme":"encounter-class","group":"G2","status":"released","stage":{"0":"released","1":"released","2":"released","3":"released","4":"released","5":"released"},"labels":[{"role":"pref","lang":"en","value":"Emergency encounter"}],"notations":[{"system":"v3","code":"EMER"}]},
+  {"id":"lab-result-status/final","iri":"https://ontology.healix.example.org/concept/lab-result-status/final","scheme":"lab-result-status","group":"G2","status":"released","stage":{"0":"released","1":"released","2":"released","3":"released","4":"released","5":"released"},"labels":[{"role":"pref","lang":"en","value":"Final result"}],"notations":[{"system":"v2","code":"F"}]},
+  {"id":"supplier-type/distributor","iri":"https://ontology.healix.example.org/concept/supplier-type/distributor","scheme":"supplier-type","group":"G4","status":"review","stage":{"0":"released","1":"released","2":"review","3":"draft","4":"draft","5":"draft"},"labels":[{"role":"pref","lang":"en","value":"Distributor"}],"notations":[{"system":"fusion","code":"SUPPLIER_TYPE:DISTRIBUTOR"}]}
+]}
+  </script>
+
+  <script type="application/json" id="hx-data-change-requests">
+{"changeRequests":[
+  {"id":"CR-20261017-01J9ZK","title":"Place observation-unit under hospital-encounter","type":"taxonomy","riskClass":"medium","state":"evaluated","group":"G2","stage":2,"nextGate":"steward_approval","requiredRole":"role.steward_g2","artefactFamily":"scheme:encounter-class","createdAt":"2026-10-17T03:02:41Z","sla":{"dueAt":"2026-10-20T05:00:00Z"},"proposer":{"agent":"agent.taxonomist","level":"L2"},"evaluation":{"aggregateScore":0.93,"kappaForType":0.94}},
+  {"id":"CR-20261017-01J9B1","title":"Add concept 'Pending result' to lab-result-status","type":"vocabulary","riskClass":"low","state":"evaluated","group":"G2","stage":1,"nextGate":"steward_approval","requiredRole":"role.steward_g2","artefactFamily":"scheme:lab-result-status","createdAt":"2026-10-17T06:10:00Z","sla":{"dueAt":"2026-10-20T05:00:00Z"},"proposer":{"agent":"agent.vocabulary_curator","level":"L2"},"evaluation":{"aggregateScore":0.97,"kappaForType":0.97}},
+  {"id":"CR-20261017-01J9B2","title":"Add concept 'Partial result' to lab-result-status","type":"vocabulary","riskClass":"low","state":"evaluated","group":"G2","stage":1,"nextGate":"steward_approval","requiredRole":"role.steward_g2","artefactFamily":"scheme:lab-result-status","createdAt":"2026-10-17T06:11:00Z","sla":{"dueAt":"2026-10-20T05:00:00Z"},"proposer":{"agent":"agent.vocabulary_curator","level":"L2"},"evaluation":{"aggregateScore":0.96,"kappaForType":0.97}},
+  {"id":"CR-20261017-01J9B3","title":"Add concept 'Preliminary result' to lab-result-status","type":"vocabulary","riskClass":"low","state":"evaluated","group":"G2","stage":1,"nextGate":"steward_approval","requiredRole":"role.steward_g2","artefactFamily":"scheme:lab-result-status","createdAt":"2026-10-17T06:12:00Z","sla":{"dueAt":"2026-10-20T05:00:00Z"},"proposer":{"agent":"agent.vocabulary_curator","level":"L2"},"evaluation":{"aggregateScore":0.96,"kappaForType":0.97}},
+  {"id":"CR-20261017-01J9B4","title":"Add concept 'Corrected result' to lab-result-status","type":"vocabulary","riskClass":"low","state":"evaluated","group":"G2","stage":1,"nextGate":"steward_approval","requiredRole":"role.steward_g2","artefactFamily":"scheme:lab-result-status","createdAt":"2026-10-17T06:13:00Z","sla":{"dueAt":"2026-10-20T05:00:00Z"},"proposer":{"agent":"agent.vocabulary_curator","level":"L2"},"evaluation":{"aggregateScore":0.95,"kappaForType":0.97}},
+  {"id":"CR-20261016-01J8MM","title":"Axiom: ObservationUnitEncounter ⊑ HospitalEncounter","type":"owl_axiom","riskClass":"high","state":"blocked","group":"G2","stage":4,"nextGate":"ontologist_approval","requiredRole":"role.ontologist","artefactFamily":"module:clinical","createdAt":"2026-10-16T09:20:00Z","sla":{"dueAt":"2026-10-23T05:00:00Z"},"proposer":{"agent":"agent.ontologist","level":"L1"},"evaluation":{"aggregateScore":0.88,"kappaForType":0.88},"dependsOn":[{"cr":"CR-20261017-01J9ZK","state":"evaluated"}]},
+  {"id":"CR-20261011-01J3VV","title":"Rewrite KG mapping for Encounter.serviceProvider → Organization","type":"kg_mapping","riskClass":"medium","state":"evaluated","group":"G2","stage":5,"nextGate":"ontologist_approval","requiredRole":"role.ontologist","artefactFamily":"rml:clinical","createdAt":"2026-10-11T12:00:00Z","sla":{"dueAt":"2026-10-14T05:00:00Z"},"proposer":{"agent":"agent.kg_builder","level":"L3"},"evaluation":{"aggregateScore":0.80,"kappaForType":0.80}},
+  {"id":"CR-20261015-01J7QQ","title":"Add parent_sk and hist_ contract columns to dim_encounter_class","type":"edw_ddl","riskClass":"high","state":"approved","group":"G2","stage":5,"nextGate":"release_window","requiredRole":"role.dw_architect","artefactFamily":"schema:edw_g2_clinical","createdAt":"2026-10-15T08:00:00Z","sla":{"dueAt":"2026-10-22T05:00:00Z"},"proposer":{"agent":"agent.schema_architect","level":"L1"},"evaluation":{"aggregateScore":0.95,"kappaForType":0.91},"dryRun":{"parse":"pass","lint":"pass","fkClosure":"pass","grainTest":"pass"}},
+  {"id":"CR-20261013-01J5RR","title":"Lower DQR-VALIDITY-ENCOUNTER-004 threshold 0.999 → 0.997","type":"dq_rule","riskClass":"medium","state":"in_revision","group":"G2","stage":5,"nextGate":"evaluation","requiredRole":"role.steward_g2","artefactFamily":"rulepack:g2-clinical","createdAt":"2026-10-13T10:00:00Z","sla":{"dueAt":"2026-10-18T05:00:00Z"},"proposer":{"agent":"agent.dq_author","level":"L2"},"evaluation":{"aggregateScore":0.74,"kappaForType":0.90}},
+  {"id":"CR-20261017-01J9AA","title":"Raise agent.taxonomist auto-approve threshold 0.95 → 0.96","type":"agent_manifest","riskClass":"low","state":"proposed","group":"G9","nextGate":"evaluation","requiredRole":"role.agent_operator","artefactFamily":"manifest:agent.taxonomist","createdAt":"2026-10-17T02:00:00Z","sla":{"dueAt":"2026-10-21T05:00:00Z"},"proposer":{"agent":"agent.improver","level":"L1"}},
+  {"id":"CR-20261014-01J6PH","title":"Carry Patient.identifier (SSN) into edw_g1_party","type":"edw_ddl","subtype":"CR-DDL-COLUMN","riskClass":"phi_affecting","state":"vetoed","group":"G1","stage":5,"nextGate":null,"requiredRole":null,"artefactFamily":"mapspec:cerner-patient-cdc","createdAt":"2026-10-14T09:00:00Z","proposer":{"agent":"agent.source_mapper","level":"L2"},"privacyReview":{"decision":"vetoed","by":"agent.privacy_guardian"}},
+  {"id":"CR-20261017-01J9KM","title":"Evolve hc.kg.assertion.v1 schema v4 → v5 (add provenance.agent)","type":"topic_schema","riskClass":"medium","state":"rolled_back","group":"G9","stage":5,"nextGate":null,"requiredRole":null,"artefactFamily":"topic:hc.kg.assertion.v1","createdAt":"2026-10-17T07:40:00Z","proposer":{"agent":"agent.kg_builder","level":"L3"}},
+  {"id":"CR-20261016-01J8XY","title":"Map Cerner cs71/309308 → observation-unit in ConceptMap","type":"mapping","riskClass":"medium","state":"applied","group":"G2","stage":1,"nextGate":null,"requiredRole":null,"artefactFamily":"conceptmap:cerner-cs71-to-healix-encounter-class","createdAt":"2026-10-16T11:00:00Z","updatedAt":"2026-10-16T14:10:00Z","proposer":{"agent":"agent.terminology_steward","level":"L2"}},
+  {"id":"CR-20260930-01J8CD","title":"Correct prefLabel of observation-unit to 'Observation unit encounter'","type":"vocabulary","riskClass":"low","state":"applied","group":"G2","stage":1,"nextGate":null,"requiredRole":null,"artefactFamily":"scheme:encounter-class","createdAt":"2026-09-30T02:00:00Z","updatedAt":"2026-09-30T02:10:00Z","proposer":{"agent":"agent.vocabulary_curator","level":"L2"}}
+]}
+  </script>
+
+  <script type="application/json" id="hx-data-dq">
+{"scorecards":[
+  {"group":"G1","band":"Green","dqi":99.4,"coverage":96,"certified":true,"breaches":{"blocker":0,"critical":0,"major":2,"minor":9},"trend":[99.2,99.3,99.3,99.4,99.4,99.4]},
+  {"group":"G2","band":"Amber","dqi":97.6,"coverage":91,"certified":false,"breaches":{"blocker":0,"critical":3,"major":7,"minor":12},"trend":[99.1,99.2,99.0,98.4,97.9,97.6]},
+  {"group":"G3","band":"Green","dqi":99.1,"coverage":93,"certified":true,"breaches":{"blocker":0,"critical":0,"major":3,"minor":6},"trend":[98.8,98.9,99.0,99.0,99.1,99.1]},
+  {"group":"G4","band":"Amber","dqi":98.2,"coverage":89,"certified":false,"breaches":{"blocker":0,"critical":1,"major":4,"minor":8},"trend":[98.6,98.5,98.4,98.3,98.2,98.2]},
+  {"group":"G5","band":"Red","dqi":96.1,"coverage":81,"certified":false,"breaches":{"blocker":0,"critical":4,"major":9,"minor":5},"trend":[97.4,97.0,96.8,96.5,96.3,96.1]},
+  {"group":"G6","band":"Green","dqi":99.6,"coverage":95,"certified":true,"breaches":{"blocker":0,"critical":0,"major":1,"minor":3},"trend":[99.5,99.5,99.6,99.6,99.6,99.6]},
+  {"group":"G7","band":"Black","dqi":94.2,"coverage":72,"certified":false,"breaches":{"blocker":2,"critical":3,"major":2,"minor":1},"trend":[98.1,97.6,96.9,95.8,94.9,94.2]},
+  {"group":"G8","band":"Green","dqi":99.8,"coverage":99,"certified":true,"breaches":{"blocker":0,"critical":0,"major":0,"minor":2},"trend":[99.7,99.8,99.8,99.8,99.8,99.8]},
+  {"group":"G9","band":"Green","dqi":99.7,"coverage":98,"certified":true,"breaches":{"blocker":0,"critical":0,"major":1,"minor":1},"trend":[99.6,99.7,99.7,99.7,99.7,99.7]}
+],
+"issues":[
+  {"id":"ISS-01JA0Q7","rule":"DQR-VALIDITY-ENCOUNTER-004","state":"steward_review","severity":"critical","group":"G2","detectedAt":"2026-10-16T02:25:00Z","sla":{"fixDueAt":"2026-10-17T10:25:00Z"},"affectedKeys":48210},
+  {"id":"ISS-01J9ZP5","rule":"DQR-COMPLETE-POSITION-002","state":"escalated","severity":"critical","group":"G5","detectedAt":"2026-10-15T12:00:00Z","sla":{"fixDueAt":"2026-10-17T12:00:00Z"},"affectedKeys":1290},
+  {"id":"ISS-01JA0N8","rule":"DQR-VALIDITY-CTMS-009","state":"acknowledged","severity":"blocker","group":"G7","detectedAt":"2026-10-16T20:00:00Z","sla":{"fixDueAt":"2026-10-18T20:00:00Z"},"affectedKeys":880}
+],
+"quarantine":{"G2":{"count":312,"oldestHours":31}}}
+  </script>
+
+  <script type="application/json" id="hx-data-agents">
+{"agents":[
+  {"id":"agent.orchestrator","role":"Plans work, opens change requests","stage":0,"level":"L3","ceiling":"L3","acceptanceRate":0.99,"rollbackRate":0.0,"openCrs":0,"maxOpenChangeRequests":0,"kappaByType":{},"budgets":{"usedToday":0.22}},
+  {"id":"agent.inventory","role":"Metadata inventory (Stage 0)","stage":0,"level":"L3","ceiling":"L3","acceptanceRate":0.98,"rollbackRate":0.004,"openCrs":6,"maxOpenChangeRequests":60,"kappaByType":{"inventory":0.96},"budgets":{"usedToday":0.31}},
+  {"id":"agent.vocabulary_curator","role":"Controlled vocabulary (Stage 1)","stage":1,"level":"L2","ceiling":"L3","acceptanceRate":0.95,"rollbackRate":0.008,"openCrs":23,"maxOpenChangeRequests":80,"kappaByType":{"vocabulary":0.97},"budgets":{"usedToday":0.58}},
+  {"id":"agent.taxonomist","role":"Builds/validates hierarchies (Stage 2)","stage":2,"level":"L2","ceiling":"L3","acceptanceRate":0.93,"rollbackRate":0.011,"openCrs":17,"maxOpenChangeRequests":40,"kappaByType":{"taxonomy":0.94},"budgets":{"usedToday":0.41}},
+  {"id":"agent.thesaurus_editor","role":"Associative relations (Stage 3)","stage":3,"level":"L2","ceiling":"L2","acceptanceRate":0.91,"rollbackRate":0.015,"openCrs":9,"maxOpenChangeRequests":30,"kappaByType":{"thesaurus":0.93},"budgets":{"usedToday":0.49}},
+  {"id":"agent.ontologist","role":"OWL axioms & SHACL (Stage 4)","stage":4,"level":"L1","ceiling":"L1","acceptanceRate":0.88,"rollbackRate":0.0,"openCrs":4,"maxOpenChangeRequests":20,"kappaByType":{"owl_axiom":0.88,"shacl":0.86},"budgets":{"usedToday":0.36}},
+  {"id":"agent.kg_builder","role":"Knowledge graph (Stage 5)","stage":5,"level":"L3","ceiling":"L3","acceptanceRate":0.96,"rollbackRate":0.021,"openCrs":3,"maxOpenChangeRequests":20,"kappaByType":{"kg_mapping":0.80,"topic_schema":0.89},"budgets":{"usedToday":0.63}},
+  {"id":"agent.source_mapper","role":"Source → FHIR mapping specs","stage":1,"level":"L2","ceiling":"L3","acceptanceRate":0.92,"rollbackRate":0.009,"openCrs":11,"maxOpenChangeRequests":40,"kappaByType":{"mapping":0.92},"budgets":{"usedToday":0.52}},
+  {"id":"agent.terminology_steward","role":"ConceptMaps & value sets","stage":1,"level":"L2","ceiling":"L3","acceptanceRate":0.97,"rollbackRate":0.005,"openCrs":8,"maxOpenChangeRequests":60,"kappaByType":{"mapping":0.92,"valueset":0.96},"budgets":{"usedToday":0.28}},
+  {"id":"agent.schema_architect","role":"EDW DDL & migrations","stage":5,"level":"L1","ceiling":"L2","acceptanceRate":0.94,"rollbackRate":0.0,"openCrs":5,"maxOpenChangeRequests":15,"kappaByType":{"edw_ddl":0.91},"budgets":{"usedToday":0.44}},
+  {"id":"agent.dq_author","role":"Authors DQ rules","stage":5,"level":"L2","ceiling":"L3","acceptanceRate":0.90,"rollbackRate":0.012,"openCrs":7,"maxOpenChangeRequests":40,"kappaByType":{"dq_rule":0.90},"budgets":{"usedToday":0.47}},
+  {"id":"agent.dq_monitor","role":"Runs DQ, opens issues","stage":5,"level":"L3","ceiling":"L3","acceptanceRate":0.99,"rollbackRate":0.0,"openCrs":0,"maxOpenChangeRequests":0,"kappaByType":{},"budgets":{"usedToday":0.71}},
+  {"id":"agent.remediator","role":"Proposes DQ remediations","stage":5,"level":"L2","ceiling":"L3","acceptanceRate":0.94,"rollbackRate":0.018,"openCrs":6,"maxOpenChangeRequests":30,"kappaByType":{"remediation":0.91},"budgets":{"usedToday":0.39}},
+  {"id":"agent.interop_engineer","role":"FHIR profiles & topics","stage":5,"level":"L2","ceiling":"L3","acceptanceRate":0.95,"rollbackRate":0.006,"openCrs":4,"maxOpenChangeRequests":30,"kappaByType":{"profile":0.94},"budgets":{"usedToday":0.33}},
+  {"id":"agent.privacy_guardian","role":"PHI classification & veto","stage":0,"level":"L4","ceiling":"L4","acceptanceRate":1.0,"rollbackRate":0.0,"openCrs":2,"maxOpenChangeRequests":20,"kappaByType":{"policy":0.99},"budgets":{"usedToday":0.18}},
+  {"id":"agent.evaluator","role":"Scores every change request","stage":0,"level":"—","ceiling":"—","acceptanceRate":null,"rollbackRate":null,"openCrs":0,"maxOpenChangeRequests":0,"kappaByType":{},"budgets":{"usedToday":0.88}},
+  {"id":"agent.release_manager","role":"Batches releases & rollbacks","stage":5,"level":"L2","ceiling":"L3","acceptanceRate":0.98,"rollbackRate":0.014,"openCrs":2,"maxOpenChangeRequests":10,"kappaByType":{"release":0.95},"budgets":{"usedToday":0.26}},
+  {"id":"agent.memory_curator","role":"Curates M1/M2 memory","stage":0,"level":"L3","ceiling":"L3","acceptanceRate":0.97,"rollbackRate":0.0,"openCrs":1,"maxOpenChangeRequests":10,"kappaByType":{"memory":0.95},"budgets":{"usedToday":0.21}},
+  {"id":"agent.self_healer","role":"Runs operational playbooks","stage":0,"level":"L3","ceiling":"L3","acceptanceRate":0.96,"rollbackRate":0.027,"openCrs":2,"maxOpenChangeRequests":10,"kappaByType":{"playbook":0.91},"budgets":{"usedToday":0.57}},
+  {"id":"agent.improver","role":"Proposes self-improvements","stage":0,"level":"L1","ceiling":"L2","acceptanceRate":0.86,"rollbackRate":0.0,"openCrs":3,"maxOpenChangeRequests":10,"kappaByType":{"agent_manifest":0.87,"prompt":0.84},"budgets":{"usedToday":0.12}}
+],
+"killSwitch":{"active":false,"scope":null,"heldBy":null,"since":null,"privacyTriggered":false,"scopes":["platform","env:prod","env:uat","agent:agent.kg_builder","cr_type:ontology","cr_type:edw_ddl"]},
+"canaries":[
+  {"agent":"agent.taxonomist","stage":"canary_25"},
+  {"agent":"agent.dq_author","stage":"canary_5"},
+  {"agent":"agent.self_healer","stage":"monitoring"}
+],
+"rollbacks":[
+  {"id":"RB-01JA0V2","release":"hc.kg.assertion.v1@v5","agent":"agent.kg_builder","cancelUntil":"2026-10-17T21:50:00Z"}
+]}
+  </script>
+
+  <script type="application/json" id="hx-data-topics">
+{"slos":[
+  {"id":"S1","name":"Ingest latency (HL7 v2 / CDC)","sli":0.994,"burnRate":1.2,"budgetRemaining":0.82,"alerts":[]},
+  {"id":"S3","name":"Ingest availability","sli":0.9985,"burnRate":2.1,"budgetRemaining":0.44,"alerts":["SourceSilent research-ctms"]},
+  {"id":"S6","name":"Consumer lag","sli":0.987,"burnRate":14.4,"budgetRemaining":0.31,"alerts":["ConsumerLagBurn"],"runbook":"PBK-KG-SINK-002"},
+  {"id":"S9","name":"KG load latency","sli":0.962,"burnRate":9.8,"budgetRemaining":0.38,"alerts":["KgLoadLatency"]},
+  {"id":"S11","name":"EDW freshness","sli":0.995,"burnRate":1.1,"budgetRemaining":0.86,"alerts":[]},
+  {"id":"S13","name":"KG↔EDW reconciliation","sli":0.991,"burnRate":1.4,"budgetRemaining":0.70,"alerts":[]},
+  {"id":"S14","name":"Agent CR cycle time","sli":0.982,"burnRate":1.6,"budgetRemaining":0.72,"alerts":[]},
+  {"id":"S17","name":"Audit completeness","sli":1.0,"burnRate":0.0,"budgetRemaining":1.0,"alerts":[]},
+  {"id":"S19","name":"Lineage coverage (phi:direct)","sli":1.0,"burnRate":0.0,"budgetRemaining":1.0,"alerts":[]},
+  {"id":"S21","name":"Platform availability (composite)","sli":0.9981,"burnRate":3.4,"budgetRemaining":0.52,"alerts":["CompositeBurn"]},
+  {"id":"S22","name":"Consent propagation","sli":0.91,"burnRate":6.0,"budgetRemaining":0.0,"alerts":["ConsentPropagationStalled"],"runbook":"PBK-CONSENT-003"}
+],
+"connectors":[
+  {"name":"debezium-ctms","state":"failed","lagSec":432000},
+  {"name":"bicc-fusion-hcm","state":"running","lagSec":600},
+  {"name":"bicc-fusion-ap","state":"running","lagSec":540},
+  {"name":"mllp-cerner-adt","state":"running","lagSec":0}
+],
+"freezeWindows":[{"label":"Quarter close freeze","start":"2026-10-29T00:00:00Z","end":"2026-11-02T00:00:00Z"}]}
+  </script>
+
+  <script type="application/json" id="hx-data-catalog">
+{"sources":[
+  {"id":"cerner-millennium-prod","class":"ehr","onboarding":[{"step":12,"label":"Promote to active","owner":"agent.orchestrator","state":"done"}]},
+  {"id":"oracle-fusion-erp","class":"erp","onboarding":[{"step":12,"label":"Promote to active","owner":"agent.orchestrator","state":"done"}]},
+  {"id":"oracle-fusion-hcm","class":"hcm","onboarding":[{"step":8,"label":"PHI classification signed","owner":"agent.privacy_guardian","state":"done"},{"step":9,"label":"DQ rules derived","owner":"agent.dq_author","state":"in_progress"}]},
+  {"id":"oracle-fusion-scm","class":"scm","onboarding":[{"step":10,"label":"Golden tests green","owner":"agent.source_mapper","state":"done"},{"step":11,"label":"UAT sign-off","owner":"role.integration_engineer","state":"in_progress"}]}
+],
+"semanticCoverageByGroup":{"G1":97,"G2":96,"G3":95,"G4":92,"G5":81,"G6":94,"G7":90,"G8":99,"G9":98}}
+  </script>
+
+  <script type="application/json" id="hx-data-schemes">
+{"schemes":[
+  {"slug":"encounter-class","group":"G2","counts":{"concepts":48,"bound":44,"localOnly":3,"pending":1,"merged":1},"collisions":3,"stage":2,"stageExit":{"met":3,"total":4},"reasoner":{"profile":"EL","unsatisfiable":0}},
+  {"slug":"lab-result-status","group":"G2","counts":{"concepts":8,"bound":7,"localOnly":0,"pending":1},"collisions":0,"stage":5,"stageExit":{"met":1,"total":1},"reasoner":{"profile":"EL","unsatisfiable":0}},
+  {"slug":"supplier-type","group":"G4","counts":{"concepts":7,"bound":5,"localOnly":1,"pending":1},"collisions":1,"stage":2,"stageExit":{"met":0,"total":1},"reasoner":{"profile":"EL","unsatisfiable":0}},
+  {"slug":"position-type","group":"G5","counts":{"concepts":4,"bound":2,"localOnly":1,"pending":1},"collisions":0,"stage":2,"stageExit":{"met":0,"total":1},"reasoner":{"profile":"EL","unsatisfiable":0}},
+  {"slug":"discharge-disposition","group":"G2","counts":{"concepts":8,"bound":8,"localOnly":0,"pending":0},"collisions":0,"stage":4,"stageExit":{"met":0,"total":1},"reasoner":{"profile":"EL","unsatisfiable":0}}
+],
+"drift":[
+  {"codeSet":71,"codeValue":"309401","display":"OBSERVATION HOLD","source":"cerner-millennium-prod"},
+  {"codeSet":72,"codeValue":"ROUTINE","display":"ROUTINE ADMIT","source":"cerner-millennium-prod"}
+]}
+  </script>
+
+  <script type="application/json" id="hx-data-incidents">
+{"breakGlassSessions":[
+  {"id":"BG-01JA0T2","principal":"role.steward_g2","reasonCode":"DATA_CORRECTION","issue":"ISS-01JA0Q7","startedAt":"2026-10-17T06:40:00Z","reviewDueAt":"2026-10-21T06:40:00Z","reviewDecision":null},
+  {"id":"BG-01JA0R8","principal":"role.steward_g1","reasonCode":"PATIENT_SAFETY","issue":"ISS-01JA0M2","startedAt":"2026-10-14T15:00:00Z","reviewDueAt":"2026-10-16T15:00:00Z","reviewDecision":"Appropriate"}
+],
+"incidents":[
+  {"id":"INC-01JA0S9","severity":"SEV2","state":"mitigating","faultClass":"consumer_lag","slo":"S6","ladderLevel":"L3","blastRadius":{"used":2,"max":3},"playbook":"PBK-KG-SINK-002"},
+  {"id":"INC-01JA0N1","severity":"SEV2","state":"escalated","faultClass":"connector_down","slo":"S3","ladderLevel":"L2","playbook":"PBK-SRC-SILENT-001"}
+],
+"phiClassification":{"countsByClass":{"unknown":16,"phi:direct":22,"phi:clinical":140},"unknownDueAt":"2026-10-28T00:00:00Z"},
+"consent":{"sli":0.91,"pendingChanges":212,"engineState":"stalled (research-ctms)"}}
+  </script>
+
+  <script type="application/json" id="hx-data-kpis">
+{"goals":[
+  {"id":"G-01","label":"Ontology covers all nine groups","short":"Ontology coverage","value":93.4,"target":95,"unit":"% bound","band":"Amber","trend90d":[86.0,88.1,90.2,91.8,93.4],"companion":{"label":"OWL DL consistent","value":"yes","mustBe":"yes"},"kpi":"semantic-coverage"},
+  {"id":"G-02","label":"Events standardised to FHIR R4","short":"FHIR standardisation","value":96,"target":100,"unit":"% interfaces","band":"Amber","trend90d":[71,80,88,92,96],"companion":{"label":"FHIR validator pass","value":99.67,"target":99.5},"kpi":"interface-coverage"},
+  {"id":"G-03","label":"DQ at ingestion from ontology rules","short":"DQ coverage","value":93,"target":90,"unit":"% CDEs","band":"Green","trend90d":[78,84,88,91,93],"companion":{"label":"Mean time to detect","value":"6.2 min","target":"< 15 min"},"kpi":"dq-coverage"},
+  {"id":"G-04","label":"EDW grouped subject areas","short":"EDW groups","value":9,"target":9,"unit":"of 9 groups","band":"Green","trend90d":[5,6,7,8,9],"companion":{"label":"Shared conformed dims","value":10,"target":"≥ 1"},"kpi":"edw-groups"},
+  {"id":"G-05","label":"Facts bitemporal with provenance","short":"Bitemporal + prov","value":99.98,"target":100,"unit":"% assertions","band":"Amber","trend90d":[99.1,99.6,99.9,99.97,99.98],"companion":{"label":"Missing prov_activity","value":3400,"mustBeZero":true},"kpi":"bitemporal-completeness"},
+  {"id":"G-06","label":"Autonomous with human gates","short":"Autonomy","value":78,"target":80,"unit":"% auto-approved","band":"Amber","trend90d":[61,66,70,74,78],"companion":{"label":"Unreviewed PHI-affecting changes","value":0,"mustBeZero":true},"kpi":"auto-approval-rate"}
+],
+"kpis":[
+  {"slug":"semantic-coverage","label":"Semantic coverage","value":93.4,"target":95,"band":"Amber","byGroup":{"G1":97,"G2":96,"G3":95,"G4":92,"G5":81,"G6":94,"G7":90,"G8":99,"G9":98}}
+],
+"phases":[
+  {"id":"PH1","label":"Phase 1 · Foundation","state":"done","gates":{"met":6,"total":6}},
+  {"id":"PH2","label":"Phase 2 · Clinical core (G1, G2, G8)","state":"done","gates":{"met":8,"total":8}},
+  {"id":"PH3","label":"Phase 3 · Finance, supply, workforce (G3–G5)","state":"in_progress","gates":{"met":5,"total":9},"blocking":["G5 band Red","binding coverage 93.4 % < 95 %"]},
+  {"id":"PH4","label":"Phase 4 · Population health, research, autonomy L3","state":"pending","gates":{"met":0,"total":7}}
+],
+"risks":[
+  {"id":"RSK-04","score":20,"label":"HR steward capacity: G5 gate backlog","owner":"role.executive","trend":"worsening"},
+  {"id":"RSK-02","score":16,"label":"Research consent CDC vendor dependency","owner":"role.privacy_officer","trend":"stable"},
+  {"id":"RSK-07","score":15,"label":"Schema evolution without consumer defaults","owner":"role.platform_sre","trend":"improving"},
+  {"id":"RSK-01","score":12,"label":"SNOMED/CPT licence scope for display text","owner":"role.ontologist","trend":"stable"}
+],
+"decisionsWaiting":{"gatesOver7Days":14,"queueAgeP50Days":4.2,"byRole":{"role.steward_g5":11,"role.ontologist":3},"oldest":{"cr":"CR-20261008-01J2PT","ageDays":9,"gate":"steward_approval","role":"role.steward_g5"}},
+"attribution":[{"group":"G2","deltaPp":-1.5,"driver":"DQR-VALIDITY-ENCOUNTER-004"},{"group":"G5","deltaPp":-1.3,"driver":"position-type unmapped codes"},{"group":"G7","deltaPp":-3.9,"driver":"research-ctms connector down"}],
+"narrative":"Autonomy reached 78 % of changes auto-approved this week with zero unreviewed PHI-affecting changes. G5 (Workforce) slipped to Red on a growing HR-steward gate backlog; G7 (Research) went Black after the research-ctms connector failed. Clinical core (G1, G2, G8) stayed certified."}
+  </script>
+
+  <script src="assets/app.js"></script>
+  <script>
+/* =========================================================================
+   HEALIX Console — Home / role switcher (index.html, page-local).
+   Renders the nine role homes from the shared HX runtime and the synthetic
+   data above. No app.js edits; everything here is page-local.
+   ========================================================================= */
+(function () {
+  "use strict";
+
+  // ---- Executive home: one implementation, one screen -------------------
+  // The documented Executive home route is /w/exec, which the shared router
+  // (ROUTE_MAP entry /^\/w\//) maps to THIS file, index.html. But every index
+  // role home is wrapped in home chrome — the role-switcher strip + permissions
+  // note, a greeting, and the "Prototype demo controls" panel — and index never
+  // collapses the rail or inspector. For the Executive that chrome, stacked above
+  // the goal grid, overflows 1440×900 and cannot meet the one-screen / no-scroll
+  // contract (UX-ROLE-016, UX-ROLE-004). The purpose-built one-screen Executive
+  // page is executive.html (also reached via /exec and /kpi). So that /w/exec,
+  // /exec and /kpi all resolve to a SINGLE Executive implementation — and the
+  // one-screen contract holds at the real home route — send any Executive home
+  // to executive.html, carrying the as-of / env context like HX.nav does.
+  function execHref() {
+    var carry = (HX.asof && HX.asof.get) ? (HX.asof.get() || {}) : {};
+    var q = [];
+    if (carry.asOf) q.push("asOf=" + encodeURIComponent(carry.asOf));
+    if (carry.asKnownAt) q.push("asKnownAt=" + encodeURIComponent(carry.asKnownAt));
+    if (HX.env && HX.env.get && HX.env.get() !== "prod") q.push("env=" + encodeURIComponent(HX.env.get()));
+    return "executive.html#/w/exec" + (q.length ? "?" + q.join("&") : "");
+  }
+  // Replace (not push) so the Executive never leaves an index "home" entry in
+  // history that Back would bounce straight back through this redirect.
+  function gotoExec() {
+    var href = execHref();
+    if (location.replace) location.replace(href); else location.href = href;
+  }
+  // Boot: the persisted View-as role is the Executive → this is their home.
+  if (HX.role.get() === "role.executive") { gotoExec(); return; }
+
+  var E = HX.util.el, I = HX.util.icon, CLEAR = HX.util.clear, GROUP = HX.util.groupName;
+
+  // ---- mount the shared shell -------------------------------------------
+  HX.mount({ page: "home", area: "home", title: "Home" });
+
+  var switchEl = document.getElementById("home-switch");
+  var rootEl = document.getElementById("home-root");
+  var D = {};            // loaded data, by short key
+  var loaded = false;
+  var internalSwitch = false; // true while this page drives a role change itself
+
+  // ---- small helpers -----------------------------------------------------
+  function arr(x) { return Array.isArray(x) ? x : []; }
+  function get(key, sub) { var f = D[key] || {}; return sub ? (f[sub] != null ? f[sub] : (key === sub ? f : undefined)) : f; }
+  function scorecards() { return arr((D.dq || {}).scorecards); }
+  function crs() { return arr((D.cr || {}).changeRequests); }
+  function agents() { return arr((D.ag || {}).agents); }
+  function slos() { return arr((D.tp || {}).slos); }
+  function schemes() { return arr((D.sch || {}).schemes); }
+
+  function bandColorVar(band) {
+    return ({ Green: "var(--ok-fg)", Amber: "var(--warn-fg)", Red: "var(--danger-fg)", Black: "var(--black-band-bg)" })[band] || "var(--neutral-fg)";
+  }
+  function bandKind(band) { return ({ Green: "band-green", Amber: "band-amber", Red: "band-red", Black: "band-black" })[band] || "neutral"; }
+  function riskKind(r) { return ({ low: "risk-low", medium: "risk-medium", high: "risk-high", phi_affecting: "risk-phi" })[r] || "neutral"; }
+  function riskLabel(r) { return ({ low: "Low", medium: "Medium", high: "High", phi_affecting: "PHI" })[r] || r; }
+  function nav(route) { return function (e) { if (e) { e.preventDefault(); } HX.nav(route); }; }
+
+  // SLA consumed %, from createdAt → sla.dueAt relative to now (today = 2026-10-17)
+  function slaPct(cr) {
+    var due = cr.sla && cr.sla.dueAt; if (!due) return null;
+    var d = Date.parse(due);
+    var s = cr.createdAt ? Date.parse(cr.createdAt) : d - 3 * 86400000;
+    var now = Date.now();
+    if (d <= s) return 100;
+    return Math.max(0, Math.round(((now - s) / (d - s)) * 100));
+  }
+
+  // which-time timestamp label (content rule AC-18)
+  function whenRecorded(iso) {
+    return E("span", { class: "hx-time" }, [HX.format.rel(iso), " ", E("span", { class: "hx-time__which", text: "[recorded]" })]);
+  }
+
+  // ---- card-library components (shared look across roles) ----------------
+  function statTile(o) {
+    var tile = E("div", { class: "hx-tile hx-tile--stat" });
+    tile.appendChild(E("span", { class: "hx-tile__label", text: o.label }));
+    var val = E("span", { class: "hx-tile__value" }, [String(o.value)]);
+    if (o.unit) val.appendChild(E("span", { class: "hx-tile__target", text: " " + o.unit }));
+    tile.appendChild(val);
+    if (o.target != null) tile.appendChild(E("span", { class: "hx-tile__target", text: "target " + o.target + (o.unit ? " " + o.unit : "") }));
+    if (o.spark) { var sp = E("div", { class: "exec__goal-spark" }); HX.chart.sparkline(sp, o.spark, { label: o.label + " 90-day trend, latest " + o.value }); tile.appendChild(sp); }
+    if (o.foot) tile.appendChild(E("div", { class: "hx-tile__foot" }, o.foot));
+    if (o.route) { tile.style.cursor = "pointer"; tile.setAttribute("role", "link"); tile.setAttribute("tabindex", "0"); tile.setAttribute("aria-label", o.label + " — open"); tile.addEventListener("click", nav(o.route)); tile.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); HX.nav(o.route); } }); }
+    return tile;
+  }
+
+  function bandTile(sc) {
+    var tile = E("div", { class: "hx-tile hx-tile--band", role: "link", tabindex: "0", "aria-label": GROUP(sc.group) + " data quality " + sc.band + " " + sc.dqi + ", coverage " + sc.coverage + "%" });
+    tile.style.setProperty("--band-color", bandColorVar(sc.band));
+    tile.appendChild(E("div", { class: "hx-row" }, [HX.groupChip(sc.group), sc.certified ? HX.chip("ok", "Certified", { title: "is_certified = true" }) : HX.chip("neutral", "Not certified")]));
+    var band = E("div", { class: "hx-tile__band" }, [E("span", { class: "hx-tile__dqi", text: sc.dqi }), HX.chip(bandKind(sc.band), sc.band), E("span", { class: "hx-tile__coverage", text: "coverage " + sc.coverage + "%" })]);
+    tile.appendChild(band);
+    var sp = E("div", {}); HX.chart.sparkline(sp, sc.trend, { label: GROUP(sc.group) + " DQI trend, latest " + sc.dqi }); tile.appendChild(sp);
+    var b = sc.breaches || {};
+    tile.appendChild(E("div", { class: "hx-tile__sub", text: (b.blocker || 0) + " blocker · " + (b.critical || 0) + " critical · " + (b.major || 0) + " major" }));
+    var go = function () { HX.nav("/scorecard/" + sc.group); };
+    tile.addEventListener("click", go); tile.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+    return tile;
+  }
+
+  // queue card with inbox rows
+  function queueCard(o) {
+    var card = E("div", { class: "hx-card hx-card--queue" });
+    var head = E("div", { class: "hx-card__head" }, [I(o.icon || "inbox"), E("h3", { text: o.title })]);
+    head.appendChild(E("span", { class: "hx-card__count hx-chip hx-chip--neutral", text: String(o.rows.length) }));
+    if (o.batch) { var bt = E("button", { class: "hx-btn hx-btn--sm" }, ["Review as batch (" + o.batch + ")"]); bt.addEventListener("click", nav("/cr?view=batch")); head.appendChild(bt); }
+    card.appendChild(head);
+    if (!o.rows.length) {
+      card.appendChild(E("div", { class: "hx-empty", html: o.emptyHtml || "Nothing here right now." }));
+      return card;
+    }
+    o.rows.forEach(function (r) { card.appendChild(r); });
+    if (o.footerRoute) { var f = E("a", { class: "home-mini", href: "#" + o.footerRoute }); f.appendChild(E("span", { class: "home-link", text: o.footerText || "Open full list" })); f.appendChild(I("chevron")); f.addEventListener("click", nav(o.footerRoute)); card.appendChild(f); }
+    return card;
+  }
+
+  // a change-request inbox row
+  function crRow(cr) {
+    var pct = slaPct(cr);
+    var row = E("div", { class: "hx-inbox-row", role: "link", tabindex: "0", "aria-label": cr.title + " — change request " + cr.id });
+    var main = E("div", { class: "hx-inbox-row__main" });
+    main.appendChild(E("span", { class: "hx-inbox-row__title", title: cr.title, text: cr.title }));
+    var meta = E("div", { class: "hx-inbox-row__meta" });
+    meta.appendChild(E("span", { class: "hx-mono hx-faint hx-caption", text: cr.id }));
+    meta.appendChild(HX.chip("type", cr.type.replace(/_/g, " ")));
+    meta.appendChild(HX.chip(riskKind(cr.riskClass), riskLabel(cr.riskClass) + " risk"));
+    if (cr.proposer) meta.appendChild(HX.chip("neutral", cr.proposer.agent.replace("agent.", "") + " · " + (cr.proposer.level || "L?")));
+    main.appendChild(meta);
+    row.appendChild(main);
+    if (pct != null) row.appendChild(HX.sla(pct, { title: "SLA " + pct + "% consumed, due " + HX.format.time(cr.sla.dueAt, "event") }));
+    var open = E("div", { class: "hx-inbox-row__actions" }, [(function () { var b = E("button", { class: "hx-btn hx-btn--icon hx-btn--ghost hx-btn--sm", title: "Open CR", "aria-label": "Open " + cr.id }, [I("review")]); b.addEventListener("click", function (e) { e.stopPropagation(); HX.nav("/cr/" + cr.id); }); return b; })()]);
+    row.appendChild(open);
+    var goCR = function () { HX.nav("/cr/" + cr.id); };
+    row.addEventListener("click", function (e) { if (e.shiftKey) { HX.inspector.open(crPeek(cr), cr.id); } else goCR(); });
+    row.addEventListener("keydown", function (e) { if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); HX.inspector.open(crPeek(cr), cr.id); } else if (e.key === "Enter" || e.key === "o") { e.preventDefault(); goCR(); } });
+    return row;
+  }
+  function crPeek(cr) {
+    var box = E("div", { class: "hx-stack" });
+    box.appendChild(E("div", { class: "hx-card__title", text: cr.title }));
+    box.appendChild(E("div", { class: "hx-mono hx-caption hx-muted", text: cr.id }));
+    box.appendChild(E("div", { class: "hx-row" }, [HX.chip("type", cr.type.replace(/_/g, " ")), HX.chip(riskKind(cr.riskClass), riskLabel(cr.riskClass)), cr.group ? HX.groupChip(cr.group) : null]));
+    if (cr.evaluation) box.appendChild(E("div", { class: "hx-row" }, ["Evaluator ", HX.score(cr.evaluation.aggregateScore, 0.95, cr.evaluation.kappaForType)]));
+    box.appendChild(E("div", { class: "hx-caption hx-muted", text: "Next gate: " + (cr.nextGate || "—") }));
+    var b = E("button", { class: "hx-btn hx-btn--sm hx-btn--primary" }, ["Open CR page"]); b.addEventListener("click", function () { HX.nav("/cr/" + cr.id); });
+    box.appendChild(b);
+    return box;
+  }
+
+  // a generic key/value mini row
+  function mini(k, v, route, icon) {
+    var node = route ? E("a", { class: "home-mini", href: "#" + route }) : E("div", { class: "home-mini" });
+    var kEl = E("span", { class: "home-mini__k" }); if (icon) kEl.appendChild(I(icon)); kEl.appendChild(document.createTextNode(k));
+    node.appendChild(kEl);
+    node.appendChild(typeof v === "string" ? E("span", { class: "home-mini__v", text: v }) : v);
+    if (route) node.addEventListener("click", nav(route));
+    return node;
+  }
+
+  function listCard(title, icon, children, footRoute, footText) {
+    var card = E("div", { class: "hx-card hx-card--queue" });
+    card.appendChild(E("div", { class: "hx-card__head" }, [I(icon || "info"), E("h3", { text: title })]));
+    (children || []).forEach(function (c) { if (c) card.appendChild(c); });
+    if (footRoute) { var f = E("a", { class: "home-mini", href: "#" + footRoute }); f.appendChild(E("span", { class: "home-link", text: footText || "Open" })); f.appendChild(I("chevron")); f.addEventListener("click", nav(footRoute)); card.appendChild(f); }
+    return card;
+  }
+
+  // the three-band frame; kind in needs|risk|changed
+  function band(kind, title, bodyNode, countText) {
+    var b = E("section", { class: "hx-band hx-band--" + kind, "aria-label": title });
+    var icon = kind === "needs" ? "bell" : kind === "risk" ? "warn" : "clock";
+    var head = E("div", { class: "hx-band__head" }, [I(icon, "hx-band__icon"), E("h2", { text: title })]);
+    if (countText != null) head.appendChild(E("span", { class: "hx-chip hx-chip--neutral", text: countText }));
+    b.appendChild(head);
+    b.appendChild(bodyNode);
+    return b;
+  }
+
+  function emptyNeeds(extra) {
+    return E("div", { class: "hx-empty", html: "Nothing needs you right now — <b>14 change requests were auto-approved today</b>" + (extra ? ", " + extra : "") + ". See <b>What changed</b> for the digest." });
+  }
+
+  // ---- per-role homes ----------------------------------------------------
+  var HOMES = {};
+
+  // 1 — Ontologist / Taxonomist (the real principal in the prototype)
+  HOMES["role.ontologist"] = function () {
+    var frag = document.createDocumentFragment();
+    var mine = crs().filter(function (c) { return c.requiredRole === "role.ontologist" && /evaluated|blocked|proposed|in_revision/.test(c.state); });
+    var needs = E("div", { class: "home-queues" });
+    needs.appendChild(queueCard({ title: "Ontologist approval", icon: "ontology", rows: mine.map(crRow), footerRoute: "/cr?view=ontologist-gate", footerText: "Ontologist gate queue", emptyHtml: "No change requests at your gate. Propose an axiom from the <b>owl_axiom</b> workbench." }));
+    needs.appendChild(listCard("Evaluator “revise” returns", "review", [
+      mini("CR-20261011 · κ 0.80 below threshold", E("span", { class: "hx-chip hx-chip--warn", text: "revise" }), "/cr/CR-20261011-01J3VV", "warn")
+    ], "/cr?view=ontologist-gate", "All returns"));
+    frag.appendChild(band("needs", "Needs me", needs, String(mine.length)));
+
+    var risk = E("div", { class: "home-cols" });
+    // stage-health strip per scheme
+    var stageCard = E("div", { class: "hx-card hx-card--queue" });
+    stageCard.appendChild(E("div", { class: "hx-card__head" }, [I("ontology"), E("h3", { text: "Scheme stage health" })]));
+    schemes().forEach(function (s) {
+      var row = E("div", { class: "home-stage-row" });
+      var left = E("div", { class: "hx-row" }, [HX.groupChip(s.group), E("a", { class: "home-link hx-mono", href: "#/scheme/" + s.slug, text: s.slug, onclick: nav("/scheme/" + s.slug) })]);
+      row.appendChild(left);
+      var ex = s.stageExit || { met: 0, total: 0 };
+      var ok = ex.met === ex.total;
+      row.appendChild(E("div", { class: "hx-row" }, [HX.stepper({ 0: "released", 1: "released", 2: s.stage >= 2 ? "review" : "draft", 3: "draft", 4: "draft", 5: "draft" }), HX.chip(ok ? "ok" : "warn", "Stage " + s.stage + " exit " + ex.met + "/" + ex.total)]));
+      stageCard.appendChild(row);
+    });
+    risk.appendChild(stageCard);
+    var colls = schemes().reduce(function (n, s) { return n + (s.collisions || 0); }, 0);
+    risk.appendChild(listCard("Checks & drift", "quality", [
+      mini("Label collisions (COL-1…6)", colls ? HX.chip("warn", colls + " open") : HX.chip("ok", "0"), "/scheme/encounter-class?tab=collisions", "warn"),
+      mini("Reasoner (ELK, nightly HermiT)", HX.chip("ok", "0 unsatisfiable"), null, "check"),
+      mini("Competency questions CQ-01…20", HX.chip("ok", "19 / 20 pass"), "/cq/CQ-07", "check"),
+      mini("Drift: codes with no concept", HX.chip("warn", arr((D.sch || {}).drift).length + " new"), "/ontology?tab=drift", "warn"),
+      mini("Relations near Stage-4 30-day promote", HX.chip("pending", "2 approaching"), "/ontology?tab=relations", "clock")
+    ]));
+    frag.appendChild(band("risk", "At risk", risk));
+
+    var changed = E("div", { class: "home-cols" });
+    var applied = crs().filter(function (c) { return c.state === "applied" && /scheme:/.test(c.artefactFamily || ""); });
+    changed.appendChild(listCard("Released & auto-applied in my schemes", "check", applied.map(function (c) {
+      return mini(c.title, whenRecorded(c.updatedAt || c.createdAt), "/cr/" + c.id, "check");
+    }).concat([mini("Ontology release", E("span", { class: "hx-version-chip", text: "v2026.11.0" }), "/release/ontology/v2026.11.0", "ontology")]), "/cr?view=changed", "Full changelog"));
+    changed.appendChild(listCard("External terminology syncs", "clock", [
+      mini("SNOMED CT 2026-09 — re-validate", HX.chip("pending", "pending"), null, "clock"),
+      mini("LOINC 2.77 — re-validate", HX.chip("pending", "pending"), null, "clock")
+    ]));
+    frag.appendChild(band("changed", "What changed", changed));
+    return frag;
+  };
+
+  // 2 — Data Steward (G2 clinical)
+  HOMES["role.steward_g2"] = function () {
+    var frag = document.createDocumentFragment();
+    var mine = crs().filter(function (c) { return c.requiredRole === "role.steward_g2" && c.state === "evaluated"; });
+    var labBatch = mine.filter(function (c) { return /lab-result-status/.test(c.artefactFamily || ""); });
+    var issues = arr((D.dq || {}).issues).filter(function (i) { return i.group === "G2" && /steward_review|escalated/.test(i.state); });
+    var needs = E("div", { class: "home-queues" });
+    needs.appendChild(queueCard({ title: "Steward approval · G2 Clinical", icon: "review", rows: mine.map(crRow), batch: labBatch.length >= 3 ? labBatch.length : 0, footerRoute: "/cr?view=needs-me-steward-g2", footerText: "My steward queue", emptyHtml: "No change requests await your approval." }));
+    needs.appendChild(queueCard({
+      title: "DQ issues in my review", icon: "quality",
+      rows: issues.map(function (i) {
+        var r = E("div", { class: "hx-inbox-row", role: "link", tabindex: "0", "aria-label": i.id + " " + i.severity });
+        r.appendChild(E("div", { class: "hx-inbox-row__main" }, [E("span", { class: "hx-inbox-row__title", text: "Rule breach · " + i.rule }), E("div", { class: "hx-inbox-row__meta" }, [E("span", { class: "hx-mono hx-faint hx-caption", text: i.id }), HX.chip(i.severity === "critical" ? "fail" : "warn", i.severity), HX.chip("neutral", HX.format.num(i.affectedKeys, 0) + " keys")])]));
+        var p = slaPct({ createdAt: i.detectedAt, sla: { dueAt: i.sla && i.sla.fixDueAt } }); if (p != null) r.appendChild(HX.sla(p));
+        r.addEventListener("click", nav("/issue/" + i.id)); r.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); HX.nav("/issue/" + i.id); } });
+        return r;
+      }), footerRoute: "/dq?tab=issues", footerText: "All G2 issues", emptyHtml: "No open issues in your group."
+    }));
+    frag.appendChild(band("needs", "Needs me", needs, String(mine.length + issues.length)));
+
+    var g2 = scorecards().filter(function (s) { return s.group === "G2"; })[0];
+    var risk = E("div", { class: "home-cols" });
+    if (g2) risk.appendChild((function () { var c = E("div", { class: "hx-card" }); c.appendChild(E("div", { class: "hx-card__head" }, [I("quality"), E("h3", { text: "G2 Clinical data quality" })])); c.appendChild(bandTile(g2)); return c; })());
+    risk.appendChild(listCard("Watch list", "warn", [
+      mini("Breaches by severity", HX.chip("warn", "3 critical · 7 major"), "/scorecard/G2", "warn"),
+      mini("Rules in tuning", HX.chip("pending", "DQR-…-004"), "/rule/DQR-VALIDITY-ENCOUNTER-004?tab=tuning", "clock"),
+      mini("Quarantine (oldest)", HX.chip("neutral", "312 rows · 31 h"), "/dq?tab=quarantine", "inbox"),
+      mini("Exceptions expiring ≤ 30 days", HX.chip("warn", "2"), "/dq?tab=exceptions", "clock"),
+      mini("Unmapped codes Registered → Proposed", HX.chip("warn", "5"), "/ontology?tab=drift", "warn")
+    ]));
+    frag.appendChild(band("risk", "At risk", risk));
+
+    var changed = E("div", { class: "home-cols" });
+    var applied = crs().filter(function (c) { return c.state === "applied" && c.group === "G2"; });
+    changed.appendChild(listCard("Applied in my scope (7 days)", "check", applied.map(function (c) { return mini(c.title, whenRecorded(c.updatedAt || c.createdAt), "/cr/" + c.id, "check"); }), "/cr?view=changed", "Full changelog"));
+    changed.appendChild(listCard("Pack versions applied", "clock", [mini("g2-clinical rulepack", E("span", { class: "hx-version-chip", text: "2026.11.0" }), null, "quality")]));
+    frag.appendChild(band("changed", "What changed", changed));
+    return frag;
+  };
+
+  // 3 — Integration Engineer
+  HOMES["role.integration_engineer"] = function () {
+    var frag = document.createDocumentFragment();
+    var sources = arr((D.cat || {}).sources).filter(function (s) { return (s.onboarding || []).some(function (st) { return st.state === "in_progress"; }); });
+    var needs = E("div", { class: "home-queues" });
+    needs.appendChild(listCard("Onboarding in progress", "sources", sources.map(function (s) {
+      var step = (s.onboarding || []).filter(function (st) { return st.state === "in_progress"; })[0] || {};
+      return mini(s.id + " · step " + step.step + "/12", E("span", { class: "hx-row" }, [E("span", { class: "home-mini__v", text: step.label }), HX.chip("neutral", (step.owner || "").replace(/^(agent|role)\./, ""))]), "/source/" + s.id + "?tab=onboarding", "sources");
+    }), "/sources", "Source registry"));
+    needs.appendChild(listCard("At my gate & failures", "review", [
+      mini("Schema compatibility failure", HX.chip("fail", "hc.kg.assertion.v1 v5"), "/cr/CR-20261017-01J9KM", "warn"),
+      mini("Connector error", HX.chip("fail", "debezium-ctms down"), "/connector/debezium-ctms", "danger"),
+      mini("Mapping CR at my gate", HX.chip("pending", "1 evaluated"), "/cr?view=high-risk-open", "review")
+    ]));
+    frag.appendChild(band("needs", "Needs me", needs));
+
+    var conns = arr((D.tp || {}).connectors);
+    var risk = E("div", { class: "home-cols" });
+    risk.appendChild(listCard("Feed health per interface", "sources", conns.map(function (c) {
+      var down = c.state !== "running"; var lagBad = c.lagSec > 120;
+      return mini(c.name, HX.chip(down ? "fail" : lagBad ? "warn" : "ok", down ? "down" : "lag " + (c.lagSec >= 3600 ? Math.round(c.lagSec / 3600) + "h" : c.lagSec + "s")), "/connector/" + c.name, down ? "danger" : "sources");
+    }), "/sources?tab=connectors", "All connectors"));
+    risk.appendChild(listCard("Agent findings", "agents", [
+      mini("Unmapped segments / fields by volume", HX.chip("warn", "14 pending"), "/sources?tab=elements", "warn"),
+      mini("Z-segment findings (agent.inventory)", HX.chip("info", "3 new"), "/source/cerner-millennium-prod?tab=elements", "info")
+    ]));
+    frag.appendChild(band("risk", "At risk", risk));
+
+    var changed = E("div", { class: "home-cols" });
+    changed.appendChild(listCard("Shipped", "check", [
+      mini("Topics versioned", HX.chip("ok", "2"), "/sources?tab=topics", "check"),
+      mini("Profiles released", HX.chip("ok", "1"), "/sources?tab=profiles", "check"),
+      mini("Mapping specs applied", HX.chip("ok", "CR-20261016-01J8XY"), "/cr/CR-20261016-01J8XY", "check"),
+      mini("Golden-test results", HX.chip("ok", "48 / 48"), null, "check")
+    ]));
+    frag.appendChild(band("changed", "What changed", changed));
+    return frag;
+  };
+
+  // 4 — Data Warehouse Architect
+  HOMES["role.dw_architect"] = function () {
+    var frag = document.createDocumentFragment();
+    var mine = crs().filter(function (c) { return c.requiredRole === "role.dw_architect"; });
+    var needs = E("div", { class: "home-queues" });
+    needs.appendChild(queueCard({ title: "edw_ddl at architect approval", icon: "quality", rows: mine.map(crRow), footerRoute: "/cr?view=high-risk-open", footerText: "DDL queue", emptyHtml: "No DDL change requests awaiting you." }));
+    needs.appendChild(listCard("Windows & dimensions", "clock", [
+      mini("Migrations awaiting release window", HX.chip("pending", "1"), "/edw?tab=migrations", "clock"),
+      mini("Conformed-dimension change proposals", HX.chip("info", "2"), "/edw?tab=dimensions", "info")
+    ]));
+    frag.appendChild(band("needs", "Needs me", needs, String(mine.length)));
+
+    var cov = (D.cat || {}).semanticCoverageByGroup || {};
+    var below = Object.keys(cov).filter(function (g) { return cov[g] < 95; }).sort(function (a, b) { return cov[a] - cov[b]; });
+    var risk = E("div", { class: "home-cols" });
+    risk.appendChild(listCard("Binding coverage vs ≥ 95 %", "ontology", below.map(function (g) {
+      return mini(GROUP(g), E("span", { class: "hx-row" }, [HX.groupChip(g), HX.chip(cov[g] < 90 ? "fail" : "warn", cov[g] + "%")]), "/kpi/semantic-coverage", "ontology");
+    }), "/kpi/semantic-coverage", "Semantic coverage KPI"));
+    risk.appendChild(listCard("Contracts & reconciliation", "quality", [
+      mini("KG↔EDW reconciliation (S13)", HX.chip("ok", "0 breaks"), "/ops/slo/S13", "check"),
+      mini("EDW freshness (S11)", HX.chip("ok", "p95 4 min"), "/ops/slo/S11", "check"),
+      mini("hist_* contract checks", HX.chip("ok", "EDW-HIST-001…004 pass"), "/table/edw_g2_clinical/fact_encounter", "check"),
+      mini("Migrations w/o compensating migration", HX.chip("warn", "1"), "/edw?tab=migrations", "warn")
+    ]));
+    frag.appendChild(band("risk", "At risk", risk));
+
+    var changed = E("div", { class: "home-cols" });
+    changed.appendChild(listCard("Applied migrations", "check", [mini("dim_encounter_class 2026.11.0-003", whenRecorded("2026-10-15T20:00:00Z"), "/migration/2026.11.0-003", "check")]));
+    changed.appendChild(listCard("Ontology releases w/ EDW impact", "clock", [mini("v2026.11.0 — range changed list (CQ-19)", HX.chip("info", "3 columns"), "/release/ontology/v2026.11.0", "info")]));
+    frag.appendChild(band("changed", "What changed", changed));
+    return frag;
+  };
+
+  // 5 — Analyst / Data Scientist (search-first)
+  HOMES["role.analyst"] = function () {
+    var frag = document.createDocumentFragment();
+    var hero = E("button", { class: "home-hero", "aria-label": "Search concepts, tables, value sets and change requests" }, [I("search"), E("span", { text: "Search concepts, tables, value sets, change requests…" }), E("kbd", { text: "⌘K" })]);
+    hero.addEventListener("click", function () { HX.palette.open("find"); });
+    frag.appendChild(hero);
+
+    var certified = scorecards().filter(function (s) { return s.certified; });
+    var trusted = E("div", { class: "home-cols" });
+    trusted.appendChild(listCard("Trusted now · certified for my groups", "check", certified.slice(0, 6).map(function (s) {
+      return mini(GROUP(s.group) + " tables & value sets", E("span", { class: "hx-row" }, [HX.groupChip(s.group), HX.chip(bandKind(s.band), s.band + " " + s.dqi)]), "/scorecard/" + s.group, "check");
+    }), "/dq", "All scorecards"));
+    trusted.appendChild(listCard("My saved query templates", "review", [
+      mini("Encounters as-of (SQL)", HX.chip("info", "asOf pinned"), "/table/edw_g2_clinical/fact_encounter?tab=query", "review"),
+      mini("Encounter-class members (SPARQL)", HX.chip("info", "ontology v2026.11.0"), "/valueset/healix-encounter-class", "review"),
+      mini("As-of cookbook", HX.chip("neutral", "patterns"), "/table/edw_g2_clinical/fact_encounter?tab=query", "clock")
+    ]));
+    frag.appendChild(band("needs", "Trusted now", trusted));
+
+    var risk = E("div", { class: "home-cols" });
+    risk.appendChild(listCard("Breaches affecting my saved queries", "warn", [
+      mini("fact_encounter · DQR-…-004", HX.chip("warn", "G2 Amber"), "/rule/DQR-VALIDITY-ENCOUNTER-004", "warn"),
+      mini("position-type (G5)", HX.chip("fail", "G5 Red"), "/scorecard/G5", "danger")
+    ]));
+    risk.appendChild(listCard("Semantic changes you should know", "info", [
+      mini("observation-stay merged → observation-unit", HX.chip("info", "replacedBy"), "/id/encounter-class/observation-stay", "info"),
+      mini("lab-result-status: new members proposed", HX.chip("pending", "4 pending"), "/scheme/lab-result-status", "clock")
+    ]));
+    frag.appendChild(band("risk", "At risk", risk));
+
+    var changed = E("div", { class: "home-cols" });
+    var req = E("div", { class: "hx-card" });
+    req.appendChild(E("div", { class: "hx-card__head" }, [I("review"), E("h3", { text: "Request a change" })]));
+    req.appendChild(E("p", { class: "hx-caption hx-muted", text: "Describe it in plain language. An agent (AGT-ORCH-023) drafts a change request; a human still disposes." }));
+    var btn = E("button", { class: "hx-btn hx-btn--primary" }, [I("play"), "Draft a change request"]);
+    btn.addEventListener("click", function () { HX.toast("Agent is drafting a change request from your description…", { kind: "ok" }); });
+    req.appendChild(btn);
+    changed.appendChild(req);
+    changed.appendChild(listCard("Reviewed by me — now applied", "check", [mini("Map cs71/309308 → observation-unit", whenRecorded("2026-10-16T14:10:00Z"), "/cr/CR-20261016-01J8XY", "check")]));
+    frag.appendChild(band("changed", "What changed", changed));
+    return frag;
+  };
+
+  // 6 — Privacy & Security Officer
+  HOMES["role.privacy_officer"] = function () {
+    var frag = document.createDocumentFragment();
+    var bg = arr((D.inc || {}).breakGlassSessions).filter(function (s) { return !s.reviewDecision; });
+    var vetoed = crs().filter(function (c) { return c.state === "vetoed"; });
+    var needs = E("div", { class: "home-queues" });
+    needs.appendChild(listCard("PHI-affecting at my gate", "lock", [
+      mini("phi_affecting CR (guardian verdict pinned)", HX.chip("vetoed", "1 vetoed"), "/cr/CR-20261014-01J6PH", "lock"),
+      mini("Vetoes to acknowledge", HX.chip("vetoed", vetoed.length + ""), "/cr?view=phi-affecting", "lock")
+    ], null, null));
+    needs.appendChild(queueCard({
+      title: "Break-glass awaiting review (2 business days)", icon: "lock",
+      rows: bg.map(function (s) {
+        var r = E("div", { class: "hx-inbox-row", role: "link", tabindex: "0", "aria-label": s.id + " break-glass review" });
+        r.appendChild(E("div", { class: "hx-inbox-row__main" }, [E("span", { class: "hx-inbox-row__title", text: s.principal + " · " + s.reasonCode }), E("div", { class: "hx-inbox-row__meta" }, [E("span", { class: "hx-mono hx-faint hx-caption", text: s.id }), HX.chip("neutral", "issue " + s.issue)])]));
+        r.appendChild(HX.sla(slaPct({ createdAt: s.startedAt, sla: { dueAt: s.reviewDueAt } })));
+        r.addEventListener("click", nav("/gov?tab=break-glass")); r.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); HX.nav("/gov?tab=break-glass"); } });
+        return r;
+      }), footerRoute: "/gov?tab=break-glass", footerText: "Break-glass reviews", emptyHtml: "No break-glass sessions awaiting review."
+    }));
+    frag.appendChild(band("needs", "Needs me", needs, String(bg.length + vetoed.length)));
+
+    var phi = (D.inc || {}).phiClassification || { countsByClass: {} };
+    var risk = E("div", { class: "home-cols" });
+    risk.appendChild(listCard("Classification & clocks", "lock", [
+      mini("Elements phi_class = unknown", E("span", { class: "hx-row" }, [HX.chip("warn", (phi.countsByClass.unknown || 0) + " unknown"), HX.chip("pending", "clock to " + HX.format.rel(phi.unknownDueAt))]), "/gov?tab=phi", "warn"),
+      mini("PGV veto spikes per agent", HX.chip("ok", "within band"), "/agents", "check"),
+      mini("PHI scan hits (memory · CR text · traces)", HX.chip("ok", "0"), "/gov?tab=audit", "check")
+    ]));
+    var consent = (D.inc || {}).consent || {};
+    risk.appendChild(listCard("Flows & coverage", "governance", [
+      mini("Consent propagation (S22)", HX.chip(consent.sli < 0.99 ? "warn" : "ok", (consent.engineState || "ok")), "/ops/slo/S22", "warn"),
+      mini("Lineage coverage (S19, phi:direct)", HX.chip("ok", "100 %"), "/ops/slo/S19", "check"),
+      mini("Audit completeness (S17/S18)", HX.chip("ok", "complete"), "/gov?tab=audit", "check")
+    ]));
+    frag.appendChild(band("risk", "At risk", risk));
+
+    var changed = E("div", { class: "home-cols" });
+    changed.appendChild(listCard("Governance changes", "clock", [
+      mini("Policy bundle version", E("span", { class: "hx-version-chip", text: "2026.10.3" }), "/gov?tab=access", "governance"),
+      mini("Classification changes", HX.chip("info", "2 this week"), "/gov?tab=phi", "info"),
+      mini("De-identification determinations expiring", HX.chip("warn", "1 ≤ 30 d"), "/gov?tab=consent", "warn")
+    ]));
+    frag.appendChild(band("changed", "What changed", changed));
+    return frag;
+  };
+
+  // 7 — Platform SRE
+  HOMES["role.platform_sre"] = function () {
+    var frag = document.createDocumentFragment();
+    var incs = arr((D.inc || {}).incidents);
+    var needs = E("div", { class: "home-queues" });
+    needs.appendChild(queueCard({
+      title: "Self-healer awaiting human (L3+)", icon: "agents",
+      rows: incs.map(function (i) {
+        var r = E("div", { class: "hx-inbox-row", role: "link", tabindex: "0", "aria-label": i.id + " " + i.severity });
+        var br = i.blastRadius ? (i.blastRadius.used + "/" + i.blastRadius.max + " blast budget") : "";
+        r.appendChild(E("div", { class: "hx-inbox-row__main" }, [E("span", { class: "hx-inbox-row__title", text: i.faultClass.replace(/_/g, " ") + " · " + i.slo }), E("div", { class: "hx-inbox-row__meta" }, [E("span", { class: "hx-mono hx-faint hx-caption", text: i.id }), HX.chip(i.severity === "SEV2" ? "fail" : "warn", i.severity), HX.chip("neutral", i.ladderLevel), br ? HX.chip("pending", br) : null])]));
+        r.addEventListener("click", nav("/incident/" + i.id)); r.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); HX.nav("/incident/" + i.id); } });
+        return r;
+      }), footerRoute: "/ops?tab=incidents", footerText: "All incidents", emptyHtml: "No actions awaiting a human."
+    }));
+    var mapCard = E("div", { class: "hx-card" });
+    mapCard.appendChild(E("div", { class: "hx-card__head" }, [I("lineage"), E("h3", { text: "Pipeline map" })]));
+    mapCard.appendChild(E("p", { class: "hx-caption hx-muted", text: "Raw → std → canonical → dq → kg → edw → ops. One click away; never embedded on Home." }));
+    var mb = E("button", { class: "hx-btn" }, [I("lineage"), "Open pipeline map"]); mb.addEventListener("click", nav("/ops/map")); mapCard.appendChild(mb);
+    needs.appendChild(mapCard);
+    frag.appendChild(band("needs", "Needs me", needs, String(incs.length)));
+
+    var burning = slos().slice().sort(function (a, b) { return b.burnRate - a.burnRate; });
+    var wall = E("div", { class: "hx-card hx-card--queue" });
+    wall.appendChild(E("div", { class: "hx-card__head" }, [I("quality"), E("h3", { text: "SLO wall · S1–S22 (by burn rate)" })]));
+    var grid = E("div", { class: "home-slo", style: "padding:var(--sp-3)" });
+    burning.slice(0, 11).forEach(function (s) {
+      var hot = s.burnRate >= 4;
+      var tile = E("div", { class: "hx-tile hx-tile--slo" + (hot ? " is-burning" : ""), role: "link", tabindex: "0", "aria-label": s.id + " " + s.name + " burn rate " + s.burnRate });
+      tile.appendChild(E("div", { class: "hx-row" }, [E("span", { class: "hx-mono", text: s.id }), HX.chip(hot ? "fail" : s.burnRate >= 2 ? "warn" : "ok", (s.burnRate) + "× burn")]));
+      tile.appendChild(E("span", { class: "hx-tile__label", text: s.name }));
+      tile.appendChild(E("span", { class: "hx-tile__burn hx-tile__sub", text: "budget " + Math.round(s.budgetRemaining * 100) + "% · SLI " + (s.sli * 100).toFixed(2) + "%" }));
+      if (s.alerts && s.alerts.length) tile.appendChild(E("div", { class: "hx-tile__foot" }, [HX.chip("warn", s.alerts[0])]));
+      tile.addEventListener("click", nav("/ops/slo/" + s.id)); tile.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); HX.nav("/ops/slo/" + s.id); } });
+      grid.appendChild(tile);
+    });
+    wall.appendChild(grid);
+    var risk = E("div", {}); risk.appendChild(wall);
+    var more = E("div", { class: "home-cols", style: "margin-top:var(--sp-3)" });
+    more.appendChild(listCard("Connectors & consumers", "sources", arr((D.tp || {}).connectors).map(function (c) { return mini(c.name, HX.chip(c.state === "running" ? (c.lagSec > 120 ? "warn" : "ok") : "fail", c.state), "/connector/" + c.name, c.state === "running" ? "sources" : "danger"); })));
+    more.appendChild(listCard("Jobs & calendar", "clock", [
+      mini("Freeze window", HX.chip("pending", "quarter close 29 Oct"), "/ops", "clock"),
+      mini("Replay / reconciliation jobs", HX.chip("info", "2 running"), "/ops?tab=replay", "play"),
+      mini("Cost (today)", HX.chip("neutral", "within budget"), "/ops?tab=cost", "info")
+    ]));
+    risk.appendChild(more);
+    frag.appendChild(band("risk", "At risk", risk));
+
+    var changed = E("div", { class: "home-cols" });
+    changed.appendChild(listCard("Operational changes", "check", [
+      mini("Playbook promoted", HX.chip("ok", "PBK-KG-SINK-002"), "/playbook/PBK-KG-SINK-002", "check"),
+      mini("Schema rolled back", HX.chip("warn", "hc.kg.assertion.v1 v5"), "/cr/CR-20261017-01J9KM", "undo")
+    ]));
+    frag.appendChild(band("changed", "What changed", changed));
+    return frag;
+  };
+
+  // 8 — Agent Operator
+  HOMES["role.agent_operator"] = function () {
+    var frag = document.createDocumentFragment();
+    var ag = agents();
+    var suspended = ag.filter(function (a) { var ks = Object.keys(a.kappaByType || {}); return ks.some(function (k) { return a.kappaByType[k] < 0.90; }); });
+    var canaries = arr((D.ag || {}).canaries);
+    var rollbacks = arr((D.ag || {}).rollbacks);
+    var needs = E("div", { class: "home-queues" });
+    needs.appendChild(listCard("Needs me", "agents", [
+      mini("Rollbacks in 10-minute cancel window", HX.chip("pending", rollbacks.length + ""), "/agents?tab=rollbacks", "undo"),
+      mini("Demotions to acknowledge", HX.chip("warn", "1"), "/agents", "warn"),
+      mini("Calibration κ < 0.90 (auto-approval suspended)", HX.chip("fail", suspended.length + " agents"), "/agents?tab=calibration", "danger"),
+      mini("Canary promotions", HX.chip("info", canaries.filter(function (c) { return /canary/.test(c.stage); }).length + ""), "/agents?tab=canaries", "info")
+    ]));
+    var ks = (D.ag || {}).killSwitch || {};
+    needs.appendChild(listCard("Kill switch", "danger", [
+      mini("Status", ks.active ? HX.chip("fail", "active · " + (ks.heldBy || "")) : HX.chip("ok", "idle (all scopes)"), "/agents?tab=killswitch", ks.active ? "danger" : "check")
+    ]));
+    frag.appendChild(band("needs", "Needs me", needs, String(suspended.length + rollbacks.length)));
+
+    var fleet = E("div", { class: "home-fleet" });
+    ag.forEach(function (a) {
+      var ks2 = Object.keys(a.kappaByType || {});
+      var minK = ks2.length ? Math.min.apply(null, ks2.map(function (k) { return a.kappaByType[k]; })) : null;
+      var susp = minK != null && minK < 0.90;
+      var card = E("div", { class: "hx-agent-card" + (susp ? " is-suspended" : ""), role: "link", tabindex: "0", "aria-label": a.id + " level " + a.level });
+      var initials = a.id.replace("agent.", "").split("_").map(function (s) { return s[0]; }).join("").slice(0, 2).toUpperCase();
+      var head = E("div", { class: "hx-agent-card__head" }, [E("span", { class: "hx-agent-card__avatar", text: initials }), E("div", { class: "hx-stack", style: "gap:0" }, [E("span", { class: "hx-agent-card__name", text: a.id.replace("agent.", "") }), E("span", { class: "hx-agent-card__id", text: a.id })])]);
+      head.appendChild(E("span", { class: "hx-chip hx-chip--level hx-chip--neutral", title: "level " + a.level + " of ceiling " + a.ceiling }, [a.level, E("span", { class: "hx-chip__ceiling", text: "/" + a.ceiling })]));
+      card.appendChild(head);
+      var metrics = E("div", { class: "hx-agent-card__metrics" });
+      var m = function (k, v) { return E("div", { class: "hx-agent-card__metric" }, [E("span", { class: "hx-muted", text: k }), E("b", { text: v })]); };
+      metrics.appendChild(m("accept", a.acceptanceRate == null ? "—" : Math.round(a.acceptanceRate * 100) + "%"));
+      metrics.appendChild(m("rollback", a.rollbackRate == null ? "—" : (a.rollbackRate * 100).toFixed(1) + "%"));
+      metrics.appendChild(m("open CR", a.openCrs + "/" + a.maxOpenChangeRequests));
+      metrics.appendChild(m("κ min", minK == null ? "—" : minK.toFixed(2)));
+      card.appendChild(metrics);
+      if (susp) card.appendChild(E("div", { class: "hx-row" }, [HX.chip("fail", "auto-approval suspended")]));
+      card.addEventListener("click", nav("/agent/" + a.id)); card.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); HX.nav("/agent/" + a.id); } });
+      fleet.appendChild(card);
+    });
+    var risk = E("div", {}); risk.appendChild(E("div", { class: "hx-card hx-card--queue" }, [E("div", { class: "hx-card__head" }, [I("agents"), E("h3", { text: "Fleet board · 20 agents" })])]));
+    risk.firstChild.appendChild((function () { var w = E("div", { style: "padding:var(--sp-3)" }); w.appendChild(fleet); return w; })());
+    frag.appendChild(band("risk", "At risk", risk, String(ag.length)));
+
+    var changed = E("div", { class: "home-cols" });
+    changed.appendChild(listCard("Fleet changes", "check", [
+      mini("Manifest CR proposed", HX.chip("info", "agent.taxonomist 0.95→0.96"), "/cr/CR-20261017-01J9AA", "info"),
+      mini("Prompt / policy versions", HX.chip("ok", "3 promoted"), "/agents", "check"),
+      mini("Canary promoted", HX.chip("ok", "agent.taxonomist → 25 %"), "/agents?tab=canaries", "check")
+    ]));
+    frag.appendChild(band("changed", "What changed", changed));
+    return frag;
+  };
+
+  // 9 — Executive sponsor (one-screen scorecard)
+  HOMES["role.executive"] = function () {
+    var frag = document.createDocumentFragment();
+    var k = D.kp || {};
+    var exec = E("div", { class: "exec" });
+
+    var goals = E("div", { class: "exec__goals" });
+    arr(k.goals).forEach(function (g) {
+      var foot = [];
+      if (g.companion) {
+        var comp = g.companion;
+        var ok = comp.mustBeZero ? comp.value === 0 : (comp.mustBe ? comp.value === comp.mustBe : true);
+        foot.push(HX.chip(ok ? "ok" : "fail", comp.label + ": " + comp.value));
+      }
+      goals.appendChild(statTile({ label: g.id + " · " + g.short, value: g.value, unit: g.unit && g.unit.indexOf("%") === 0 ? "%" : "", target: g.target, spark: g.trend90d, foot: foot, route: g.kpi ? "/kpi/" + g.kpi : null }));
+    });
+    exec.appendChild(goals);
+
+    var mid = E("div", { class: "exec__mid" });
+
+    // group band map
+    var bmCard = E("div", { class: "hx-card" });
+    bmCard.appendChild(E("div", { class: "hx-card__head" }, [I("quality"), E("h3", { text: "Group band map · G1–G9" })]));
+    var bm = E("div", { class: "hx-band-map" });
+    scorecards().forEach(function (s) {
+      var cell = E("button", { class: "hx-band-map__cell hx-band-map__cell--" + s.band.toLowerCase(), "aria-label": GROUP(s.group) + " " + s.band + " " + s.dqi + (s.certified ? ", certified" : "") });
+      cell.appendChild(E("span", { class: "hx-band-map__g", text: s.group + " " + s.band }));
+      cell.appendChild(E("span", { class: "hx-band-map__val", text: s.dqi }));
+      cell.appendChild(E("span", { class: "hx-band-map__cert", title: s.certified ? "certified" : "not certified", text: s.certified ? "✓" : "–" }));
+      cell.addEventListener("click", nav("/scorecard/" + s.group));
+      bm.appendChild(cell);
+    });
+    bmCard.appendChild(bm);
+    mid.appendChild(bmCard);
+
+    // phase gates
+    var phCard = E("div", { class: "hx-card" });
+    phCard.appendChild(E("div", { class: "hx-card__head" }, [I("governance"), E("h3", { text: "Phase gate progress" })]));
+    var pg = E("div", { class: "hx-phase-gates" });
+    arr(k.phases).forEach(function (p) {
+      var mod = p.state === "done" ? "--done" : p.state === "in_progress" ? "--active" : "";
+      pg.appendChild(E("span", { class: "hx-phase-gates__gate hx-phase-gates__gate" + mod, title: (p.blocking || []).join("; ") }, [p.label.split(" · ")[0] + " · " + p.gates.met + "/" + p.gates.total]));
+    });
+    phCard.appendChild(pg);
+    mid.appendChild(phCard);
+
+    // decisions waiting
+    var dw = k.decisionsWaiting || {};
+    var dwCard = listCard("Decisions waiting on humans", "clock", [
+      mini("Gates open > 7 days", HX.chip("warn", (dw.gatesOver7Days || 0) + ""), "/cr?view=high-risk-open", "warn"),
+      mini("Steward queue age (p50)", HX.chip("neutral", (dw.queueAgeP50Days || 0) + " days"), "/cr", "clock"),
+      mini("Oldest · " + (dw.oldest ? dw.oldest.role.replace("role.", "") : ""), dw.oldest ? HX.chip("fail", dw.oldest.ageDays + " days") : HX.chip("ok", "—"), dw.oldest ? "/cr/" + dw.oldest.cr : "/cr", "warn")
+    ]);
+    dwCard.appendChild(E("p", { class: "hx-caption hx-muted", style: "padding:0 var(--sp-3) var(--sp-3)", text: "Capacity is the fix, not UI: the G5 steward queue has one approver." }));
+    mid.appendChild(dwCard);
+
+    // risk register ≥ 15
+    var rk = arr(k.risks);
+    var rkCard = listCard("Risk register (score ≥ 15)", "warn", rk.filter(function (r) { return r.score >= 15; }).map(function (r) {
+      return mini(r.label, E("span", { class: "hx-row" }, [HX.chip(r.score >= 20 ? "fail" : "warn", "score " + r.score), HX.chip("neutral", r.trend)]), "/gov", "warn");
+    }), "/gov", "Full risk register");
+    mid.appendChild(rkCard);
+
+    exec.appendChild(mid);
+
+    // DQI attribution + narrative
+    var narr = E("div", { class: "hx-card" });
+    narr.appendChild(E("div", { class: "hx-card__head" }, [I("info"), E("h3", { text: "What changed this week" }), HX.chip("agent-text", "agent-written", { class: "hx-chip--agent-text" })]));
+    narr.appendChild(E("p", { class: "hx-dense", style: "max-width:68ch", text: k.narrative || "" }));
+    var attr = E("div", { class: "hx-row", style: "margin-top:var(--sp-2)" });
+    arr(k.attribution).forEach(function (a) { attr.appendChild(HX.chip(a.deltaPp <= -3 ? "fail" : "warn", GROUP(a.group) + " " + a.deltaPp + " pp · " + a.driver)); });
+    narr.appendChild(attr);
+    var nudge = E("div", { class: "hx-row hx-nudge", style: "margin-top:var(--sp-3)" });
+    var nb = E("button", { class: "hx-btn hx-btn--sm" }, [I("bell"), "Nudge G5 steward gate"]);
+    var nudgedAt = null;
+    nb.addEventListener("click", function () {
+      if (nudgedAt && Date.now() - nudgedAt < 7 * 86400000) { HX.toast("Nudged recently — next allowed in 4 days (rate-limited, audited).", { kind: "warn" }); return; }
+      HX.confirm({ title: "Send nudge", body: "This sends a rate-limited (1 / gate / 7 days), audited nudge to the G5 steward gate owner.", confirmLabel: "Send nudge" }).then(function (ok) {
+        if (!ok) return;
+        nudgedAt = Date.now();
+        HX.audit.write({ type: "EXEC_NUDGE", gate: "steward_approval", group: "G5", by: HX.role.principal() });
+        HX.toast("Nudge sent and recorded in the audit log.", { kind: "ok" });
+      });
+    });
+    nudge.appendChild(nb);
+    nudge.appendChild(E("span", { class: "hx-caption hx-muted", text: "rate-limited · audited" }));
+    narr.appendChild(nudge);
+    exec.appendChild(narr);
+
+    frag.appendChild(exec);
+    return frag;
+  };
+
+  // ---- role-switcher strip ----------------------------------------------
+  function buildSwitcher() {
+    CLEAR(switchEl);
+    var wrap = E("div", { class: "home-switch" });
+    var strip = E("div", { class: "hx-row", role: "group", "aria-label": "View home as role" });
+    strip.appendChild(E("span", { class: "hx-role-switcher__label", text: "Home for role" }));
+    var current = HX.role.get();
+    HX.role.list().forEach(function (r) {
+      var chip = E("button", { class: "hx-role-chip", type: "button", "aria-pressed": r.id === current ? "true" : "false", tabindex: r.id === current ? "0" : "-1", "data-role": r.id }, [r.label]);
+      chip.addEventListener("click", function () { switchRole(r.id); });
+      strip.appendChild(chip);
+    });
+    // roving focus with arrow keys
+    strip.addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      var chips = Array.prototype.slice.call(strip.querySelectorAll(".hx-role-chip"));
+      var idx = chips.indexOf(document.activeElement); if (idx < 0) return;
+      e.preventDefault();
+      var next = e.key === "ArrowRight" ? (idx + 1) % chips.length : (idx - 1 + chips.length) % chips.length;
+      chips[next].focus();
+    });
+    wrap.appendChild(strip);
+
+    // view-as note + verb-set invariance (AC-03)
+    var note = E("div", { class: "home-switch__perms" });
+    var role = HX.role.find(current);
+    var principal = HX.role.find(HX.role.principal());
+    if (current !== HX.role.principal()) note.appendChild(E("span", { text: "Viewing as " + (role ? role.label : current) + " — your permissions are unchanged. " }));
+    note.appendChild(E("span", { text: "Your actions on a change request (from your real role, " + (principal ? principal.label : "") + "):" }));
+    HX.role.verbs("cr", null).forEach(function (v) { note.appendChild(HX.chip("neutral", v.replace(/_/g, " "))); });
+    wrap.appendChild(note);
+    switchEl.appendChild(wrap);
+  }
+
+  function switchRole(roleId) {
+    var prev = HX.role.get();
+    if (roleId === prev) return;
+    internalSwitch = true;
+    HX.role.set(roleId); // app.js audits the View-as switch + re-renders rail + topbar note
+    internalSwitch = false;
+    // keep the top-bar View-as <select> in sync
+    var sel = document.querySelector(".hx-viewas select"); if (sel) sel.value = roleId;
+    // Executive is served by the purpose-built one-screen page, not an index home.
+    if (roleId === "role.executive") { gotoExec(); return; }
+    var role = HX.role.find(roleId);
+    HX.toast("Home now showing: " + (role ? role.label : roleId), {
+      kind: "ok",
+      undo: function () { switchRole(prev); }
+    });
+    render(roleId, { skeleton: true });
+  }
+
+  // ---- render ------------------------------------------------------------
+  function skeletonBand() {
+    var s = E("div", { class: "hx-band" });
+    s.appendChild(E("div", { class: "hx-band__head" }, [E("div", { class: "hx-skeleton", style: "width:160px;height:20px" })]));
+    var g = E("div", { class: "home-tiles" });
+    for (var i = 0; i < 3; i++) g.appendChild(E("div", { class: "hx-skeleton", style: "height:110px;border-radius:var(--r-card)" }));
+    s.appendChild(g);
+    return s;
+  }
+  function showSkeletons() { CLEAR(rootEl); for (var i = 0; i < 3; i++) rootEl.appendChild(skeletonBand()); }
+
+  function build(roleId) {
+    // The Executive home is served only by executive.html (see top of file).
+    // This guard is the backstop: no path may render the inline exec home, which
+    // carries home chrome and would overflow the one-screen contract.
+    if (roleId === "role.executive") { gotoExec(); return; }
+    CLEAR(rootEl);
+    document.body.dataset.home = roleId;
+    var role = HX.role.find(roleId) || { label: roleId };
+    var greet = E("div", { class: "home-greet" });
+    greet.appendChild(E("h1", { text: role.label }));
+    greet.appendChild(E("p", { text: roleId === "role.executive" ? "Programme health in under a minute. Every tile drills into the operational page as of the report month." : "Twenty agents propose; you dispose. Needs me · At risk · What changed — grounded in synthetic data." }));
+    rootEl.appendChild(greet);
+
+    // prototype demo controls (kill switch, prod first-write)
+    rootEl.appendChild(demoControls());
+
+    var home = HOMES[roleId] || HOMES["role.ontologist"];
+    rootEl.appendChild(home());
+    buildSwitcher();
+    HX.live("Home updated for " + role.label, "polite");
+  }
+
+  function render(roleId, opts) {
+    if (!loaded) { showSkeletons(); return; }
+    if (opts && opts.skeleton) { showSkeletons(); setTimeout(function () { build(roleId); }, 180); }
+    else build(roleId);
+  }
+
+  function demoControls() {
+    var d = E("details", { class: "home-demos" });
+    d.appendChild(E("summary", { text: "Prototype demo controls" }));
+    var row = E("div", { class: "home-demos__row" });
+    var k = HX.killswitch.get();
+    var killBtn = E("button", { class: "hx-btn hx-btn--sm" }, [I(k && k.active ? "undo" : "danger"), k && k.active ? "Release demo kill switch" : "Trip demo kill switch"]);
+    killBtn.addEventListener("click", function () {
+      var cur = HX.killswitch.get();
+      if (cur && cur.active) HX.killswitch.release();
+      else HX.killswitch.trip({ crType: "ontology", env: "prod" }, "demo from Home");
+      var nk = HX.killswitch.get();
+      CLEAR(killBtn); killBtn.appendChild(I(nk && nk.active ? "undo" : "danger")); killBtn.appendChild(document.createTextNode(nk && nk.active ? "Release demo kill switch" : "Trip demo kill switch"));
+    });
+    row.appendChild(killBtn);
+
+    var prodBtn = E("button", { class: "hx-btn hx-btn--sm" }, [I("danger"), "Switch to PROD"]);
+    prodBtn.addEventListener("click", function () { HX.env.set("prod"); HX.toast("Environment set to PROD. The first write action this session will ask you to confirm.", { kind: "warn" }); });
+    row.appendChild(prodBtn);
+
+    var writeBtn = E("button", { class: "hx-btn hx-btn--sm" }, [I("review"), "Simulate first PROD write"]);
+    writeBtn.addEventListener("click", function () { HX.env.confirmWrite().then(function (ok) { HX.toast(ok ? "Write confirmed." : "Write cancelled.", { kind: ok ? "ok" : "warn" }); }); });
+    row.appendChild(writeBtn);
+
+    var uatBtn = E("button", { class: "hx-btn hx-btn--sm" }, ["Back to UAT"]);
+    uatBtn.addEventListener("click", function () { HX.env.set("uat"); HX.toast("Environment set to UAT.", { kind: "ok" }); });
+    row.appendChild(uatBtn);
+    d.appendChild(row);
+    return d;
+  }
+
+  // ---- boot --------------------------------------------------------------
+  showSkeletons();
+  buildSwitcher();
+  Promise.all(["change-requests", "agents", "dq", "kpis", "topics", "catalog", "schemes", "incidents", "concepts"].map(function (n) { return HX.data.load(n); }))
+    .then(function (res) {
+      D.cr = res[0]; D.ag = res[1]; D.dq = res[2]; D.kp = res[3]; D.tp = res[4]; D.cat = res[5]; D.sch = res[6]; D.inc = res[7]; D.con = res[8];
+      loaded = true;
+      build(HX.role.get());
+    })
+    .catch(function (e) { loaded = true; console.warn("Home data load issue:", e); build(HX.role.get()); });
+
+  // re-render when the top-bar View-as <select> changes the role
+  HX.role.on(function (roleId) {
+    // keep chip pressed-state in sync without a full skeleton flash if triggered externally
+    var chips = switchEl.querySelectorAll(".hx-role-chip");
+    var synced = false;
+    Array.prototype.forEach.call(chips, function (c) { var on = c.getAttribute("data-role") === roleId; c.setAttribute("aria-pressed", on ? "true" : "false"); c.setAttribute("tabindex", on ? "0" : "-1"); if (on) synced = true; });
+    // External switch (top-bar View-as) to Executive → the one-screen page.
+    if (!internalSwitch && roleId === "role.executive") { gotoExec(); return; }
+    if (!internalSwitch && synced && document.body.dataset.home !== roleId && loaded) render(roleId, { skeleton: true });
+  });
+})();
+  </script>
+</body>
+</html>

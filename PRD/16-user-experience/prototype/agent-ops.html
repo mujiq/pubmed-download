@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>HEALIX Console — Agents &amp; Operations</title>
+  <meta name="description" content="Keep autonomy honest: the fleet board of 20 agents, agent pages (manifest, ladder, thresholds, runs, evaluations, memory, tools), runs, evaluations, calibration, canaries, rollbacks and the kill switch. Synthetic data only.">
+  <link rel="stylesheet" href="assets/app.css">
+  <style>
+    /* Page-local layout only — every colour comes from app.css tokens (§5.1).
+       Agents & Operations surface (§4.9): six tabs (Fleet · Runs · Evaluations ·
+       Calibration · Canaries · Kill switch) over the shared HX shell, plus object
+       pages for agent / run / evaluation / canary. Hexagon fleet cards, ladder
+       gauges, threshold editor-as-CR, tool-call waterfalls, κ charts (inline SVG
+       via HX.chart, each with a data table), canary rails and the kill-switch
+       panel. Reflows to one column at 375px with a 16px gutter, no horizontal
+       page scroll. */
+    .ao-tabs { position: sticky; top: var(--topbar-h); z-index: 15; background: var(--bg-canvas); padding-top: var(--sp-1); }
+    #ao-root { outline: none; }
+    #ao-root .hx-object-header { top: calc(var(--topbar-h) + 42px); z-index: 14; }
+    @media (max-width: 768px) { #ao-root .hx-object-header { top: auto; } }
+
+    .ao-toolbar { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+    .ao-toolbar__spacer { flex: 1 1 auto; }
+    .ao-filter { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--r-ctl); background: var(--bg-canvas); font-family: var(--font-mono); font-size: var(--fs-caption); min-width: 180px; flex: 1 1 200px; }
+    .ao-filter input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; outline: none; color: inherit; }
+    .ao-chipbar { display: flex; gap: 4px; flex-wrap: wrap; }
+    .ao-chiptoggle { cursor: pointer; }
+    .ao-chiptoggle[aria-pressed="true"] { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+    /* operator attention strip */
+    .ao-attn { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-4); }
+    .ao-attn .hx-card { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .ao-attn__row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; font-size: var(--fs-caption); }
+    .ao-attn__row + .ao-attn__row { border-top: 1px solid var(--border); padding-top: var(--sp-2); }
+    .ao-attn__id { font-family: var(--font-mono); font-size: var(--fs-caption); }
+    .ao-attn__spacer { flex: 1 1 auto; }
+
+    /* fleet board */
+    .ao-fleet { display: grid; grid-template-columns: repeat(auto-fill, minmax(272px, 1fr)); gap: var(--sp-3); align-items: stretch; }
+    .ao-fleet .hx-agent-card { cursor: pointer; }
+    .ao-fleet .hx-agent-card:hover { border-color: var(--border-strong); }
+    .ao-fleet .hx-agent-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .hx-agent-card__role { font-size: var(--fs-micro); color: var(--fg-muted); line-height: 1.3; }
+    .hx-agent-card__badges { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+    .ao-cardfoot { display: flex; gap: var(--sp-2); align-items: center; flex-wrap: wrap; font-size: var(--fs-micro); color: var(--fg-muted); font-family: var(--font-mono); border-top: 1px solid var(--border); padding-top: var(--sp-2); }
+    .ao-budget { flex: 1 1 100%; }
+    .ao-budget__bar { height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; margin-top: 3px; }
+    .ao-budget__bar i { display: block; height: 100%; background: var(--accent); }
+    .ao-arm { display: inline-flex; align-items: center; gap: 3px; }
+
+    /* generic */
+    .ao-kv { display: grid; grid-template-columns: auto 1fr; gap: 4px var(--sp-3); font-size: var(--fs-dense); margin: 0; }
+    .ao-kv dt { color: var(--fg-muted); white-space: nowrap; }
+    .ao-kv dd { margin: 0; font-family: var(--font-mono); font-size: var(--fs-caption); }
+    .ao-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-4); align-items: start; }
+    .ao-section { margin-bottom: var(--sp-5, 24px); }
+    .ao-section > h3 { font-size: var(--fs-lead); margin-bottom: var(--sp-2); }
+    .ao-subtabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: var(--sp-3); overflow-x: auto; }
+    .ao-subtab { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 var(--sp-3); border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--fg-muted); font-size: var(--fs-dense); font-weight: 500; white-space: nowrap; cursor: pointer; }
+    .ao-subtab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+
+    /* tables */
+    .ao-table { width: 100%; border-collapse: collapse; font-size: var(--fs-dense); }
+    .ao-table th, .ao-table td { text-align: left; padding: 6px var(--sp-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .ao-table th { font-size: var(--fs-caption); color: var(--fg-muted); font-weight: 600; position: sticky; top: 0; background: var(--bg-surface); }
+    .ao-table td.num, .ao-table th.num { text-align: right; font-family: var(--font-mono); }
+    .ao-table tbody tr { cursor: pointer; }
+    .ao-table tbody tr:hover { background: var(--bg-sunken); }
+    .ao-table tbody tr[aria-selected="true"] { background: var(--info-bg); }
+    .ao-table-wrap { border: 1px solid var(--border); border-radius: var(--r-card); overflow: auto; background: var(--bg-surface); max-height: 70vh; }
+
+    /* run waterfall */
+    .ao-wf { display: grid; grid-template-columns: 1fr; gap: 2px; }
+    .ao-wf__row { display: grid; grid-template-columns: 148px 1fr 70px; gap: var(--sp-2); align-items: center; font-size: var(--fs-caption); padding: 3px 0; border-bottom: 1px solid var(--border); }
+    .ao-wf__tool { font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ao-wf__bar { height: 14px; background: var(--bg-sunken); border-radius: 3px; position: relative; overflow: hidden; }
+    .ao-wf__bar i { position: absolute; top: 0; height: 100%; background: var(--accent); border-radius: 3px; min-width: 2px; }
+    .ao-wf__bar.is-untrusted i { background: var(--warn-fg); }
+    .ao-wf__dur { font-family: var(--font-mono); text-align: right; color: var(--fg-muted); }
+    @media (max-width: 560px) { .ao-wf__row { grid-template-columns: 1fr; } .ao-wf__dur { text-align: left; } }
+
+    /* tools matrix */
+    .ao-tools { display: grid; grid-template-columns: 1fr auto; gap: 2px var(--sp-3); font-size: var(--fs-dense); align-items: center; }
+    .ao-tools__tool { font-family: var(--font-mono); font-size: var(--fs-caption); padding: 4px 0; border-bottom: 1px solid var(--border); }
+    .ao-tools__val { padding: 4px 0; border-bottom: 1px solid var(--border); text-align: right; }
+
+    /* calibration grid */
+    .ao-calib { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--sp-3); }
+    .ao-calib__cell { border: 1px solid var(--border); border-radius: var(--r-card); padding: var(--sp-2) var(--sp-3); }
+    .ao-calib__cell.is-reverted { border-color: var(--warn-border); background: var(--warn-bg); }
+    .ao-calib__top { display: flex; align-items: baseline; gap: var(--sp-2); justify-content: space-between; }
+    .ao-calib__k { font-family: var(--font-mono); font-size: var(--fs-h3); font-weight: 600; line-height: 1; }
+    .ao-calib__spark { height: 24px; margin-top: 4px; }
+    .ao-chartcard { border: 1px solid var(--border); border-radius: var(--r-card); background: var(--bg-surface); padding: var(--sp-3); }
+
+    /* ladder */
+    .ao-gauge__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-caption); }
+    .ao-gauge__val { font-family: var(--font-mono); font-weight: 600; }
+    .ao-gauge__target { color: var(--fg-muted); font-family: var(--font-mono); font-size: var(--fs-micro); }
+
+    /* threshold editor */
+    .ao-thresh__row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin: var(--sp-2) 0; }
+    .ao-thresh__row input[type="range"] { flex: 1 1 160px; min-width: 120px; accent-color: var(--accent); }
+    .ao-thresh__val { font-family: var(--font-mono); font-weight: 600; min-width: 48px; text-align: right; }
+
+    /* canary */
+    .ao-canary { border: 1px solid var(--border); border-radius: var(--r-card); background: var(--bg-surface); padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
+    .ao-canary__rail { overflow-x: auto; }
+    .ao-metric2 { display: grid; grid-template-columns: 110px 1fr; gap: 4px var(--sp-2); align-items: center; font-size: var(--fs-caption); }
+    .ao-metric2__track { height: 10px; background: var(--bg-sunken); border-radius: 5px; position: relative; }
+    .ao-metric2__track i { position: absolute; top: 0; height: 100%; border-radius: 5px; }
+
+    .ao-note { font-size: var(--fs-caption); color: var(--fg-muted); }
+    .ao-verbbar { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-2); }
+    .ao-pre { font-family: var(--font-mono); font-size: var(--fs-caption); background: var(--bg-sunken); border: 1px solid var(--border); border-radius: var(--r-ctl); padding: var(--sp-2) var(--sp-3); overflow: auto; white-space: pre; margin: 0; }
+    .ao-backlink { margin-bottom: var(--sp-2); }
+  </style>
+</head>
+<body>
+  <a class="hx-sr sr-skip" href="#ao-root">Skip to agents and operations content</a>
+  <main id="hx-main">
+    <nav class="ao-tabs" id="ao-tabs" aria-label="Agents and operations views"></nav>
+    <div id="ao-root" tabindex="-1"></div>
+  </main>
+
+  <!-- Synthetic-data fallback so the page renders over file:// (README §How to open).
+       Served over http, HX.data.load fetches data/agents.json (the same superset)
+       instead. The block below is the compacted contents of data/agents.json. -->
+  <script type="application/json" id="hx-data-agents">{"agents":[{"id":"agent.orchestrator","role":"Plans and schedules pipeline runs; routes change requests; enforces gates","stage":null,"level":"L3","ceiling":"L3","modules":["10"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.22,"costTodayUsd":10.56},"maxOpenChangeRequests":0,"openCrs":0,"acceptanceRate":0.99,"rollbackRate":0.0,"kappaByType":{},"graduation":{"acceptance":{"value":0.99,"target":0.9},"rollback":{"value":0.0,"target":0.02},"agreement":{"value":null,"target":0.85},"daysAtLevel":120,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0R0","manifestVersion":"1.3.2","promptVersion":"sha256:ab12cd34ef56009f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":true},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1240,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":88,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.orchestrator\nlevel: L3\nceiling: L3\nmodules: [10]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 0\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":0,"autoApproved":0,"rejected":1,"vetoed":0,"example":null}},{"id":"agent.inventory","role":"Discovers sources, schemas, elements; maintains Source Registry and data dictionary (Stage 0)","stage":0,"level":"L3","ceiling":"L3","modules":["02","03","G9"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.35,"costTodayUsd":16.8},"maxOpenChangeRequests":60,"openCrs":6,"acceptanceRate":0.98,"rollbackRate":0.004,"kappaByType":{"inventory":0.96},"graduation":{"acceptance":{"value":0.98,"target":0.9},"rollback":{"value":0.004,"target":0.02},"agreement":{"value":0.96,"target":0.85},"daysAtLevel":118,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0R1","manifestVersion":"1.4.0","promptVersion":"sha256:b12cd34ef56019f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":true},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1271,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":92,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.inventory\nlevel: L3\nceiling: L3\nmodules: [02, 03, G9]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 60\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":4,"autoApproved":2,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.vocabulary_curator","role":"Harvests terms, proposes preferred/alternate labels, definitions, code bindings (Stage 1)","stage":1,"level":"L2","ceiling":"L3","modules":["02"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.58,"costTodayUsd":27.84},"maxOpenChangeRequests":80,"openCrs":23,"acceptanceRate":0.95,"rollbackRate":0.008,"kappaByType":{"vocabulary":0.97},"graduation":{"acceptance":{"value":0.95,"target":0.9},"rollback":{"value":0.008,"target":0.02},"agreement":{"value":0.97,"target":0.85},"daysAtLevel":96,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0R2","manifestVersion":"1.4.0","promptVersion":"sha256:12cd34ef56029f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1302,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":96,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.vocabulary_curator\nlevel: L2\nceiling: L3\nmodules: [02]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 80\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":12,"autoApproved":7,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.taxonomist","role":"Builds/validates hierarchies, polyhierarchy checks, facet analysis (Stage 2)","stage":2,"level":"L2","ceiling":"L3","modules":["02"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.41,"costTodayUsd":19.68},"maxOpenChangeRequests":40,"openCrs":17,"acceptanceRate":0.93,"rollbackRate":0.011,"kappaByType":{"taxonomy":0.94},"graduation":{"acceptance":{"value":0.93,"target":0.9},"rollback":{"value":0.011,"target":0.02},"agreement":{"value":0.94,"target":0.85},"daysAtLevel":48,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0R3","manifestVersion":"1.3.2","promptVersion":"sha256:2cd34ef56039f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":true},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1333,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":100,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.taxonomist\nlevel: L2\nceiling: L3\nmodules: [02]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 40\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":9,"autoApproved":5,"rejected":0,"vetoed":0,"example":"CR-20261017-01J9ZK"}},{"id":"agent.thesaurus_editor","role":"Proposes associative/equivalence relations, scope notes (Stage 3)","stage":3,"level":"L2","ceiling":"L2","modules":["02"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.27,"costTodayUsd":12.96},"maxOpenChangeRequests":30,"openCrs":9,"acceptanceRate":0.91,"rollbackRate":0.015,"kappaByType":{"thesaurus":0.93},"graduation":{"acceptance":{"value":0.91,"target":0.9},"rollback":{"value":0.015,"target":0.02},"agreement":{"value":0.93,"target":0.85},"daysAtLevel":61,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0R4","manifestVersion":"1.4.0","promptVersion":"sha256:cd34ef56049f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1364,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":104,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.thesaurus_editor\nlevel: L2\nceiling: L2\nmodules: [02]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 30\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":5,"autoApproved":3,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.ontologist","role":"Promotes to OWL classes/properties, axioms, SHACL shapes; runs reasoner (Stage 4)","stage":4,"level":"L1","ceiling":"L1","modules":["02"],"thresholds":{"autoApprove":null,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.31,"costTodayUsd":14.88},"maxOpenChangeRequests":20,"openCrs":4,"acceptanceRate":0.88,"rollbackRate":0.0,"kappaByType":{"owl_axiom":0.88,"shacl":0.86},"graduation":{"acceptance":{"value":0.88,"target":0.9},"rollback":{"value":0.0,"target":0.02},"agreement":{"value":0.86,"target":0.85},"daysAtLevel":120,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":true}],"autoApprovalSuspended":true,"lastRun":"run_01JA0R5","manifestVersion":"1.4.0","promptVersion":"sha256:d34ef56059f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":true},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1395,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":108,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.ontologist\nlevel: L1\nceiling: L1\nmodules: [02]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 20\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":3,"autoApproved":1,"rejected":1,"vetoed":0,"example":null}},{"id":"agent.kg_builder","role":"Generates R2RML/RML and FHIR\u2192RDF mappings, loads bitemporal graph (Stage 5)","stage":5,"level":"L3","ceiling":"L3","modules":["08"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.49,"costTodayUsd":23.52},"maxOpenChangeRequests":20,"openCrs":3,"acceptanceRate":0.96,"rollbackRate":0.021,"kappaByType":{"kg_mapping":0.8,"topic_schema":0.89},"graduation":{"acceptance":{"value":0.96,"target":0.9},"rollback":{"value":0.021,"target":0.02},"agreement":{"value":0.8,"target":0.85},"daysAtLevel":77,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":true},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":true}],"autoApprovalSuspended":true,"lastRun":"run_01JA0R6","manifestVersion":"1.3.2","promptVersion":"sha256:ab12cd34ef56069f","status":"demoted","demotedAt":"2026-10-17T09:15:00Z","tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":true},{"tool":"kafka.replay","allowed":true},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1426,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":112,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.kg_builder\nlevel: L3\nceiling: L3\nmodules: [08]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 20\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":2,"autoApproved":1,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.source_mapper","role":"Maps source fields \u2192 std \u2192 FHIR; maintains HL7 v2 and CDC mapping specs","stage":0,"level":"L2","ceiling":"L3","modules":["03","06"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.44,"costTodayUsd":21.12},"maxOpenChangeRequests":40,"openCrs":11,"acceptanceRate":0.92,"rollbackRate":0.009,"kappaByType":{"mapping":0.92},"graduation":{"acceptance":{"value":0.92,"target":0.9},"rollback":{"value":0.009,"target":0.02},"agreement":{"value":0.92,"target":0.85},"daysAtLevel":88,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0R7","manifestVersion":"1.4.0","promptVersion":"sha256:b12cd34ef56079f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1457,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":116,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.source_mapper\nlevel: L2\nceiling: L3\nmodules: [03, 06]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 40\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":6,"autoApproved":3,"rejected":0,"vetoed":1,"example":null}},{"id":"agent.terminology_steward","role":"Maintains value sets, concept maps, handles new/unmapped codes","stage":1,"level":"L2","ceiling":"L3","modules":["06","G8"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.39,"costTodayUsd":18.72},"maxOpenChangeRequests":60,"openCrs":8,"acceptanceRate":0.97,"rollbackRate":0.005,"kappaByType":{"mapping":0.92,"valueset":0.96},"graduation":{"acceptance":{"value":0.97,"target":0.9},"rollback":{"value":0.005,"target":0.02},"agreement":{"value":0.92,"target":0.85},"daysAtLevel":102,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0R8","manifestVersion":"1.4.0","promptVersion":"sha256:12cd34ef56089f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":true},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1488,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":120,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.terminology_steward\nlevel: L2\nceiling: L3\nmodules: [06, G8]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 60\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":5,"autoApproved":2,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.schema_architect","role":"Derives EDW logical/physical models from ontology + UDMH/HCDM patterns; writes DDL migrations","stage":5,"level":"L1","ceiling":"L2","modules":["04","05"],"thresholds":{"autoApprove":null,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.52,"costTodayUsd":24.96},"maxOpenChangeRequests":15,"openCrs":5,"acceptanceRate":0.94,"rollbackRate":0.0,"kappaByType":{"edw_ddl":0.91},"graduation":{"acceptance":{"value":0.94,"target":0.9},"rollback":{"value":0.0,"target":0.02},"agreement":{"value":0.91,"target":0.85},"daysAtLevel":120,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0R9","manifestVersion":"1.3.2","promptVersion":"sha256:2cd34ef56099f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1519,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":124,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.schema_architect\nlevel: L1\nceiling: L2\nmodules: [04, 05]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 15\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":3,"autoApproved":1,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.dq_author","role":"Derives DQ rules from ontology constraints, profiles data, proposes thresholds","stage":null,"level":"L2","ceiling":"L3","modules":["09"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.33,"costTodayUsd":15.84},"maxOpenChangeRequests":40,"openCrs":7,"acceptanceRate":0.9,"rollbackRate":0.012,"kappaByType":{"dq_rule":0.9},"graduation":{"acceptance":{"value":0.9,"target":0.9},"rollback":{"value":0.012,"target":0.02},"agreement":{"value":0.9,"target":0.85},"daysAtLevel":70,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0RA","manifestVersion":"1.4.0","promptVersion":"sha256:cd34ef560a9f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1550,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":128,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.dq_author\nlevel: L2\nceiling: L3\nmodules: [09]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 40\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":4,"autoApproved":2,"rejected":1,"vetoed":0,"example":null}},{"id":"agent.dq_monitor","role":"Runs DQ pipelines, detects anomalies and drift, opens issues","stage":null,"level":"L3","ceiling":"L3","modules":["09"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.61,"costTodayUsd":29.28},"maxOpenChangeRequests":0,"openCrs":0,"acceptanceRate":0.99,"rollbackRate":0.0,"kappaByType":{},"graduation":{"acceptance":{"value":0.99,"target":0.9},"rollback":{"value":0.0,"target":0.02},"agreement":{"value":null,"target":0.85},"daysAtLevel":120,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0RB","manifestVersion":"1.4.0","promptVersion":"sha256:d34ef560b9f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":true},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1581,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":132,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.dq_monitor\nlevel: L3\nceiling: L3\nmodules: [09]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 0\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":0,"autoApproved":0,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.remediator","role":"Proposes/applies fixes for quarantined records within policy (e.g., code re-mapping)","stage":null,"level":"L2","ceiling":"L3","modules":["09"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.37,"costTodayUsd":17.76},"maxOpenChangeRequests":30,"openCrs":6,"acceptanceRate":0.94,"rollbackRate":0.018,"kappaByType":{"remediation":0.91},"graduation":{"acceptance":{"value":0.94,"target":0.9},"rollback":{"value":0.018,"target":0.02},"agreement":{"value":0.91,"target":0.85},"daysAtLevel":55,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0RC","manifestVersion":"1.3.2","promptVersion":"sha256:ab12cd34ef560c9f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1612,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":136,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.remediator\nlevel: L2\nceiling: L3\nmodules: [09]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 30\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":4,"autoApproved":2,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.interop_engineer","role":"Generates/validates FHIR profiles, HL7 v2 conformance profiles, partner conformance tests","stage":null,"level":"L2","ceiling":"L3","modules":["06"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.29,"costTodayUsd":13.92},"maxOpenChangeRequests":30,"openCrs":4,"acceptanceRate":0.95,"rollbackRate":0.006,"kappaByType":{"profile":0.94},"graduation":{"acceptance":{"value":0.95,"target":0.9},"rollback":{"value":0.006,"target":0.02},"agreement":{"value":0.94,"target":0.85},"daysAtLevel":99,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0RD","manifestVersion":"1.4.0","promptVersion":"sha256:b12cd34ef560d9f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1643,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":140,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.interop_engineer\nlevel: L2\nceiling: L3\nmodules: [06]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 30\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":3,"autoApproved":1,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.privacy_guardian","role":"Classifies PHI, enforces minimisation, blocks disallowed flows, reviews every change for PHI impact","stage":null,"level":"L4","ceiling":"L4","modules":["11"],"thresholds":{"autoApprove":null,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.44,"costTodayUsd":21.12},"maxOpenChangeRequests":20,"openCrs":2,"acceptanceRate":1.0,"rollbackRate":0.0,"kappaByType":{"policy":0.99},"graduation":{"acceptance":{"value":1.0,"target":0.9},"rollback":{"value":0.0,"target":0.02},"agreement":{"value":0.99,"target":0.85},"daysAtLevel":120,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0RE","manifestVersion":"1.4.0","promptVersion":"sha256:12cd34ef560e9f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":true},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1674,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":144,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.privacy_guardian\nlevel: L4\nceiling: L4\nmodules: [11]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 20\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":2,"autoApproved":0,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.evaluator","role":"Independent critic: scores every proposal against rubrics, tests, reasoner, SHACL, regression suites","stage":null,"level":"\u2014","ceiling":"\u2014","modules":["10"],"thresholds":{"autoApprove":null,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":6000000,"usedToday":0.72,"costTodayUsd":34.56},"maxOpenChangeRequests":0,"openCrs":0,"acceptanceRate":null,"rollbackRate":null,"kappaByType":{},"graduation":{"acceptance":{"value":null,"target":0.9},"rollback":{"value":null,"target":0.02},"agreement":{"value":null,"target":0.85},"daysAtLevel":120,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0RF","manifestVersion":"1.3.2","promptVersion":"sha256:2cd34ef560f9f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":false},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1705,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":148,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.evaluator\nlevel: \u2014\nceiling: \u2014\nmodules: [10]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 0\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":0,"autoApproved":0,"rejected":1,"vetoed":0,"example":null}},{"id":"agent.release_manager","role":"Versions and publishes ontology/schema/topic releases; generates changelogs","stage":null,"level":"L2","ceiling":"L3","modules":["02","05","07"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.18,"costTodayUsd":8.64},"maxOpenChangeRequests":10,"openCrs":2,"acceptanceRate":0.98,"rollbackRate":0.014,"kappaByType":{"release":0.95},"graduation":{"acceptance":{"value":0.98,"target":0.9},"rollback":{"value":0.014,"target":0.02},"agreement":{"value":0.95,"target":0.85},"daysAtLevel":110,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0R10","manifestVersion":"1.4.0","promptVersion":"sha256:cd34ef56109f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1736,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":152,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.release_manager\nlevel: L2\nceiling: L3\nmodules: [02, 05, 07]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 10\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":2,"autoApproved":0,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.memory_curator","role":"Consolidates episodic memory (Mem0/Graphiti) into playbooks and semantic memory; prunes/expires; enforces no-PHI-in-memory","stage":null,"level":"L3","ceiling":"L3","modules":["14"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.26,"costTodayUsd":12.48},"maxOpenChangeRequests":10,"openCrs":1,"acceptanceRate":0.97,"rollbackRate":0.0,"kappaByType":{"memory":0.95},"graduation":{"acceptance":{"value":0.97,"target":0.9},"rollback":{"value":0.0,"target":0.02},"agreement":{"value":0.95,"target":0.85},"daysAtLevel":64,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0R11","manifestVersion":"1.4.0","promptVersion":"sha256:d34ef56119f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":true},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1767,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":156,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.memory_curator\nlevel: L3\nceiling: L3\nmodules: [14]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 10\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":1,"autoApproved":0,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.self_healer","role":"Detects pipeline faults (connector down, schema drift, consumer lag, failed loads), runs healing playbooks, escalates; learns new playbooks from resolved incidents","stage":null,"level":"L3","ceiling":"L3","modules":["14","12"],"thresholds":{"autoApprove":0.95,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.57,"costTodayUsd":27.36},"maxOpenChangeRequests":10,"openCrs":2,"acceptanceRate":0.96,"rollbackRate":0.027,"kappaByType":{"playbook":0.91},"graduation":{"acceptance":{"value":0.96,"target":0.9},"rollback":{"value":0.027,"target":0.02},"agreement":{"value":0.91,"target":0.85},"daysAtLevel":64,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":true},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":false}],"autoApprovalSuspended":false,"lastRun":"run_01JA0R12","manifestVersion":"1.3.2","promptVersion":"sha256:ab12cd34ef56129f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":true},{"tool":"kafka.replay","allowed":true},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1798,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":160,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.self_healer\nlevel: L3\nceiling: L3\nmodules: [14, 12]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 10\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":2,"autoApproved":0,"rejected":0,"vetoed":0,"example":null}},{"id":"agent.improver","role":"Runs offline optimisation of agent prompts/policies/thresholds against evaluation suites; proposes canary rollouts","stage":null,"level":"L1","ceiling":"L2","modules":["14","10"],"thresholds":{"autoApprove":null,"lowerRequiresPrdRevision":true},"budgets":{"tokensPerDay":2000000,"usedToday":0.66,"costTodayUsd":31.68},"maxOpenChangeRequests":10,"openCrs":3,"acceptanceRate":0.86,"rollbackRate":0.0,"kappaByType":{"agent_manifest":0.87,"prompt":0.84},"graduation":{"acceptance":{"value":0.86,"target":0.9},"rollback":{"value":0.0,"target":0.02},"agreement":{"value":0.84,"target":0.85},"daysAtLevel":40,"daysRequired":60,"phiFindings":0},"demotionTriggers":[{"metric":"rollbackRate","gt":0.02,"armed":false},{"metric":"phiFindings","gt":0,"armed":false},{"metric":"kappa","lt":0.9,"armed":true}],"autoApprovalSuspended":true,"lastRun":"run_01JA0R13","manifestVersion":"1.4.0","promptVersion":"sha256:b12cd34ef56139f","status":"active","demotedAt":null,"tools":[{"tool":"registry.search","allowed":true},{"tool":"ts.$lookup","allowed":true},{"tool":"ts.$subsumes","allowed":false},{"tool":"cr.create","allowed":true},{"tool":"cr.apply","allowed":false},{"tool":"kafka.replay","allowed":false},{"tool":"phi.reveal","allowed":false}],"memory":{"m1Episodic":{"items":1829,"oldest":"2026-07-01T00:00:00Z","phiScanHits":0},"m2Semantic":{"items":164,"lastConsolidated":"2026-10-17T01:00:00Z"},"masked":true},"manifestYaml":"id: agent.improver\nlevel: L1\nceiling: L2\nmodules: [14, 10]\nthresholds:\n  autoApprove: 0.95\nmaxOpenChangeRequests: 10\nbudgets:\n  tokensPerDay: 2000000\ndemotionTriggers:\n  - metric: rollbackRate\n    gt: 0.02\n  - metric: phiFindings\n    gt: 0\n","manifestHistory":[{"version":"1.3.2","at":"2026-08-01T00:00:00Z","cr":"CR-20260801-01HX00"},{"version":"1.4.0","at":"2026-10-01T00:00:00Z","cr":"CR-20261001-01J1MF"}],"digestToday":{"proposed":2,"autoApproved":1,"rejected":0,"vetoed":0,"example":null}}],"runs":[{"id":"run_01JA0R1","agent":"agent.taxonomist","trigger":"schedule","startedAt":"2026-10-17T03:00:00Z","endedAt":"2026-10-17T03:02:50Z","status":"ok","steps":[{"t":"2026-10-17T03:00:02Z","tool":"registry.search","input":"drift inbox cs71 309308","inputUntrusted":false,"ok":true,"durationMs":210},{"t":"2026-10-17T03:00:05Z","tool":"source.readDisplay","input":"CODE_VALUE 309308 display text","inputUntrusted":true,"ok":true,"durationMs":90},{"t":"2026-10-17T03:00:09Z","tool":"ts.$subsumes","input":"sct:448951000 vs sct:308335008","inputUntrusted":false,"ok":true,"durationMs":41},{"t":"2026-10-17T03:01:40Z","tool":"cr.create","input":"CR-TAX-ADD-BROADER","inputUntrusted":false,"ok":true,"durationMs":620}],"crsProduced":["CR-20261017-01J9ZK"],"promptVersion":"sha256:ab12cd34ef56","cost":{"tokens":18420,"usd":0.44},"phiScanHits":0,"promptInjectionFlags":0},{"id":"run_01JA0R6","agent":"agent.kg_builder","trigger":"release","startedAt":"2026-10-17T05:05:00Z","endedAt":"2026-10-17T05:10:30Z","status":"ok","steps":[{"t":"2026-10-17T05:05:01Z","tool":"schema.registry.check","input":"hc.kg.assertion.v1-value v5","inputUntrusted":false,"ok":true,"durationMs":300},{"t":"2026-10-17T05:06:00Z","tool":"kafka.replay","input":"10k dry run","inputUntrusted":false,"ok":true,"durationMs":180000},{"t":"2026-10-17T05:10:00Z","tool":"cr.apply","input":"CR-20261017-01J9KM","inputUntrusted":false,"ok":true,"durationMs":2000}],"crsProduced":["CR-20261017-01J9KM"],"promptVersion":"sha256:cd34ef56ab12","cost":{"tokens":9210,"usd":0.21},"phiScanHits":0,"promptInjectionFlags":0},{"id":"run_01JA0S2","agent":"agent.self_healer","trigger":"alert:ConsumerLagBurn","startedAt":"2026-10-17T08:41:00Z","endedAt":null,"status":"running","steps":[{"t":"2026-10-17T08:41:02Z","tool":"metrics.query","input":"consumer lag kg-sink 30m","inputUntrusted":false,"ok":true,"durationMs":400},{"t":"2026-10-17T08:41:10Z","tool":"memory.recall","input":"similar incidents consumer_lag kg-sink","inputUntrusted":false,"ok":true,"durationMs":220,"note":"PBK-KG-SINK-002 matched (0.91)"},{"t":"2026-10-17T08:42:00Z","tool":"k8s.restartConsumerGroup","input":"kg-sink","inputUntrusted":false,"ok":true,"durationMs":41000},{"t":"2026-10-17T08:55:00Z","tool":"k8s.scale","input":"kg-sink 2\u21924","inputUntrusted":false,"ok":true,"durationMs":60000},{"t":"2026-10-17T09:12:00Z","tool":"cr.rollbackRequest","input":"CR-20261017-01J9KM","inputUntrusted":false,"ok":true,"durationMs":900,"note":"awaiting human (L3+ step)"}],"crsProduced":[],"promptVersion":"sha256:ef56ab12cd34","cost":{"tokens":31200,"usd":0.75},"phiScanHits":0,"promptInjectionFlags":0},{"id":"run_01JA0Q9","agent":"agent.vocabulary_curator","trigger":"schedule","startedAt":"2026-10-17T04:00:00Z","endedAt":"2026-10-17T04:04:00Z","status":"ok","steps":[{"t":"2026-10-17T04:00:01Z","tool":"registry.search","input":"drift inbox cs1901","inputUntrusted":false,"ok":true,"durationMs":150},{"t":"2026-10-17T04:00:04Z","tool":"source.readDisplay","input":"OBX-11 display texts","inputUntrusted":true,"ok":true,"durationMs":80,"note":"prompt_injection_scan: 0 flags"},{"t":"2026-10-17T04:01:00Z","tool":"cr.create","input":"4 \u00d7 CR-CV-ADD","inputUntrusted":false,"ok":true,"durationMs":1900}],"crsProduced":["CR-20261017-01J9B1","CR-20261017-01J9B2","CR-20261017-01J9B3","CR-20261017-01J9B4"],"promptVersion":"sha256:ab12cd34ef56","cost":{"tokens":22100,"usd":0.53},"phiScanHits":0,"promptInjectionFlags":0},{"id":"run_01JA0P4","agent":"agent.source_mapper","trigger":"request:role.analyst","startedAt":"2026-10-14T10:58:00Z","endedAt":"2026-10-14T11:00:30Z","status":"ok","steps":[{"t":"2026-10-14T10:58:05Z","tool":"registry.search","input":"PID-19","inputUntrusted":false,"ok":true,"durationMs":120},{"t":"2026-10-14T10:59:00Z","tool":"cr.create","input":"CR-MAP-ADD","inputUntrusted":false,"ok":true,"durationMs":700}],"crsProduced":["CR-20261014-01J6PH"],"promptVersion":"sha256:12cd34ef56ab","cost":{"tokens":6100,"usd":0.14},"phiScanHits":1,"promptInjectionFlags":0},{"id":"run_01JA0T1","agent":"agent.improver","trigger":"schedule:weekly","startedAt":"2026-10-17T06:00:00Z","endedAt":"2026-10-17T06:31:00Z","status":"ok","steps":[{"t":"2026-10-17T06:00:10Z","tool":"eval.replay","input":"212 taxonomy CRs vs human dispositions","inputUntrusted":false,"ok":true,"durationMs":1500000},{"t":"2026-10-17T06:30:00Z","tool":"cr.create","input":"CR-AGENT-THRESHOLD","inputUntrusted":false,"ok":true,"durationMs":500}],"crsProduced":["CR-20261017-01J9AA"],"promptVersion":"sha256:34ef56ab12cd","cost":{"tokens":410000,"usd":9.8},"phiScanHits":0,"promptInjectionFlags":0}],"evaluations":[{"id":"EVAL-01JA0ZK1","cr":"CR-20261017-01J9ZK","evaluator":"agent.evaluator","at":"2026-10-17T03:05:10Z","verdict":"approve","aggregateScore":0.93,"calibrationSetVersion":"cal-2026.10.2","checks":[{"id":"cycle","result":"pass"},{"id":"orphan","result":"pass"},{"id":"facet_discipline","result":"pass"},{"id":"phi_scan","result":"pass"},{"id":"prompt_injection_scan","result":"pass"}],"rubric":[{"id":"RUB-TAX-01","score":0.92,"justification":"Sibling set coherent."},{"id":"RUB-TAX-02","score":0.95,"justification":"SNOMED subsumption confirmed."},{"id":"RUB-TAX-03","score":0.9,"justification":"Additive, no migration."}],"humanDisposition":null},{"id":"EVAL-01JA0QQ1","cr":"CR-20261015-01J7QQ","evaluator":"agent.evaluator","at":"2026-10-15T07:48:00Z","verdict":"approve","aggregateScore":0.97,"calibrationSetVersion":"cal-2026.10.2","checks":[{"id":"ddl_parse","result":"pass"},{"id":"fk_closure","result":"pass"}],"rubric":[],"humanDisposition":"approve","agreement":true},{"id":"EVAL-01JA0RR1","cr":"CR-20261013-01J5RR","evaluator":"agent.evaluator","at":"2026-10-13T08:20:00Z","verdict":"revise","aggregateScore":0.71,"calibrationSetVersion":"cal-2026.10.2","checks":[],"rubric":[{"id":"RUB-DQ-01","score":0.4,"justification":"Masks root cause."}],"humanDisposition":null},{"id":"EVAL-01JA0TT1","cr":"CR-20261012-01J4TT","evaluator":"agent.evaluator","at":"2026-10-12T10:08:00Z","verdict":"approve","aggregateScore":0.9,"calibrationSetVersion":"cal-2026.10.1","checks":[],"rubric":[],"humanDisposition":"reject","agreement":false,"disagreementNote":"Evaluator under-weighted open-encounter prevalence (31 %)."}],"calibration":{"weeks":["2026-W35","2026-W36","2026-W37","2026-W38","2026-W39","2026-W40","2026-W41","2026-W42"],"kappaByType":{"vocabulary":[0.95,0.96,0.96,0.97,0.97,0.97,0.97,0.97],"taxonomy":[0.9,0.91,0.92,0.93,0.93,0.94,0.94,0.94],"thesaurus":[0.88,0.9,0.91,0.92,0.93,0.93,0.93,0.93],"owl_axiom":[0.84,0.85,0.86,0.87,0.88,0.88,0.88,0.88],"shacl":[0.82,0.84,0.85,0.85,0.86,0.86,0.86,0.86],"mapping":[0.9,0.91,0.91,0.92,0.92,0.92,0.92,0.92],"edw_ddl":[0.88,0.89,0.9,0.9,0.91,0.91,0.91,0.91],"dq_rule":[0.86,0.87,0.88,0.89,0.9,0.9,0.9,0.9],"kg_mapping":[0.78,0.79,0.8,0.8,0.8,0.8,0.8,0.8],"topic_schema":[0.86,0.87,0.88,0.89,0.89,0.89,0.89,0.89]},"typesRevertedToHuman":["kg_mapping","owl_axiom","shacl","topic_schema"],"sampleSize":218,"disagreements":[{"cr":"CR-20261012-01J4TT","type":"shacl","evaluator":"approve","human":"reject"},{"cr":"CR-20261009-01J2SP","type":"vocabulary","evaluator":"approve","human":"revise"}]},"killSwitch":{"active":false,"scope":null,"heldBy":null,"since":null,"privacyTriggered":false,"history":[{"scope":{"crType":"ontology","env":"prod"},"trippedBy":"role.agent_operator","trippedAt":"2026-10-03T14:00:00Z","releasedAt":"2026-10-03T16:30:00Z","reason":"ELK timeout on nightly build","privacyTriggered":false,"coSignedBy":null}],"scopes":["platform","env:prod","env:uat","agent:agent.kg_builder","cr_type:ontology","cr_type:edw_ddl","cr_type:phi_affecting"]},"canaries":[{"id":"CAN-01JA0C1","agent":"agent.taxonomist","artefact":"prompt v2026.10.3","stage":"canary_25","stages":["candidate","canary_5","canary_25","promoted","monitoring"],"startedAt":"2026-10-12T00:00:00Z","metrics":{"acceptance":{"canary":0.95,"control":0.93},"rollback":{"canary":0.0,"control":0.011}},"rollbackCondition":"acceptance < control \u2212 0.03 or any PHI finding","proposedBy":"agent.improver"},{"id":"CAN-01JA0C2","agent":"agent.dq_author","artefact":"threshold policy v4","stage":"canary_5","stages":["candidate","canary_5","canary_25","promoted","monitoring"],"startedAt":"2026-10-16T00:00:00Z","metrics":{"acceptance":{"canary":0.92,"control":0.9},"rollback":{"canary":0.0,"control":0.012}},"rollbackCondition":"acceptance < control \u2212 0.03","proposedBy":"agent.improver"},{"id":"CAN-01JA0C0","agent":"agent.self_healer","artefact":"playbook PBK-KG-SINK-002 v3","stage":"monitoring","stages":["candidate","canary_5","canary_25","promoted","monitoring"],"startedAt":"2026-10-01T00:00:00Z","metrics":{"mttr":{"canary":14,"control":22}},"rollbackCondition":"MTTR > control","proposedBy":"agent.memory_curator"}],"rollbacks":[{"id":"RB-01JA0R1","cr":"CR-20261017-01J9KM","requestedBy":"agent.self_healer","requestedAt":"2026-10-17T09:12:00Z","cancelWindowEndsAt":"2026-10-17T09:22:00Z","state":"in_cancel_window","whatWillHappen":["Re-pin hc.kg.assertion.v1-value to schema v4","Replay 30 400 records from offset 918 220 341","Notify consumers kg-sink, edw-sink"]}]}</script>
+
+  <script src="assets/app.js"></script>
+  <script>
+  /* ====================================================================
+     agent-ops.html — Agents & Operations page runtime (§4.9).
+     Six tabs (Fleet · Runs · Evaluations · Calibration · Canaries · Kill
+     switch) over the shared HX shell, with object pages for agent / run /
+     evaluation / canary. All mutations (threshold raise, rollback cancel,
+     canary promote/roll back, demotion acknowledge, kill switch) live in
+     memory for the session only (AC-17: no payloads persisted). Charts are
+     inline SVG via HX.chart (one accent + semantic bands, each ships a data
+     table). Accessible per §8; reflows to one column at 375px.
+     ==================================================================== */
+  (function () {
+    "use strict";
+    var E = HX.util.el, I = HX.icon, CLEAR = HX.util.clear, TC = HX.util.titleCase;
+
+    HX.mount({ page: "agent-ops", area: "agents", title: "Agents & Operations" });
+
+    var tabsEl = document.getElementById("ao-tabs");
+    var root = document.getElementById("ao-root");
+
+    var D = { agents: [], runs: [], evaluations: [], calibration: {}, killSwitch: {}, canaries: [], rollbacks: [] };
+    var IX = { agent: {}, run: {}, eval: {}, canary: {}, runsByAgent: {}, crsByAgent: {} };
+    var loaded = false;
+
+    /* session-only in-memory overlay */
+    var MEM = { cancelledRb: {}, ackDemote: {}, canaryStage: {}, agentTab: {}, thresholdDraft: {}, calibType: null, fleet: { q: "", level: null, status: null } };
+
+    var TABS = [
+      { id: "fleet", label: "Fleet", route: "/agents", key: "1" },
+      { id: "runs", label: "Runs", route: "/agents/runs", key: "2" },
+      { id: "evals", label: "Evaluations", route: "/agents/evaluations", key: "3" },
+      { id: "calibration", label: "Calibration", route: "/agents/calibration", key: "4" },
+      { id: "canaries", label: "Canaries", route: "/agents/canaries", key: "5" },
+      { id: "killswitch", label: "Kill switch", route: "/agents/killswitch", key: "6" }
+    ];
+
+    /* ---------------------------------------------------------- formatting */
+    function pct(frac, dp) { if (frac == null) return "—"; return (frac * 100).toFixed(dp == null ? 0 : dp) + "%"; }
+    function pctN(n, dp) { if (n == null) return "—"; return (n * 100).toFixed(dp == null ? 1 : dp) + "%"; }
+    function num(n) { return n == null ? "—" : Number(n).toLocaleString("en-US"); }
+    function shortRole(id) { return String(id).replace(/^agent\./, ""); }
+    function initials(id) {
+      var s = shortRole(id).split("_");
+      if (s.length > 1) return (s[0][0] + s[1][0]).toUpperCase();
+      return s[0].slice(0, 2).toUpperCase();
+    }
+    function statusMod(a) { return a.status === "demoted" ? "fail" : a.autoApprovalSuspended ? "warn" : "pass"; }
+    function statusLabel(a) { return a.status === "demoted" ? "Demoted" : a.autoApprovalSuspended ? "Auto-approve suspended" : "Active"; }
+
+    /* level chip with ceiling ghost (§5.2) */
+    function levelChip(a) {
+      var c = HX.chip("level", a.level === "—" ? "n/a" : a.level, { title: "Autonomy level " + a.level + " · ceiling " + a.ceiling });
+      if (a.ceiling && a.ceiling !== a.level && a.ceiling !== "—") c.appendChild(E("span", { class: "hx-chip__ceiling", text: " /" + a.ceiling }));
+      return c;
+    }
+    function moduleChips(a) {
+      return (a.modules || []).map(function (m) { return HX.chip("neutral", "M" + m, { title: "PRD module " + m }); });
+    }
+
+    /* ---------------------------------------------------------- local nav */
+    function go(route) {
+      var local = /^\/(agents|agent|run|evaluation|canary)(\/|$)/.test(route);
+      if (local) {
+        var carry = HX.asof.get(); var q = [];
+        if (carry.asOf) q.push("asOf=" + encodeURIComponent(carry.asOf));
+        if (carry.asKnownAt) q.push("asKnownAt=" + encodeURIComponent(carry.asKnownAt));
+        if (HX.env.get() !== "prod") q.push("env=" + HX.env.get());
+        location.hash = "#" + route + (q.length ? "?" + q.join("&") : "");
+      } else { HX.nav(route); }
+    }
+    function linkBtn(label, route, cls, ic) {
+      var kids = []; if (ic) kids.push(I(ic)); kids.push(label);
+      var b = E("button", { class: "hx-btn hx-btn--sm" + (cls ? " " + cls : "") }, kids);
+      b.addEventListener("click", function () { go(route); });
+      return b;
+    }
+    function backLink(label, route) {
+      var b = E("button", { class: "hx-btn hx-btn--sm hx-btn--ghost ao-backlink" }, [I("chevron"), label]);
+      b.addEventListener("click", function () { go(route); });
+      return b;
+    }
+
+    /* ---------------------------------------------------------- routing */
+    function routeParts() {
+      var h = location.hash.slice(1);
+      var qi = h.indexOf("?"); var route = (qi < 0 ? h : h.slice(0, qi)) || "/agents";
+      return route.replace(/^#/, "").split("/").filter(Boolean);
+    }
+    function currentTab() {
+      var p = routeParts();
+      if (p[0] === "agent") return "fleet";
+      if (p[0] === "run") return "runs";
+      if (p[0] === "evaluation") return "evals";
+      if (p[0] === "canary") return "canaries";
+      if (p[0] === "agents") {
+        var sub = { runs: "runs", evaluations: "evals", calibration: "calibration", canaries: "canaries", killswitch: "killswitch" };
+        return sub[p[1]] || "fleet";
+      }
+      return "fleet";
+    }
+    function renderTabs() {
+      CLEAR(tabsEl);
+      var bar = E("div", { class: "hx-tabs", role: "tablist", "aria-label": "Agents and operations views" });
+      var active = currentTab();
+      TABS.forEach(function (t) {
+        var isSel = t.id === active;
+        var tab = E("button", { class: "hx-tab", role: "tab", "aria-selected": isSel ? "true" : "false", id: "ao-tab-" + t.id, title: t.label + " (" + t.key + ")" }, [t.label]);
+        tab.appendChild(E("kbd", { text: t.key }));
+        tab.addEventListener("click", function () { go(t.route); });
+        bar.appendChild(tab);
+      });
+      tabsEl.appendChild(bar);
+    }
+
+    /* ---------------------------------------------------------- boot */
+    function boot() {
+      HX.data.load("agents").then(function (d) {
+        d = d || {};
+        D.agents = d.agents || []; D.runs = d.runs || []; D.evaluations = d.evaluations || [];
+        D.calibration = d.calibration || {}; D.killSwitch = d.killSwitch || {}; D.canaries = d.canaries || []; D.rollbacks = d.rollbacks || [];
+        D.agents.forEach(function (a) { IX.agent[a.id] = a; });
+        D.runs.forEach(function (r) { IX.run[r.id] = r; (IX.runsByAgent[r.agent] = IX.runsByAgent[r.agent] || []).push(r); (r.crsProduced || []).forEach(function (cr) { (IX.crsByAgent[r.agent] = IX.crsByAgent[r.agent] || []).push(cr); }); });
+        D.evaluations.forEach(function (e) { IX.eval[e.id] = e; });
+        D.canaries.forEach(function (c) { IX.canary[c.id] = c; });
+        MEM.calibType = (D.calibration.kappaByType && Object.keys(D.calibration.kappaByType)[0]) || null;
+        loaded = true;
+        render();
+      });
+    }
+
+    /* ================================================================ RENDER */
+    function render() {
+      renderTabs();
+      if (!loaded) { CLEAR(root); root.appendChild(E("div", { class: "hx-skeleton", style: "height:240px" })); return; }
+      var p = routeParts();
+      CLEAR(root);
+      if (p[0] === "agent") return renderAgent(p.slice(1).join("/"));
+      if (p[0] === "run") return renderRun(p[1]);
+      if (p[0] === "evaluation") return renderEvaluation(p[1]);
+      if (p[0] === "canary") return renderCanaryDetail(p[1]);
+      var tab = currentTab();
+      ({ fleet: renderFleet, runs: renderRunsTab, evals: renderEvalsTab, calibration: renderCalibration, canaries: renderCanariesTab, killswitch: renderKillSwitch }[tab] || renderFleet)();
+      root.focus();
+    }
+
+    function pageTitle(title, sub) {
+      var h = E("div", { class: "hx-page-title" }, [E("h1", { text: title })]);
+      if (sub) h.appendChild(E("span", { class: "hx-muted hx-caption", text: sub }));
+      return h;
+    }
+
+    /* ============================================================ FLEET TAB */
+    function renderFleet() {
+      root.appendChild(pageTitle("Fleet board", "Twenty agents propose; people dispose. Level vs ceiling, acceptance, rollback, κ, open CRs, budget."));
+      renderAttention();
+
+      // toolbar: search + level + status filters
+      var tb = E("div", { class: "ao-toolbar" });
+      var filt = E("label", { class: "ao-filter", title: "Filter agents" }, [I("search")]);
+      var input = E("input", { type: "text", "aria-label": "Filter agents by id or role", placeholder: "filter: id or role…", value: MEM.fleet.q });
+      input.addEventListener("input", function () { MEM.fleet.q = input.value; drawCards(); });
+      filt.appendChild(input); tb.appendChild(filt);
+      tb.appendChild(E("span", { class: "ao-toolbar__spacer" }));
+
+      var levelBar = E("div", { class: "ao-chipbar", role: "group", "aria-label": "Filter by level" });
+      ["L1", "L2", "L3", "L4"].forEach(function (lv) {
+        var c = HX.chip("level", lv, { button: true, class: "ao-chiptoggle" });
+        c.dataset.dim = "level"; c.dataset.val = lv;
+        c.setAttribute("aria-pressed", MEM.fleet.level === lv ? "true" : "false");
+        c.addEventListener("click", function () { MEM.fleet.level = MEM.fleet.level === lv ? null : lv; drawCards(); syncToggles(); });
+        levelBar.appendChild(c);
+      });
+      tb.appendChild(levelBar);
+      var statusBar = E("div", { class: "ao-chipbar", role: "group", "aria-label": "Filter by status" });
+      [["pass", "Active", "active"], ["warn", "Suspended", "suspended"], ["fail", "Demoted", "demoted"]].forEach(function (s) {
+        var c = HX.chip(s[0], s[1], { button: true, class: "ao-chiptoggle" });
+        c.dataset.dim = "status"; c.dataset.val = s[2];
+        c.setAttribute("aria-pressed", MEM.fleet.status === s[2] ? "true" : "false");
+        c.addEventListener("click", function () { MEM.fleet.status = MEM.fleet.status === s[2] ? null : s[2]; drawCards(); syncToggles(); });
+        statusBar.appendChild(c);
+      });
+      tb.appendChild(statusBar);
+      root.appendChild(tb);
+      function syncToggles() {
+        HX._.$$(".ao-chipbar .ao-chiptoggle", tb).forEach(function (c) {
+          var on = (c.dataset.dim === "level" && MEM.fleet.level === c.dataset.val) || (c.dataset.dim === "status" && MEM.fleet.status === c.dataset.val);
+          c.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+      }
+
+      var board = E("div", { class: "ao-fleet", id: "ao-fleet" });
+      root.appendChild(board);
+      drawCards();
+
+      function drawCards() {
+        CLEAR(board);
+        var q = MEM.fleet.q.trim().toLowerCase();
+        var rows = D.agents.filter(function (a) {
+          if (q && (a.id + " " + a.role).toLowerCase().indexOf(q) < 0) return false;
+          if (MEM.fleet.level && a.level !== MEM.fleet.level) return false;
+          if (MEM.fleet.status === "active" && !(a.status === "active" && !a.autoApprovalSuspended)) return false;
+          if (MEM.fleet.status === "suspended" && !a.autoApprovalSuspended) return false;
+          if (MEM.fleet.status === "demoted" && a.status !== "demoted") return false;
+          return true;
+        });
+        if (!rows.length) { board.appendChild(emptyState("No agents match this filter", "Clear the filter chips to see the full roster of 20 agents.")); return; }
+        rows.forEach(function (a) { board.appendChild(agentCard(a)); });
+      }
+    }
+
+    function agentCard(a) {
+      var card = E("article", { class: "hx-agent-card" + (a.autoApprovalSuspended ? " is-suspended" : ""), tabindex: "0", role: "button", "aria-label": "Open agent " + a.id });
+      var head = E("div", { class: "hx-agent-card__head" });
+      head.appendChild(E("span", { class: "hx-agent-card__avatar", "aria-hidden": "true", text: initials(a.id) }));
+      var nameWrap = E("div", { style: "flex:1;min-width:0" });
+      nameWrap.appendChild(E("div", { class: "hx-agent-card__name", text: TC(shortRole(a.id)) }));
+      nameWrap.appendChild(E("div", { class: "hx-agent-card__id", text: a.id }));
+      head.appendChild(nameWrap);
+      head.appendChild(levelChip(a));
+      card.appendChild(head);
+      card.appendChild(E("div", { class: "hx-agent-card__role", text: a.role }));
+
+      var badges = E("div", { class: "hx-agent-card__badges" });
+      badges.appendChild(HX.chip(statusMod(a), statusLabel(a)));
+      if (a.stage != null) badges.appendChild(HX.chip("neutral", "Stage " + a.stage, { title: "Pipeline stage " + a.stage }));
+      (a.demotionTriggers || []).filter(function (t) { return t.armed; }).forEach(function (t) {
+        badges.appendChild(HX.chip("warn", "trigger armed: " + t.metric, { title: "Demotion trigger armed: " + t.metric + (t.gt != null ? " > " + t.gt : t.lt != null ? " < " + t.lt : "") }));
+      });
+      card.appendChild(badges);
+
+      var m = E("div", { class: "hx-agent-card__metrics" });
+      var metric = function (k, v, title) { var row = E("div", { class: "hx-agent-card__metric", title: title || "" }); row.appendChild(E("span", { text: k })); row.appendChild(E("b", { text: v })); return row; };
+      m.appendChild(metric("Acceptance", a.acceptanceRate == null ? "—" : pct(a.acceptanceRate), "Share of proposals accepted"));
+      m.appendChild(metric("Rollback", a.rollbackRate == null ? "—" : pctN(a.rollbackRate), "Rollback rate (target ≤ 2%)"));
+      var ks = a.kappaByType ? Object.keys(a.kappaByType) : [];
+      var kmin = ks.length ? Math.min.apply(null, ks.map(function (t) { return a.kappaByType[t]; })) : null;
+      m.appendChild(metric("κ (min)", kmin == null ? "—" : kmin.toFixed(2), ks.length ? ks.map(function (t) { return t + " " + a.kappaByType[t]; }).join(" · ") : "no κ for this agent"));
+      m.appendChild(metric("Open CRs", a.maxOpenChangeRequests ? (a.openCrs + " / " + a.maxOpenChangeRequests) : String(a.openCrs), "Open change requests vs max_open_change_requests"));
+      card.appendChild(m);
+
+      var foot = E("div", { class: "ao-cardfoot" });
+      var budget = E("div", { class: "ao-budget" });
+      budget.appendChild(E("span", { text: "Budget today " + pct(a.budgets && a.budgets.usedToday) + (a.budgets && a.budgets.costTodayUsd != null ? " · $" + a.budgets.costTodayUsd.toFixed(2) : "") }));
+      var bar = E("div", { class: "ao-budget__bar" }); var fill = E("i"); fill.style.width = Math.round((a.budgets && a.budgets.usedToday || 0) * 100) + "%"; bar.appendChild(fill); budget.appendChild(bar);
+      foot.appendChild(budget);
+      foot.appendChild(E("span", { text: "last run " + (a.lastRun || "—") }));
+      foot.appendChild(E("span", { text: "manifest v" + (a.manifestVersion || "?") }));
+      card.appendChild(foot);
+
+      var open = function () { go("/agent/" + a.id); };
+      card.addEventListener("click", open);
+      card.addEventListener("keydown", function (e) {
+        if (e.shiftKey && e.key === "Enter") { e.preventDefault(); HX.inspector.open(agentPeek(a), a.id); }
+        else if (e.key === "Enter" || e.key === "o" || e.key === " ") { e.preventDefault(); open(); }
+      });
+      return card;
+    }
+
+    function agentPeek(a) {
+      var w = E("div");
+      w.appendChild(E("div", { class: "hx-row", style: "gap:8px;margin-bottom:8px" }, [E("span", { class: "hx-mono", text: a.id }), levelChip(a)]));
+      w.appendChild(E("p", { class: "ao-note", text: a.role }));
+      var dl = E("dl", { class: "ao-kv" });
+      [["Acceptance", pct(a.acceptanceRate)], ["Rollback", pctN(a.rollbackRate)], ["Open CRs", a.openCrs + " / " + a.maxOpenChangeRequests], ["Budget", pct(a.budgets && a.budgets.usedToday)], ["Status", statusLabel(a)]].forEach(function (r) { dl.appendChild(E("dt", { text: r[0] })); dl.appendChild(E("dd", { text: r[1] })); });
+      w.appendChild(dl);
+      w.appendChild(linkBtn("Open agent page", "/agent/" + a.id, "hx-btn--primary"));
+      return w;
+    }
+
+    /* operator attention strip (Needs me · §4.9) */
+    function renderAttention() {
+      var wrap = E("div", { class: "ao-attn" });
+
+      // rollbacks in cancel window
+      var rbs = D.rollbacks.filter(function (r) { return r.state === "in_cancel_window" && !MEM.cancelledRb[r.id]; });
+      var rbCard = E("div", { class: "hx-card hx-card--queue" });
+      rbCard.appendChild(E("div", { class: "hx-card__head" }, [E("span", { class: "hx-card__title" }, ["Rollbacks — cancel window"]), E("span", { class: "hx-card__count", text: rbs.length })]));
+      var rbBody = E("div", { style: "padding:var(--sp-3)" });
+      if (!rbs.length) rbBody.appendChild(E("div", { class: "ao-note", text: "No rollbacks awaiting cancellation." }));
+      rbs.forEach(function (r) {
+        var row = E("div", { class: "ao-attn__row" });
+        var left = E("div", { style: "flex:1;min-width:0" });
+        var crBtn = E("button", { class: "hx-btn hx-btn--sm hx-btn--ghost ao-attn__id" }, [r.cr]); crBtn.addEventListener("click", function () { HX.nav("/cr/" + r.cr); });
+        left.appendChild(crBtn);
+        left.appendChild(E("div", { class: "ao-note", text: "by " + r.requestedBy + " · 10-minute cancel window" }));
+        row.appendChild(left);
+        row.appendChild(countdown(r.cancelWindowEndsAt));
+        var cancel = E("button", { class: "hx-btn hx-btn--sm" }, ["Cancel rollback"]);
+        cancel.addEventListener("click", function () {
+          HX.confirm({ title: "Cancel rollback of " + r.cr, body: "This stops the compensating rollback before it applies. It records an operator decision.", consequence: "What would have happened: " + (r.whatWillHappen || []).join("; "), confirmLabel: "Cancel rollback" }).then(function (ok) {
+            if (!ok) return;
+            MEM.cancelledRb[r.id] = true;
+            HX.audit.write({ type: "ROLLBACK_CANCELLED", rollback: r.id, cr: r.cr });
+            HX.toast("Rollback of " + r.cr + " cancelled", { kind: "ok", undo: function () { delete MEM.cancelledRb[r.id]; render(); } });
+            HX.live("Rollback of " + r.cr + " cancelled", "polite");
+            render();
+          });
+        });
+        row.appendChild(cancel);
+        rbBody.appendChild(row);
+      });
+      rbCard.appendChild(rbBody);
+      wrap.appendChild(rbCard);
+
+      // demotions to acknowledge
+      var demoted = D.agents.filter(function (a) { return a.status === "demoted" && !MEM.ackDemote[a.id]; });
+      var dCard = E("div", { class: "hx-card hx-card--queue" });
+      dCard.appendChild(E("div", { class: "hx-card__head" }, [E("span", { class: "hx-card__title" }, ["Demotions to acknowledge"]), E("span", { class: "hx-card__count", text: demoted.length })]));
+      var dBody = E("div", { style: "padding:var(--sp-3)" });
+      if (!demoted.length) dBody.appendChild(E("div", { class: "ao-note", text: "No agents demoted awaiting acknowledgement." }));
+      demoted.forEach(function (a) {
+        var row = E("div", { class: "ao-attn__row" });
+        var idBtn = E("button", { class: "hx-btn hx-btn--sm hx-btn--ghost ao-attn__id" }, [a.id]); idBtn.addEventListener("click", function () { go("/agent/" + a.id); });
+        row.appendChild(idBtn);
+        row.appendChild(HX.chip("fail", "Demoted " + HX.format.rel(a.demotedAt)));
+        row.appendChild(E("span", { class: "ao-attn__spacer" }));
+        var ack = E("button", { class: "hx-btn hx-btn--sm" }, ["Acknowledge"]);
+        ack.addEventListener("click", function () { MEM.ackDemote[a.id] = true; HX.audit.write({ type: "DEMOTION_ACK", agent: a.id }); HX.toast("Acknowledged demotion of " + a.id, { kind: "ok" }); render(); });
+        row.appendChild(ack);
+        dBody.appendChild(row);
+      });
+      dCard.appendChild(dBody);
+      wrap.appendChild(dCard);
+
+      // κ < 0.90 → auto-approval suspended
+      var susp = D.agents.filter(function (a) { return a.autoApprovalSuspended; });
+      var kCard = E("div", { class: "hx-card hx-card--queue" });
+      kCard.appendChild(E("div", { class: "hx-card__head" }, [E("span", { class: "hx-card__title" }, ["Auto-approval suspended"]), E("span", { class: "hx-card__count", text: susp.length })]));
+      var kBody = E("div", { style: "padding:var(--sp-3)" });
+      if (!susp.length) kBody.appendChild(E("div", { class: "ao-note", text: "All agents within calibration thresholds." }));
+      susp.forEach(function (a) {
+        var row = E("div", { class: "ao-attn__row" });
+        var idBtn = E("button", { class: "hx-btn hx-btn--sm hx-btn--ghost ao-attn__id" }, [a.id]); idBtn.addEventListener("click", function () { go("/agent/" + a.id); });
+        row.appendChild(idBtn);
+        row.appendChild(E("span", { class: "ao-note", text: "κ or ladder below target — proposals routed to human review" }));
+        kBody.appendChild(row);
+      });
+      kCard.appendChild(kBody);
+      wrap.appendChild(kCard);
+
+      // kill switch status
+      var ksCard = E("div", { class: "hx-card hx-card--queue" });
+      ksCard.appendChild(E("div", { class: "hx-card__head" }, [E("span", { class: "hx-card__title" }, ["Kill switch"]), E("span", { class: "hx-card__count", text: HX.killswitch.get() ? "ACTIVE" : "idle" })]));
+      var ksBody = E("div", { style: "padding:var(--sp-3)" });
+      var ks = HX.killswitch.get();
+      if (ks) {
+        var sc = typeof ks.scope === "object" ? Object.values(ks.scope).join(" / ") : ks.scope;
+        ksBody.appendChild(E("div", { class: "ao-attn__row" }, [HX.chip("fail", "Active"), E("span", { class: "hx-mono", text: sc }), E("span", { class: "ao-note", text: "held by " + (ks.heldBy || "operator") })]));
+      } else {
+        ksBody.appendChild(E("div", { class: "ao-note", text: "No kill switch active. Scopes: platform, env, agent, cr_type." }));
+      }
+      ksBody.appendChild(E("div", { style: "margin-top:8px" }, [linkBtn("Open kill-switch panel", "/agents/killswitch", "hx-btn--sm")]));
+      ksCard.appendChild(ksBody);
+      wrap.appendChild(ksCard);
+
+      root.appendChild(wrap);
+    }
+
+    function countdown(iso) {
+      var ms = Date.parse(iso) - Date.now();
+      var mod = ms <= 0 ? "fail" : ms < 5 * 60000 ? "warn" : "pending";
+      var txt;
+      if (ms <= 0) txt = "window closed";
+      else { var mm = Math.floor(ms / 60000), ss = Math.floor((ms % 60000) / 1000); txt = mm + "m " + (ss < 10 ? "0" : "") + ss + "s left"; }
+      return HX.chip(mod, txt, { title: "Cancel window ends " + HX.format.time(iso, "event") });
+    }
+
+    function emptyState(title, body, cr) {
+      var w = E("div", { class: "hx-empty" }, [I("info"), E("div", {}, [E("strong", { text: title }), E("div", { class: "ao-note", text: body })])]);
+      if (cr) { var b = E("button", { class: "hx-btn hx-btn--sm hx-empty__cta" }, [cr]); w.appendChild(b); }
+      return w;
+    }
+
+    /* ============================================================ AGENT PAGE */
+    function renderAgent(id) {
+      var a = IX.agent[id];
+      root.appendChild(backLink("Fleet board", "/agents"));
+      if (!a) { root.appendChild(emptyState("Agent not found", "No agent with id " + id + " in the roster.")); return; }
+
+      // object header
+      var hd = E("header", { class: "hx-object-header" });
+      var top = E("div", { class: "hx-row", style: "gap:8px;flex-wrap:wrap;align-items:center" });
+      top.appendChild(HX.chip("type", "Agent"));
+      top.appendChild(E("span", { class: "hx-agent-card__avatar", "aria-hidden": "true", text: initials(a.id), style: "width:28px;height:28px;font-size:11px" }));
+      top.appendChild(E("span", { class: "hx-mono", text: a.id, style: "font-weight:600" }));
+      top.appendChild(levelChip(a));
+      top.appendChild(HX.chip(statusMod(a), statusLabel(a)));
+      if (a.stage != null) top.appendChild(HX.chip("neutral", "Stage " + a.stage));
+      moduleChips(a).forEach(function (c) { top.appendChild(c); });
+      hd.appendChild(top);
+      hd.appendChild(E("div", { style: "margin-top:6px", class: "ao-note", text: a.role }));
+
+      // verb bar from PDP verb set (never widened by View-as)
+      var verbs = HX.role.verbs("agent", a);
+      var vbar = E("div", { class: "ao-verbbar" });
+      if (verbs.indexOf("watch") >= 0) { var w = E("button", { class: "hx-btn hx-btn--sm" }, [I("watch"), "Watch"]); w.addEventListener("click", function () { HX.toast("Watching " + a.id, { kind: "ok" }); }); vbar.appendChild(w); }
+      var cp = E("button", { class: "hx-btn hx-btn--sm" }, [I("copy"), "Copy id"]); cp.addEventListener("click", function () { try { navigator.clipboard.writeText(a.id); HX.toast("Copied", { kind: "ok", timeout: 2000 }); } catch (e) {} }); vbar.appendChild(cp);
+      if (verbs.indexOf("trip_kill_switch") >= 0) { var tk = E("button", { class: "hx-btn hx-btn--sm hx-btn--danger" }, ["Trip kill switch…"]); tk.addEventListener("click", function () { go("/agents/killswitch"); setTimeout(function () { HX.toast("Pre-select scope agent:" + a.id, { kind: "warn", timeout: 3000 }); }, 100); }); vbar.appendChild(tk); }
+      hd.appendChild(vbar);
+      root.appendChild(hd);
+
+      // sub-tabs
+      var SUB = [["manifest", "Manifest"], ["ladder", "Ladder"], ["thresholds", "Thresholds"], ["runs", "Runs"], ["crs", "Change requests"], ["evals", "Evaluations"], ["memory", "Memory"], ["tools", "Tools"], ["canaries", "Canaries"]];
+      var cur = MEM.agentTab[id] || "manifest";
+      var subbar = E("div", { class: "ao-subtabs", role: "tablist", "aria-label": "Agent sections" });
+      SUB.forEach(function (s) {
+        var sel = s[0] === cur;
+        var b = E("button", { class: "ao-subtab", role: "tab", "aria-selected": sel ? "true" : "false" }, [s[1]]);
+        b.addEventListener("click", function () { MEM.agentTab[id] = s[0]; renderAgent(id); });
+        subbar.appendChild(b);
+      });
+      root.appendChild(subbar);
+
+      var panel = E("div", { id: "ao-agent-panel" });
+      root.appendChild(panel);
+      ({
+        manifest: agentManifest, ladder: agentLadder, thresholds: agentThresholds, runs: agentRuns,
+        crs: agentCrs, evals: agentEvals, memory: agentMemory, tools: agentTools, canaries: agentCanaries
+      }[cur] || agentManifest)(panel, a);
+    }
+
+    function agentManifest(panel, a) {
+      panel.appendChild(E("div", { class: "ao-note", style: "margin-bottom:8px" }, [I("info"), " Read-only. Changes to a manifest are made through an agent_manifest change request, not edited here."]));
+      panel.appendChild(E("pre", { class: "ao-pre", text: a.manifestYaml || "(manifest unavailable)" }));
+      panel.appendChild(E("h3", { style: "margin-top:16px;font-size:var(--fs-lead)", text: "Manifest versions" }));
+      var wrap = E("div", { class: "ao-table-wrap" });
+      var t = E("table", { class: "ao-table" });
+      t.appendChild(E("thead", {}, [E("tr", {}, [E("th", { text: "Version" }), E("th", { text: "Applied" }), E("th", { text: "Change request" })])]));
+      var tb = E("tbody");
+      (a.manifestHistory || []).slice().reverse().forEach(function (h) {
+        var tr = E("tr");
+        tr.appendChild(E("td", { class: "hx-mono", text: h.version + (h.version === a.manifestVersion ? "  (current)" : "") }));
+        tr.appendChild(E("td", { text: HX.format.time(h.at, "known") }));
+        tr.appendChild(E("td", { class: "hx-mono", text: h.cr }));
+        tr.addEventListener("click", function () { HX.nav("/cr/" + h.cr); });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb); wrap.appendChild(t); panel.appendChild(wrap);
+      panel.appendChild(E("div", { class: "ao-note", style: "margin-top:8px", text: "prompt/policy version: " + (a.promptVersion || "—") }));
+    }
+
+    function agentLadder(panel, a) {
+      panel.appendChild(E("div", { class: "ao-note", style: "margin-bottom:8px", text: "Graduation to the next level needs every gauge met, sustained for the required days, with zero PHI findings. Demotion triggers fire automatically." }));
+      var g = a.graduation || {};
+      var grid = E("div", { class: "hx-ladder" });
+      function gauge(label, value, target, good, fmt) {
+        var below = !good;
+        var cell = E("div", { class: "hx-ladder__gauge" + (below ? " hx-ladder__gauge--below" : "") });
+        var top = E("div", { class: "ao-gauge__top" }, [E("span", { text: label }), E("span", { class: "ao-gauge__val", text: fmt(value) })]);
+        cell.appendChild(top);
+        var bar = E("div", { class: "hx-ladder__gauge-bar" }); var i = E("i"); i.style.width = Math.max(4, Math.min(100, Math.round((typeof value === "number" ? value : 0) * 100))) + "%"; bar.appendChild(i); cell.appendChild(bar);
+        cell.appendChild(E("div", { class: "ao-gauge__target", text: "target " + fmt(target) + (good ? " · met" : " · below") }));
+        return cell;
+      }
+      if (g.acceptance) grid.appendChild(gauge("Acceptance ≥", g.acceptance.value, g.acceptance.target, g.acceptance.value != null && g.acceptance.value >= g.acceptance.target, function (v) { return v == null ? "—" : pct(v); }));
+      if (g.rollback) { var rbGood = g.rollback.value != null && g.rollback.value <= g.rollback.target; var cell = E("div", { class: "hx-ladder__gauge" + (rbGood ? "" : " hx-ladder__gauge--below") }); cell.appendChild(E("div", { class: "ao-gauge__top" }, [E("span", { text: "Rollback ≤" }), E("span", { class: "ao-gauge__val", text: pctN(g.rollback.value) })])); var bar = E("div", { class: "hx-ladder__gauge-bar" }); var i = E("i"); i.style.width = Math.max(4, Math.min(100, Math.round((g.rollback.value || 0) / Math.max(0.0001, g.rollback.target) * 50))) + "%"; bar.appendChild(i); cell.appendChild(bar); cell.appendChild(E("div", { class: "ao-gauge__target", text: "target ≤ " + pctN(g.rollback.target) + (rbGood ? " · met" : " · over") })); grid.appendChild(cell); }
+      if (g.agreement) grid.appendChild(gauge("Agreement (κ) ≥", g.agreement.value, g.agreement.target, g.agreement.value != null && g.agreement.value >= g.agreement.target, function (v) { return v == null ? "n/a" : (typeof v === "number" ? v.toFixed(2) : v); }));
+      // days at level
+      var daysGood = (g.daysAtLevel || 0) >= (g.daysRequired || 60);
+      var dcell = E("div", { class: "hx-ladder__gauge" + (daysGood ? "" : " hx-ladder__gauge--below") });
+      dcell.appendChild(E("div", { class: "ao-gauge__top" }, [E("span", { text: "Days at level" }), E("span", { class: "ao-gauge__val", text: (g.daysAtLevel || 0) + "d" })]));
+      var dbar = E("div", { class: "hx-ladder__gauge-bar" }); var di = E("i"); di.style.width = Math.max(4, Math.min(100, Math.round((g.daysAtLevel || 0) / (g.daysRequired || 60) * 100))) + "%"; dbar.appendChild(di); dcell.appendChild(dbar);
+      dcell.appendChild(E("div", { class: "ao-gauge__target", text: "required " + (g.daysRequired || 60) + "d" + (daysGood ? " · met" : " · building") })); grid.appendChild(dcell);
+      // phi findings
+      var phiGood = (g.phiFindings || 0) === 0;
+      var pcell = E("div", { class: "hx-ladder__gauge" + (phiGood ? "" : " hx-ladder__gauge--below") });
+      pcell.appendChild(E("div", { class: "ao-gauge__top" }, [E("span", { text: "PHI findings" }), E("span", { class: "ao-gauge__val", text: String(g.phiFindings || 0) })]));
+      pcell.appendChild(E("div", { class: "hx-ladder__gauge-bar" }, [E("i", { style: "width:" + (phiGood ? 100 : 100) + "%;background:" + (phiGood ? "var(--ok-fg)" : "var(--danger-fg)") })]));
+      pcell.appendChild(E("div", { class: "ao-gauge__target", text: "must be 0" + (phiGood ? " · met" : " · FAIL") })); grid.appendChild(pcell);
+      panel.appendChild(grid);
+
+      // graduation verdict
+      var eligible = a.level !== a.ceiling && g.acceptance && g.acceptance.value >= g.acceptance.target && g.rollback.value <= g.rollback.target && (g.agreement.value == null || g.agreement.value >= g.agreement.target) && daysGood && phiGood;
+      var verdict = E("div", { class: "ao-chartcard", style: "margin-top:16px" });
+      if (a.level === a.ceiling) verdict.appendChild(E("div", {}, [HX.chip("neutral", "At ceiling " + a.ceiling), E("span", { class: "ao-note", text: "  Raising the ceiling requires a PRD revision." })]));
+      else if (eligible) verdict.appendChild(E("div", {}, [HX.chip("pass", "Eligible for promotion"), E("span", { class: "ao-note", text: "  All gauges met; Agent Operator may propose graduation to the next level." })]));
+      else verdict.appendChild(E("div", {}, [HX.chip("warn", "Not yet eligible"), E("span", { class: "ao-note", text: "  One or more gauges below target." })]));
+      panel.appendChild(verdict);
+
+      // demotion triggers
+      panel.appendChild(E("h3", { style: "margin-top:16px;font-size:var(--fs-lead)", text: "Demotion triggers" }));
+      var trigWrap = E("div", { class: "ao-chipbar" });
+      (a.demotionTriggers || []).forEach(function (t) {
+        var expr = t.metric + (t.gt != null ? " > " + t.gt : t.lt != null ? " < " + t.lt : "");
+        trigWrap.appendChild(HX.chip(t.armed ? "fail" : "neutral", (t.armed ? "armed: " : "clear: ") + expr));
+      });
+      panel.appendChild(trigWrap);
+    }
+
+    function agentThresholds(panel, a) {
+      panel.appendChild(E("div", { class: "ao-note", style: "margin-bottom:8px" }, [I("info"), " A threshold change is an agent_manifest change request. Raising the auto-approve bar (more caution) is allowed; lowering it needs a PRD revision."]));
+      var box = E("div", { class: "hx-threshold-editor" });
+      var cur = a.thresholds && a.thresholds.autoApprove;
+      if (cur == null) {
+        box.appendChild(E("div", {}, [HX.chip("neutral", "No auto-approve"), E("span", { class: "ao-note", text: "  This agent always routes to human review (e.g. L1 or an evaluator/guardian)." })]));
+        panel.appendChild(box); return;
+      }
+      var draft = MEM.thresholdDraft[a.id] != null ? MEM.thresholdDraft[a.id] : cur;
+      box.appendChild(E("div", { style: "font-weight:600;margin-bottom:4px", text: "autoApprove threshold" }));
+      var row = E("div", { class: "ao-thresh__row" });
+      var slider = E("input", { type: "range", min: Math.round(cur * 100), max: 100, step: 1, value: Math.round(draft * 100), "aria-label": "Auto-approve threshold (raise only)" });
+      var valEl = E("span", { class: "ao-thresh__val", text: draft.toFixed(2) });
+      slider.addEventListener("input", function () { var v = (+slider.value) / 100; MEM.thresholdDraft[a.id] = v; valEl.textContent = v.toFixed(2); updateSubmit(); });
+      row.appendChild(E("span", { text: "current " + cur.toFixed(2) }));
+      row.appendChild(slider);
+      row.appendChild(valEl);
+      box.appendChild(row);
+      box.appendChild(E("div", { class: "ao-note", text: "Slider minimum is the current value (" + cur.toFixed(2) + ") — lowering is disabled." }));
+      var lower = E("button", { class: "hx-btn hx-btn--sm", "aria-disabled": "true", disabled: true, title: "Lowering a threshold requires a PRD revision" }, ["Lower threshold"]);
+      var submit = E("button", { class: "hx-btn hx-btn--sm hx-btn--primary", style: "margin-top:8px" }, ["Propose as agent_manifest CR"]);
+      function updateSubmit() { var v = MEM.thresholdDraft[a.id] != null ? MEM.thresholdDraft[a.id] : cur; submit.disabled = !(v > cur); submit.setAttribute("aria-disabled", v > cur ? "false" : "true"); }
+      submit.addEventListener("click", function () {
+        var v = MEM.thresholdDraft[a.id];
+        if (!(v > cur)) return;
+        HX.confirm({ title: "Propose threshold change", body: "Raise " + a.id + " autoApprove from " + cur.toFixed(2) + " to " + v.toFixed(2) + "?", consequence: "Creates a draft agent_manifest change request for the Agent Operator gate. Simulated index impact: fewer auto-approvals, more human review.", confirmLabel: "Create CR draft" }).then(function (ok) {
+          if (!ok) return;
+          HX.audit.write({ type: "THRESHOLD_CR_DRAFT", agent: a.id, from: cur, to: v });
+          HX.toast("Draft CR-AGENT-THRESHOLD created (raise " + a.id + " to " + v.toFixed(2) + ")", { kind: "ok", undo: function () { delete MEM.thresholdDraft[a.id]; renderAgent(a.id); } });
+        });
+      });
+      box.appendChild(E("div", { class: "hx-row", style: "gap:8px;flex-wrap:wrap" }, [submit, lower]));
+      updateSubmit();
+      panel.appendChild(box);
+    }
+
+    function agentRuns(panel, a) {
+      var runs = IX.runsByAgent[a.id] || [];
+      if (!runs.length) { panel.appendChild(emptyState("No runs recorded", "This agent has no runs in the current window. Runs appear when the orchestrator schedules or an event triggers the agent.")); return; }
+      panel.appendChild(runsTable(runs));
+    }
+    function runsTable(runs) {
+      var wrap = E("div", { class: "ao-table-wrap" });
+      var t = E("table", { class: "ao-table" });
+      t.appendChild(E("thead", {}, [E("tr", {}, [E("th", { text: "Run" }), E("th", { text: "Agent" }), E("th", { text: "Trigger" }), E("th", { text: "Started" }), E("th", { text: "Status" }), E("th", { class: "num", text: "Steps" }), E("th", { class: "num", text: "Tokens" }), E("th", { class: "num", text: "PHI" })])]));
+      var tb = E("tbody");
+      runs.forEach(function (r) {
+        var tr = E("tr", { tabindex: "0" });
+        tr.appendChild(E("td", { class: "hx-mono", text: r.id }));
+        tr.appendChild(E("td", { class: "hx-mono", text: shortRole(r.agent) }));
+        tr.appendChild(E("td", { text: r.trigger }));
+        tr.appendChild(E("td", { text: HX.format.time(r.startedAt, "event") }));
+        var stTd = E("td"); stTd.appendChild(HX.chip(r.status === "ok" ? "pass" : r.status === "running" ? "pending" : "warn", r.status)); tr.appendChild(stTd);
+        tr.appendChild(E("td", { class: "num", text: (r.steps || []).length }));
+        tr.appendChild(E("td", { class: "num", text: num(r.cost && r.cost.tokens) }));
+        var phiTd = E("td", { class: "num" }); phiTd.appendChild(HX.chip(r.phiScanHits ? "warn" : "pass", String(r.phiScanHits || 0))); tr.appendChild(phiTd);
+        var open = function () { go("/run/" + r.id); };
+        tr.addEventListener("click", open);
+        tr.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === "o") { e.preventDefault(); open(); } });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb); wrap.appendChild(t); return wrap;
+    }
+
+    function agentCrs(panel, a) {
+      panel.appendChild(E("div", { class: "ao-note", style: "margin-bottom:8px", text: "Open change requests: " + a.openCrs + " of " + a.maxOpenChangeRequests + " allowed. Today the agent proposed " + (a.digestToday ? a.digestToday.proposed : 0) + ", auto-approved " + (a.digestToday ? a.digestToday.autoApproved : 0) + ", rejected " + (a.digestToday ? a.digestToday.rejected : 0) + ", vetoed " + (a.digestToday ? a.digestToday.vetoed : 0) + "." }));
+      var crs = IX.crsByAgent[a.id] || [];
+      if (a.digestToday && a.digestToday.example) crs = [a.digestToday.example].concat(crs.filter(function (c) { return c !== a.digestToday.example; }));
+      if (!crs.length) { panel.appendChild(emptyState("No change requests from this agent", "When this agent proposes a change, it appears in the Review queue — propose one via a run.")); }
+      else {
+        var list = E("div", { class: "ao-chipbar", style: "flex-direction:column;align-items:stretch;gap:4px" });
+        crs.forEach(function (cr) {
+          var b = E("button", { class: "hx-btn hx-btn--sm hx-btn--ghost", style: "justify-content:flex-start;font-family:var(--font-mono)" }, [I("review"), cr]);
+          b.addEventListener("click", function () { HX.nav("/cr/" + cr); });
+          list.appendChild(b);
+        });
+        panel.appendChild(list);
+      }
+      panel.appendChild(E("div", { style: "margin-top:12px" }, [linkBtn("Open Review queue filtered to this agent", "/cr?proposer=" + a.id, "hx-btn--sm")]));
+    }
+
+    function agentEvals(panel, a) {
+      var crset = {}; (IX.crsByAgent[a.id] || []).forEach(function (c) { crset[c] = true; });
+      if (a.digestToday && a.digestToday.example) crset[a.digestToday.example] = true;
+      var evs = D.evaluations.filter(function (e) { return crset[e.cr]; });
+      if (a.id === "agent.evaluator") { evs = D.evaluations.slice(); panel.appendChild(E("div", { class: "ao-note", style: "margin-bottom:8px", text: "The evaluator is the independent critic. These are its verdicts on recent proposals." })); }
+      if (!evs.length) { panel.appendChild(emptyState("No evaluations for this agent's proposals yet", "Evaluations are produced by agent.evaluator against rubrics, tests, the reasoner and SHACL.")); return; }
+      evs.forEach(function (e) { panel.appendChild(evalCard(e, true)); });
+    }
+
+    function agentMemory(panel, a) {
+      var mem = a.memory || {};
+      panel.appendChild(E("div", { class: "ao-note", style: "margin-bottom:8px" }, [I("lock"), " Memory contents are masked. No PHI is permitted in memory; agent.memory_curator enforces this and runs a PHI scan on every item."]));
+      var grid = E("div", { class: "ao-grid2" });
+      var m1 = E("div", { class: "hx-card" });
+      m1.appendChild(E("h3", { style: "font-size:var(--fs-lead);margin-bottom:6px", text: "M1 — episodic" }));
+      var d1 = E("dl", { class: "ao-kv" });
+      [["Items", num(mem.m1Episodic && mem.m1Episodic.items)], ["Oldest", mem.m1Episodic ? HX.format.time(mem.m1Episodic.oldest, "recorded") : "—"], ["PHI scan hits", String(mem.m1Episodic ? mem.m1Episodic.phiScanHits : 0)]].forEach(function (r) { d1.appendChild(E("dt", { text: r[0] })); d1.appendChild(E("dd", { text: r[1] })); });
+      m1.appendChild(d1);
+      m1.appendChild(E("div", { style: "margin-top:6px" }, [HX.masked("episodic", "confidential")]));
+      grid.appendChild(m1);
+      var m2 = E("div", { class: "hx-card" });
+      m2.appendChild(E("h3", { style: "font-size:var(--fs-lead);margin-bottom:6px", text: "M2 — semantic" }));
+      var d2 = E("dl", { class: "ao-kv" });
+      [["Items", num(mem.m2Semantic && mem.m2Semantic.items)], ["Last consolidated", mem.m2Semantic ? HX.format.time(mem.m2Semantic.lastConsolidated, "recorded") : "—"]].forEach(function (r) { d2.appendChild(E("dt", { text: r[0] })); d2.appendChild(E("dd", { text: r[1] })); });
+      m2.appendChild(d2);
+      m2.appendChild(E("div", { style: "margin-top:6px" }, [HX.masked("semantic", "confidential")]));
+      grid.appendChild(m2);
+      panel.appendChild(grid);
+    }
+
+    function agentTools(panel, a) {
+      panel.appendChild(E("div", { class: "ao-note", style: "margin-bottom:8px", text: "Least-privilege tool permissions. Note that no agent has phi.reveal — there is no reveal control for agents anywhere in the Console." }));
+      var box = E("div", { class: "ao-tools" });
+      box.appendChild(E("div", { class: "ao-tools__tool", style: "font-weight:600;color:var(--fg-muted)", text: "Tool" }));
+      box.appendChild(E("div", { class: "ao-tools__val", style: "font-weight:600;color:var(--fg-muted)", text: "Allowed" }));
+      (a.tools || []).forEach(function (t) {
+        box.appendChild(E("div", { class: "ao-tools__tool", text: t.tool }));
+        var v = E("div", { class: "ao-tools__val" });
+        v.appendChild(HX.chip(t.allowed ? "pass" : "neutral", t.allowed ? "allowed" : "denied"));
+        box.appendChild(v);
+      });
+      panel.appendChild(box);
+    }
+
+    function agentCanaries(panel, a) {
+      var cans = D.canaries.filter(function (c) { return c.agent === a.id; });
+      if (!cans.length) { panel.appendChild(emptyState("No canary rollouts for this agent", "The improver proposes canary rollouts of new prompts, policies or thresholds; they appear here while live.")); return; }
+      cans.forEach(function (c) { panel.appendChild(canaryCard(c)); });
+    }
+
+    /* ============================================================ RUN PAGE */
+    function renderRun(id) {
+      var r = IX.run[id];
+      root.appendChild(backLink("Runs", "/agents/runs"));
+      if (!r) { root.appendChild(emptyState("Run not found", "No run with id " + id + ".")); return; }
+      root.appendChild(pageTitle("Run " + r.id, shortRole(r.agent) + " · " + r.trigger));
+      var meta = E("div", { class: "hx-trust-strip" });
+      function item(k, v) { meta.appendChild(E("span", {}, [E("span", { class: "hx-caption hx-muted", text: k + " " }), E("span", { class: "hx-mono hx-caption", text: v })])); }
+      item("Started", HX.format.time(r.startedAt, "event"));
+      item("Ended", r.endedAt ? HX.format.time(r.endedAt, "event") : "running");
+      item("Status", r.status);
+      item("Prompt", r.promptVersion || "—");
+      item("Tokens", num(r.cost && r.cost.tokens));
+      item("Cost", r.cost && r.cost.usd != null ? "$" + r.cost.usd.toFixed(2) : "—");
+      item("PHI scan hits", String(r.phiScanHits || 0));
+      item("Prompt-injection flags", String(r.promptInjectionFlags || 0));
+      root.appendChild(meta);
+
+      var agBtn = linkBtn("Open agent " + r.agent, "/agent/" + r.agent, "hx-btn--sm");
+      root.appendChild(E("div", { style: "margin-bottom:12px" }, [agBtn]));
+
+      root.appendChild(E("h3", { style: "font-size:var(--fs-lead);margin-bottom:6px", text: "Tool-call timeline" }));
+      root.appendChild(E("div", { class: "ao-note", style: "margin-bottom:8px" }, [I("warn"), " Untrusted inputs (source-asserted text) are delimited with a dotted amber bar and treated as data, never as instructions."]));
+      var steps = r.steps || [];
+      var maxDur = Math.max.apply(null, steps.map(function (s) { return s.durationMs || 0; }).concat([1]));
+      var wf = E("div", { class: "ao-wf" });
+      steps.forEach(function (s) {
+        var row = E("div", { class: "ao-wf__row" });
+        var tool = E("div", { class: "ao-wf__tool" }, [s.tool]);
+        if (s.inputUntrusted) tool.appendChild(HX.chip("untrusted", "untrusted", { class: "hx-chip--untrusted" }));
+        row.appendChild(tool);
+        var bar = E("div", { class: "ao-wf__bar" + (s.inputUntrusted ? " is-untrusted" : ""), title: (s.input || "") + " · " + (s.ok ? "ok" : "failed") });
+        var i = E("i"); i.style.width = Math.max(3, Math.round((s.durationMs || 0) / maxDur * 100)) + "%"; bar.appendChild(i); row.appendChild(bar);
+        row.appendChild(E("div", { class: "ao-wf__dur", text: fmtDur(s.durationMs) }));
+        wf.appendChild(row);
+        if (s.input || s.note) {
+          var det = E("div", { class: "ao-wf__row", style: "grid-template-columns:148px 1fr;color:var(--fg-muted)" });
+          det.appendChild(E("div"));
+          var dd = E("div", { class: "hx-caption" + (s.inputUntrusted ? " hx-run-timeline__untrusted" : ""), style: "font-family:var(--font-mono)" });
+          if (s.input) dd.appendChild(E("span", { text: "input: " + s.input + "  " }));
+          if (s.note) dd.appendChild(E("span", { class: "hx-muted", text: "· " + s.note }));
+          det.appendChild(dd);
+          wf.appendChild(det);
+        }
+      });
+      root.appendChild(wf);
+
+      if ((r.crsProduced || []).length) {
+        root.appendChild(E("h3", { style: "font-size:var(--fs-lead);margin:16px 0 6px", text: "Change requests produced" }));
+        var list = E("div", { class: "ao-chipbar", style: "flex-direction:column;align-items:stretch;gap:4px" });
+        r.crsProduced.forEach(function (cr) { var b = E("button", { class: "hx-btn hx-btn--sm hx-btn--ghost", style: "justify-content:flex-start;font-family:var(--font-mono)" }, [I("review"), cr]); b.addEventListener("click", function () { HX.nav("/cr/" + cr); }); list.appendChild(b); });
+        root.appendChild(list);
+      }
+    }
+    function fmtDur(ms) { if (ms == null) return "—"; if (ms < 1000) return ms + " ms"; if (ms < 60000) return (ms / 1000).toFixed(1) + " s"; return (ms / 60000).toFixed(1) + " min"; }
+
+    /* ============================================================ EVAL PAGE */
+    function renderEvaluation(id) {
+      var e = IX.eval[id];
+      root.appendChild(backLink("Evaluations", "/agents/evaluations"));
+      if (!e) { root.appendChild(emptyState("Evaluation not found", "No evaluation with id " + id + ".")); return; }
+      root.appendChild(pageTitle("Evaluation " + e.id, "by " + e.evaluator + " · " + HX.format.time(e.at, "event")));
+      root.appendChild(evalCard(e, false));
+    }
+    function evalCard(e, compact) {
+      var card = E("div", { class: "ao-chartcard", style: "margin-bottom:12px" });
+      var head = E("div", { class: "hx-row", style: "gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px" });
+      var crBtn = E("button", { class: "hx-btn hx-btn--sm hx-btn--ghost", style: "font-family:var(--font-mono)" }, [e.cr]); crBtn.addEventListener("click", function () { HX.nav("/cr/" + e.cr); });
+      head.appendChild(crBtn);
+      head.appendChild(HX.chip(e.verdict === "approve" ? "pass" : e.verdict === "revise" ? "warn" : "fail", "verdict: " + e.verdict));
+      head.appendChild(HX.score(e.aggregateScore, 0.95, null));
+      if (e.calibrationSetVersion) head.appendChild(HX.chip("neutral", e.calibrationSetVersion));
+      if (compact) { var open = E("button", { class: "hx-btn hx-btn--sm" }, ["Open evaluation"]); open.addEventListener("click", function () { go("/evaluation/" + e.id); }); head.appendChild(open); }
+      card.appendChild(head);
+
+      if ((e.checks || []).length) {
+        var checks = E("div", { class: "ao-chipbar", style: "margin-bottom:8px" });
+        e.checks.forEach(function (c) { checks.appendChild(HX.chip(c.result === "pass" ? "pass" : "fail", TC(c.id) + ": " + c.result)); });
+        card.appendChild(checks);
+      }
+      if ((e.rubric || []).length) {
+        var wrap = E("div", { class: "ao-table-wrap", style: "max-height:none" });
+        var t = E("table", { class: "hx-rubric" });
+        t.appendChild(E("thead", {}, [E("tr", {}, [E("th", { text: "Rubric" }), E("th", { text: "Score" }), E("th", { text: "Justification" })])]));
+        var tb = E("tbody");
+        e.rubric.forEach(function (r) {
+          var tr = E("tr");
+          tr.appendChild(E("td", { class: "hx-mono", text: r.id }));
+          var sc = E("td"); sc.appendChild(HX.score(r.score, null, null)); tr.appendChild(sc);
+          tr.appendChild(E("td", { text: r.justification || "—" }));
+          tb.appendChild(tr);
+        });
+        t.appendChild(tb); wrap.appendChild(t); card.appendChild(wrap);
+      }
+      // human disposition / agreement
+      var foot = E("div", { class: "hx-row", style: "gap:8px;flex-wrap:wrap;margin-top:8px" });
+      if (e.humanDisposition) {
+        foot.appendChild(HX.chip("info", "human: " + e.humanDisposition));
+        foot.appendChild(HX.chip(e.agreement ? "pass" : "fail", e.agreement ? "agreement" : "disagreement"));
+        if (e.disagreementNote) foot.appendChild(E("span", { class: "ao-note", text: e.disagreementNote }));
+      } else {
+        foot.appendChild(HX.chip("pending", "awaiting human disposition"));
+      }
+      card.appendChild(foot);
+      return card;
+    }
+
+    /* ============================================================ RUNS TAB */
+    function renderRunsTab() {
+      root.appendChild(pageTitle("Runs", "Agent runs in the current window, with tool-call cost and PHI/injection counts."));
+      if (!D.runs.length) { root.appendChild(emptyState("No runs recorded", "Runs appear when the orchestrator schedules or an event triggers an agent.")); return; }
+      root.appendChild(runsTable(D.runs.slice().sort(function (a, b) { return Date.parse(b.startedAt) - Date.parse(a.startedAt); })));
+    }
+
+    /* ============================================================ EVALS TAB */
+    function renderEvalsTab() {
+      root.appendChild(pageTitle("Evaluations", "Independent-critic verdicts against rubrics, tests, the reasoner and SHACL."));
+      if (!D.evaluations.length) { root.appendChild(emptyState("No evaluations recorded", "Evaluations are produced by agent.evaluator for each proposal.")); return; }
+      D.evaluations.slice().sort(function (a, b) { return Date.parse(b.at) - Date.parse(a.at); }).forEach(function (e) { root.appendChild(evalCard(e, true)); });
+    }
+
+    /* ============================================================ CALIBRATION */
+    function renderCalibration() {
+      var cal = D.calibration;
+      root.appendChild(pageTitle("Calibration", "Weekly evaluator–human agreement (κ) by change-request type. Below 0.90 the type reverts to human review."));
+      var types = cal.kappaByType ? Object.keys(cal.kappaByType) : [];
+      if (!types.length) { root.appendChild(emptyState("No calibration data", "Calibration runs weekly, replaying evaluator verdicts against human dispositions.")); return; }
+      root.appendChild(E("div", { class: "ao-note", style: "margin-bottom:8px", text: "Sample size: " + num(cal.sampleSize) + " dispositions · weeks " + (cal.weeks ? cal.weeks[0] + "–" + cal.weeks[cal.weeks.length - 1] : "") }));
+
+      // selected-type line chart
+      var sel = MEM.calibType && types.indexOf(MEM.calibType) >= 0 ? MEM.calibType : types[0];
+      var chartCard = E("div", { class: "ao-chartcard", style: "margin-bottom:16px" });
+      var picker = E("div", { class: "ao-chipbar", style: "margin-bottom:8px" });
+      types.forEach(function (ty) {
+        var c = HX.chip(sel === ty ? "info" : "neutral", ty, { button: true, class: "ao-chiptoggle" });
+        c.setAttribute("aria-pressed", sel === ty ? "true" : "false");
+        c.addEventListener("click", function () { MEM.calibType = ty; renderCalibration(); });
+        picker.appendChild(c);
+      });
+      chartCard.appendChild(picker);
+      var chartHost = E("div");
+      chartCard.appendChild(chartHost);
+      root.appendChild(chartCard);
+      var reverted = (cal.typesRevertedToHuman || []).indexOf(sel) >= 0;
+      HX.chart.line(chartHost, cal.kappaByType[sel], { min: 0.75, max: 1, threshold: 0.9, label: "Weekly κ for " + sel + " (threshold 0.90)", xLabel: "Week", yLabel: "κ" });
+      chartCard.appendChild(E("div", { class: "ao-note", text: sel + ": latest κ " + cal.kappaByType[sel][cal.kappaByType[sel].length - 1].toFixed(2) + (reverted ? " — below 0.90 threshold; reverted to human review" : " — auto-approval permitted") }));
+
+      // per-type grid of sparklines
+      root.appendChild(E("h3", { style: "font-size:var(--fs-lead);margin:16px 0 6px", text: "All change-request types" }));
+      var grid = E("div", { class: "ao-calib" });
+      types.forEach(function (ty) {
+        var series = cal.kappaByType[ty];
+        var latest = series[series.length - 1];
+        var rev = (cal.typesRevertedToHuman || []).indexOf(ty) >= 0;
+        var cell = E("button", { class: "ao-calib__cell" + (rev ? " is-reverted" : ""), style: "text-align:left;cursor:pointer", title: "Show " + ty + " trend" });
+        cell.setAttribute("aria-label", ty + " kappa " + latest.toFixed(2) + (rev ? ", reverted to human review" : ""));
+        var top = E("div", { class: "ao-calib__top" }, [E("span", { style: "font-weight:600;font-size:var(--fs-caption)", text: ty }), E("span", { class: "ao-calib__k", text: latest.toFixed(2) })]);
+        cell.appendChild(top);
+        var sparkHost = E("div", { class: "ao-calib__spark" }); cell.appendChild(sparkHost);
+        cell.appendChild(E("div", { style: "margin-top:4px" }, [HX.chip(rev ? "warn" : "pass", rev ? "human review" : "auto ≥ 0.90")]));
+        cell.addEventListener("click", function () { MEM.calibType = ty; renderCalibration(); window.scrollTo({ top: 0, behavior: "smooth" }); });
+        grid.appendChild(cell);
+        HX.chart.sparkline(sparkHost, series, { label: ty + " κ trend, latest " + latest.toFixed(2) });
+      });
+      root.appendChild(grid);
+
+      // disagreement drill-down
+      if ((cal.disagreements || []).length) {
+        root.appendChild(E("h3", { style: "font-size:var(--fs-lead);margin:16px 0 6px", text: "Disagreements (drill-down)" }));
+        var wrap = E("div", { class: "ao-table-wrap" });
+        var t = E("table", { class: "ao-table" });
+        t.appendChild(E("thead", {}, [E("tr", {}, [E("th", { text: "Change request" }), E("th", { text: "Type" }), E("th", { text: "Evaluator" }), E("th", { text: "Human" })])]));
+        var tb = E("tbody");
+        cal.disagreements.forEach(function (d) {
+          var tr = E("tr", { tabindex: "0" });
+          tr.appendChild(E("td", { class: "hx-mono", text: d.cr }));
+          tr.appendChild(E("td", { text: d.type }));
+          var ev = E("td"); ev.appendChild(HX.chip("info", d.evaluator)); tr.appendChild(ev);
+          var hu = E("td"); hu.appendChild(HX.chip("warn", d.human)); tr.appendChild(hu);
+          tr.addEventListener("click", function () { HX.nav("/cr/" + d.cr); });
+          tr.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); HX.nav("/cr/" + d.cr); } });
+          tb.appendChild(tr);
+        });
+        t.appendChild(tb); wrap.appendChild(t); root.appendChild(wrap);
+      }
+    }
+
+    /* ============================================================ CANARIES */
+    function renderCanariesTab() {
+      root.appendChild(pageTitle("Canaries", "Candidate → canary 5% → canary 25% → promoted → monitoring, with a rollback condition on every stage."));
+      if (!D.canaries.length) { root.appendChild(emptyState("No canary rollouts", "The improver proposes canary rollouts of new prompts, policies, thresholds or playbooks.")); return; }
+      D.canaries.forEach(function (c) { root.appendChild(canaryCard(c)); });
+    }
+    function canaryStage(c) { return MEM.canaryStage[c.id] || c.stage; }
+    function canaryCard(c) {
+      var card = E("article", { class: "ao-canary", style: "margin-bottom:12px" });
+      var head = E("div", { class: "hx-row", style: "gap:8px;flex-wrap:wrap;align-items:center" });
+      var idBtn = E("button", { class: "hx-btn hx-btn--sm hx-btn--ghost", style: "font-family:var(--font-mono)" }, [c.id]); idBtn.addEventListener("click", function () { go("/canary/" + c.id); });
+      head.appendChild(idBtn);
+      head.appendChild(E("span", { style: "font-weight:600", text: c.artefact }));
+      head.appendChild(E("span", { class: "ao-note", text: shortRole(c.agent) + " · proposed by " + shortRole(c.proposedBy) }));
+      card.appendChild(head);
+      // rail
+      var rail = E("div", { class: "ao-canary__rail" });
+      var railInner = E("div", { class: "hx-canary-rail", role: "group", "aria-label": "Canary progression" });
+      var cur = canaryStage(c);
+      (c.stages || []).forEach(function (st) {
+        railInner.appendChild(E("span", { class: "hx-canary-rail__stage" + (st === cur ? " hx-canary-rail__stage--current" : ""), "aria-current": st === cur ? "step" : null, text: st.replace("_", " ") }));
+      });
+      rail.appendChild(railInner);
+      card.appendChild(rail);
+      // metrics
+      var metrics = c.metrics || {};
+      var mwrap = E("div", { style: "display:flex;flex-direction:column;gap:6px" });
+      Object.keys(metrics).forEach(function (mk) {
+        var mv = metrics[mk];
+        var row = E("div", { class: "ao-metric2" });
+        row.appendChild(E("span", { text: TC(mk) }));
+        var canV = mv.canary, ctrlV = mv.control;
+        var isRate = /acceptance|rollback/.test(mk);
+        var fmt = isRate ? function (v) { return (v * 100).toFixed(1) + "%"; } : function (v) { return v + (mk === "mttr" ? " min" : ""); };
+        var track = E("div", { class: "ao-metric2__track" });
+        var good = mk === "rollback" || mk === "mttr" ? canV <= ctrlV : canV >= ctrlV;
+        var base = isRate ? 1 : Math.max(canV, ctrlV) * 1.2 || 1;
+        var ci = E("i"); ci.style.width = Math.min(100, canV / base * 100) + "%"; ci.style.background = good ? "var(--ok-fg)" : "var(--warn-fg)";
+        track.appendChild(ci);
+        row.appendChild(E("div", {}, [track, E("span", { class: "hx-caption hx-mono", style: "margin-left:6px", text: "canary " + fmt(canV) + " vs control " + fmt(ctrlV) })]));
+        mwrap.appendChild(row);
+      });
+      card.appendChild(mwrap);
+      card.appendChild(E("div", { class: "ao-note" }, [I("info"), " Rollback condition: " + c.rollbackCondition]));
+      // actions
+      var acts = E("div", { class: "hx-row", style: "gap:8px;flex-wrap:wrap" });
+      var idx = (c.stages || []).indexOf(cur);
+      var next = (c.stages || [])[idx + 1];
+      if (next) {
+        var promote = E("button", { class: "hx-btn hx-btn--sm hx-btn--primary" }, ["Promote to " + next.replace("_", " ")]);
+        promote.addEventListener("click", function () {
+          HX.confirm({ title: "Promote canary " + c.id, body: "Advance " + c.artefact + " from " + cur + " to " + next + "?", consequence: "Rollback condition stays armed: " + c.rollbackCondition, confirmLabel: "Promote" }).then(function (ok) {
+            if (!ok) return;
+            MEM.canaryStage[c.id] = next;
+            HX.audit.write({ type: "CANARY_PROMOTE", canary: c.id, from: cur, to: next });
+            HX.toast(c.id + " promoted to " + next, { kind: "ok", undo: function () { MEM.canaryStage[c.id] = cur; render(); } });
+            HX.live(c.id + " promoted to " + next, "polite");
+            render();
+          });
+        });
+        acts.appendChild(promote);
+      } else { acts.appendChild(HX.chip("pass", "monitoring — steady state")); }
+      var rb = E("button", { class: "hx-btn hx-btn--sm hx-btn--danger" }, ["Roll back"]);
+      rb.addEventListener("click", function () {
+        HX.confirm({ title: "Roll back canary " + c.id, body: "Revert " + c.artefact + " to the control (previous) version?", danger: true, confirmLabel: "Roll back" }).then(function (ok) {
+          if (!ok) return;
+          MEM.canaryStage[c.id] = "candidate";
+          HX.audit.write({ type: "CANARY_ROLLBACK", canary: c.id });
+          HX.toast(c.id + " rolled back to candidate", { kind: "warn" });
+          render();
+        });
+      });
+      acts.appendChild(rb);
+      card.appendChild(acts);
+      return card;
+    }
+    function renderCanaryDetail(id) {
+      var c = IX.canary[id];
+      root.appendChild(backLink("Canaries", "/agents/canaries"));
+      if (!c) { root.appendChild(emptyState("Canary not found", "No canary with id " + id + ".")); return; }
+      root.appendChild(pageTitle("Canary " + c.id, c.artefact));
+      root.appendChild(canaryCard(c));
+    }
+
+    /* ============================================================ KILL SWITCH */
+    var ksScopeSel = null, ksCoSign = false;
+    function renderKillSwitch() {
+      root.appendChild(pageTitle("Kill switch", "Halt applied transitions by scope. Typed-scope confirm and MFA; privacy-triggered releases need a second person."));
+      var ks = D.killSwitch || {};
+      var live = HX.killswitch.get();
+
+      // live status
+      var status = E("div", { class: "hx-card hx-card--band", style: "--band-color:" + (live ? "var(--danger-fg)" : "var(--ok-fg)") + ";margin-bottom:16px" });
+      if (live) {
+        var sc = typeof live.scope === "object" ? Object.values(live.scope).join(" / ") : live.scope;
+        status.appendChild(E("div", { class: "hx-row", style: "gap:8px;flex-wrap:wrap;align-items:center" }, [HX.chip("fail", "ACTIVE"), E("span", { class: "hx-mono", style: "font-weight:600", text: sc }), E("span", { class: "ao-note", text: "held by " + (live.heldBy || "operator") + " since " + HX.format.time(live.since, "known") })]));
+        if (live.privacyTriggered) status.appendChild(E("div", { class: "ao-note", style: "margin-top:6px" }, [HX.chip("vetoed", "privacy-triggered"), E("span", { text: "  Release needs a second person (co-sign)." })]));
+        var relRow = E("div", { style: "margin-top:10px" });
+        if (live.privacyTriggered) {
+          var cosign = E("label", { class: "hx-row hx-caption", style: "gap:6px;margin-bottom:6px" }, [E("input", { type: "checkbox" }), " Co-signer present (second Privacy Officer)"]);
+          cosign.querySelector("input").addEventListener("change", function (e) { ksCoSign = e.target.checked; relBtn.disabled = !ksCoSign; relBtn.setAttribute("aria-disabled", ksCoSign ? "false" : "true"); });
+          relRow.appendChild(cosign);
+        }
+        var relBtn = E("button", { class: "hx-btn hx-btn--sm" }, [I("undo"), "Release kill switch"]);
+        if (live.privacyTriggered) { relBtn.disabled = true; relBtn.setAttribute("aria-disabled", "true"); }
+        relBtn.addEventListener("click", function () {
+          HX.confirm({ title: "Release kill switch", body: "Resume applied transitions for scope " + sc + "?", confirmLabel: "Release" }).then(function (ok) { if (!ok) return; HX.killswitch.release(); HX.toast("Kill switch released", { kind: "ok" }); ksCoSign = false; render(); });
+        });
+        relRow.appendChild(relBtn);
+        status.appendChild(relRow);
+      } else {
+        status.appendChild(E("div", { class: "hx-row", style: "gap:8px;align-items:center" }, [HX.chip("pass", "Idle"), E("span", { class: "ao-note", text: "No scope is halted. Applied transitions proceed under the normal gates." })]));
+      }
+      root.appendChild(status);
+
+      // trip panel
+      var panel = E("div", { class: "hx-card" });
+      panel.appendChild(E("h3", { style: "font-size:var(--fs-lead);margin-bottom:6px", text: "Trip the kill switch" }));
+      panel.appendChild(E("div", { class: "ao-note", style: "margin-bottom:8px", text: "Choose a scope. Tripping halts applied transitions for that scope across every page until released. It does not undo anything already applied." }));
+      var scopes = (ks.scopes || ["platform", "env:prod", "env:uat", "agent:agent.kg_builder", "cr_type:ontology", "cr_type:edw_ddl"]).slice();
+      // UX-OPS-003: guarantee at least one privacy-flavoured scope so tripping
+      // from this panel yields a privacy-triggered switch (privacyScope() and
+      // HX.killswitch.trip both match /phi/), making the co-sign release path
+      // reachable even when the loaded fixture carries only operational scopes.
+      if (!scopes.some(function (s) { return privacyScope(s); })) scopes.push("cr_type:phi_affecting");
+      var scopeGrid = E("div", { class: "hx-killswitch__scope", role: "group", "aria-label": "Kill switch scope" });
+      scopes.forEach(function (s) {
+        var b = E("button", { type: "button", "aria-pressed": ksScopeSel === s ? "true" : "false" }, [s]);
+        b.addEventListener("click", function () { ksScopeSel = ksScopeSel === s ? null : s; HX._.$$(".hx-killswitch__scope button", scopeGrid).forEach(function (x) { x.setAttribute("aria-pressed", x.textContent === ksScopeSel ? "true" : "false"); }); updateConseq(); });
+        scopeGrid.appendChild(b);
+      });
+      panel.appendChild(scopeGrid);
+      // consequences
+      var conseq = E("div", { class: "ao-note", style: "margin:8px 0" });
+      panel.appendChild(conseq);
+      function privacyScope(s) { return /privacy|phi|guardian/.test(String(s || "")); }
+      function updateConseq() {
+        CLEAR(conseq);
+        if (!ksScopeSel) { conseq.appendChild(E("span", { text: "Select a scope to see its consequences." })); tripBtn.disabled = true; tripBtn.setAttribute("aria-disabled", "true"); return; }
+        var lines = ["Halts applied transitions for " + ksScopeSel + ".", privacyScope(ksScopeSel) ? "Privacy-triggered: release will require a second person." : "Release is single-operator."];
+        conseq.appendChild(E("ul", { style: "margin:0;padding-left:18px" }, lines.map(function (l) { return E("li", { text: l }); })));
+        tripBtn.disabled = false; tripBtn.setAttribute("aria-disabled", "false");
+      }
+      // MFA
+      var mfa = E("div", { class: "hx-field", style: "max-width:220px" }, [E("label", { text: "MFA re-prompt" }), E("input", { type: "text", inputmode: "numeric", placeholder: "6-digit code", autocomplete: "off", id: "ao-ks-mfa" })]);
+      panel.appendChild(mfa);
+      var tripBtn = E("button", { class: "hx-btn hx-btn--danger", style: "margin-top:8px", disabled: true, "aria-disabled": "true" }, ["Trip kill switch…"]);
+      tripBtn.addEventListener("click", function () {
+        var mfaVal = document.getElementById("ao-ks-mfa").value;
+        if (!mfaVal || mfaVal.length < 4) { HX.toast("Enter the MFA code to continue", { kind: "warn" }); return; }
+        HX.confirm({ title: "Trip kill switch: " + ksScopeSel, body: "This halts applied transitions for " + ksScopeSel + " immediately, for all users.", consequence: privacyScope(ksScopeSel) ? "Privacy-triggered: release will require a co-signer." : "Release is single-operator.", typed: ksScopeSel, danger: true, confirmLabel: "Trip kill switch" }).then(function (ok) {
+          if (!ok) return;
+          HX.killswitch.trip({ scope: ksScopeSel }, "manual via Agents & Operations");
+          HX.toast("Kill switch active: " + ksScopeSel, { kind: "danger" });
+          ksScopeSel = null;
+          render();
+        });
+      });
+      panel.appendChild(tripBtn);
+      updateConseq();
+      root.appendChild(panel);
+
+      // history
+      if ((ks.history || []).length) {
+        root.appendChild(E("h3", { style: "font-size:var(--fs-lead);margin:16px 0 6px", text: "History" }));
+        var wrap = E("div", { class: "ao-table-wrap" });
+        var t = E("table", { class: "ao-table" });
+        t.appendChild(E("thead", {}, [E("tr", {}, [E("th", { text: "Scope" }), E("th", { text: "Tripped by" }), E("th", { text: "Tripped" }), E("th", { text: "Released" }), E("th", { text: "Reason" })])]));
+        var tb = E("tbody");
+        ks.history.forEach(function (h) {
+          var sc = typeof h.scope === "object" ? Object.values(h.scope).join(" / ") : h.scope;
+          var tr = E("tr");
+          tr.appendChild(E("td", { class: "hx-mono", text: sc }));
+          tr.appendChild(E("td", { text: h.trippedBy }));
+          tr.appendChild(E("td", { text: HX.format.time(h.trippedAt, "known") }));
+          tr.appendChild(E("td", { text: h.releasedAt ? HX.format.time(h.releasedAt, "known") : "—" }));
+          tr.appendChild(E("td", { text: h.reason }));
+          tb.appendChild(tr);
+        });
+        t.appendChild(tb); wrap.appendChild(t); root.appendChild(wrap);
+      }
+    }
+
+    /* ---------------------------------------------------------- lifecycle */
+    window.addEventListener("hashchange", function () { if (loaded) render(); });
+    HX.killswitch.on(function () { if (loaded && currentTab() === "fleet") render(); });
+    boot();
+  })();
+  </script>
+</body>
+</html>

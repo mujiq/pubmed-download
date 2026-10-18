@@ -1,0 +1,941 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>HEALIX Governance</title>
+  <meta name="description" content="Governance and preferences for the HEALIX knowledge platform: PHI classification, access matrix, audit explorer, break-glass reviews, consent, lineage coverage, stewardship directory, data contracts and per-viewer preferences. Synthetic data only; the only PHI surface is the audited remediation workspace, not this console.">
+  <link rel="stylesheet" href="assets/app.css">
+  <style>
+    /* Page-local layout only. All colour comes from app.css tokens (§5.1).
+       Governance surfaces: PHI classification · Access matrix · Audit explorer ·
+       Break-glass reviews · Consent · Lineage coverage · Stewardship directory ·
+       Data contracts · Preferences. No PHI is shown here — tokens and hashes only.
+       Reflows to one column at phone width; wide tables scroll inside their own
+       container so the page itself never scrolls horizontally at 390px. */
+    .sr-skip { position: absolute; left: -999px; top: 0; }
+    .sr-skip:focus { left: 8px; top: 8px; z-index: 100; background: var(--accent); color: var(--accent-fg); padding: 6px 10px; border-radius: var(--r-ctl); }
+
+    .gov__intro { display: flex; align-items: baseline; gap: var(--sp-2) var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+    .gov__intro h1 { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+    .gov__intro p { color: var(--fg-muted); font-size: var(--fs-dense); margin: 0; max-width: 68ch; }
+    .gov__intro-meta { margin-left: auto; display: flex; gap: var(--sp-2); flex-wrap: wrap; align-items: center; }
+
+    .gov-panel { animation: gov-fade var(--dur-panel) var(--ease); }
+    @keyframes gov-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .gov-panel { animation: none; } }
+
+    .gov-section { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-raised); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-3); min-width: 0; }
+    .gov-section > h2 { font-size: var(--fs-lead); font-weight: 600; display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 2px; }
+    .gov-section__sub { font-size: var(--fs-caption); color: var(--fg-muted); margin-bottom: var(--sp-3); max-width: 68ch; }
+    .gov-section__head { display: flex; align-items: center; gap: var(--sp-2) var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+    .gov-section__head h2 { margin: 0; }
+    .gov-section__head .gov-section__sub { margin: 0; flex-basis: 100%; }
+
+    .gov-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 calc(-1 * var(--sp-2)); padding: 0 var(--sp-2); }
+
+    .gov-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-2); margin-bottom: var(--sp-3); }
+    .gov-stat { background: var(--bg-sunken); border: 1px solid var(--border); border-radius: var(--r-ctl); padding: var(--sp-2) var(--sp-3); }
+    .gov-stat__k { font-size: var(--fs-micro); color: var(--fg-muted); text-transform: uppercase; letter-spacing: .04em; display: flex; align-items: center; gap: 4px; }
+    .gov-stat__v { font-size: var(--fs-h3); line-height: 1.1; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+    .gov-stat__v small { font-size: var(--fs-caption); font-weight: 400; color: var(--fg-muted); }
+    .gov-stat__note { font-size: var(--fs-micro); color: var(--fg-muted); margin-top: 2px; }
+
+    .gov-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--sp-3); }
+    .gov-countchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 6px; border: 1px solid var(--border); border-radius: var(--r-pill); font-size: var(--fs-caption); background: var(--bg-surface); cursor: pointer; }
+    .gov-countchip b { font-variant-numeric: tabular-nums; }
+    .gov-countchip[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .gov-swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; border: 1px solid var(--border-strong); }
+
+    /* PHI classification table */
+    .hx-phi-tree th { text-align: left; padding: 6px 8px; font-size: var(--fs-caption); color: var(--fg-muted); font-weight: 600; border-bottom: 1px solid var(--border); background: var(--bg-surface); position: sticky; top: 0; white-space: nowrap; }
+    .hx-phi-tree td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .hx-phi-tree tbody tr { cursor: pointer; }
+    .hx-phi-tree tbody tr:hover { background: var(--bg-sunken); }
+    .hx-phi-tree tbody tr[aria-selected="true"] { background: var(--info-bg); }
+    .hx-phi-tree tbody tr.is-dim { opacity: .5; }
+    .gov-num { font-variant-numeric: tabular-nums; text-align: right; font-family: var(--font-mono); font-size: var(--fs-caption); }
+    .gov-paths { display: flex; flex-wrap: wrap; gap: 4px; }
+
+    /* simulate access */
+    .gov-simulate { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--sp-2); align-items: end; }
+    .gov-verdict { margin-top: var(--sp-3); padding: var(--sp-3); border-radius: var(--r-ctl); border: 1px solid var(--border); background: var(--bg-sunken); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+    .gov-verdict__decision { font-size: var(--fs-lead); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .gov-verdict__decision.is-allow { color: var(--ok-fg); }
+    .gov-verdict__decision.is-deny { color: var(--danger-fg); }
+    .gov-verdict__rule { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--fg-muted); }
+
+    .hx-access-matrix th { background: var(--bg-sunken); color: var(--fg-muted); font-weight: 600; font-size: var(--fs-caption); white-space: nowrap; position: sticky; top: 0; }
+    .hx-access-matrix th[scope="row"] { text-align: left; font-family: var(--font-mono); font-size: var(--fs-micro); white-space: nowrap; background: var(--bg-surface); position: sticky; left: 0; }
+    .hx-access-matrix td { text-align: center; cursor: pointer; font-size: 0; min-width: 34px; }
+    .hx-access-matrix td .gov-cellglyph { font-size: var(--fs-caption); font-family: var(--font-ui); }
+    .hx-access-matrix td.is-sel { outline: 2px solid var(--focus); outline-offset: -2px; }
+    .hx-access-matrix td.is-allow { color: var(--ok-fg); }
+    .hx-access-matrix td.is-deny { color: var(--danger-fg); }
+
+    /* audit */
+    .gov-agg { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); align-items: start; margin-bottom: var(--sp-3); }
+    .hx-audit-table th { background: var(--bg-sunken); color: var(--fg-muted); font-weight: 600; font-size: var(--fs-caption); white-space: nowrap; position: sticky; top: 0; font-family: var(--font-ui); }
+    .hx-audit-table tbody tr:hover { background: var(--bg-sunken); }
+    .gov-hashchain { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-caption); }
+    .gov-barrow { display: grid; grid-template-columns: 1fr auto; gap: var(--sp-2); align-items: center; font-size: var(--fs-caption); padding: 3px 0; }
+    .gov-barrow__track { height: 10px; border-radius: var(--r-pill); background: var(--border); overflow: hidden; }
+    .gov-barrow__fill { height: 100%; background: var(--accent); border-radius: var(--r-pill); }
+    .gov-barrow__n { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+    /* break-glass reviews */
+    .gov-bg { border: 1px solid var(--border); border-radius: var(--r-card); padding: var(--sp-3); margin-bottom: var(--sp-3); background: var(--bg-surface); }
+    .gov-bg.is-pending { border-left: 3px solid var(--warn-fg); }
+    .gov-bg.is-reviewed { border-left: 3px solid var(--ok-fg); }
+    .gov-bg__head { display: flex; align-items: center; gap: var(--sp-2) var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-2); }
+    .gov-bg__title { font-family: var(--font-mono); font-weight: 600; }
+    .gov-bg__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-2) var(--sp-3); margin: var(--sp-2) 0; }
+    .gov-bg__kv .k { font-size: var(--fs-micro); color: var(--fg-muted); text-transform: uppercase; letter-spacing: .03em; }
+    .gov-bg__kv .v { font-size: var(--fs-dense); font-family: var(--font-mono); }
+    .gov-bg__entities { display: flex; flex-wrap: wrap; gap: 6px; }
+    .gov-bg__actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-2); }
+
+    /* lineage coverage */
+    .gov-lin { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--sp-3); align-items: start; }
+    .gov-callout { border-left: 3px solid var(--ok-border); background: var(--ok-bg); color: var(--ok-fg); padding: var(--sp-2) var(--sp-3); border-radius: 0 var(--r-ctl) var(--r-ctl) 0; font-size: var(--fs-dense); display: flex; gap: 8px; align-items: flex-start; }
+
+    /* stewardship */
+    .gov-stw-table { width: 100%; border-collapse: collapse; font-size: var(--fs-dense); }
+    .gov-stw-table th { text-align: left; padding: 6px 8px; font-size: var(--fs-caption); color: var(--fg-muted); font-weight: 600; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .gov-stw-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .gov-stw-table tr.is-atrisk td { background: var(--warn-bg); }
+
+    /* preferences */
+    .gov-pref { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--sp-3); align-items: start; }
+    .gov-pref fieldset { border: 1px solid var(--border); border-radius: var(--r-card); padding: var(--sp-3); margin: 0; }
+    .gov-pref legend { font-size: var(--fs-caption); font-weight: 600; padding: 0 6px; }
+    .gov-seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--r-ctl); overflow: hidden; }
+    .gov-seg button { min-height: 30px; padding: 0 12px; border: 0; background: var(--bg-surface); color: var(--fg-muted); font-size: var(--fs-dense); cursor: pointer; }
+    .gov-seg button + button { border-left: 1px solid var(--border); }
+    .gov-seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+    .gov-switch { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: 6px 0; font-size: var(--fs-dense); }
+    .gov-range { width: 100%; }
+    .gov-range__val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+    .gov-help { font-size: var(--fs-micro); color: var(--fg-muted); margin-top: 4px; }
+
+    .gov-rowwrap { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .gov-note { font-size: var(--fs-caption); color: var(--fg-muted); display: flex; gap: 6px; align-items: flex-start; }
+    .gov-note .hx-icon { flex: none; margin-top: 1px; }
+
+    @media (max-width: 640px) {
+      .gov__intro-meta { margin-left: 0; flex-basis: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <a class="sr-skip" href="#gov-root">Skip to governance content</a>
+  <main id="hx-main">
+    <div id="gov-root" tabindex="-1"></div>
+  </main>
+
+  <!-- Synthetic-data fallbacks so the page renders over file:// (README §How to open).
+       Served over http, HX.data.load fetches the full data/incidents.json and
+       data/kpis.json supersets instead. Governance data carries no PHI: entities
+       are opaque tokens, records are counts, break-glass values are never shown. -->
+  <script type="application/json" id="hx-data-incidents">
+{"breakGlassSessions":[{"id":"BG-01JA0T2","principal":"role.steward_g2","reasonCode":"DATA_CORRECTION","issue":"ISS-01JA0Q7","startedAt":"2026-10-16T14:02:00Z","expiresAt":"2026-10-16T18:02:00Z","endedAt":"2026-10-16T14:31:00Z","recordsViewed":3,"entities":[{"token":"tok_8f3a92c1","phiClass":"phi:direct"},{"token":"tok_1c7be044","phiClass":"phi:direct"},{"token":"tok_a07d5519","phiClass":"phi:direct"}],"queryHashes":["q:71bd…","q:0e2a…"],"reviewDueAt":"2026-10-20T14:02:00Z","reviewDecision":null,"reviewer":"role.privacy_officer","mfaVerified":true},{"id":"BG-01JA0R8","principal":"role.steward_g1","reasonCode":"PATIENT_SAFETY","issue":"ISS-01JA0M2","startedAt":"2026-10-12T09:00:00Z","expiresAt":"2026-10-12T13:00:00Z","endedAt":"2026-10-12T09:40:00Z","recordsViewed":6,"entities":[{"token":"tok_c4a2bb10","phiClass":"phi:direct"}],"queryHashes":["q:9f1c…"],"reviewDueAt":"2026-10-14T09:00:00Z","reviewDecision":"Appropriate","reviewedAt":"2026-10-13T10:00:00Z","reviewer":"role.privacy_officer","mfaVerified":true}],"auditEvents":[{"id":"AUD-000001","at":"2026-10-17T09:30:00Z","principal":"role.steward_g2","action":"view_as","target":"role.ontologist","purpose":"operations","env":"uat","hashChainOk":true,"detail":"View-as switch; permissions unchanged"},{"id":"AUD-000002","at":"2026-10-16T14:02:00Z","principal":"role.steward_g2","action":"breakglass_open","target":"BG-01JA0T2","purpose":"DATA_CORRECTION","env":"prod","hashChainOk":true,"detail":"ISS-01JA0Q7 remediation workspace"},{"id":"AUD-000003","at":"2026-10-16T14:03:10Z","principal":"role.steward_g2","action":"phi_view","target":"tok_8f3a92c1","purpose":"DATA_CORRECTION","env":"prod","hashChainOk":true,"detail":"record viewed in remediation workspace"},{"id":"AUD-000004","at":"2026-10-16T14:03:25Z","principal":"role.steward_g2","action":"phi_view","target":"tok_1c7be044","purpose":"DATA_CORRECTION","env":"prod","hashChainOk":true,"detail":"record viewed in remediation workspace"},{"id":"AUD-000005","at":"2026-10-16T14:04:02Z","principal":"role.steward_g2","action":"phi_view","target":"tok_a07d5519","purpose":"DATA_CORRECTION","env":"prod","hashChainOk":true,"detail":"record viewed in remediation workspace"},{"id":"AUD-000006","at":"2026-10-16T14:31:00Z","principal":"role.steward_g2","action":"breakglass_close","target":"BG-01JA0T2","purpose":"DATA_CORRECTION","env":"prod","hashChainOk":true,"detail":"review item created for role.privacy_officer"},{"id":"AUD-000007","at":"2026-10-16T09:10:00Z","principal":"role.steward_g2","action":"cr_approve","target":"CR-20261016-01J8XY","purpose":"governance","env":"uat","hashChainOk":true,"detail":"gate steward_approval"},{"id":"AUD-000008","at":"2026-10-14T11:04:00Z","principal":"agent.privacy_guardian","action":"cr_veto","target":"CR-20261014-01J6PH","purpose":"governance","env":"uat","hashChainOk":true,"detail":"GOV-PHI-004"},{"id":"AUD-000009","at":"2026-10-03T14:00:00Z","principal":"role.agent_operator","action":"killswitch_trip","target":"cr_type:ontology env:prod","purpose":"operations","env":"prod","hashChainOk":true,"detail":"ELK timeout"},{"id":"AUD-000010","at":"2026-10-03T16:30:00Z","principal":"role.agent_operator","action":"killswitch_release","target":"cr_type:ontology env:prod","purpose":"operations","env":"prod","hashChainOk":true,"detail":"released; no co-sign required"},{"id":"AUD-000011","at":"2026-10-10T08:00:00Z","principal":"role.executive","action":"nudge","target":"gate:steward_approval role.steward_g5","purpose":"governance","env":"prod","hashChainOk":true,"detail":"rate-limited 1 per gate per 7 days"},{"id":"AUD-000012","at":"2026-10-12T09:00:00Z","principal":"role.steward_g1","action":"breakglass_open","target":"BG-01JA0R8","purpose":"PATIENT_SAFETY","env":"prod","hashChainOk":true,"detail":"ISS-01JA0M2"},{"id":"AUD-000013","at":"2026-10-13T10:00:00Z","principal":"role.privacy_officer","action":"breakglass_review","target":"BG-01JA0R8","purpose":"governance","env":"prod","hashChainOk":true,"detail":"decision Appropriate"},{"id":"AUD-000014","at":"2026-10-17T06:31:00Z","principal":"agent.improver","action":"cr_create","target":"CR-20261017-01J9AA","purpose":"governance","env":"uat","hashChainOk":true,"detail":"agent manifest threshold raise"}],"phiClassification":{"identifiers":[{"n":1,"label":"Names","fhirPaths":["Patient.name","Practitioner.name"],"columns":2,"topics":3,"class":"phi:direct"},{"n":2,"label":"Geographic subdivisions smaller than state","fhirPaths":["Patient.address"],"columns":1,"topics":2,"class":"phi:quasi"},{"n":3,"label":"Dates (except year)","fhirPaths":["Patient.birthDate","Encounter.period"],"columns":4,"topics":5,"class":"phi:quasi"},{"n":4,"label":"Telephone numbers","fhirPaths":["Patient.telecom"],"columns":0,"topics":2,"class":"phi:direct"},{"n":7,"label":"Social security numbers","fhirPaths":["Patient.identifier[SSN]"],"columns":1,"topics":2,"class":"phi:direct"},{"n":8,"label":"Medical record numbers","fhirPaths":["Patient.identifier[MRN]"],"columns":2,"topics":6,"class":"phi:direct"},{"n":18,"label":"Any other unique identifying number","fhirPaths":["Encounter.identifier"],"columns":1,"topics":4,"class":"phi:quasi"}],"countsByClass":{"non-phi":612,"pii:workforce":58,"confidential":44,"phi:quasi":31,"phi:clinical":140,"phi:direct":22,"phi:sensitive":9,"unknown":16},"unknownDueAt":"2026-10-28T00:00:00Z"},"accessMatrix":{"roles":["role.ontologist","role.steward_g2","role.integration_engineer","role.dw_architect","role.analyst","role.privacy_officer","role.platform_sre","role.agent_operator","role.executive","agent.*"],"purposes":["treatment-support","operations","governance","research","DATA_CORRECTION","PATIENT_SAFETY"],"phiClasses":["non-phi","pii:workforce","confidential","phi:quasi","phi:clinical","phi:direct","phi:sensitive"],"rules":[{"id":"ACC-001","role":"*","phiClass":"non-phi","purpose":"*","decision":"allow"},{"id":"ACC-010","role":"role.analyst","phiClass":"phi:quasi","purpose":"operations","decision":"allow (masked, n ≥ 11)"},{"id":"ACC-020","role":"role.steward_g2","phiClass":"phi:direct","purpose":"DATA_CORRECTION","decision":"allow under break-glass (4 h, audited)"},{"id":"ACC-030","role":"agent.*","phiClass":"phi:direct","purpose":"*","decision":"deny (no reveal tool exists)"},{"id":"ACC-040","role":"role.privacy_officer","phiClass":"*","purpose":"governance","decision":"allow (tokens only)"},{"id":"ACC-050","role":"role.executive","phiClass":"phi:*","purpose":"*","decision":"deny"}],"policyBundleVersion":"policy-2026.10.2"},"stewardship":[{"role":"role.steward_g1","label":"Data Steward, Party & Identity","group":"G1","backup":"role.steward_g2","queueAgeP50Days":1.2},{"role":"role.steward_g2","label":"Data Steward, Clinical Care","group":"G2","backup":"role.steward_g1","queueAgeP50Days":2.1},{"role":"role.steward_g3","label":"Data Steward, Finance","group":"G3","backup":"role.steward_g4","queueAgeP50Days":1.8},{"role":"role.steward_g4","label":"Data Steward, Supply","group":"G4","backup":"role.steward_g3","queueAgeP50Days":3.4},{"role":"role.steward_g5","label":"Data Steward, HR / Workforce","group":"G5","backup":"role.steward_g1","queueAgeP50Days":9},{"role":"role.steward_g8","label":"Data Steward, Reference","group":"G8","backup":"role.ontologist","queueAgeP50Days":0.9},{"role":"role.ontologist","label":"Ontologist / Taxonomist","group":null,"backup":null,"queueAgeP50Days":2.6},{"role":"role.dw_architect","label":"Data Warehouse Architect","group":null,"backup":null,"queueAgeP50Days":3.1},{"role":"role.privacy_officer","label":"Privacy & Security Officer","group":null,"backup":null,"queueAgeP50Days":0.7},{"role":"role.integration_engineer","label":"Integration Engineer","group":null,"backup":null,"queueAgeP50Days":1.5},{"role":"role.platform_sre","label":"Platform SRE","group":null,"backup":null,"queueAgeP50Days":0.3},{"role":"role.agent_operator","label":"Agent Operator","group":null,"backup":null,"queueAgeP50Days":0.5}],"dataContracts":[{"id":"DC-001","topic":"hc.canonical.clinical.encounter.fhir.v1","consumer":"edw-sink","version":"1.2","fields":["class","period","subject"],"state":"active"},{"id":"DC-002","topic":"hc.kg.assertion.v1","consumer":"kg-sink","version":"2.0","fields":["subject","predicate","object","prov_activity_iri"],"state":"breached","note":"schema v5 rolled back"}],"consent":{"propagationSlo":"S22","sli":0.91,"pendingChanges":212,"oldestPendingMin":7200,"engineState":"stalled (research-ctms)"}}
+  </script>
+  <script type="application/json" id="hx-data-kpis">
+{"kpis":[{"slug":"lineage-coverage","label":"Lineage coverage","goal":"G-05","definition":"Columns, topics and properties with a recorded lineage edge.","formula":"objects_with_lineage / objects","value":96.1,"target":95,"unit":"%","band":"Green","byGroup":{"G1":100,"G2":97,"G3":95,"G4":93,"G5":88,"G6":96,"G7":90,"G8":100,"G9":100},"lineage":["edw_g9_governance.fact_lineage_edge"],"history":[{"month":"2026-05","value":80},{"month":"2026-06","value":86},{"month":"2026-07","value":90},{"month":"2026-08","value":93},{"month":"2026-09","value":95},{"month":"2026-10","value":96.1}],"lastMovedBy":"mapspec lis-oru registered","explain":"100 % for phi:direct as required by S19.","drill":{"route":"/gov?tab=lineage"}}]}
+  </script>
+
+  <script src="assets/app.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    var E = HX.util.el, I = HX.icon, titleCase = HX.util.titleCase;
+    var TODAY = Date.now();
+
+    HX.mount({ page: "settings-governance", title: "HEALIX Governance", area: "gov" });
+
+    var root = document.getElementById("gov-root");
+    var INC = {};      // incidents.json governance subset
+    var KPI = {};      // kpis.json (lineage-coverage)
+    // mutable in-memory copies so decisions/proposals persist across tab switches this session
+    var BG = [];       // break-glass sessions
+    var SESSION_AUDIT = []; // governance actions taken in this page (merged with HX.audit.list())
+    var prefs = { blindReview: 0 };
+
+    /* ---------------- tab model (brief §4.11, order fixed) ---------------- */
+    var TABS = [
+      { id: "phi", label: "PHI classification" },
+      { id: "access", label: "Access matrix" },
+      { id: "audit", label: "Audit explorer" },
+      { id: "breakglass", label: "Break-glass reviews" },
+      { id: "consent", label: "Consent" },
+      { id: "lineage", label: "Lineage coverage" },
+      { id: "stewardship", label: "Stewardship directory" },
+      { id: "contracts", label: "Data contracts" },
+      { id: "prefs", label: "Preferences" }
+    ];
+    var current = "phi";
+
+    /* ---------------- small helpers ---------------- */
+    function hashParams() {
+      var h = location.hash.slice(1), qi = h.indexOf("?"), out = { route: qi < 0 ? h : h.slice(0, qi), params: {} };
+      if (qi >= 0) h.slice(qi + 1).split("&").forEach(function (p) { var kv = p.split("="); if (kv[0]) out.params[kv[0]] = decodeURIComponent(kv[1] || ""); });
+      return out;
+    }
+    function tabFromHash() {
+      var hp = hashParams();
+      if (/\/steward\b/.test(hp.route)) return "stewardship";
+      if (/\/audit\b/.test(hp.route)) return "audit";
+      if (hp.params.tab && TABS.some(function (t) { return t.id === hp.params.tab; })) return hp.params.tab;
+      return "phi";
+    }
+    function setTab(id, pushHash) {
+      current = id;
+      if (pushHash !== false) {
+        var hp = hashParams(); var route = hp.route && hp.route.indexOf("/gov") === 0 ? hp.route : "/gov";
+        try { history.replaceState(null, "", "#" + route + "?tab=" + id); } catch (e) { }
+      }
+      renderTabs(); renderPanel();
+      HX.live("Governance: " + (TABS.filter(function (t) { return t.id === id; })[0] || {}).label + " tab", "polite");
+    }
+    function phiChipClass(cls) {
+      // maps a phi class to a CSS var for swatches
+      return "var(--" + ({ "non-phi": "neutral-fg", "phi:none": "neutral-fg", "pii:workforce": "pii-workforce", "confidential": "confidential", "phi:quasi": "phi-quasi", "phi:clinical": "phi-clinical", "phi:direct": "phi-direct", "phi:sensitive": "phi-sensitive", "unknown": "warn-fg" }[cls] || "fg-muted") + ")";
+    }
+    function slaPct(startIso, dueIso) {
+      var s = Date.parse(startIso), d = Date.parse(dueIso);
+      if (isNaN(s) || isNaN(d) || d <= s) return 0;
+      return Math.max(0, Math.min(130, Math.round(((TODAY - s) / (d - s)) * 100)));
+    }
+    function fmtMonth(m) {
+      if (!m) return "";
+      var p = String(m).split("-"), n = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return (n[(+p[1]) - 1] || p[1]) + " " + p[0];
+    }
+    function roleLabel(id) { var r = HX.role.find(id); return r ? r.label : id; }
+    function crLink(id) {
+      var a = E("a", { class: "hx-mono", href: "#" }, [id]);
+      a.addEventListener("click", function (e) { e.preventDefault(); HX.nav.resolve ? HX.nav("/cr/" + id) : null; });
+      return a;
+    }
+    function resolveLink(id, label) {
+      var a = E("a", { class: "hx-mono", href: "#" }, [label || id]);
+      a.addEventListener("click", function (e) { e.preventDefault(); var r = HX.nav.resolve(id); HX.nav(r.route); });
+      return a;
+    }
+
+    /* ======================================================= intro + tabs */
+    function renderShell() {
+      HX._.clear(root);
+      var intro = E("div", { class: "gov__intro" }, [
+        E("h1", {}, ["Governance"]),
+        E("p", {}, ["PHI classification, access policy, the audit trail, break-glass reviews, lineage coverage, stewardship and your preferences. This console is PHI-free by construction — entities appear only as opaque tokens and records only as counts. The one PHI surface is the audited remediation workspace reached from a DQ issue, never here."]),
+        E("div", { class: "gov__intro-meta" }, [
+          HX.chip("info", "Policy bundle " + (INC.accessMatrix ? INC.accessMatrix.policyBundleVersion : "—")),
+          HX.chip("neutral", "Viewing role: " + roleLabel(HX.role.get()))
+        ])
+      ]);
+      root.appendChild(intro);
+
+      var tablist = E("div", { class: "hx-tabs", role: "tablist", "aria-label": "Governance surfaces", id: "gov-tablist" });
+      root.appendChild(tablist);
+      root.appendChild(E("div", { id: "gov-panel", role: "tabpanel", "aria-labelledby": "gov-tab-" + current, tabindex: "0" }));
+      renderTabs();
+    }
+    function renderTabs() {
+      var tablist = document.getElementById("gov-tablist"); if (!tablist) return; HX._.clear(tablist);
+      TABS.forEach(function (t) {
+        var sel = t.id === current;
+        var btn = E("button", { class: "hx-tab", id: "gov-tab-" + t.id, role: "tab", "aria-selected": sel ? "true" : "false", tabindex: sel ? "0" : "-1", "data-tab": t.id }, [t.label]);
+        // badges for a couple of tabs
+        if (t.id === "breakglass") { var np = BG.filter(function (b) { return !b.reviewDecision; }).length; if (np) btn.appendChild(E("span", { class: "hx-tab__badge" }, [String(np)])); }
+        if (t.id === "phi" && INC.phiClassification) { var unk = INC.phiClassification.countsByClass.unknown; if (unk) btn.appendChild(E("span", { class: "hx-tab__badge" }, [unk + " unknown"])); }
+        btn.addEventListener("click", function () { setTab(t.id); });
+        btn.addEventListener("keydown", onTabKey);
+        tablist.appendChild(btn);
+      });
+      // keep the active panel labelled by the active tab
+      var panel = document.getElementById("gov-panel"); if (panel) panel.setAttribute("aria-labelledby", "gov-tab-" + current);
+    }
+    function onTabKey(e) {
+      var idx = TABS.map(function (t) { return t.id; }).indexOf(e.target.getAttribute("data-tab"));
+      var next = idx;
+      if (e.key === "ArrowRight") next = (idx + 1) % TABS.length;
+      else if (e.key === "ArrowLeft") next = (idx - 1 + TABS.length) % TABS.length;
+      else if (e.key === "Home") next = 0;
+      else if (e.key === "End") next = TABS.length - 1;
+      else return;
+      e.preventDefault(); setTab(TABS[next].id);
+      var el = document.getElementById("gov-tab-" + TABS[next].id); if (el) el.focus();
+    }
+
+    function renderPanel() {
+      var panel = document.getElementById("gov-panel"); if (!panel) return; HX._.clear(panel);
+      panel.classList.remove("gov-panel"); void panel.offsetWidth; panel.classList.add("gov-panel");
+      ({ phi: renderPhi, access: renderAccess, audit: renderAudit, breakglass: renderBreakglass, consent: renderConsent, lineage: renderLineage, stewardship: renderStewardship, contracts: renderContracts, prefs: renderPrefs }[current] || renderPhi)(panel);
+    }
+
+    /* ======================================================= 1 · PHI classification */
+    var phiFilter = null;
+    function renderPhi(panel) {
+      var pc = INC.phiClassification || { identifiers: [], countsByClass: {} };
+      // unclassified clock
+      var unk = pc.countsByClass.unknown || 0;
+      var clock = E("div", { class: "gov-section" });
+      var pct = slaPct("2026-10-14T00:00:00Z", pc.unknownDueAt);
+      clock.appendChild(E("div", { class: "gov-rowwrap", style: "justify-content:space-between" }, [
+        E("div", { class: "gov-rowwrap" }, [I(unk ? "warn" : "check"),
+          E("strong", {}, [unk + " data elements are phi_class = unknown"]),
+          E("span", { class: "gov-note" }, ["10-business-day classification clock (ONT-INV-003) — due " + HX.format.time(pc.unknownDueAt, "valid")])]),
+        HX.sla(pct, { text: pct + "% elapsed", title: "Classification SLA" })
+      ]));
+      panel.appendChild(clock);
+
+      // summary: counts by class as chips + bar chart
+      var sec = E("div", { class: "gov-section" });
+      sec.appendChild(E("div", { class: "gov-section__head" }, [E("h2", {}, [I("lock"), "PHI classification"]),
+        E("p", { class: "gov-section__sub" }, ["The 18 HIPAA Safe-Harbor identifiers mapped to FHIR R4 paths, EDW columns and Kafka topics. Counts only — no identifiers or values are shown. Filter the identifier list by clicking a class."])]));
+      var chips = E("div", { class: "gov-chips" });
+      Object.keys(pc.countsByClass).forEach(function (cls) {
+        var c = E("button", { class: "gov-countchip", "aria-pressed": phiFilter === cls ? "true" : "false", "aria-label": phiLabelOf(cls) + ": " + pc.countsByClass[cls] + " objects. Toggle filter." });
+        c.appendChild(E("span", { class: "gov-swatch", style: "background:" + phiChipClass(cls) }));
+        c.appendChild(E("span", {}, [phiLabelOf(cls)]));
+        c.appendChild(E("b", {}, [String(pc.countsByClass[cls])]));
+        c.addEventListener("click", function () { phiFilter = (phiFilter === cls) ? null : cls; renderPanel(); });
+        chips.appendChild(c);
+      });
+      sec.appendChild(chips);
+      var chart = E("div", { style: "max-width:520px" });
+      sec.appendChild(chart);
+      sec.appendChild(E("p", { class: "gov-help" }, ["Classified objects by PHI class (single measure; the two clinical/direct columns gate masking and break-glass)."]));
+      panel.appendChild(sec);
+      HX.chart.bar(chart, Object.keys(pc.countsByClass).map(function (cls) {
+        var band = /direct|sensitive/.test(cls) ? "fail" : /clinical|quasi|unknown/.test(cls) ? "warn" : null;
+        return { label: phiShort(cls), value: pc.countsByClass[cls], band: band };
+      }), { label: "Objects by PHI class" });
+
+      // identifier table
+      var tsec = E("div", { class: "gov-section" });
+      var head = E("div", { class: "gov-section__head" }, [E("h2", {}, ["Safe-Harbor identifiers"])]);
+      if (phiFilter) {
+        var clear = E("button", { class: "hx-btn hx-btn--sm" }, [I("close"), "Clear filter: " + phiLabelOf(phiFilter)]);
+        clear.addEventListener("click", function () { phiFilter = null; renderPanel(); });
+        head.appendChild(clear);
+      }
+      tsec.appendChild(head);
+      var scroll = E("div", { class: "gov-scroll" });
+      var table = E("table", { class: "hx-phi-tree" });
+      table.appendChild(E("thead", {}, [E("tr", {}, [
+        E("th", { scope: "col" }, ["#"]), E("th", { scope: "col" }, ["Identifier"]), E("th", { scope: "col" }, ["PHI class"]),
+        E("th", { scope: "col" }, ["FHIR paths"]), E("th", { scope: "col", style: "text-align:right" }, ["Columns"]), E("th", { scope: "col", style: "text-align:right" }, ["Topics"])
+      ])]));
+      var tb = E("tbody", {});
+      // render full 18 identifiers; populate the ones present in data, gap the rest
+      var byN = {}; (pc.identifiers || []).forEach(function (r) { byN[r.n] = r; });
+      for (var n = 1; n <= 18; n++) {
+        var rec = byN[n];
+        var cls = rec ? rec.class : "non-phi";
+        if (phiFilter && cls !== phiFilter) continue;
+        var tr = E("tr", { tabindex: "0", role: "button", "aria-label": "Identifier " + n + (rec ? ", " + rec.label : ", not present in scope") });
+        tr.appendChild(E("td", { class: "gov-num" }, [String(n)]));
+        tr.appendChild(E("td", {}, [rec ? rec.label : E("span", { class: "hx-muted" }, [HIPAA18[n] || ("Identifier " + n)])]));
+        tr.appendChild(E("td", {}, [rec ? HX.phiChip(cls) : E("span", { class: "hx-chip hx-chip--gap" }, ["not in scope"])]));
+        var paths = E("td", {}, [rec ? E("span", { class: "gov-paths" }, rec.fhirPaths.map(function (p) { return E("span", { class: "hx-code-chip" }, [E("span", {}, [p])]); })) : E("span", { class: "hx-muted" }, ["—"])]);
+        tr.appendChild(paths);
+        tr.appendChild(E("td", { class: "gov-num" }, [rec ? String(rec.columns) : "—"]));
+        tr.appendChild(E("td", { class: "gov-num" }, [rec ? String(rec.topics) : "—"]));
+        if (!rec) tr.classList.add("is-dim");
+        (function (rec, n, cls) {
+          var act = function () { peekIdentifier(rec, n, cls); };
+          tr.addEventListener("click", act);
+          tr.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } });
+        })(rec, n, cls);
+        tb.appendChild(tr);
+      }
+      table.appendChild(tb); scroll.appendChild(table); tsec.appendChild(scroll);
+      panel.appendChild(tsec);
+    }
+    function peekIdentifier(rec, n, cls) {
+      var box = E("div", {});
+      box.appendChild(E("div", { class: "hx-caption hx-muted" }, ["HIPAA identifier " + n]));
+      box.appendChild(E("h3", { style: "margin:4px 0" }, [rec ? rec.label : (HIPAA18[n] || "Identifier " + n)]));
+      box.appendChild(rec ? HX.phiChip(cls) : E("span", { class: "hx-chip hx-chip--gap" }, ["not present in scope"]));
+      if (rec) {
+        box.appendChild(E("div", { class: "hx-caption", style: "margin-top:8px;font-weight:600" }, ["FHIR R4 paths"]));
+        rec.fhirPaths.forEach(function (p) { box.appendChild(E("div", { class: "hx-mono hx-caption" }, [p])); });
+        box.appendChild(E("div", { class: "hx-caption", style: "margin-top:8px" }, [rec.columns + " EDW column(s) · " + rec.topics + " Kafka topic(s) carry this identifier"]));
+        box.appendChild(E("p", { class: "gov-note", style: "margin-top:8px" }, [I("lock"), "Values are never shown here. Reveal exists only in the entitled remediation workspace under break-glass."]));
+      } else {
+        box.appendChild(E("p", { class: "gov-note", style: "margin-top:8px" }, [I("info"), "No in-scope FHIR path or column carries this identifier in the synthetic catalogue."]));
+      }
+      HX.inspector.open(box, "Identifier " + n);
+    }
+    function phiLabelOf(cls) { return ({ "non-phi": "No PHI", "pii:workforce": "PII workforce", "confidential": "Confidential", "phi:quasi": "PHI quasi", "phi:clinical": "PHI clinical", "phi:direct": "PHI direct", "phi:sensitive": "PHI sensitive", "unknown": "Unclassified" }[cls] || cls); }
+    function phiShort(cls) { return ({ "non-phi": "none", "pii:workforce": "workforce", "confidential": "conf", "phi:quasi": "quasi", "phi:clinical": "clinical", "phi:direct": "direct", "phi:sensitive": "sens", "unknown": "unknown" }[cls] || cls); }
+    var HIPAA18 = { 5: "Fax numbers", 6: "Email addresses", 9: "Health plan beneficiary numbers", 10: "Account numbers", 11: "Certificate / licence numbers", 12: "Vehicle identifiers", 13: "Device identifiers", 14: "Web URLs", 15: "IP addresses", 16: "Biometric identifiers", 17: "Full-face photographs" };
+
+    /* ======================================================= 2 · Access matrix */
+    var accPurpose = "governance", accSel = null;
+    function ruleMatch(rule, role, cls, purpose) {
+      var rOk = rule.role === "*" || rule.role === role || (rule.role.slice(-2) === ".*" && role.indexOf(rule.role.slice(0, -1)) === 0);
+      var cOk = rule.phiClass === "*" || rule.phiClass === cls || (rule.phiClass === "phi:*" && cls.indexOf("phi:") === 0);
+      var pOk = rule.purpose === "*" || rule.purpose === purpose;
+      return rOk && cOk && pOk;
+    }
+    function evaluate(role, cls, purpose) {
+      var am = INC.accessMatrix; if (!am) return { decision: "deny", rule: "(default)" };
+      for (var i = 0; i < am.rules.length; i++) { if (ruleMatch(am.rules[i], role, cls, purpose)) return { decision: am.rules[i].decision, rule: am.rules[i].id }; }
+      return { decision: "deny (default: minimum necessary)", rule: "DEFAULT-DENY" };
+    }
+    function isAllow(dec) { return /^allow/.test(dec); }
+    function renderAccess(panel) {
+      var am = INC.accessMatrix || { roles: [], phiClasses: [], purposes: [], rules: [] };
+      // simulate access
+      var sim = E("div", { class: "gov-section" });
+      sim.appendChild(E("div", { class: "gov-section__head" }, [E("h2", {}, [I("governance"), "Simulate access"]),
+        E("p", { class: "gov-section__sub" }, ["Evaluate the policy bundle for a role, PHI class and purpose. The decision is the first matching rule (minimum necessary; default deny). Changes to policy are proposed as governance CRs, never applied here."])]));
+      var selRole = E("select", {}, am.roles.map(function (r) { return E("option", { value: r }, [r]); }));
+      var selCls = E("select", {}, am.phiClasses.map(function (c) { return E("option", { value: c }, [phiLabelOf(c) + " (" + c + ")"]); }));
+      var selPurp = E("select", {}, am.purposes.map(function (p) { return E("option", { value: p }, [p]); }));
+      selCls.value = "phi:direct"; selPurp.value = "DATA_CORRECTION"; selRole.value = "role.steward_g2";
+      var grid = E("div", { class: "gov-simulate" }, [
+        E("div", { class: "hx-field" }, [E("label", {}, ["Role"]), selRole]),
+        E("div", { class: "hx-field" }, [E("label", {}, ["PHI class"]), selCls]),
+        E("div", { class: "hx-field" }, [E("label", {}, ["Purpose"]), selPurp])
+      ]);
+      sim.appendChild(grid);
+      var verdict = E("div", { class: "gov-verdict", "aria-live": "polite" });
+      sim.appendChild(verdict);
+      function runSim() {
+        var v = evaluate(selRole.value, selCls.value, selPurp.value);
+        HX._.clear(verdict);
+        verdict.appendChild(E("span", { class: "gov-verdict__decision " + (isAllow(v.decision) ? "is-allow" : "is-deny") }, [I(isAllow(v.decision) ? "check" : "danger"), v.decision]));
+        verdict.appendChild(E("span", { class: "gov-verdict__rule" }, ["matched rule " + v.rule]));
+        var prop = E("button", { class: "hx-btn hx-btn--sm" }, [I("review"), "Propose policy change"]);
+        prop.addEventListener("click", function () { proposePolicyCr(selRole.value, selCls.value, selPurp.value, v); });
+        verdict.appendChild(prop);
+      }
+      selRole.addEventListener("change", runSim); selCls.addEventListener("change", runSim); selPurp.addEventListener("change", runSim);
+      runSim();
+      panel.appendChild(sim);
+
+      // matrix grid (role × phiClass) for the chosen purpose
+      var msec = E("div", { class: "gov-section" });
+      var mhead = E("div", { class: "gov-section__head" }, [E("h2", {}, ["Access matrix"]),
+        E("label", { class: "hx-field", style: "margin:0" }, [E("span", { class: "hx-caption", style: "font-weight:600" }, ["Purpose"]), (function () {
+          var s = E("select", {}, am.purposes.map(function (p) { return E("option", { value: p }, [p]); })); s.value = accPurpose; s.addEventListener("change", function () { accPurpose = s.value; accSel = null; renderPanel(); }); return s;
+        })()]),
+        E("p", { class: "gov-section__sub" }, ["Role × PHI class for purpose “" + accPurpose + "”. Status is glyph + colour (✓ allow / ✕ deny). Click a cell for the matched rule. Note ACC-030: agents are denied PHI because no reveal tool exists for them."])]);
+      msec.appendChild(mhead);
+      var scroll = E("div", { class: "gov-scroll" });
+      var table = E("table", { class: "hx-access-matrix" });
+      var htr = E("tr", {}, [E("th", { scope: "col" }, ["Role ↓ / Class →"])].concat(am.phiClasses.map(function (c) { return E("th", { scope: "col", title: c }, [phiShort(c)]); })));
+      table.appendChild(E("thead", {}, [htr]));
+      var tb = E("tbody", {});
+      am.roles.forEach(function (role) {
+        var tr = E("tr", {}, [E("th", { scope: "row", title: role }, [role])]);
+        am.phiClasses.forEach(function (cls) {
+          var v = evaluate(role, cls, accPurpose), allow = isAllow(v.decision);
+          var td = E("td", { class: (allow ? "is-allow" : "is-deny"), tabindex: "0", role: "button", title: role + " · " + cls + " · " + accPurpose + " → " + v.decision + " (" + v.rule + ")", "aria-label": role + ", " + cls + ": " + v.decision });
+          td.appendChild(E("span", { class: "gov-cellglyph", "aria-hidden": "true" }, [allow ? "✓" : "✕"]));
+          var act = function () {
+            HX._.$$(".is-sel", table).forEach(function (x) { x.classList.remove("is-sel"); });
+            td.classList.add("is-sel"); accSel = { role: role, cls: cls, v: v };
+            HX.toast(role + " · " + cls + " · " + accPurpose + ": " + v.decision + " (rule " + v.rule + ")", { kind: allow ? "ok" : "warn", timeout: 4000 });
+          };
+          td.addEventListener("click", act);
+          td.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } });
+          tr.appendChild(td);
+        });
+        tb.appendChild(tr);
+      });
+      table.appendChild(tb); scroll.appendChild(table); msec.appendChild(scroll);
+      panel.appendChild(msec);
+
+      // the rules themselves
+      var rsec = E("div", { class: "gov-section" });
+      rsec.appendChild(E("h2", {}, ["Policy rules"]));
+      rsec.appendChild(E("p", { class: "gov-section__sub" }, ["Bundle " + am.policyBundleVersion + ". Evaluated top to bottom; first match wins."]));
+      var rscroll = E("div", { class: "gov-scroll" });
+      var rt = E("table", { class: "hx-audit-table" });
+      rt.appendChild(E("thead", {}, [E("tr", {}, ["Rule", "Role", "PHI class", "Purpose", "Decision"].map(function (h) { return E("th", { scope: "col" }, [h]); }))]));
+      var rtb = E("tbody", {});
+      am.rules.forEach(function (r) {
+        rtb.appendChild(E("tr", {}, [E("td", {}, [r.id]), E("td", {}, [r.role]), E("td", {}, [r.phiClass]), E("td", {}, [r.purpose]),
+          E("td", {}, [E("span", { class: "hx-chip hx-chip--" + (isAllow(r.decision) ? "pass" : "fail") }, [E("span", { class: "hx-chip__glyph", "aria-hidden": "true" }, [isAllow(r.decision) ? "✓" : "✕"]), E("span", { class: "hx-chip__text" }, [r.decision])])])]));
+      });
+      rt.appendChild(rtb); rscroll.appendChild(rt); rsec.appendChild(rscroll);
+      panel.appendChild(rsec);
+    }
+    function proposePolicyCr(role, cls, purpose, v) {
+      HX.env.confirmWrite().then(function (ok) {
+        if (!ok) return;
+        var id = "CR-POLICY-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+        HX.audit.write({ type: "POLICY_CR_DRAFT", target: id, detail: role + "/" + cls + "/" + purpose, by: HX.role.principal() });
+        HX.toast("Draft " + id + " created (policy change: " + role + " · " + cls + " · " + purpose + "). Not applied — routed to privacy_officer_approval.", {
+          kind: "ok", undo: function () { HX.toast("Draft " + id + " discarded", { kind: "neutral", timeout: 3000 }); }
+        });
+        HX.live("Policy change request drafted: " + id, "polite");
+      });
+    }
+
+    /* ======================================================= 3 · Audit explorer */
+    var auditQ = { principal: "", purpose: "", action: "", token: "", from: "", to: "" };
+    function sessionAuditRows() {
+      // merge in-memory audit (View-as switches, kill switches, policy drafts) — AC-03
+      return HX.audit.list().map(function (ev, i) {
+        var action = String(ev.type || "event").toLowerCase();
+        var target = ev.to || ev.target || (ev.scope && (typeof ev.scope === "object" ? Object.values(ev.scope).join(" / ") : ev.scope)) || "—";
+        if (ev.type === "VIEW_AS_SWITCH") { action = "view_as"; target = (ev.from || "?") + " → " + (ev.to || "?"); }
+        return { id: "SES-" + String(i + 1).padStart(4, "0"), at: ev.at, principal: ev.principal || HX.role.principal(), action: action, target: target, purpose: "session", env: HX.env.get(), hashChainOk: true, detail: ev.detail || "this session (in-memory)", _session: true };
+      });
+    }
+    function allAudit() { return sessionAuditRows().concat(INC.auditEvents || []).sort(function (a, b) { return Date.parse(b.at) - Date.parse(a.at); }); }
+    function filteredAudit() {
+      return allAudit().filter(function (r) {
+        if (auditQ.principal && r.principal.indexOf(auditQ.principal) < 0) return false;
+        if (auditQ.purpose && r.purpose !== auditQ.purpose) return false;
+        if (auditQ.action && r.action.indexOf(auditQ.action) < 0) return false;
+        if (auditQ.token && String(r.target).indexOf(auditQ.token) < 0) return false;
+        if (auditQ.from && Date.parse(r.at) < Date.parse(auditQ.from)) return false;
+        if (auditQ.to && Date.parse(r.at) > Date.parse(auditQ.to)) return false;
+        return true;
+      });
+    }
+    function renderAudit(panel) {
+      var rows = filteredAudit();
+      // aggregates first (§4.11)
+      var agsec = E("div", { class: "gov-section" });
+      agsec.appendChild(E("div", { class: "gov-section__head" }, [E("h2", {}, [I("governance"), "Audit explorer"]),
+        E("p", { class: "gov-section__sub" }, ["Append-only, hash-chained audit trail. Aggregates first; drill to events. Query by principal, token, purpose, action or time. View-as switches you make appear here (session rows)."])]));
+      var hashOk = rows.every(function (r) { return r.hashChainOk; });
+      var agg = E("div", { class: "gov-agg" });
+      // hash-chain tile + counts
+      var t1 = E("div", { class: "gov-stat" }, [E("div", { class: "gov-stat__k" }, [I("lock"), "Hash chain"]),
+        E("div", { class: "gov-stat__v" }, [E("span", { class: "gov-hashchain" }, [hashOk ? HX.chip("pass", "Verified") : HX.chip("fail", "Broken")])]),
+        E("div", { class: "gov-stat__note" }, [rows.length + " events in view (S17/S18 completeness)"])]);
+      agg.appendChild(t1);
+      // by action
+      var byAction = {}; rows.forEach(function (r) { byAction[r.action] = (byAction[r.action] || 0) + 1; });
+      var acol = E("div", { class: "gov-stat" }, [E("div", { class: "gov-stat__k" }, ["Events by action"])]);
+      var maxA = Math.max.apply(null, Object.values(byAction).concat([1]));
+      Object.keys(byAction).sort(function (a, b) { return byAction[b] - byAction[a]; }).forEach(function (k) {
+        acol.appendChild(E("div", { class: "gov-barrow" }, [
+          E("div", {}, [E("span", { class: "hx-mono hx-caption" }, [k]), E("div", { class: "gov-barrow__track" }, [E("div", { class: "gov-barrow__fill", style: "width:" + Math.round(byAction[k] / maxA * 100) + "%" })])]),
+          E("span", { class: "gov-barrow__n" }, [String(byAction[k])])
+        ]));
+      });
+      agg.appendChild(acol);
+      // by principal
+      var byP = {}; rows.forEach(function (r) { byP[r.principal] = (byP[r.principal] || 0) + 1; });
+      var pcol = E("div", { class: "gov-stat" }, [E("div", { class: "gov-stat__k" }, ["Events by principal"])]);
+      var maxP = Math.max.apply(null, Object.values(byP).concat([1]));
+      Object.keys(byP).sort(function (a, b) { return byP[b] - byP[a]; }).forEach(function (k) {
+        pcol.appendChild(E("div", { class: "gov-barrow" }, [
+          E("div", {}, [E("span", { class: "hx-mono hx-caption" }, [k]), E("div", { class: "gov-barrow__track" }, [E("div", { class: "gov-barrow__fill", style: "width:" + Math.round(byP[k] / maxP * 100) + "%" })])]),
+          E("span", { class: "gov-barrow__n" }, [String(byP[k])])
+        ]));
+      });
+      agg.appendChild(pcol);
+      agsec.appendChild(agg);
+      panel.appendChild(agsec);
+
+      // query
+      var qsec = E("div", { class: "gov-section" });
+      qsec.appendChild(E("h2", {}, ["Events"]));
+      var principals = uniq(allAudit().map(function (r) { return r.principal; }));
+      var purposes = uniq(allAudit().map(function (r) { return r.purpose; }));
+      var actions = uniq(allAudit().map(function (r) { return r.action; }));
+      var qrow = E("div", { class: "gov-simulate", style: "margin-bottom:var(--sp-3)" });
+      qrow.appendChild(selField("Principal", [""].concat(principals), auditQ.principal, function (v) { auditQ.principal = v; renderPanel(); }));
+      qrow.appendChild(selField("Purpose", [""].concat(purposes), auditQ.purpose, function (v) { auditQ.purpose = v; renderPanel(); }));
+      qrow.appendChild(selField("Action", [""].concat(actions), auditQ.action, function (v) { auditQ.action = v; renderPanel(); }));
+      var tokIn = E("input", { type: "text", placeholder: "token / target contains…", value: auditQ.token, "aria-label": "Token or target contains" });
+      tokIn.addEventListener("input", function () { auditQ.token = tokIn.value; refreshAuditBody(); });
+      qrow.appendChild(E("div", { class: "hx-field" }, [E("label", {}, ["Patient token / target"]), tokIn]));
+      qsec.appendChild(qrow);
+      var hint = E("p", { class: "gov-help" }, ["All synthetic. Patient-level data is never indexed here — targets are tokens (tok_…) and hashes (q:…)."]);
+      qsec.appendChild(hint);
+      var scroll = E("div", { class: "gov-scroll", id: "gov-audit-scroll" });
+      qsec.appendChild(scroll);
+      panel.appendChild(qsec);
+      refreshAuditBody();
+    }
+    function refreshAuditBody() {
+      var scroll = document.getElementById("gov-audit-scroll"); if (!scroll) return; HX._.clear(scroll);
+      var rows = filteredAudit();
+      var table = E("table", { class: "hx-audit-table" });
+      table.appendChild(E("thead", {}, [E("tr", {}, ["When", "Principal", "Action", "Target", "Purpose", "Env", "Chain"].map(function (h) { return E("th", { scope: "col" }, [h]); }))]));
+      var tb = E("tbody", {});
+      if (!rows.length) tb.appendChild(E("tr", {}, [E("td", { colspan: "7" }, [E("span", { class: "hx-empty" }, ["No audit events match this query."])])]));
+      rows.forEach(function (r) {
+        var tr = E("tr", { title: r.detail });
+        tr.appendChild(E("td", {}, [HX.format.time(r.at, "known")]));
+        tr.appendChild(E("td", {}, [r.principal + (r._session ? "  (session)" : "")]));
+        tr.appendChild(E("td", {}, [r.action]));
+        tr.appendChild(E("td", {}, [auditTargetCell(r.target)]));
+        tr.appendChild(E("td", {}, [r.purpose]));
+        tr.appendChild(E("td", {}, [E("span", { class: "hx-chip hx-chip--env-" + r.env }, [r.env])]));
+        tr.appendChild(E("td", {}, [r.hashChainOk ? E("span", { class: "hx-chip hx-chip--pass" }, [E("span", { class: "hx-chip__glyph", "aria-hidden": "true" }, ["✓"]), E("span", { class: "hx-chip__text" }, ["ok"])]) : E("span", { class: "hx-chip hx-chip--fail" }, ["broken"])]));
+        tb.appendChild(tr);
+      });
+      table.appendChild(tb); scroll.appendChild(table);
+    }
+    function auditTargetCell(target) {
+      if (/^(CR-|ISS-)/.test(target)) return resolveLink(target);
+      if (/^BG-/.test(target)) { var a = E("a", { class: "hx-mono", href: "#" }, [target]); a.addEventListener("click", function (e) { e.preventDefault(); setTab("breakglass"); }); return a; }
+      return target;
+    }
+    function uniq(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+    function selField(label, opts, val, cb) {
+      var s = E("select", {}, opts.map(function (o) { return E("option", { value: o }, [o === "" ? "all" : o]); })); s.value = val;
+      s.addEventListener("change", function () { cb(s.value); });
+      return E("div", { class: "hx-field" }, [E("label", {}, [label]), s]);
+    }
+
+    /* ======================================================= 4 · Break-glass reviews */
+    function renderBreakglass(panel) {
+      var sec = E("div", { class: "gov-section" });
+      sec.appendChild(E("div", { class: "gov-section__head" }, [E("h2", {}, [I("lock"), "Break-glass reviews"]),
+        E("p", { class: "gov-section__sub" }, ["Every entitled remediation session is reviewed by the Privacy & Security Officer within 2 business days. Entities appear as opaque tokens with their PHI class; the values viewed are never reproduced here. Decide Appropriate or Escalate."])]));
+      var pending = BG.filter(function (b) { return !b.reviewDecision; }).length;
+      sec.appendChild(E("div", { class: "gov-rowwrap" }, [
+        HX.chip(pending ? "pending" : "pass", pending ? pending + " awaiting review" : "all reviewed"),
+        E("span", { class: "gov-note" }, [I("info"), "SLA: 2 business days from session open (GOV-ACC-012)."])
+      ]));
+      panel.appendChild(sec);
+
+      BG.forEach(function (b) {
+        var pendingThis = !b.reviewDecision;
+        var card = E("div", { class: "gov-bg " + (pendingThis ? "is-pending" : "is-reviewed") });
+        var head = E("div", { class: "gov-bg__head" }, [
+          E("span", { class: "gov-bg__title" }, [b.id]),
+          HX.chip(b.reasonCode === "PATIENT_SAFETY" ? "warn" : "info", b.reasonCode),
+          HX.phiChip("phi:direct"),
+          pendingThis ? HX.chip("pending", "awaiting review") : HX.chip("pass", "Reviewed: " + b.reviewDecision)
+        ]);
+        if (pendingThis) head.appendChild(HX.sla(slaPct(b.startedAt, b.reviewDueAt), { text: "review SLA", title: "2-business-day review clock" }));
+        card.appendChild(head);
+        var grid = E("div", { class: "gov-bg__grid" });
+        kv(grid, "Principal", b.principal);
+        kv(grid, "Reviewer", b.reviewer);
+        kv(grid, "DQ issue", null, resolveLink(b.issue));
+        kv(grid, "Opened", HX.format.time(b.startedAt, "event"));
+        kv(grid, "Ended", b.endedAt ? HX.format.time(b.endedAt, "event") : "—");
+        kv(grid, "Duration cap", "4 h (expires " + HX.format.time(b.expiresAt, "event") + ")");
+        kv(grid, "Records viewed", String(b.recordsViewed));
+        kv(grid, "MFA", b.mfaVerified ? "verified" : "—");
+        kv(grid, "Review due", HX.format.time(b.reviewDueAt, "valid"));
+        if (b.reviewedAt) kv(grid, "Reviewed at", HX.format.time(b.reviewedAt, "known"));
+        card.appendChild(grid);
+        // entities + query hashes
+        var ent = E("div", { style: "margin:var(--sp-2) 0" });
+        ent.appendChild(E("div", { class: "hx-caption", style: "font-weight:600;margin-bottom:4px" }, ["Entities viewed (" + b.entities.length + ") — tokens only"]));
+        ent.appendChild(E("div", { class: "gov-bg__entities" }, b.entities.map(function (e) {
+          return E("span", { class: "hx-code-chip" }, [E("span", { class: "hx-code-chip__sys" }, ["tok:"]), E("span", {}, [e.token.replace("tok_", "")]), HX.phiChip(e.phiClass)]);
+        })));
+        ent.appendChild(E("div", { class: "hx-caption hx-muted", style: "margin-top:6px" }, ["Query hashes: " + b.queryHashes.join("  ")]));
+        card.appendChild(ent);
+        if (pendingThis) {
+          var actions = E("div", { class: "gov-bg__actions" });
+          var appr = E("button", { class: "hx-btn hx-btn--primary hx-btn--sm" }, [I("check"), "Appropriate"]);
+          appr.addEventListener("click", function () { decideBreakglass(b, "Appropriate"); });
+          var esc = E("button", { class: "hx-btn hx-btn--danger hx-btn--sm" }, [I("warn"), "Escalate"]);
+          esc.addEventListener("click", function () { decideBreakglass(b, "Escalate"); });
+          actions.appendChild(appr); actions.appendChild(esc);
+          actions.appendChild(E("span", { class: "gov-note" }, [I("info"), "In production the PDP grants this verb to role.privacy_officer only."]));
+          card.appendChild(actions);
+        } else {
+          card.appendChild(E("p", { class: "hx-prov-footer", style: "margin-top:6px" }, ["reviewed by " + b.reviewer + " · decision " + b.reviewDecision + (b.reviewedAt ? " · " + HX.format.time(b.reviewedAt, "known") : "")]));
+        }
+        panel.appendChild(card);
+      });
+    }
+    function kv(grid, k, v, node) {
+      var cell = E("div", { class: "gov-bg__kv" }, [E("div", { class: "k" }, [k])]);
+      cell.appendChild(node ? node : E("div", { class: "v" }, [v]));
+      grid.appendChild(cell);
+    }
+    function decideBreakglass(b, decision) {
+      HX.env.confirmWrite().then(function (envOk) {
+        if (!envOk) return;
+        HX.confirm({
+          title: "Break-glass review: " + decision, danger: decision === "Escalate",
+          body: "Record a review decision for session " + b.id + " (" + b.reasonCode + ", " + b.recordsViewed + " records). This is logged to the audit trail.",
+          consequence: decision === "Escalate" ? "Escalation opens a privacy incident and notifies the Agent Operator and the steward's manager." : null,
+          confirmLabel: decision
+        }).then(function (ok) {
+          if (!ok) return;
+          b.reviewDecision = decision; b.reviewedAt = new Date().toISOString();
+          HX.audit.write({ type: "BREAKGLASS_REVIEW", target: b.id, detail: "decision " + decision, principal: HX.role.principal() });
+          HX.toast("Session " + b.id + " reviewed: " + decision, {
+            kind: decision === "Appropriate" ? "ok" : "warn",
+            undo: function () { b.reviewDecision = null; b.reviewedAt = null; renderTabs(); if (current === "breakglass") renderPanel(); HX.toast("Review of " + b.id + " withdrawn", { kind: "neutral", timeout: 3000 }); }
+          });
+          HX.live("Break-glass session " + b.id + " reviewed: " + decision, "assertive");
+          renderTabs(); renderPanel();
+        });
+      });
+    }
+
+    /* ======================================================= 5 · Consent */
+    function renderConsent(panel) {
+      var c = INC.consent || {};
+      var sec = E("div", { class: "gov-section" });
+      sec.appendChild(E("div", { class: "gov-section__head" }, [E("h2", {}, [I("governance"), "Consent propagation"]),
+        E("p", { class: "gov-section__sub" }, ["Consent and authorisation changes must propagate to every downstream store. Tracked by SLO " + (c.propagationSlo || "S22") + "."])]));
+      var sliPct = Math.round((c.sli || 0) * 1000) / 10;
+      var stats = E("div", { class: "gov-stats" });
+      stats.appendChild(stat("Propagation SLI", sliPct + "%", (sliPct >= 99 ? "within target" : "below 99% target"), sliPct >= 99 ? "ok" : "warn"));
+      stats.appendChild(stat("Pending changes", String(c.pendingChanges || 0), "awaiting propagation"));
+      stats.appendChild(stat("Oldest pending", Math.round((c.oldestPendingMin || 0) / 60 / 24 * 10) / 10 + " d", (c.oldestPendingMin || 0) / 60 + " h"));
+      stats.appendChild(stat("Engine", "", c.engineState || "—", /stall|down/.test(c.engineState || "") ? "warn" : "ok"));
+      sec.appendChild(stats);
+      sec.appendChild(E("div", { class: "gov-rowwrap" }, [HX.sla(Math.min(100, Math.round((1 - (c.sli || 0)) / (1 - 0.99) * 100)), { text: "error budget consumed", title: "S22 consumer" }),
+        /stall|down/.test(c.engineState || "") ? HX.chip("warn", "Engine " + c.engineState) : HX.chip("pass", "Engine healthy")]));
+      sec.appendChild(E("p", { class: "gov-note", style: "margin-top:var(--sp-2)" }, [I("warn"), "212 consent changes are queued because the research-ctms CDC connector is down (INC-01JA0N1); G7 certification is revoked until the vendor fix lands."]));
+      var inc = E("button", { class: "hx-btn hx-btn--sm", style: "margin-top:var(--sp-2)" }, [I("lineage"), "Open incident INC-01JA0N1"]);
+      inc.addEventListener("click", function () { HX.nav("/incident/INC-01JA0N1"); });
+      sec.appendChild(inc);
+      panel.appendChild(sec);
+    }
+    function stat(k, v, note, kind) {
+      var box = E("div", { class: "gov-stat" }, [E("div", { class: "gov-stat__k" }, [k])]);
+      if (v !== "") box.appendChild(E("div", { class: "gov-stat__v", style: kind === "warn" ? "color:var(--warn-fg)" : kind === "ok" ? "color:var(--ok-fg)" : "" }, [v]));
+      if (note) box.appendChild(E("div", { class: "gov-stat__note" }, [note]));
+      return box;
+    }
+
+    /* ======================================================= 6 · Lineage coverage */
+    function renderLineage(panel) {
+      var k = (KPI.kpis || []).filter(function (x) { return x.slug === "lineage-coverage"; })[0];
+      if (!k) { panel.appendChild(E("div", { class: "hx-empty" }, ["Lineage coverage KPI not loaded."])); return; }
+      var sec = E("div", { class: "gov-section" });
+      sec.appendChild(E("div", { class: "gov-section__head" }, [E("h2", {}, [I("lineage"), "Lineage coverage"]),
+        E("p", { class: "gov-section__sub" }, [k.definition + " Tracked by SLO S19."])]));
+      var stats = E("div", { class: "gov-stats" });
+      stats.appendChild(stat("Coverage", k.value + "%", "target " + k.target + "%", k.value >= k.target ? "ok" : "warn"));
+      stats.appendChild(stat("Band", "", "", null));
+      stats.lastChild.appendChild(HX.chip("band-" + k.band.toLowerCase(), k.band, { glyph: ({ Green: "✓", Amber: "△", Red: "⬣", Black: "■" })[k.band] || "–" }));
+      stats.appendChild(stat("phi:direct", "100%", "S19 requires 100%", "ok"));
+      stats.appendChild(stat("Last moved by", "", k.lastMovedBy, null));
+      sec.appendChild(stats);
+      sec.appendChild(E("div", { class: "gov-callout" }, [I("check"), E("span", {}, ["Lineage coverage for phi:direct objects is 100%, meeting S19. ", E("strong", {}, [k.explain])])]));
+      panel.appendChild(sec);
+
+      var grid = E("div", { class: "gov-lin" });
+      // by group bar
+      var g1 = E("div", { class: "gov-section", style: "margin:0" });
+      g1.appendChild(E("h2", { style: "font-size:var(--fs-dense)" }, ["Coverage by subject-area group"]));
+      var c1 = E("div", {}); g1.appendChild(c1);
+      g1.appendChild(E("p", { class: "gov-help" }, ["One measure across nine groups. The line marks the " + k.target + "% target; bars below it (G4, G5, G7) carry lineage-coverage gaps."]));
+      grid.appendChild(g1);
+      // history line
+      var g2 = E("div", { class: "gov-section", style: "margin:0" });
+      g2.appendChild(E("h2", { style: "font-size:var(--fs-dense)" }, ["Trend (6 months)"]));
+      var c2 = E("div", {}); g2.appendChild(c2);
+      grid.appendChild(g2);
+      panel.appendChild(grid);
+      HX.chart.bar(c1, Object.keys(k.byGroup).map(function (g) { return { label: g, value: k.byGroup[g], band: k.byGroup[g] < k.target ? "warn" : null }; }), { max: 100, threshold: k.target, label: "Lineage coverage by group" });
+      HX.chart.line(c2, k.history.map(function (h) { return { label: fmtMonth(h.month), value: h.value }; }), { min: 70, max: 100, threshold: k.target, label: "Lineage coverage trend", yLabel: "%" });
+
+      // gaps as empty-state / CR hints
+      var gaps = Object.keys(k.byGroup).filter(function (g) { return k.byGroup[g] < k.target; });
+      var gsec = E("div", { class: "gov-section" });
+      gsec.appendChild(E("h2", { style: "font-size:var(--fs-dense)" }, ["Coverage gaps"]));
+      if (!gaps.length) gsec.appendChild(E("div", { class: "hx-empty" }, ["No groups below target."]));
+      gaps.forEach(function (g) {
+        var row = E("div", { class: "hx-empty", style: "display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap;margin-bottom:6px" }, [
+          HX.groupChip(g), E("span", {}, [k.byGroup[g] + "% < " + k.target + "% target — objects without a recorded lineage edge."]),
+          (function () { var b = E("button", { class: "hx-btn hx-btn--sm" }, [I("review"), "Propose mapping CR"]); b.addEventListener("click", function () { HX.toast("Draft mapping CR for " + g + " lineage gap created (not applied).", { kind: "ok", undo: function () { HX.toast("Draft discarded", { kind: "neutral", timeout: 3000 }); } }); }); return b; })()
+        ]);
+        gsec.appendChild(row);
+      });
+      panel.appendChild(gsec);
+    }
+
+    /* ======================================================= 7 · Stewardship directory */
+    function renderStewardship(panel) {
+      var sec = E("div", { class: "gov-section" });
+      sec.appendChild(E("div", { class: "gov-section__head" }, [E("h2", {}, [I("user"), "Stewardship directory"]),
+        E("p", { class: "gov-section__sub" }, ["Stewardship is assigned to roles, never to named individuals (GOV-STW-001). Each role has a backup reviewer who is escalated to at day 7. Queue-age p50 is capacity, not a UI problem."])]));
+      var scroll = E("div", { class: "gov-scroll" });
+      var table = E("table", { class: "gov-stw-table" });
+      table.appendChild(E("thead", {}, [E("tr", {}, ["Role", "Responsibility", "Group", "Backup reviewer", "Queue age p50"].map(function (h) { return E("th", { scope: "col" }, [h]); }))]));
+      var tb = E("tbody", {});
+      (INC.stewardship || []).forEach(function (s) {
+        var atRisk = s.queueAgeP50Days >= 7;
+        var tr = E("tr", { class: atRisk ? "is-atrisk" : "" });
+        tr.appendChild(E("td", {}, [resolveLink(s.role, s.role)]));
+        tr.appendChild(E("td", {}, [s.label]));
+        tr.appendChild(E("td", {}, [s.group ? HX.groupChip(s.group) : E("span", { class: "hx-muted" }, ["—"])]));
+        tr.appendChild(E("td", {}, [s.backup ? E("span", { class: "hx-mono hx-caption" }, [s.backup]) : E("span", { class: "hx-muted" }, ["none"])]));
+        tr.appendChild(E("td", {}, [E("span", { class: "gov-num", style: atRisk ? "color:var(--warn-fg);font-weight:600" : "" }, [s.queueAgeP50Days + " d"]), atRisk ? E("span", { class: "hx-chip hx-chip--warn", style: "margin-left:6px" }, [E("span", { class: "hx-chip__glyph", "aria-hidden": "true" }, ["△"]), E("span", { class: "hx-chip__text" }, ["day-7 escalation"])]) : null]));
+        tb.appendChild(tr);
+      });
+      table.appendChild(tb); scroll.appendChild(table); sec.appendChild(scroll);
+      panel.appendChild(sec);
+
+      // assign-steward picker that rejects named persons (AC-11 behaviour)
+      var asec = E("div", { class: "gov-section" });
+      asec.appendChild(E("h2", { style: "font-size:var(--fs-dense)" }, ["Assign stewardship"]));
+      asec.appendChild(E("p", { class: "gov-section__sub" }, ["Proposes a steward-assignment CR. The field accepts a role identifier only; a named person is rejected inline."]));
+      var field = E("div", { class: "hx-field" });
+      field.appendChild(E("label", { for: "gov-stw-input" }, ["Steward role"]));
+      var input = E("input", { id: "gov-stw-input", type: "text", placeholder: "role.steward_g7", autocomplete: "off", "aria-describedby": "gov-stw-err" });
+      field.appendChild(input);
+      var err = E("div", { class: "hx-field__error", id: "gov-stw-err", role: "alert" });
+      field.appendChild(err);
+      var submit = E("button", { class: "hx-btn hx-btn--sm hx-btn--primary", style: "margin-top:6px" }, [I("review"), "Propose assignment"]);
+      function validate() {
+        var v = input.value.trim();
+        var looksPerson = /^(dr\.?\s|mr\.?\s|mrs\.?\s|ms\.?\s)/i.test(v) || /^[A-Z][a-z]+ [A-Z][a-z]+$/.test(v) || /\b[A-Z][a-z]+,\s*[A-Z]/.test(v);
+        var isRole = /^role\.[a-z0-9_]+$/.test(v);
+        field.classList.toggle("hx-field--invalid", !!v && (!isRole || looksPerson));
+        if (!v) { err.textContent = ""; submit.disabled = true; return false; }
+        if (looksPerson || !isRole) { err.textContent = "GOV-STW-001: stewardship is assigned to a role (role.steward_gN), not a named person."; submit.disabled = true; return false; }
+        err.textContent = ""; submit.disabled = false; return true;
+      }
+      input.addEventListener("input", validate);
+      submit.addEventListener("click", function () { if (!validate()) return; HX.toast("Draft steward-assignment CR for " + input.value.trim() + " created (not applied).", { kind: "ok", undo: function () { HX.toast("Draft discarded", { kind: "neutral", timeout: 3000 }); } }); input.value = ""; validate(); });
+      submit.disabled = true;
+      asec.appendChild(field); asec.appendChild(submit);
+      panel.appendChild(asec);
+    }
+
+    /* ======================================================= 8 · Data contracts */
+    function renderContracts(panel) {
+      var sec = E("div", { class: "gov-section" });
+      sec.appendChild(E("div", { class: "gov-section__head" }, [E("h2", {}, [I("review"), "Data contracts"]),
+        E("p", { class: "gov-section__sub" }, ["Producer/consumer contracts over canonical and KG topics. A breached contract blocks dependent releases until renegotiated."])]));
+      var scroll = E("div", { class: "gov-scroll" });
+      var table = E("table", { class: "hx-audit-table" });
+      table.appendChild(E("thead", {}, [E("tr", {}, ["Contract", "Topic", "Consumer", "Version", "Fields", "State"].map(function (h) { return E("th", { scope: "col" }, [h]); }))]));
+      var tb = E("tbody", {});
+      (INC.dataContracts || []).forEach(function (d) {
+        var breached = d.state === "breached";
+        var tr = E("tr", { title: d.note || "" });
+        tr.appendChild(E("td", {}, [d.id]));
+        tr.appendChild(E("td", {}, [resolveLink(d.topic, d.topic)]));
+        tr.appendChild(E("td", {}, [d.consumer]));
+        tr.appendChild(E("td", {}, [d.version]));
+        tr.appendChild(E("td", {}, [d.fields.join(", ")]));
+        tr.appendChild(E("td", {}, [E("span", { class: "hx-chip hx-chip--" + (breached ? "fail" : "pass") }, [E("span", { class: "hx-chip__glyph", "aria-hidden": "true" }, [breached ? "✕" : "✓"]), E("span", { class: "hx-chip__text" }, [d.state])])]));
+        tb.appendChild(tr);
+      });
+      table.appendChild(tb); scroll.appendChild(table); sec.appendChild(scroll);
+      sec.appendChild(E("p", { class: "gov-note", style: "margin-top:var(--sp-2)" }, [I("warn"), "DC-002 (hc.kg.assertion.v1 → kg-sink) is breached: schema v5 added a non-defaulted field and was rolled back (INC-01JA0S9). The replay to backfill prov_activity_iri awaits approval."]));
+      panel.appendChild(sec);
+    }
+
+    /* ======================================================= 9 · Preferences */
+    function renderPrefs(panel) {
+      var wrap = E("div", { class: "gov-pref" });
+      // appearance
+      var fs1 = E("fieldset", {}, [E("legend", {}, ["Appearance"])]);
+      fs1.appendChild(prefRow("Theme", seg(["system", "light", "dark"], HX.theme.get(), function (v) { HX.theme.set(v); HX.toast("Theme: " + v, { kind: "neutral", timeout: 2000 }); }), "Follows the OS by default; your choice is remembered on this device."));
+      fs1.appendChild(prefRow("Density", seg(["comfortable", "compact"], HX.density.get(), function (v) { HX.density.set(v); HX.toast("Density: " + v, { kind: "neutral", timeout: 2000 }); }), "Compact uses 12/16 type and 28px rows."));
+      var resetBtn = E("button", { class: "hx-btn hx-btn--sm" }, ["Reset inspector width"]);
+      resetBtn.addEventListener("click", function () { HX.util.store.del("inspectorWidth"); document.documentElement.style.setProperty("--inspector-w", "400px"); HX.toast("Inspector width reset to 400px", { kind: "ok", timeout: 2500 }); });
+      fs1.appendChild(E("div", { class: "gov-switch" }, [E("span", {}, ["Inspector width"]), resetBtn]));
+      wrap.appendChild(fs1);
+
+      // keyboard
+      var fs2 = E("fieldset", {}, [E("legend", {}, ["Keyboard"])]);
+      var kbSwitch = E("div", { class: "gov-switch" });
+      kbSwitch.appendChild(E("label", { for: "gov-keys" }, ["Single-key shortcuts"]));
+      var kb = E("input", { type: "checkbox", id: "gov-keys" }); kb.checked = HX.keys.enabled();
+      kb.addEventListener("change", function () { HX.keys.enabled(kb.checked); HX.toast("Shortcuts " + (kb.checked ? "enabled" : "disabled"), { kind: "neutral", timeout: 2000 }); });
+      kbSwitch.appendChild(kb);
+      fs2.appendChild(kbSwitch);
+      fs2.appendChild(E("p", { class: "gov-help" }, ["Shortcuts are always suspended while a text field is focused. Open the full map with ? or the help button."]));
+      var showMap = E("button", { class: "hx-btn hx-btn--sm", style: "margin-top:6px" }, [I("help"), "Open keyboard map"]);
+      showMap.addEventListener("click", function () { HX.keys.open(); });
+      fs2.appendChild(showMap);
+      wrap.appendChild(fs2);
+
+      // review
+      var fs3 = E("fieldset", {}, [E("legend", {}, ["Review"])]);
+      var rangeWrap = E("div", {});
+      rangeWrap.appendChild(E("label", { for: "gov-blind" }, ["Blind-review share"]));
+      var range = E("input", { type: "range", min: "0", max: "50", step: "5", value: String(prefs.blindReview), id: "gov-blind", class: "gov-range", "aria-describedby": "gov-blind-val" });
+      var rv = E("div", { class: "gov-help" }, [E("span", { id: "gov-blind-val", class: "gov-range__val" }, [prefs.blindReview + "%"]), " of CR reviews hide the evaluator score until you decide (reduces anchoring)."]);
+      range.addEventListener("input", function () { prefs.blindReview = +range.value; HX.util.store.set("blindReview", prefs.blindReview); document.getElementById("gov-blind-val").textContent = prefs.blindReview + "%"; });
+      rangeWrap.appendChild(range); rangeWrap.appendChild(rv);
+      fs3.appendChild(rangeWrap);
+      wrap.appendChild(fs3);
+
+      // notifications
+      var fs4 = E("fieldset", {}, [E("legend", {}, ["Notification rules"])]);
+      fs4.appendChild(E("p", { class: "gov-help", style: "margin-bottom:8px" }, ["Each rule routes a saved view + inbox lane to a channel."]));
+      var rules = [
+        { view: "Needs you · phi_affecting", lane: "Needs you", channel: "email + push" },
+        { view: "At risk · G2 band drop", lane: "At risk", channel: "push" },
+        { view: "FYI · watched objects", lane: "FYI", channel: "digest" }
+      ];
+      rules.forEach(function (r) {
+        var row = E("div", { class: "hx-notification-rule" }, [
+          HX.chip("info", r.lane), E("span", { class: "hx-mono hx-caption" }, [r.view]),
+          E("span", { style: "margin-left:auto" }, [r.channel])
+        ]);
+        fs4.appendChild(row);
+      });
+      var addRule = E("button", { class: "hx-btn hx-btn--sm", style: "margin-top:6px" }, [I("inbox"), "Add rule"]);
+      addRule.addEventListener("click", function () { HX.toast("Notification-rule editor (stub)", { kind: "neutral", timeout: 2500 }); });
+      fs4.appendChild(addRule);
+      wrap.appendChild(fs4);
+
+      var sec = E("div", { class: "gov-section" });
+      sec.appendChild(E("div", { class: "gov-section__head" }, [E("h2", {}, [I("user"), "Preferences"]),
+        E("p", { class: "gov-section__sub" }, ["Per-viewer settings only. Nothing but role, theme, density, inspector width, saved views and recent ids is stored on this device; no result payloads are persisted."])]));
+      sec.appendChild(wrap);
+      panel.appendChild(sec);
+    }
+    function prefRow(label, control, help) {
+      var box = E("div", { style: "margin-bottom:var(--sp-3)" });
+      box.appendChild(E("div", { class: "gov-switch" }, [E("span", {}, [label]), control]));
+      if (help) box.appendChild(E("div", { class: "gov-help" }, [help]));
+      return box;
+    }
+    function seg(opts, val, cb) {
+      var g = E("div", { class: "gov-seg", role: "group" });
+      opts.forEach(function (o) {
+        var b = E("button", { "aria-pressed": o === val ? "true" : "false", type: "button" }, [titleCase(o)]);
+        b.addEventListener("click", function () { HX._.$$("button", g).forEach(function (x) { x.setAttribute("aria-pressed", "false"); }); b.setAttribute("aria-pressed", "true"); cb(o); });
+        g.appendChild(b);
+      });
+      return g;
+    }
+
+    /* ---------------- palette provider (Act verbs scoped to this page) ---------------- */
+    HX.palette.register(function (q) {
+      var verbs = [
+        { label: "Go to Audit explorer", action: function () { setTab("audit"); } },
+        { label: "Go to Break-glass reviews", action: function () { setTab("breakglass"); } },
+        { label: "Go to Access matrix", action: function () { setTab("access"); } },
+        { label: "Go to Preferences", action: function () { setTab("prefs"); } }
+      ].filter(function (v) { return !q || v.label.toLowerCase().indexOf(q.toLowerCase()) >= 0; });
+      if (!verbs.length) return null;
+      return { group: "Governance", items: verbs };
+    });
+
+    /* ---------------- boot ---------------- */
+    Promise.all([HX.data.load("incidents"), HX.data.load("kpis")]).then(function (res) {
+      INC = res[0] || {}; KPI = res[1] || {};
+      prefs.blindReview = +HX.util.store.get("blindReview", 0) || 0;
+      BG = (INC.breakGlassSessions || []).map(function (b) { return Object.assign({}, b); });
+      current = tabFromHash();
+      renderShell();
+      renderPanel();
+      // re-render when View-as changes (refreshes intro label + audit session rows)
+      HX.role.on(function () {
+        var intro = HX._.$(".gov__intro-meta .hx-chip--neutral", root);
+        if (intro) { HX._.clear(intro); intro.appendChild(E("span", { class: "hx-chip__text" }, ["Viewing role: " + roleLabel(HX.role.get())])); }
+        if (current === "audit") renderPanel();
+      });
+      // respond to drill-in hash changes (e.g. /gov?tab=lineage, /steward/…)
+      window.addEventListener("hashchange", function () { var t = tabFromHash(); if (t !== current) setTab(t, false); });
+    });
+  })();
+  </script>
+</body>
+</html>

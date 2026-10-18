@@ -1,0 +1,1103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>HEALIX Console — Streams &amp; Operations</title>
+  <meta name="description" content="SRE and integration view of the platform's promises: SLO wall S1–S22, the Kafka pipeline map with a synchronised list twin, topic / connector / incident pages, DLQ, and replay. Synthetic data only.">
+  <link rel="stylesheet" href="assets/app.css">
+  <style>
+    /* Page-local layout only — every colour comes from app.css tokens (§5.1).
+       Seven-tab operations surface (SLOs · Pipeline map · Topics · Connectors ·
+       DLQ · Replay · Incidents) over the shared HX shell, with object pages for
+       SLO / topic / connector / processor / incident / playbook. Charts are inline
+       SVG via HX.chart (one accent, semantic pass/warn/fail bands, each ships a
+       data table). Reflows to one column at 375px with a 16px gutter, no
+       horizontal page scroll. */
+    .io-tabs { position: sticky; top: var(--topbar-h); z-index: 15; background: var(--bg-canvas); padding-top: var(--sp-1); }
+    #io-root { outline: none; }
+    #io-root .hx-object-header { top: calc(var(--topbar-h) + 42px); z-index: 14; }
+    @media (max-width: 768px) { #io-root .hx-object-header { top: auto; } }
+
+    .io-toolbar { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+    .io-toolbar__spacer { flex: 1; }
+    .io-filter { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--r-ctl); background: var(--bg-canvas); font-family: var(--font-mono); font-size: var(--fs-caption); min-width: 180px; flex: 1 1 200px; }
+    .io-filter input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; outline: none; color: inherit; }
+    .io-chipbar { display: flex; gap: 4px; flex-wrap: wrap; }
+    .io-chiptoggle { cursor: pointer; }
+    .io-chiptoggle[aria-pressed="true"] { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+    /* SLO wall */
+    .io-slo-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--sp-3); align-items: stretch; }
+    .io-slo { text-align: left; width: 100%; cursor: pointer; display: flex; flex-direction: column; gap: 6px; border-left: 4px solid var(--band-color, var(--ok-fg)); }
+    .io-slo:hover { border-color: var(--border-strong); }
+    .io-slo__top { display: flex; align-items: baseline; gap: var(--sp-2); }
+    .io-slo__id { font-family: var(--font-mono); font-weight: 700; }
+    .io-slo__name { font-size: var(--fs-dense); font-weight: 600; flex: 1; min-width: 0; }
+    .io-slo__burn { font-family: var(--font-mono); font-size: var(--fs-h3); font-weight: 600; line-height: 1; }
+    .io-slo__meta { display: flex; gap: var(--sp-3); font-size: var(--fs-micro); color: var(--fg-muted); font-family: var(--font-mono); flex-wrap: wrap; }
+    .io-slo__spark { height: 24px; }
+
+    .io-kv { display: grid; grid-template-columns: auto 1fr; gap: 4px var(--sp-3); font-size: var(--fs-dense); margin: 0; }
+    .io-kv dt { color: var(--fg-muted); white-space: nowrap; }
+    .io-kv dd { margin: 0; font-family: var(--font-mono); font-size: var(--fs-caption); }
+    .io-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-4); align-items: start; }
+    .io-subtabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: var(--sp-3); overflow-x: auto; }
+
+    /* pipeline map */
+    .io-map-node { width: 100%; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+    .io-map-node[aria-selected="true"] { outline: 2px solid var(--focus); outline-offset: 1px; }
+    .io-map-node__bar { height: 4px; border-radius: 2px; background: var(--accent); }
+    .io-map-node__name { font-family: var(--font-mono); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .io-map-node__meta { font-size: 9px; color: var(--fg-muted); font-family: var(--font-mono); }
+    .io-map-layer__count { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--fg-muted); text-align: center; }
+    .io-map-cluster { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--fg-muted); text-align: center; border: 1px dashed var(--border-strong); border-radius: var(--r-ctl); padding: 2px; }
+    .io-map-wrap { display: grid; grid-template-columns: 1fr; gap: var(--sp-3); }
+    .io-map-wrap.is-split { grid-template-columns: 2fr 1fr; }
+    @media (max-width: 1024px) { .io-map-wrap.is-split { grid-template-columns: 1fr; } }
+    .io-twin { max-height: 420px; }
+
+    /* tables */
+    .io-table { width: 100%; border-collapse: collapse; font-size: var(--fs-dense); }
+    .io-table th, .io-table td { text-align: left; padding: 6px var(--sp-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .io-table th { font-size: var(--fs-caption); color: var(--fg-muted); font-weight: 600; position: sticky; top: 0; background: var(--bg-surface); }
+    .io-table td.num, .io-table th.num { text-align: right; font-family: var(--font-mono); }
+    .io-table tbody tr { cursor: pointer; }
+    .io-table tbody tr:hover { background: var(--bg-sunken); }
+    .io-table tbody tr[aria-selected="true"] { background: var(--info-bg); }
+    .io-table-wrap { border: 1px solid var(--border); border-radius: var(--r-card); overflow: auto; background: var(--bg-surface); max-height: 70vh; }
+
+    /* connectors / dlq cards */
+    .io-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--sp-3); align-items: start; }
+    .io-conn { display: flex; flex-direction: column; gap: var(--sp-2); cursor: pointer; text-align: left; width: 100%; }
+    .io-conn:hover { border-color: var(--border-strong); }
+    .io-conn__head { display: flex; align-items: center; gap: var(--sp-2); }
+    .io-conn__name { font-weight: 600; font-size: var(--fs-dense); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+    .io-wm { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--fg-muted); }
+    .io-lagbadge { display: inline-flex; align-items: center; gap: 4px; }
+
+    /* lag heat per partition */
+    .io-heat { display: flex; gap: 2px; flex-wrap: wrap; }
+    .io-heat__cell { width: 16px; height: 18px; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; color: var(--fg-inverse); }
+    .io-heat__legend { display: flex; gap: var(--sp-3); flex-wrap: wrap; font-size: var(--fs-micro); color: var(--fg-muted); margin-top: var(--sp-2); }
+    .io-heat__legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .io-swatch { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+
+    .io-incident-head { display: flex; align-items: flex-start; gap: var(--sp-3); flex-wrap: wrap; }
+    .io-blast { display: inline-flex; gap: 2px; align-items: center; }
+    .io-blast__cell { width: 12px; height: 12px; border-radius: 2px; border: 1px solid var(--border-strong); }
+    .io-blast__cell--used { background: var(--warn-fg); border-color: var(--warn-fg); }
+    .io-await { border: 1px solid var(--warn-border); background: var(--warn-bg); color: var(--warn-fg); border-radius: var(--r-card); padding: var(--sp-3); margin: var(--sp-3) 0; }
+    .io-await__actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-2); }
+    .io-timeline-kind { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .04em; color: var(--fg-faint); }
+
+    .io-replay-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-3); align-items: end; }
+    .io-legend-note { font-size: var(--fs-caption); color: var(--fg-muted); margin-top: var(--sp-2); }
+    .io-empty-note { font-size: var(--fs-caption); color: var(--fg-muted); }
+    .sr-skip { position: absolute; left: -999px; top: 0; background: var(--accent); color: var(--accent-fg); padding: 8px 12px; border-radius: var(--r-ctl); z-index: 100; }
+    .sr-skip:focus { left: var(--sp-3); top: var(--sp-2); }
+  </style>
+</head>
+<body>
+  <a class="sr-skip" href="#io-root">Skip to operations content</a>
+  <main id="hx-main">
+    <nav class="io-tabs" id="io-tabs" aria-label="Operations views"></nav>
+    <div id="io-root" tabindex="-1"></div>
+  </main>
+
+  <!-- Synthetic-data fallback so the page renders over file:// (README §How to open).
+       Served over http, HX.data.load fetches data/topics.json / data/incidents.json
+       (the same supersets) instead. The blocks below are injected verbatim. -->
+  <script type="application/json" id="hx-data-topics">
+{"topics":[{"name":"hc.raw.cerner.adt.hl7v2.v1","layer":"raw","domain":"cerner","group":"G2","phiClass":"phi:direct","retention":"P7D","compatibility":"NONE","format":"bytes","subjects":[{"name":"hc.raw.cerner.adt.hl7v2.v1-value","versions":[1]},{"name":"hc.raw.cerner.adt.hl7v2.v1-key","versions":[1]}],"producers":["mllp-cerner-adt"],"consumers":[{"group":"std-parser-adt","lagSec":2}],"throughputPerMin":2210,"lagBand":"ok","partitions":24,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.raw.cerner.oru.hl7v2.v1","layer":"raw","domain":"cerner","group":"G2","phiClass":"phi:direct","retention":"P7D","compatibility":"NONE","format":"bytes","subjects":[{"name":"hc.raw.cerner.oru.hl7v2.v1-value","versions":[1]},{"name":"hc.raw.cerner.oru.hl7v2.v1-key","versions":[1]}],"producers":["mllp-cerner-oru"],"consumers":[{"group":"std-parser-oru","lagSec":4}],"throughputPerMin":6400,"lagBand":"ok","partitions":24,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.raw.cerner.orm.hl7v2.v1","layer":"raw","domain":"cerner","group":"G2","phiClass":"phi:direct","retention":"P7D","compatibility":"NONE","format":"bytes","subjects":[{"name":"hc.raw.cerner.orm.hl7v2.v1-value","versions":[1]},{"name":"hc.raw.cerner.orm.hl7v2.v1-key","versions":[1]}],"producers":["mllp-cerner-orm"],"consumers":[{"group":"std-parser-orm","lagSec":3}],"throughputPerMin":1800,"lagBand":"ok","partitions":12,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.raw.cerner.encounter.cdc.v1","layer":"raw","domain":"cerner","group":"G2","phiClass":"phi:direct","retention":"P7D","compatibility":"BACKWARD","format":"avro","subjects":[{"name":"hc.raw.cerner.encounter.cdc.v1-value","versions":[1,2]},{"name":"hc.raw.cerner.encounter.cdc.v1-key","versions":[1]}],"producers":["debezium-cerner-cdc"],"consumers":[{"group":"std-normaliser-cdc","lagSec":6}],"throughputPerMin":3100,"lagBand":"ok","partitions":24,"owner":"role.integration_engineer","correlatedCrs":["CR-20261016-01J8XY"]},{"name":"hc.raw.fusion.ap-invoice.cdc.v1","layer":"raw","domain":"fusion","group":"G3","phiClass":"confidential","retention":"P14D","compatibility":"BACKWARD","format":"avro","subjects":[{"name":"hc.raw.fusion.ap-invoice.cdc.v1-value","versions":[1]},{"name":"hc.raw.fusion.ap-invoice.cdc.v1-key","versions":[1]}],"producers":["bicc-fusion-ap"],"consumers":[{"group":"std-normaliser-fusion","lagSec":90}],"throughputPerMin":420,"lagBand":"ok","partitions":6,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.raw.fusion.worker.cdc.v1","layer":"raw","domain":"fusion","group":"G5","phiClass":"pii:workforce","retention":"P14D","compatibility":"BACKWARD","format":"avro","subjects":[{"name":"hc.raw.fusion.worker.cdc.v1-value","versions":[1]},{"name":"hc.raw.fusion.worker.cdc.v1-key","versions":[1]}],"producers":["bicc-fusion-hcm"],"consumers":[{"group":"std-normaliser-fusion","lagSec":95}],"throughputPerMin":110,"lagBand":"ok","partitions":6,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.raw.fusion.supplier.cdc.v1","layer":"raw","domain":"fusion","group":"G4","phiClass":"confidential","retention":"P14D","compatibility":"BACKWARD","format":"avro","subjects":[{"name":"hc.raw.fusion.supplier.cdc.v1-value","versions":[1]},{"name":"hc.raw.fusion.supplier.cdc.v1-key","versions":[1]}],"producers":["bicc-fusion-scm"],"consumers":[{"group":"std-normaliser-fusion","lagSec":88}],"throughputPerMin":60,"lagBand":"ok","partitions":6,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.raw.lis.oru.hl7v2.v1","layer":"raw","domain":"lis","group":"G2","phiClass":"phi:direct","retention":"P7D","compatibility":"NONE","format":"bytes","subjects":[{"name":"hc.raw.lis.oru.hl7v2.v1-value","versions":[1]},{"name":"hc.raw.lis.oru.hl7v2.v1-key","versions":[1]}],"producers":["mllp-lis-oru"],"consumers":[{"group":"std-parser-oru","lagSec":5}],"throughputPerMin":5200,"lagBand":"ok","partitions":12,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.raw.pharmacy.rde.hl7v2.v1","layer":"raw","domain":"pharmacy","group":"G2","phiClass":"phi:direct","retention":"P7D","compatibility":"NONE","format":"bytes","subjects":[{"name":"hc.raw.pharmacy.rde.hl7v2.v1-value","versions":[1]},{"name":"hc.raw.pharmacy.rde.hl7v2.v1-key","versions":[1]}],"producers":["mllp-pharmacy-rde"],"consumers":[{"group":"std-parser-rde","lagSec":3}],"throughputPerMin":1400,"lagBand":"ok","partitions":12,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.raw.research.consent.cdc.v1","layer":"raw","domain":"research","group":"G7","phiClass":"phi:sensitive","retention":"P7D","compatibility":"BACKWARD","format":"avro","subjects":[{"name":"hc.raw.research.consent.cdc.v1-value","versions":[1]},{"name":"hc.raw.research.consent.cdc.v1-key","versions":[1]}],"producers":["debezium-ctms"],"consumers":[{"group":"std-normaliser-cdc","lagSec":86400}],"throughputPerMin":0,"lagBand":"stalled","partitions":3,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.std.cerner.adt.parsed.v1","layer":"std","domain":"cerner","group":"G2","phiClass":"phi:direct","retention":"P7D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.std.cerner.adt.parsed.v1-value","versions":[2,3]},{"name":"hc.std.cerner.adt.parsed.v1-key","versions":[1]}],"producers":["std-parser-adt"],"consumers":[{"group":"proc.canonicalise-adt","lagSec":3}],"throughputPerMin":2210,"lagBand":"ok","partitions":24,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.std.cerner.oru.parsed.v1","layer":"std","domain":"cerner","group":"G2","phiClass":"phi:direct","retention":"P7D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.std.cerner.oru.parsed.v1-value","versions":[2]},{"name":"hc.std.cerner.oru.parsed.v1-key","versions":[1]}],"producers":["std-parser-oru"],"consumers":[{"group":"proc.canonicalise-oru","lagSec":4}],"throughputPerMin":11600,"lagBand":"ok","partitions":24,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.std.cerner.encounter.normalised.v1","layer":"std","domain":"cerner","group":"G2","phiClass":"phi:direct","retention":"P7D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.std.cerner.encounter.normalised.v1-value","versions":[1,2]},{"name":"hc.std.cerner.encounter.normalised.v1-key","versions":[1]}],"producers":["std-normaliser-cdc"],"consumers":[{"group":"proc.canonicalise-encounter","lagSec":7}],"throughputPerMin":3100,"lagBand":"ok","partitions":24,"owner":"role.integration_engineer","correlatedCrs":["CR-20261016-01J8XY"]},{"name":"hc.std.fusion.ap-invoice.normalised.v1","layer":"std","domain":"fusion","group":"G3","phiClass":"confidential","retention":"P14D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.std.fusion.ap-invoice.normalised.v1-value","versions":[1]},{"name":"hc.std.fusion.ap-invoice.normalised.v1-key","versions":[1]}],"producers":["std-normaliser-fusion"],"consumers":[{"group":"proc.canonicalise-invoice","lagSec":120}],"throughputPerMin":420,"lagBand":"warn","partitions":6,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.clinical.encounter.fhir.v1","layer":"canonical","domain":"clinical","group":"G2","phiClass":"phi:clinical","retention":"P30D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.clinical.encounter.fhir.v1-value","versions":[3,4]},{"name":"hc.canonical.clinical.encounter.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-adt","proc.canonicalise-encounter"],"consumers":[{"group":"kg-sink","lagSec":42},{"group":"edw-sink","lagSec":8},{"group":"dq-engine","lagSec":3}],"throughputPerMin":1840,"lagBand":"ok","partitions":12,"owner":"role.integration_engineer","correlatedCrs":["CR-20261016-01J8XY"],"lagByPartition":[42,40,44,41,39,43,45,42,40,41,44,42]},{"name":"hc.canonical.clinical.observation.fhir.v1","layer":"canonical","domain":"clinical","group":"G2","phiClass":"phi:clinical","retention":"P30D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.clinical.observation.fhir.v1-value","versions":[2,3]},{"name":"hc.canonical.clinical.observation.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-oru"],"consumers":[{"group":"kg-sink","lagSec":61},{"group":"edw-sink","lagSec":12},{"group":"dq-engine","lagSec":5}],"throughputPerMin":11200,"lagBand":"warn","partitions":24,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.clinical.condition.fhir.v1","layer":"canonical","domain":"clinical","group":"G2","phiClass":"phi:clinical","retention":"P30D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.clinical.condition.fhir.v1-value","versions":[2]},{"name":"hc.canonical.clinical.condition.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-adt"],"consumers":[{"group":"kg-sink","lagSec":38},{"group":"edw-sink","lagSec":6},{"group":"dq-engine","lagSec":2}],"throughputPerMin":900,"lagBand":"ok","partitions":12,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.clinical.procedure.fhir.v1","layer":"canonical","domain":"clinical","group":"G2","phiClass":"phi:clinical","retention":"P30D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.clinical.procedure.fhir.v1-value","versions":[2]},{"name":"hc.canonical.clinical.procedure.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-orm"],"consumers":[{"group":"kg-sink","lagSec":35},{"group":"edw-sink","lagSec":6},{"group":"dq-engine","lagSec":2}],"throughputPerMin":760,"lagBand":"ok","partitions":12,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.clinical.medicationrequest.fhir.v1","layer":"canonical","domain":"clinical","group":"G2","phiClass":"phi:clinical","retention":"P30D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.clinical.medicationrequest.fhir.v1-value","versions":[1,2]},{"name":"hc.canonical.clinical.medicationrequest.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-rde"],"consumers":[{"group":"kg-sink","lagSec":33},{"group":"edw-sink","lagSec":7},{"group":"dq-engine","lagSec":2}],"throughputPerMin":1400,"lagBand":"ok","partitions":12,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.party.patient.fhir.v1","layer":"canonical","domain":"party","group":"G1","phiClass":"phi:direct","retention":"P30D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.party.patient.fhir.v1-value","versions":[4]},{"name":"hc.canonical.party.patient.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-adt"],"consumers":[{"group":"kg-sink","lagSec":30},{"group":"edw-sink","lagSec":5},{"group":"dq-engine","lagSec":2},{"group":"er-engine","lagSec":9}],"throughputPerMin":640,"lagBand":"ok","partitions":12,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.party.practitioner.fhir.v1","layer":"canonical","domain":"party","group":"G1","phiClass":"pii:workforce","retention":"P30D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.party.practitioner.fhir.v1-value","versions":[2]},{"name":"hc.canonical.party.practitioner.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-hcm"],"consumers":[{"group":"kg-sink","lagSec":28},{"group":"edw-sink","lagSec":4}],"throughputPerMin":40,"lagBand":"ok","partitions":6,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.party.organization.fhir.v1","layer":"canonical","domain":"party","group":"G1","phiClass":"non-phi","retention":"P90D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.party.organization.fhir.v1-value","versions":[2]},{"name":"hc.canonical.party.organization.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-scm"],"consumers":[{"group":"kg-sink","lagSec":20},{"group":"edw-sink","lagSec":3}],"throughputPerMin":12,"lagBand":"ok","partitions":6,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.party.location.fhir.v1","layer":"canonical","domain":"party","group":"G1","phiClass":"non-phi","retention":"P90D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.party.location.fhir.v1-value","versions":[1]},{"name":"hc.canonical.party.location.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-adt"],"consumers":[{"group":"kg-sink","lagSec":20},{"group":"edw-sink","lagSec":3}],"throughputPerMin":30,"lagBand":"ok","partitions":6,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.finance.invoice.fhir.v1","layer":"canonical","domain":"finance","group":"G3","phiClass":"confidential","retention":"P90D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.finance.invoice.fhir.v1-value","versions":[1,2]},{"name":"hc.canonical.finance.invoice.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-invoice"],"consumers":[{"group":"kg-sink","lagSec":140},{"group":"edw-sink","lagSec":130},{"group":"dq-engine","lagSec":120}],"throughputPerMin":420,"lagBand":"warn","partitions":6,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.finance.claim.fhir.v1","layer":"canonical","domain":"finance","group":"G3","phiClass":"phi:clinical","retention":"P90D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.finance.claim.fhir.v1-value","versions":[1]},{"name":"hc.canonical.finance.claim.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-837"],"consumers":[{"group":"kg-sink","lagSec":50},{"group":"edw-sink","lagSec":20},{"group":"dq-engine","lagSec":8}],"throughputPerMin":300,"lagBand":"ok","partitions":6,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.supply.supplydelivery.fhir.v1","layer":"canonical","domain":"supply","group":"G4","phiClass":"non-phi","retention":"P90D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.supply.supplydelivery.fhir.v1-value","versions":[1]},{"name":"hc.canonical.supply.supplydelivery.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-scm"],"consumers":[{"group":"kg-sink","lagSec":25},{"group":"edw-sink","lagSec":5}],"throughputPerMin":80,"lagBand":"ok","partitions":6,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.reference.valueset.fhir.v1","layer":"canonical","domain":"reference","group":"G8","phiClass":"non-phi","retention":"P365D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.reference.valueset.fhir.v1-value","versions":[1]},{"name":"hc.canonical.reference.valueset.fhir.v1-key","versions":[1]}],"producers":["terminology-service"],"consumers":[{"group":"kg-sink","lagSec":2},{"group":"dq-engine","lagSec":1}],"throughputPerMin":2,"lagBand":"ok","partitions":3,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.reference.conceptmap.fhir.v1","layer":"canonical","domain":"reference","group":"G8","phiClass":"non-phi","retention":"P365D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.reference.conceptmap.fhir.v1-value","versions":[1]},{"name":"hc.canonical.reference.conceptmap.fhir.v1-key","versions":[1]}],"producers":["terminology-service"],"consumers":[{"group":"kg-sink","lagSec":2},{"group":"dq-engine","lagSec":1}],"throughputPerMin":1,"lagBand":"ok","partitions":3,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.canonical.research.consent.fhir.v1","layer":"canonical","domain":"research","group":"G7","phiClass":"phi:sensitive","retention":"P30D","compatibility":"BACKWARD_TRANSITIVE","format":"avro","subjects":[{"name":"hc.canonical.research.consent.fhir.v1-value","versions":[1]},{"name":"hc.canonical.research.consent.fhir.v1-key","versions":[1]}],"producers":["proc.canonicalise-consent"],"consumers":[{"group":"kg-sink","lagSec":86400},{"group":"consent-engine","lagSec":86400}],"throughputPerMin":0,"lagBand":"stalled","partitions":3,"owner":"role.integration_engineer","correlatedCrs":[]},{"name":"hc.dq.result.v1","layer":"dq","domain":"governance","group":"G9","phiClass":"non-phi","retention":"P90D","compatibility":"FULL","format":"avro","subjects":[{"name":"hc.dq.result.v1-value","versions":[2]},{"name":"hc.dq.result.v1-key","versions":[1]}],"producers":["dq-engine"],"consumers":[{"group":"dq-scorecard","lagSec":2},{"group":"edw-sink","lagSec":4}],"throughputPerMin":14900,"lagBand":"ok","partitions":24,"owner":"role.platform_sre","correlatedCrs":[]},{"name":"hc.dq.issue.v1","layer":"dq","domain":"governance","group":"G9","phiClass":"non-phi","retention":"P365D","compatibility":"FULL","format":"avro","subjects":[{"name":"hc.dq.issue.v1-value","versions":[1]},{"name":"hc.dq.issue.v1-key","versions":[1]}],"producers":["agent.dq_monitor"],"consumers":[{"group":"inbox-router","lagSec":1}],"throughputPerMin":3,"lagBand":"ok","partitions":3,"owner":"role.platform_sre","correlatedCrs":[]},{"name":"hc.dq.quarantine.clinical.v1","layer":"dq","domain":"clinical","group":"G2","phiClass":"phi:clinical","retention":"P30D","compatibility":"FULL","format":"avro","subjects":[{"name":"hc.dq.quarantine.clinical.v1-value","versions":[1]},{"name":"hc.dq.quarantine.clinical.v1-key","versions":[1]}],"producers":["dq-engine"],"consumers":[{"group":"agent.remediator","lagSec":0}],"throughputPerMin":48,"lagBand":"ok","partitions":12,"owner":"role.platform_sre","correlatedCrs":[]},{"name":"hc.dq.scorecard.v1","layer":"dq","domain":"governance","group":"G9","phiClass":"non-phi","retention":"P365D","compatibility":"FULL","format":"avro","subjects":[{"name":"hc.dq.scorecard.v1-value","versions":[1]},{"name":"hc.dq.scorecard.v1-key","versions":[1]}],"producers":["dq-scorecard"],"consumers":[{"group":"edw-sink","lagSec":2}],"throughputPerMin":9,"lagBand":"ok","partitions":3,"owner":"role.platform_sre","correlatedCrs":[]},{"name":"hc.kg.assertion.v1","layer":"kg","domain":"governance","group":"G9","phiClass":"phi:clinical","retention":"P30D","compatibility":"FULL","format":"avro","subjects":[{"name":"hc.kg.assertion.v1-value","versions":[4]},{"name":"hc.kg.assertion.v1-key","versions":[1]}],"producers":["kg-mapper"],"consumers":[{"group":"kg-sink","lagSec":1180},{"group":"edw-sink","lagSec":22}],"throughputPerMin":16800,"lagBand":"critical","partitions":24,"owner":"role.platform_sre","correlatedCrs":["CR-20261017-01J9KM"],"lagByPartition":[1180,1150,1210,1190,1170,1200,1160,1180,1190,1210,1170,1180,1150,1200,1190,1180,1160,1210,1180,1170,1190,1200,1180,1160],"rolledBackSchema":5},{"name":"hc.kg.retraction.v1","layer":"kg","domain":"governance","group":"G9","phiClass":"phi:clinical","retention":"P30D","compatibility":"FULL","format":"avro","subjects":[{"name":"hc.kg.retraction.v1-value","versions":[2]},{"name":"hc.kg.retraction.v1-key","versions":[1]}],"producers":["kg-mapper"],"consumers":[{"group":"kg-sink","lagSec":1100}],"throughputPerMin":120,"lagBand":"critical","partitions":6,"owner":"role.platform_sre","correlatedCrs":[]},{"name":"hc.edw.cdc.g2.v1","layer":"edw","domain":"clinical","group":"G2","phiClass":"phi:clinical","retention":"P7D","compatibility":"FULL","format":"avro","subjects":[{"name":"hc.edw.cdc.g2.v1-value","versions":[3]},{"name":"hc.edw.cdc.g2.v1-key","versions":[1]}],"producers":["edw-sink"],"consumers":[{"group":"edw-loader","lagSec":4}],"throughputPerMin":4100,"lagBand":"ok","partitions":12,"owner":"role.platform_sre","correlatedCrs":[]},{"name":"hc.edw.cdc.g1.v1","layer":"edw","domain":"party","group":"G1","phiClass":"phi:direct","retention":"P7D","compatibility":"FULL","format":"avro","subjects":[{"name":"hc.edw.cdc.g1.v1-value","versions":[3]},{"name":"hc.edw.cdc.g1.v1-key","versions":[1]}],"producers":["edw-sink"],"consumers":[{"group":"edw-loader","lagSec":3}],"throughputPerMin":700,"lagBand":"ok","partitions":12,"owner":"role.platform_sre","correlatedCrs":[]},{"name":"hc.ops.audit.v1","layer":"ops","domain":"governance","group":"G9","phiClass":"confidential","retention":"P2555D","compatibility":"FULL","format":"avro","subjects":[{"name":"hc.ops.audit.v1-value","versions":[2]},{"name":"hc.ops.audit.v1-key","versions":[1]}],"producers":["audit-gateway"],"consumers":[{"group":"siem-forwarder","lagSec":1},{"group":"edw-sink","lagSec":2}],"throughputPerMin":2300,"lagBand":"ok","partitions":12,"owner":"role.platform_sre","correlatedCrs":[]},{"name":"hc.ops.lineage.v1","layer":"ops","domain":"governance","group":"G9","phiClass":"non-phi","retention":"P365D","compatibility":"FULL","format":"avro","subjects":[{"name":"hc.ops.lineage.v1-value","versions":[1]},{"name":"hc.ops.lineage.v1-key","versions":[1]}],"producers":["lineage-service"],"consumers":[{"group":"edw-sink","lagSec":2}],"throughputPerMin":400,"lagBand":"ok","partitions":3,"owner":"role.platform_sre","correlatedCrs":[]},{"name":"hc.ops.agent.cr.v1","layer":"ops","domain":"governance","group":"G9","phiClass":"non-phi","retention":"P365D","compatibility":"FULL","format":"avro","subjects":[{"name":"hc.ops.agent.cr.v1-value","versions":[3]},{"name":"hc.ops.agent.cr.v1-key","versions":[1]}],"producers":["agent.orchestrator"],"consumers":[{"group":"inbox-router","lagSec":0},{"group":"edw-sink","lagSec":1}],"throughputPerMin":12,"lagBand":"ok","partitions":3,"owner":"role.platform_sre","correlatedCrs":[]}],"connectors":[{"name":"mllp-cerner-adt","kind":"connector","type":"MLLP listener","source":"cerner-millennium-prod","state":"running","lagSec":0,"watermark":"2026-10-17T09:30:12Z","dlq":{"count":3,"topic":"hc.ops.dlq.mllp-cerner-adt.v1","samples":[{"reason":"MSH-12 version 2.3 unsupported","masked":true}]},"runbook":"PBK-ING-001","topics":["hc.raw.cerner.adt.hl7v2.v1"],"playbookRuns":[]},{"name":"debezium-cerner-cdc","kind":"connector","type":"Debezium Oracle CDC","source":"cerner-millennium-prod","state":"running","lagSec":6,"watermark":"2026-10-17T09:30:05Z","dlq":{"count":0,"topic":"hc.ops.dlq.debezium-cerner-cdc.v1","samples":[]},"runbook":"PBK-ING-002","topics":["hc.raw.cerner.encounter.cdc.v1"],"playbookRuns":[]},{"name":"bicc-fusion-ap","kind":"connector","type":"Oracle BICC extract poller","source":"oracle-fusion-erp","state":"running","lagSec":540,"watermark":"2026-10-17T09:15:00Z","dlq":{"count":0,"topic":null,"samples":[]},"runbook":"PBK-ING-003","topics":["hc.raw.fusion.ap-invoice.cdc.v1"],"playbookRuns":[]},{"name":"bicc-fusion-hcm","kind":"connector","type":"Oracle BICC extract poller","source":"oracle-fusion-hcm","state":"running","lagSec":600,"watermark":"2026-10-17T09:15:00Z","dlq":{"count":0,"topic":null,"samples":[]},"runbook":"PBK-ING-003","topics":["hc.raw.fusion.worker.cdc.v1"],"playbookRuns":[]},{"name":"debezium-ctms","kind":"connector","type":"Debezium PostgreSQL CDC","source":"research-ctms","state":"failed","lagSec":432000,"watermark":"2026-10-12T00:40:00Z","dlq":{"count":212,"topic":"hc.ops.dlq.debezium-ctms.v1","samples":[{"reason":"schema change: consent.version dropped","masked":true}]},"runbook":"PBK-ING-002","topics":["hc.raw.research.consent.cdc.v1"],"playbookRuns":["INC-01JA0N1"]},{"name":"proc.canonicalise-adt","kind":"processor","type":"Flink job","source":null,"state":"running","lagSec":3,"watermark":"2026-10-17T09:30:10Z","dlq":{"count":48219,"topic":"hc.dq.quarantine.clinical.v1","samples":[{"reason":"DQR-VALIDITY-ENCOUNTER-004","masked":true}]},"runbook":"PBK-SEM-001","topics":["hc.canonical.clinical.encounter.fhir.v1"],"playbookRuns":[]},{"name":"proc.canonicalise-oru","kind":"processor","type":"Flink job","source":null,"state":"running","lagSec":4,"watermark":"2026-10-17T09:30:09Z","dlq":{"count":1240,"topic":"hc.dq.quarantine.clinical.v1","samples":[{"reason":"DQR-ACCURACY-OBSERVATION-005","masked":true}]},"runbook":"PBK-SEM-001","topics":["hc.canonical.clinical.observation.fhir.v1"],"playbookRuns":[]},{"name":"kg-sink","kind":"processor","type":"Kafka Connect sink (RDF-star)","source":null,"state":"degraded","lagSec":1180,"watermark":"2026-10-17T09:10:30Z","dlq":{"count":30400,"topic":"hc.ops.dlq.kg-sink.v1","samples":[{"reason":"schema v5 field prov_activity_iri missing default on consumer","masked":true}]},"runbook":"PBK-KG-SINK-002","topics":["hc.kg.assertion.v1"],"playbookRuns":["INC-01JA0S9"],"replicas":{"current":4,"previous":2}},{"name":"edw-sink","kind":"processor","type":"Kafka Connect sink (JDBC)","source":null,"state":"running","lagSec":8,"watermark":"2026-10-17T09:30:00Z","dlq":{"count":0,"topic":"hc.ops.dlq.edw-sink.v1","samples":[]},"runbook":"PBK-SINK-001","topics":["hc.edw.cdc.g2.v1","hc.edw.cdc.g1.v1"],"playbookRuns":[]},{"name":"dq-engine","kind":"processor","type":"Flink job","source":null,"state":"running","lagSec":3,"watermark":"2026-10-17T09:30:11Z","dlq":{"count":0,"topic":null,"samples":[]},"runbook":"PBK-DQ-001","topics":["hc.dq.result.v1"],"playbookRuns":[]}],"slos":[{"id":"S1","name":"Ingest latency (HL7 v2 / CDC)","target":"p95 ≤ 5 s; 99 % ≤ 15 s","sli":0.994,"burnRate":1.2,"budgetRemaining":0.82,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.9,1,1.1,1.2],"status":"within_budget"},{"id":"S2","name":"Ingest latency (BICC batch)","target":"99 % ≤ 15 min","sli":0.991,"burnRate":0.9,"budgetRemaining":0.88,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0.2,0.2,0.3,0.4,0.4,0.5,0.6,0.6,0.7,0.8,0.8,0.9],"status":"within_budget"},{"id":"S3","name":"Ingest availability","target":"99.9 %","sli":0.9985,"burnRate":2.1,"budgetRemaining":0.44,"alerts":["SourceSilent research-ctms"],"runbook":"PBK-ING-002","window":"30d","owner":"role.platform_sre","burnHistory":[0.4,0.6,0.7,0.9,1,1.2,1.3,1.5,1.6,1.8,1.9,2.1],"status":"burning"},{"id":"S4","name":"Canonical validity","target":"≥ 99.5 %","sli":0.9967,"burnRate":0.6,"budgetRemaining":0.91,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0.1,0.2,0.2,0.3,0.3,0.3,0.4,0.4,0.5,0.5,0.6,0.6],"status":"within_budget"},{"id":"S5","name":"Header compliance","target":"100 %","sli":1,"burnRate":0,"budgetRemaining":1,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0,0,0,0,0,0,0,0,0,0,0,0],"status":"within_budget"},{"id":"S6","name":"Consumer lag","target":"99 % of minutes lag ≤ 60 s","sli":0.987,"burnRate":14.4,"budgetRemaining":0.31,"alerts":["ConsumerLagBurn"],"runbook":"PBK-KG-SINK-002","window":"30d","owner":"role.platform_sre","burnHistory":[2.9,3.9,5,6,7.1,8.1,9.2,10.2,11.3,12.3,13.4,14.4],"status":"burning"},{"id":"S7","name":"DQ detection time","target":"p95 ≤ 15 min","sli":0.996,"burnRate":0.4,"budgetRemaining":0.95,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0.1,0.1,0.1,0.2,0.2,0.2,0.3,0.3,0.3,0.3,0.4,0.4],"status":"within_budget"},{"id":"S8","name":"DQ pipeline coverage","target":"≥ 90 % of CDEs","sli":0.93,"burnRate":0,"budgetRemaining":1,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0,0,0,0,0,0,0,0,0,0,0,0],"status":"within_budget"},{"id":"S9","name":"KG load latency","target":"p95 ≤ 2 min","sli":0.962,"burnRate":9.8,"budgetRemaining":0.38,"alerts":["KgLoadLatency"],"runbook":"PBK-KG-SINK-002","window":"30d","owner":"role.platform_sre","burnHistory":[2,2.7,3.4,4.1,4.8,5.5,6.2,6.9,7.7,8.4,9.1,9.8],"status":"burning"},{"id":"S10","name":"KG query availability / latency","target":"99.9 % / p95 ≤ 2 s","sli":0.9992,"burnRate":0.5,"budgetRemaining":0.93,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0.1,0.1,0.2,0.2,0.2,0.3,0.3,0.4,0.4,0.4,0.5,0.5],"status":"within_budget"},{"id":"S11","name":"EDW freshness","target":"p95 ≤ 5 min","sli":0.995,"burnRate":1.1,"budgetRemaining":0.86,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0.2,0.3,0.4,0.5,0.5,0.6,0.7,0.8,0.9,0.9,1,1.1],"status":"within_budget"},{"id":"S12","name":"EDW query availability","target":"99.9 %","sli":0.9996,"burnRate":0.3,"budgetRemaining":0.97,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0.1,0.1,0.1,0.1,0.1,0.2,0.2,0.2,0.2,0.3,0.3,0.3],"status":"within_budget"},{"id":"S13","name":"KG–EDW reconciliation","target":"≥ 99.99 % matched","sli":0.9998,"burnRate":0,"budgetRemaining":1,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0,0,0,0,0,0,0,0,0,0,0,0],"status":"within_budget"},{"id":"S14","name":"Agent CR cycle time","target":"p95 ≤ 30 min","sli":0.982,"burnRate":1.6,"budgetRemaining":0.72,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0.3,0.4,0.6,0.7,0.8,0.9,1,1.1,1.3,1.4,1.5,1.6],"status":"within_budget"},{"id":"S15","name":"Evaluator agreement","target":"κ ≥ 0.8","sli":0.92,"burnRate":0,"budgetRemaining":1,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0,0,0,0,0,0,0,0,0,0,0,0],"status":"within_budget"},{"id":"S16","name":"Agent tool-call success / denial","target":"≥ 99 % / ≤ 2 %","sli":0.996,"burnRate":0.4,"budgetRemaining":0.94,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0.1,0.1,0.1,0.2,0.2,0.2,0.3,0.3,0.3,0.3,0.4,0.4],"status":"within_budget"},{"id":"S17","name":"Audit completeness","target":"100 %","sli":1,"burnRate":0,"budgetRemaining":1,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0,0,0,0,0,0,0,0,0,0,0,0],"status":"within_budget"},{"id":"S18","name":"Audit → SIEM delivery","target":"p95 ≤ 60 s","sli":0.999,"burnRate":0.2,"budgetRemaining":0.98,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.2,0.2,0.2,0.2],"status":"within_budget"},{"id":"S19","name":"Lineage coverage","target":"≥ 95 %; 100 % phi:direct","sli":0.961,"burnRate":0.8,"budgetRemaining":0.8,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0.2,0.2,0.3,0.3,0.4,0.5,0.5,0.6,0.6,0.7,0.7,0.8],"status":"within_budget"},{"id":"S20","name":"Terminology service latency","target":"p95 ≤ 50 ms","sli":0.9994,"burnRate":0.3,"budgetRemaining":0.96,"alerts":[],"runbook":null,"window":"30d","owner":"role.platform_sre","burnHistory":[0.1,0.1,0.1,0.1,0.1,0.2,0.2,0.2,0.2,0.3,0.3,0.3],"status":"within_budget"},{"id":"S21","name":"Platform availability (composite)","target":"99.9 %","sli":0.9981,"burnRate":3.4,"budgetRemaining":0.52,"alerts":["CompositeBurn"],"runbook":"PBK-SINK-001","window":"30d","owner":"role.platform_sre","burnHistory":[0.7,0.9,1.2,1.4,1.7,1.9,2.2,2.4,2.7,2.9,3.2,3.4],"status":"burning"},{"id":"S22","name":"Consent propagation","target":"100 % ≤ 15 min","sli":0.91,"burnRate":6,"budgetRemaining":0,"alerts":["ConsentPropagationStalled"],"runbook":"PBK-ING-002","window":"30d","owner":"role.platform_sre","burnHistory":[1.2,1.6,2.1,2.5,2.9,3.4,3.8,4.3,4.7,5.1,5.6,6],"status":"burning"}],"freezeWindows":[{"id":"FRZ-2026-10-19","from":"2026-10-19T00:00:00Z","to":"2026-10-19T06:00:00Z","scope":"edw","reason":"Release window 2026.11.0","active":false},{"id":"FRZ-2026-10-31","from":"2026-10-30T22:00:00Z","to":"2026-11-02T06:00:00Z","scope":"platform","reason":"Month-end close","active":false}],"replays":[{"id":"RPL-01JA0U1","topic":"hc.kg.assertion.v1","fromOffset":918220341,"toOffset":918250741,"versionsPinned":{"schema":4,"ontology":"v2026.10.0"},"dryRunCount":30400,"state":"awaiting_approval","requestedBy":"agent.self_healer"}],"layers":["raw","std","canonical","dq","kg","edw","ops"]}
+  </script>
+  <script type="application/json" id="hx-data-incidents">
+{"incidents":[{"id":"INC-01JA0S9","title":"kg-sink consumer lag burn after schema v5","severity":"SEV2","faultClass":"consumer_lag","topic":"hc.kg.assertion.v1","connector":"kg-sink","slo":"S6","openedAt":"2026-10-17T08:40:00Z","state":"mitigating","playbook":"PBK-KG-SINK-002","owner":"role.platform_sre","agent":"agent.self_healer","ladderLevel":"L3","blastRadius":{"used":2,"max":3,"window":"PT30M"},"awaitingHuman":{"step":3,"reason":"rollback of an applied CR is an L3+ action","verb":"Approve step"},"steps":[{"n":1,"action":"restart consumer group kg-sink","result":"ok","at":"2026-10-17T08:42:00Z","ladder":"L2"},{"n":2,"action":"scale kg-sink 2→4","result":"verifying","at":"2026-10-17T08:55:00Z","ladder":"L2"},{"n":3,"action":"request rollback of CR-20261017-01J9KM (schema v5 → v4)","result":"awaiting_human","at":"2026-10-17T09:12:00Z","ladder":"L3"},{"n":4,"action":"replay offsets 918220341–918250741","result":"pending","at":null,"ladder":"L3"}],"correlatedCrs":["CR-20261017-01J9KM"],"correlatedIssues":["ISS-01JA0T7"],"timeline":[{"t":"2026-10-17T05:10:00Z","kind":"release","text":"CR-20261017-01J9KM applied (schema v5)"},{"t":"2026-10-17T08:35:00Z","kind":"alert","text":"ConsumerLagBurn fired: burn rate 14.4"},{"t":"2026-10-17T08:41:00Z","kind":"agent","text":"agent.self_healer matched PBK-KG-SINK-002 (0.91)","agentText":true},{"t":"2026-10-17T08:42:00Z","kind":"action","text":"Step 1 restart consumer group: ok"},{"t":"2026-10-17T08:55:00Z","kind":"action","text":"Step 2 scale 2→4: verifying"},{"t":"2026-10-17T09:12:00Z","kind":"action","text":"Step 3 rollback request raised; 10-minute cancel window"},{"t":"2026-10-17T09:15:00Z","kind":"agent","text":"agent.kg_builder demoted L3 → L2 (rollback rate 2.1 % > 2 %)","agentText":true}],"metrics":{"lagSec":[42,48,60,180,420,760,1010,1180],"lagT":["08:00","08:10","08:20","08:30","08:40","08:50","09:00","09:10"]}},{"id":"INC-01JA0N1","title":"research-ctms CDC connector failed on schema change","severity":"SEV2","faultClass":"connector_down","topic":"hc.raw.research.consent.cdc.v1","connector":"debezium-ctms","slo":"S3","openedAt":"2026-10-12T00:40:00Z","state":"escalated","playbook":"PBK-ING-002","owner":"role.integration_engineer","agent":"agent.self_healer","ladderLevel":"L2","blastRadius":{"used":1,"max":3,"window":"PT30M"},"awaitingHuman":{"step":3,"reason":"source schema change needs vendor fix","verb":"Take over"},"steps":[{"n":1,"action":"restart connector","result":"failed","at":"2026-10-12T00:45:00Z","ladder":"L2"},{"n":2,"action":"snapshot schema diff: consent.version dropped","result":"ok","at":"2026-10-12T00:50:00Z","ladder":"L2"},{"n":3,"action":"request source fix (vendor ticket SYN-TKT-0088)","result":"awaiting_human","at":"2026-10-12T01:00:00Z","ladder":"L3"}],"correlatedCrs":[],"correlatedIssues":["ISS-01JA0N8"],"timeline":[{"t":"2026-10-12T00:40:00Z","kind":"alert","text":"SourceSilent research-ctms"},{"t":"2026-10-14T00:00:00Z","kind":"governance","text":"G7 certification revoked"}],"metrics":{}},{"id":"INC-01JA0M4","title":"BICC AP extract delayed 42 min","severity":"SEV4","faultClass":"batch_late","topic":"hc.raw.fusion.ap-invoice.cdc.v1","connector":"bicc-fusion-ap","slo":"S2","openedAt":"2026-10-15T05:12:00Z","closedAt":"2026-10-15T06:30:00Z","state":"resolved","playbook":"PBK-ING-003","owner":"role.platform_sre","agent":"agent.self_healer","ladderLevel":"L2","blastRadius":{"used":1,"max":3,"window":"PT30M"},"awaitingHuman":null,"steps":[{"n":1,"action":"re-poll BICC extract","result":"ok","at":"2026-10-15T05:14:00Z","ladder":"L2"}],"correlatedCrs":[],"correlatedIssues":[],"timeline":[],"metrics":{}},{"id":"INC-01JA0L2","title":"Schema drift on hc.std.cerner.adt.parsed.v1 (new ZPV segment)","severity":"SEV3","faultClass":"schema_drift","topic":"hc.std.cerner.adt.parsed.v1","connector":"std-parser-adt","slo":"S4","openedAt":"2026-10-14T03:00:00Z","closedAt":"2026-10-14T04:10:00Z","state":"resolved","playbook":"PBK-SEM-001","owner":"role.integration_engineer","agent":"agent.self_healer","ladderLevel":"L2","blastRadius":{"used":1,"max":3,"window":"PT30M"},"awaitingHuman":null,"steps":[{"n":1,"action":"register ZPV as passthrough; open inventory CR","result":"ok","at":"2026-10-14T03:05:00Z","ladder":"L2"}],"correlatedCrs":["CR-20261014-01J6ZP"],"correlatedIssues":[],"timeline":[],"metrics":{}},{"id":"INC-01JA0K8","title":"edw-sink failed load: FK violation on dim_supplier","severity":"SEV3","faultClass":"failed_load","topic":"hc.edw.cdc.g4.v1","connector":"edw-sink","slo":"S11","openedAt":"2026-10-09T02:20:00Z","closedAt":"2026-10-09T03:40:00Z","state":"resolved","playbook":"PBK-SINK-001","owner":"role.dw_architect","agent":"agent.self_healer","ladderLevel":"L2","blastRadius":{"used":2,"max":3,"window":"PT30M"},"awaitingHuman":null,"steps":[{"n":1,"action":"quarantine offending batch","result":"ok","at":"2026-10-09T02:22:00Z","ladder":"L2"},{"n":2,"action":"replay after dim_supplier load","result":"ok","at":"2026-10-09T03:30:00Z","ladder":"L2"}],"correlatedCrs":[],"correlatedIssues":["ISS-01JA0P1"],"timeline":[],"metrics":{}},{"id":"INC-01JA0J5","title":"Terminology service p95 latency 140 ms","severity":"SEV3","faultClass":"latency","topic":null,"connector":"terminology-service","slo":"S20","openedAt":"2026-10-07T14:00:00Z","closedAt":"2026-10-07T14:50:00Z","state":"resolved","playbook":"PBK-SEM-001","owner":"role.platform_sre","agent":"agent.self_healer","ladderLevel":"L2","blastRadius":{"used":1,"max":3,"window":"PT30M"},"awaitingHuman":null,"steps":[{"n":1,"action":"warm $translate cache for cs72","result":"ok","at":"2026-10-07T14:05:00Z","ladder":"L2"}],"correlatedCrs":[],"correlatedIssues":[],"timeline":[],"metrics":{}},{"id":"INC-01JA0H1","title":"Agent tool-call denial spike (agent.source_mapper phi.reveal)","severity":"SEV3","faultClass":"agent_denial","topic":null,"connector":null,"slo":"S16","openedAt":"2026-10-14T11:05:00Z","closedAt":"2026-10-14T12:00:00Z","state":"resolved","playbook":"PBK-AGT-001","owner":"role.agent_operator","agent":"agent.self_healer","ladderLevel":"L2","blastRadius":{"used":0,"max":3,"window":"PT30M"},"awaitingHuman":null,"steps":[{"n":1,"action":"notify operator; veto recorded on CR-20261014-01J6PH","result":"ok","at":"2026-10-14T11:06:00Z","ladder":"L2"}],"correlatedCrs":["CR-20261014-01J6PH"],"correlatedIssues":[],"timeline":[],"metrics":{}},{"id":"INC-01JA0G3","title":"ELK nightly reasoner timeout (clinical module)","severity":"SEV3","faultClass":"reasoner_timeout","topic":null,"connector":"ontology-registry","slo":"S14","openedAt":"2026-10-03T02:30:00Z","closedAt":"2026-10-03T16:30:00Z","state":"resolved","playbook":"PBK-SEM-001","owner":"role.ontologist","agent":"agent.self_healer","ladderLevel":"L2","blastRadius":{"used":1,"max":3,"window":"PT30M"},"awaitingHuman":null,"steps":[{"n":1,"action":"trip kill switch cr_type:ontology env:prod","result":"ok","at":"2026-10-03T14:00:00Z","ladder":"L3"},{"n":2,"action":"split module; rerun ELK","result":"ok","at":"2026-10-03T16:00:00Z","ladder":"L2"}],"correlatedCrs":[],"correlatedIssues":[],"timeline":[],"metrics":{}}],"playbooks":[{"id":"PBK-KG-SINK-002","label":"KG sink consumer lag","faultClass":"consumer_lag","version":3,"state":"promoted","learnedFrom":["INC-01J8ZZ1","INC-01J9AA2"],"steps":["restart consumer group","scale consumers ×2","rollback most recent correlated CR (L3)","replay from last committed offset"],"blastRadiusMax":3,"successRate":0.9,"mttrMin":14},{"id":"PBK-ING-001","label":"MLLP listener reconnect","faultClass":"connector_down","version":2,"state":"promoted","learnedFrom":[],"steps":["reconnect listener","verify ACK","notify integration engineer if 3 failures"],"blastRadiusMax":2,"successRate":0.97,"mttrMin":4},{"id":"PBK-ING-002","label":"CDC connector failure","faultClass":"connector_down","version":4,"state":"promoted","learnedFrom":["INC-01J7XX3"],"steps":["restart connector","snapshot schema diff","request source fix (L3)","replay from snapshot"],"blastRadiusMax":3,"successRate":0.82,"mttrMin":35},{"id":"PBK-ING-003","label":"BICC batch late","faultClass":"batch_late","version":1,"state":"promoted","learnedFrom":[],"steps":["re-poll extract","escalate if > 60 min"],"blastRadiusMax":1,"successRate":0.99,"mttrMin":8},{"id":"PBK-SINK-001","label":"EDW sink failed load","faultClass":"failed_load","version":2,"state":"promoted","learnedFrom":["INC-01JA0K8"],"steps":["quarantine batch","load dependencies","replay"],"blastRadiusMax":3,"successRate":0.94,"mttrMin":40},{"id":"PBK-SEM-001","label":"Semantic service degradation","faultClass":"latency","version":2,"state":"promoted","learnedFrom":[],"steps":["warm caches","split module","rerun reasoner"],"blastRadiusMax":2,"successRate":0.9,"mttrMin":30},{"id":"PBK-DQ-001","label":"DQ engine backlog","faultClass":"dq_backlog","version":1,"state":"promoted","learnedFrom":[],"steps":["scale dq-engine","replay missed windows"],"blastRadiusMax":2,"successRate":0.95,"mttrMin":12},{"id":"PBK-AGT-001","label":"Agent denial spike","faultClass":"agent_denial","version":1,"state":"candidate","learnedFrom":["INC-01JA0H1"],"steps":["notify operator","suspend agent auto-approval if > 5 denials/h"],"blastRadiusMax":1,"successRate":null,"mttrMin":null}],"breakGlassSessions":[{"id":"BG-01JA0T2","principal":"role.steward_g2","reasonCode":"DATA_CORRECTION","issue":"ISS-01JA0Q7","startedAt":"2026-10-16T14:02:00Z","expiresAt":"2026-10-16T18:02:00Z","endedAt":"2026-10-16T14:31:00Z","recordsViewed":3,"entities":[{"token":"tok_8f3a92c1","phiClass":"phi:direct"},{"token":"tok_1c7be044","phiClass":"phi:direct"},{"token":"tok_a07d5519","phiClass":"phi:direct"}],"queryHashes":["q:71bd…","q:0e2a…"],"reviewDueAt":"2026-10-20T14:02:00Z","reviewDecision":null,"reviewer":"role.privacy_officer","mfaVerified":true},{"id":"BG-01JA0R8","principal":"role.steward_g1","reasonCode":"PATIENT_SAFETY","issue":"ISS-01JA0M2","startedAt":"2026-10-12T09:00:00Z","expiresAt":"2026-10-12T13:00:00Z","endedAt":"2026-10-12T09:40:00Z","recordsViewed":6,"entities":[{"token":"tok_c4a2bb10","phiClass":"phi:direct"}],"queryHashes":["q:9f1c…"],"reviewDueAt":"2026-10-14T09:00:00Z","reviewDecision":"Appropriate","reviewedAt":"2026-10-13T10:00:00Z","reviewer":"role.privacy_officer","mfaVerified":true}],"auditEvents":[{"id":"AUD-000001","at":"2026-10-17T09:30:00Z","principal":"role.steward_g2","action":"view_as","target":"role.ontologist","purpose":"operations","env":"uat","hashChainOk":true,"detail":"View-as switch; permissions unchanged"},{"id":"AUD-000002","at":"2026-10-16T14:02:00Z","principal":"role.steward_g2","action":"breakglass_open","target":"BG-01JA0T2","purpose":"DATA_CORRECTION","env":"prod","hashChainOk":true,"detail":"ISS-01JA0Q7 remediation workspace"},{"id":"AUD-000003","at":"2026-10-16T14:03:10Z","principal":"role.steward_g2","action":"phi_view","target":"tok_8f3a92c1","purpose":"DATA_CORRECTION","env":"prod","hashChainOk":true,"detail":"record viewed in remediation workspace"},{"id":"AUD-000004","at":"2026-10-16T14:03:25Z","principal":"role.steward_g2","action":"phi_view","target":"tok_1c7be044","purpose":"DATA_CORRECTION","env":"prod","hashChainOk":true,"detail":"record viewed in remediation workspace"},{"id":"AUD-000005","at":"2026-10-16T14:04:02Z","principal":"role.steward_g2","action":"phi_view","target":"tok_a07d5519","purpose":"DATA_CORRECTION","env":"prod","hashChainOk":true,"detail":"record viewed in remediation workspace"},{"id":"AUD-000006","at":"2026-10-16T14:31:00Z","principal":"role.steward_g2","action":"breakglass_close","target":"BG-01JA0T2","purpose":"DATA_CORRECTION","env":"prod","hashChainOk":true,"detail":"review item created for role.privacy_officer"},{"id":"AUD-000007","at":"2026-10-16T09:10:00Z","principal":"role.steward_g2","action":"cr_approve","target":"CR-20261016-01J8XY","purpose":"governance","env":"uat","hashChainOk":true,"detail":"gate steward_approval"},{"id":"AUD-000008","at":"2026-10-14T11:04:00Z","principal":"agent.privacy_guardian","action":"cr_veto","target":"CR-20261014-01J6PH","purpose":"governance","env":"uat","hashChainOk":true,"detail":"GOV-PHI-004"},{"id":"AUD-000009","at":"2026-10-03T14:00:00Z","principal":"role.agent_operator","action":"killswitch_trip","target":"cr_type:ontology env:prod","purpose":"operations","env":"prod","hashChainOk":true,"detail":"ELK timeout"},{"id":"AUD-000010","at":"2026-10-03T16:30:00Z","principal":"role.agent_operator","action":"killswitch_release","target":"cr_type:ontology env:prod","purpose":"operations","env":"prod","hashChainOk":true,"detail":"released; no co-sign required"},{"id":"AUD-000011","at":"2026-10-10T08:00:00Z","principal":"role.executive","action":"nudge","target":"gate:steward_approval role.steward_g5","purpose":"governance","env":"prod","hashChainOk":true,"detail":"rate-limited 1 per gate per 7 days"},{"id":"AUD-000012","at":"2026-10-12T09:00:00Z","principal":"role.steward_g1","action":"breakglass_open","target":"BG-01JA0R8","purpose":"PATIENT_SAFETY","env":"prod","hashChainOk":true,"detail":"ISS-01JA0M2"},{"id":"AUD-000013","at":"2026-10-13T10:00:00Z","principal":"role.privacy_officer","action":"breakglass_review","target":"BG-01JA0R8","purpose":"governance","env":"prod","hashChainOk":true,"detail":"decision Appropriate"},{"id":"AUD-000014","at":"2026-10-17T06:31:00Z","principal":"agent.improver","action":"cr_create","target":"CR-20261017-01J9AA","purpose":"governance","env":"uat","hashChainOk":true,"detail":"agent manifest threshold raise"}],"phiClassification":{"identifiers":[{"n":1,"label":"Names","fhirPaths":["Patient.name","Practitioner.name"],"columns":2,"topics":3,"class":"phi:direct"},{"n":2,"label":"Geographic subdivisions smaller than state","fhirPaths":["Patient.address"],"columns":1,"topics":2,"class":"phi:quasi"},{"n":3,"label":"Dates (except year)","fhirPaths":["Patient.birthDate","Encounter.period"],"columns":4,"topics":5,"class":"phi:quasi"},{"n":4,"label":"Telephone numbers","fhirPaths":["Patient.telecom"],"columns":0,"topics":2,"class":"phi:direct"},{"n":7,"label":"Social security numbers","fhirPaths":["Patient.identifier[SSN]"],"columns":1,"topics":2,"class":"phi:direct"},{"n":8,"label":"Medical record numbers","fhirPaths":["Patient.identifier[MRN]"],"columns":2,"topics":6,"class":"phi:direct"},{"n":18,"label":"Any other unique identifying number","fhirPaths":["Encounter.identifier"],"columns":1,"topics":4,"class":"phi:quasi"}],"countsByClass":{"non-phi":612,"pii:workforce":58,"confidential":44,"phi:quasi":31,"phi:clinical":140,"phi:direct":22,"phi:sensitive":9,"unknown":16},"unknownDueAt":"2026-10-28T00:00:00Z"},"accessMatrix":{"roles":["role.ontologist","role.steward_g2","role.integration_engineer","role.dw_architect","role.analyst","role.privacy_officer","role.platform_sre","role.agent_operator","role.executive","agent.*"],"purposes":["treatment-support","operations","governance","research","DATA_CORRECTION","PATIENT_SAFETY"],"phiClasses":["non-phi","pii:workforce","confidential","phi:quasi","phi:clinical","phi:direct","phi:sensitive"],"rules":[{"id":"ACC-001","role":"*","phiClass":"non-phi","purpose":"*","decision":"allow"},{"id":"ACC-010","role":"role.analyst","phiClass":"phi:quasi","purpose":"operations","decision":"allow (masked, n ≥ 11)"},{"id":"ACC-020","role":"role.steward_g2","phiClass":"phi:direct","purpose":"DATA_CORRECTION","decision":"allow under break-glass (4 h, audited)"},{"id":"ACC-030","role":"agent.*","phiClass":"phi:direct","purpose":"*","decision":"deny (no reveal tool exists)"},{"id":"ACC-040","role":"role.privacy_officer","phiClass":"*","purpose":"governance","decision":"allow (tokens only)"},{"id":"ACC-050","role":"role.executive","phiClass":"phi:*","purpose":"*","decision":"deny"}],"policyBundleVersion":"policy-2026.10.2"},"stewardship":[{"role":"role.steward_g1","label":"Data Steward, Party & Identity","group":"G1","backup":"role.steward_g2","queueAgeP50Days":1.2},{"role":"role.steward_g2","label":"Data Steward, Clinical Care","group":"G2","backup":"role.steward_g1","queueAgeP50Days":2.1},{"role":"role.steward_g3","label":"Data Steward, Finance","group":"G3","backup":"role.steward_g4","queueAgeP50Days":1.8},{"role":"role.steward_g4","label":"Data Steward, Supply","group":"G4","backup":"role.steward_g3","queueAgeP50Days":3.4},{"role":"role.steward_g5","label":"Data Steward, HR / Workforce","group":"G5","backup":"role.steward_g1","queueAgeP50Days":9},{"role":"role.steward_g8","label":"Data Steward, Reference","group":"G8","backup":"role.ontologist","queueAgeP50Days":0.9},{"role":"role.ontologist","label":"Ontologist / Taxonomist","group":null,"backup":null,"queueAgeP50Days":2.6},{"role":"role.dw_architect","label":"Data Warehouse Architect","group":null,"backup":null,"queueAgeP50Days":3.1},{"role":"role.privacy_officer","label":"Privacy & Security Officer","group":null,"backup":null,"queueAgeP50Days":0.7},{"role":"role.integration_engineer","label":"Integration Engineer","group":null,"backup":null,"queueAgeP50Days":1.5},{"role":"role.platform_sre","label":"Platform SRE","group":null,"backup":null,"queueAgeP50Days":0.3},{"role":"role.agent_operator","label":"Agent Operator","group":null,"backup":null,"queueAgeP50Days":0.5}],"dataContracts":[{"id":"DC-001","topic":"hc.canonical.clinical.encounter.fhir.v1","consumer":"edw-sink","version":"1.2","fields":["class","period","subject"],"state":"active"},{"id":"DC-002","topic":"hc.kg.assertion.v1","consumer":"kg-sink","version":"2.0","fields":["subject","predicate","object","prov_activity_iri"],"state":"breached","note":"schema v5 rolled back"}],"consent":{"propagationSlo":"S22","sli":0.91,"pendingChanges":212,"oldestPendingMin":7200,"engineState":"stalled (research-ctms)"}}
+  </script>
+
+  <script src="assets/app.js"></script>
+  <script>
+  /* ====================================================================
+     interop-monitor.html — page-local controller (no app.js edits).
+     Builds the Streams & Operations surface on top of the shared HX
+     runtime: seven tabs, object pages, SVG charts via HX.chart, a
+     synchronised pipeline-map/list twin, and incident step approvals.
+     All state changes (approved steps, replays, taken-over incidents)
+     live in memory for the session only (AC-17: no payloads persisted).
+     ==================================================================== */
+  (function () {
+    "use strict";
+    var E = HX.util.el, I = HX.icon, SVG = HX.util.svgEl, CLEAR = HX.util.clear, TC = HX.util.titleCase;
+
+    HX.mount({ page: "interop-monitor", area: "ops", title: "Streams & Operations" });
+
+    var tabsEl = document.getElementById("io-tabs");
+    var root = document.getElementById("io-root");
+
+    var D = { topics: [], connectors: [], slos: [], freezeWindows: [], replays: [], layers: [], incidents: [], playbooks: [] };
+    var IX = { topic: {}, conn: {}, slo: {}, inc: {}, pbk: {} };
+    var loaded = false;
+
+    /* session-only in-memory overlay */
+    var MEM = { stepApproved: {}, incidentState: {}, replays: [], pausedInc: {} };
+
+    var TABS = [
+      { id: "slos", label: "SLOs", route: "/ops", key: "1" },
+      { id: "map", label: "Pipeline map", route: "/ops/map", key: "2" },
+      { id: "topics", label: "Topics", route: "/ops/topics", key: "3" },
+      { id: "connectors", label: "Connectors", route: "/ops/connectors", key: "4" },
+      { id: "dlq", label: "DLQ", route: "/ops/dlq", key: "5" },
+      { id: "replay", label: "Replay", route: "/ops/replay", key: "6" },
+      { id: "incidents", label: "Incidents", route: "/ops/incidents", key: "7" }
+    ];
+
+    var LAYER_LABEL = { raw: "Raw", std: "Standardised", canonical: "Canonical (FHIR)", dq: "Data quality", kg: "Knowledge graph", edw: "Warehouse", ops: "Operations" };
+    var MAP_CAP = 10; // per-layer display cap before auto-clustering
+
+    /* lag band → semantic chip modifier + glyph (icon+text+colour, never colour alone) */
+    function lagMod(band) { return ({ ok: "pass", warn: "warn", critical: "fail", stalled: "fail" })[band] || "neutral"; }
+    function lagGlyph(band) { return ({ ok: "check", warn: "warn", critical: "danger", stalled: "danger" })[band] || "info"; }
+    function connMod(state) { return ({ running: "pass", degraded: "warn", failed: "fail", stopped: "neutral" })[state] || "neutral"; }
+    function sloMod(slo) { if (slo.status === "burning" || slo.burnRate >= 2) return "fail"; if (slo.budgetRemaining < 0.5 || slo.burnRate >= 1) return "warn"; return "pass"; }
+    function sloColor(mod) { return ({ pass: "var(--ok-fg)", warn: "var(--warn-fg)", fail: "var(--danger-fg)" })[mod] || "var(--neutral-fg)"; }
+    function sevChip(sev) { var m = { SEV1: "fail", SEV2: "fail", SEV3: "warn", SEV4: "neutral" }; return HX.chip(m[sev] || "neutral", sev, { title: "Severity " + sev }); }
+
+    /* human lag */
+    function lagText(sec) {
+      if (sec == null) return "—";
+      if (sec < 60) return sec + " s";
+      if (sec < 3600) return (sec / 60).toFixed(sec < 600 ? 1 : 0) + " min";
+      if (sec < 86400) return (sec / 3600).toFixed(1) + " h";
+      return (sec / 86400).toFixed(1) + " d";
+    }
+    function num(n) { return Number(n).toLocaleString("en-US"); }
+
+    /* local navigation: routes this page owns are handled in the hash so we stay
+       on interop-monitor.html; others go through HX.nav. (See API-gap note.) */
+    function go(route) {
+      var local = /^\/(ops|topic|incident|playbook|connector|processor)(\/|$)/.test(route);
+      if (local) {
+        var carry = HX.asof.get(); var q = [];
+        if (carry.asOf) q.push("asOf=" + encodeURIComponent(carry.asOf));
+        if (carry.asKnownAt) q.push("asKnownAt=" + encodeURIComponent(carry.asKnownAt));
+        if (HX.env.get() !== "prod") q.push("env=" + HX.env.get());
+        location.hash = "#" + route + (q.length ? "?" + q.join("&") : "");
+      } else { HX.nav(route); }
+    }
+    function linkBtn(label, route, cls) {
+      var b = E("button", { class: "hx-btn hx-btn--sm" + (cls ? " " + cls : "") }, [label]);
+      b.addEventListener("click", function () { go(route); });
+      return b;
+    }
+
+    /* ---------------------------------------------------------------- routing */
+    function routeParts() {
+      var h = location.hash.slice(1);
+      var qi = h.indexOf("?"); var route = (qi < 0 ? h : h.slice(0, qi)) || "/ops";
+      return route.replace(/^#/, "").split("/").filter(Boolean);
+    }
+    function currentTab() {
+      var p = routeParts();
+      if (!p.length || p[0] === "ops") {
+        if (p[1] === "map") return "map";
+        if (p[1] === "topics") return "topics";
+        if (p[1] === "connectors") return "connectors";
+        if (p[1] === "dlq") return "dlq";
+        if (p[1] === "replay") return "replay";
+        if (p[1] === "incidents") return "incidents";
+        if (p[1] === "slo") return "slos";
+        return "slos";
+      }
+      if (p[0] === "topic") return "topics";
+      if (p[0] === "connector" || p[0] === "processor") return "connectors";
+      if (p[0] === "incident" || p[0] === "playbook") return "incidents";
+      return "slos";
+    }
+
+    function renderTabs() {
+      CLEAR(tabsEl);
+      var bar = E("div", { class: "hx-tabs", role: "tablist", "aria-label": "Operations views" });
+      var active = currentTab();
+      TABS.forEach(function (t) {
+        var isSel = t.id === active;
+        var tab = E("button", { class: "hx-tab" + (isSel ? "" : ""), role: "tab", "aria-selected": isSel ? "true" : "false", id: "io-tab-" + t.id, title: t.label + " (" + t.key + ")" }, [t.label]);
+        tab.appendChild(E("kbd", { text: t.key }));
+        tab.addEventListener("click", function () { go(t.route); });
+        bar.appendChild(tab);
+      });
+      tabsEl.appendChild(bar);
+    }
+
+    /* ---------------------------------------------------------------- boot */
+    function boot() {
+      Promise.all([HX.data.load("topics"), HX.data.load("incidents")]).then(function (res) {
+        var top = res[0] || {}, inc = res[1] || {};
+        D.topics = top.topics || []; D.connectors = top.connectors || []; D.slos = top.slos || [];
+        D.freezeWindows = top.freezeWindows || []; D.replays = top.replays || []; D.layers = top.layers || [];
+        D.incidents = inc.incidents || []; D.playbooks = inc.playbooks || [];
+        D.topics.forEach(function (t) { IX.topic[t.name] = t; });
+        D.connectors.forEach(function (c) { IX.conn[c.name] = c; });
+        D.slos.forEach(function (s) { IX.slo[s.id] = s; });
+        D.incidents.forEach(function (i) { IX.inc[i.id] = i; });
+        D.playbooks.forEach(function (p) { IX.pbk[p.id] = p; });
+        loaded = true;
+        render();
+      });
+    }
+
+    /* ================================================================ RENDER */
+    function render() {
+      renderTabs();
+      if (!loaded) { CLEAR(root); root.appendChild(E("div", { class: "hx-skeleton", style: "height:240px" })); return; }
+      var p = routeParts();
+      CLEAR(root);
+      if (p[0] === "topic") return renderTopic(p.slice(1).join("/"));
+      if (p[0] === "connector" || p[0] === "processor") return renderConnector(p[1]);
+      if (p[0] === "incident") return renderIncident(p[1]);
+      if (p[0] === "playbook") return renderPlaybook(p[1]);
+      if (p[0] === "ops" && p[1] === "slo" && p[2]) return renderSloDetail(p[2]);
+      var tab = currentTab();
+      ({ slos: renderSloWall, map: renderMap, topics: renderTopicsTab, connectors: renderConnectorsTab, dlq: renderDlqTab, replay: renderReplayTab, incidents: renderIncidentsTab }[tab] || renderSloWall)();
+      root.focus();
+    }
+
+    function pageTitle(title, sub) {
+      var h = E("div", { class: "hx-page-title" }, [E("h1", { text: title })]);
+      if (sub) h.appendChild(E("span", { class: "hx-muted hx-caption", text: sub }));
+      return h;
+    }
+
+    /* ---------------------------------------------------------------- SLO wall */
+    var sloFilter = { burningOnly: false, q: "" };
+    function renderSloWall() {
+      root.appendChild(pageTitle("SLO wall", "S1–S22 · sorted by burn rate · 30-day window"));
+      var burning = D.slos.filter(function (s) { return sloMod(s) === "fail"; }).length;
+      var tb = E("div", { class: "io-toolbar" });
+      var f = E("label", { class: "io-filter" }, [I("search"), E("input", { type: "text", placeholder: "Filter SLOs…", value: sloFilter.q, "aria-label": "Filter SLOs by name" })]);
+      f.querySelector("input").addEventListener("input", function (e) { sloFilter.q = e.target.value; paint(); });
+      tb.appendChild(f);
+      var only = E("button", { class: "hx-chip hx-chip--warn io-chiptoggle", "aria-pressed": sloFilter.burningOnly ? "true" : "false", type: "button" }, [burning + " burning"]);
+      only.addEventListener("click", function () { sloFilter.burningOnly = !sloFilter.burningOnly; only.setAttribute("aria-pressed", sloFilter.burningOnly ? "true" : "false"); paint(); });
+      tb.appendChild(only);
+      tb.appendChild(E("span", { class: "io-toolbar__spacer" }));
+      tb.appendChild(E("span", { class: "hx-caption hx-muted", text: D.slos.length + " SLOs" }));
+      root.appendChild(tb);
+
+      var wall = E("div", { class: "io-slo-wall", role: "list", "aria-label": "SLO wall" });
+      root.appendChild(wall);
+      function paint() {
+        CLEAR(wall);
+        var rows = D.slos.slice().sort(function (a, b) { return b.burnRate - a.burnRate; });
+        var nq = sloFilter.q.toLowerCase();
+        rows = rows.filter(function (s) {
+          if (sloFilter.burningOnly && sloMod(s) !== "fail") return false;
+          if (nq && (s.id + " " + s.name).toLowerCase().indexOf(nq) < 0) return false;
+          return true;
+        });
+        if (!rows.length) { wall.appendChild(E("div", { class: "hx-empty", text: "No SLOs match this filter." })); return; }
+        rows.forEach(function (s) {
+          var mod = sloMod(s);
+          var tile = E("button", { class: "hx-tile io-slo", role: "listitem", title: "Open " + s.id + " — " + s.name });
+          tile.style.setProperty("--band-color", sloColor(mod));
+          var top = E("div", { class: "io-slo__top" }, [
+            E("span", { class: "io-slo__id", text: s.id }),
+            E("span", { class: "io-slo__name", text: s.name })
+          ]);
+          tile.appendChild(top);
+          var row = E("div", { class: "hx-row" }, [
+            E("span", { class: "io-slo__burn", style: "color:" + sloColor(mod), text: (s.burnRate != null ? s.burnRate.toFixed(1) : "?") + "×" }),
+            HX.chip(mod, mod === "fail" ? "Burning" : mod === "warn" ? "At risk" : "Within budget")
+          ]);
+          tile.appendChild(row);
+          var spark = E("div", { class: "io-slo__spark" }); tile.appendChild(spark);
+          HX.chart.sparkline(spark, s.burnHistory || [], { label: s.id + " burn-rate trend, latest " + (s.burnRate) + "x" });
+          tile.appendChild(E("div", { class: "io-slo__meta" }, [
+            E("span", { text: "target " + s.target }),
+            E("span", { text: "SLI " + (s.sli != null ? (s.sli * 100).toFixed(2) + "%" : "?") }),
+            E("span", { text: "budget " + Math.round((s.budgetRemaining || 0) * 100) + "%" })
+          ]));
+          if (s.alerts && s.alerts.length) {
+            var al = E("div", { class: "hx-row", style: "gap:4px" });
+            s.alerts.forEach(function (a) { al.appendChild(HX.chip("danger", a)); });
+            tile.appendChild(al);
+          }
+          tile.addEventListener("click", function () { go("/ops/slo/" + s.id); });
+          wall.appendChild(tile);
+        });
+      }
+      paint();
+    }
+
+    function renderSloDetail(id) {
+      var s = IX.slo[id];
+      root.appendChild(breadcrumb([["Operations", "/ops"], ["SLO wall", "/ops"], [id, null]]));
+      if (!s) { root.appendChild(empty("No such SLO", "SLO " + id + " is not in this synthetic dataset.")); return; }
+      var mod = sloMod(s);
+      var head = objectHeader({ type: "SLO", id: s.id, label: s.name, chips: [HX.chip(mod, mod === "fail" ? "Burning" : mod === "warn" ? "At risk" : "Within budget"), HX.chip("neutral", "window " + s.window)] });
+      root.appendChild(head);
+
+      var grid = E("div", { class: "io-grid2" });
+      var left = E("div", { class: "hx-card" });
+      left.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Error-budget burn" })]));
+      var burnEl = E("div", {}); left.appendChild(burnEl);
+      HX.chart.burn(burnEl, { remaining: s.budgetRemaining, burnRate: s.burnRate }, { label: s.id + " error budget" });
+      var hist = E("div", { style: "margin-top:12px" }); left.appendChild(hist);
+      HX.chart.line(hist, s.burnHistory || [], { label: s.id + " burn-rate history", threshold: 1, yLabel: "burn ×", max: Math.max(2, Math.max.apply(null, s.burnHistory || [1])) });
+      left.appendChild(E("div", { class: "io-legend-note", text: "Burn rate above 1× (dashed line) consumes the 30-day error budget faster than it refills." }));
+      grid.appendChild(left);
+
+      var right = E("div", { class: "hx-card" });
+      right.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Definition" })]));
+      var kv = E("dl", { class: "io-kv" });
+      kvRow(kv, "Target", s.target);
+      kvRow(kv, "SLI (now)", (s.sli * 100).toFixed(3) + " %");
+      kvRow(kv, "Burn rate", (s.burnRate != null ? s.burnRate.toFixed(1) : "?") + " ×");
+      kvRow(kv, "Budget left", Math.round((s.budgetRemaining || 0) * 100) + " %");
+      kvRow(kv, "Owner", s.owner || "role.platform_sre");
+      right.appendChild(kv);
+      if (s.alerts && s.alerts.length) { var a = E("div", { class: "hx-row", style: "margin-top:8px" }); s.alerts.forEach(function (x) { a.appendChild(HX.chip("danger", x)); }); right.appendChild(a); }
+      var acts = E("div", { class: "hx-row", style: "margin-top:12px" });
+      if (s.runbook) acts.appendChild(linkBtn("Open runbook " + s.runbook, "/playbook/" + s.runbook));
+      // related topics / incidents by this SLO
+      var relInc = D.incidents.filter(function (i) { return i.slo === s.id; });
+      relInc.forEach(function (i) { acts.appendChild(linkBtn(i.id, "/incident/" + i.id)); });
+      right.appendChild(acts);
+      grid.appendChild(right);
+      root.appendChild(grid);
+      provFooter("slo_evaluation", "dq-scorecard / ops-telemetry", s.id);
+    }
+
+    /* ---------------------------------------------------------------- pipeline map */
+    var mapSel = { id: null };
+    var twinOpen = HX.util.store.get("ioTwin", true);
+    function renderMap() {
+      root.appendChild(pageTitle("Pipeline map", "Topics by layer · node width = throughput · colour = lag band · opened as the SRE pipeline map, never a Home"));
+      var tb = E("div", { class: "io-toolbar" });
+      var tog = E("button", { class: "hx-btn hx-btn--sm" }, [I("lineage"), twinOpen ? "Hide list twin (v)" : "Show list twin (v)"]);
+      tog.addEventListener("click", function () { twinOpen = !twinOpen; HX.util.store.set("ioTwin", twinOpen); renderMap(); });
+      tb.appendChild(tog);
+      tb.appendChild(E("span", { class: "io-toolbar__spacer" }));
+      tb.appendChild(lagLegend());
+      root.appendChild(tb);
+
+      var wrap = E("div", { class: "io-map-wrap" + (twinOpen ? " is-split" : "") });
+      var map = E("div", { class: "hx-pipeline-map", role: "group", "aria-label": "Kafka pipeline map by layer" });
+      var twin = E("div", { class: "hx-graph-list io-twin", role: "listbox", "aria-label": "Topic list twin (synchronised with the map)" });
+
+      var maxThr = Math.max.apply(null, D.topics.map(function (t) { return t.throughputPerMin || 0; }).concat([1]));
+      var layers = D.layers.length ? D.layers : ["raw", "std", "canonical", "dq", "kg", "edw", "ops"];
+
+      function syncSel() {
+        root.querySelectorAll(".io-map-node").forEach(function (n) { n.setAttribute("aria-selected", n.dataset.id === mapSel.id ? "true" : "false"); });
+        twin.querySelectorAll(".hx-graph-list__item").forEach(function (r) { r.setAttribute("aria-selected", r.dataset.id === mapSel.id ? "true" : "false"); });
+      }
+      function selectTopic(name, opts) {
+        mapSel.id = name; syncSel();
+        var t = IX.topic[name];
+        if (t) HX.inspector.open(topicInspector(t), "Topic");
+        HX.live("Selected topic " + name, "polite");
+      }
+
+      layers.forEach(function (layer) {
+        var col = E("div", { class: "hx-pipeline-map__layer" });
+        col.appendChild(E("h4", { text: LAYER_LABEL[layer] || layer }));
+        var items = D.topics.filter(function (t) { return t.layer === layer; }).sort(function (a, b) { return (b.throughputPerMin || 0) - (a.throughputPerMin || 0); });
+        col.appendChild(E("div", { class: "io-map-layer__count", text: items.length + " topic" + (items.length === 1 ? "" : "s") }));
+        var shown = items.slice(0, MAP_CAP);
+        shown.forEach(function (t) {
+          var band = t.lagBand || "ok";
+          var node = E("button", { class: "hx-pipeline-map__node io-map-node hx-pipeline-map__node--" + lagMod(band).replace("pass", "ok"), "data-id": t.name, role: "option", title: t.name + " · lag " + band + " · " + num(t.throughputPerMin) + "/min" });
+          node.dataset.id = t.name;
+          var bar = E("div", { class: "io-map-node__bar" });
+          bar.style.width = Math.max(10, Math.round((t.throughputPerMin || 0) / maxThr * 100)) + "%";
+          bar.style.background = sloColor(lagMod(band));
+          node.appendChild(E("div", { class: "io-row", style: "display:flex;align-items:center;gap:4px" }, [
+            E("span", { "aria-hidden": "true", text: lagGlyphChar(band) }),
+            E("span", { class: "io-map-node__name", text: shortName(t.name) })
+          ]));
+          node.appendChild(bar);
+          node.appendChild(E("div", { class: "io-map-node__meta", text: num(t.throughputPerMin) + "/min · " + lagText(maxConsumerLag(t)) }));
+          node.addEventListener("click", function () { selectTopic(t.name); });
+          node.addEventListener("dblclick", function () { go("/topic/" + t.name); });
+          col.appendChild(node);
+        });
+        if (items.length > MAP_CAP) col.appendChild(E("div", { class: "io-map-cluster", text: "+" + (items.length - MAP_CAP) + " clustered" }));
+        map.appendChild(col);
+      });
+
+      // list twin
+      D.topics.slice().sort(function (a, b) { return (D.layers.indexOf(a.layer) - D.layers.indexOf(b.layer)) || (b.throughputPerMin - a.throughputPerMin); }).forEach(function (t) {
+        var band = t.lagBand || "ok";
+        var row = E("div", { class: "hx-graph-list__item", role: "option", tabindex: "0", "data-id": t.name }, [
+          HX.chip("type", t.layer),
+          E("span", { "aria-hidden": "true", text: lagGlyphChar(band), title: "lag " + band }),
+          E("span", { class: "hx-mono", style: "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis", text: t.name })
+        ]);
+        row.dataset.id = t.name;
+        row.addEventListener("click", function () { selectTopic(t.name); });
+        row.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); go("/topic/" + t.name); } else if (e.key === " ") { e.preventDefault(); selectTopic(t.name); } });
+        twin.appendChild(row);
+      });
+
+      wrap.appendChild(map);
+      if (twinOpen) wrap.appendChild(twin);
+      root.appendChild(wrap);
+      root.appendChild(E("p", { class: "io-legend-note", text: "Click a node to select (syncs the list twin and opens the topic in the inspector); double-click or Enter opens the topic page. v toggles the list twin." }));
+      if (mapSel.id) syncSel();
+
+      HX.keys.bind({ v: function () { if (currentTab() !== "map") return false; twinOpen = !twinOpen; HX.util.store.set("ioTwin", twinOpen); renderMap(); return true; } });
+    }
+    function lagGlyphChar(band) { return ({ ok: "✓", warn: "△", critical: "⬣", stalled: "◼" })[band] || "–"; }
+    function maxConsumerLag(t) { return (t.consumers || []).reduce(function (m, c) { return Math.max(m, c.lagSec || 0); }, 0); }
+    function shortName(name) { var p = String(name).split("."); return p.slice(2).join("."); }
+    function lagLegend() {
+      var l = E("div", { class: "io-heat__legend" });
+      [["ok", "Within lag SLO"], ["warn", "Lag warning"], ["critical", "Lag critical"], ["stalled", "Stalled"]].forEach(function (x) {
+        var sw = E("span", { class: "io-swatch" }); sw.style.background = sloColor(lagMod(x[0]));
+        l.appendChild(E("span", {}, [sw, lagGlyphChar(x[0]) + " " + x[1]]));
+      });
+      return l;
+    }
+
+    /* ---------------------------------------------------------------- Topics tab */
+    var topFilter = { q: "", layer: null, band: null };
+    function renderTopicsTab() {
+      root.appendChild(pageTitle("Topics", D.topics.length + " Kafka topics across " + (D.layers.length) + " layers"));
+      var tb = E("div", { class: "io-toolbar" });
+      var f = E("label", { class: "io-filter" }, [I("search"), E("input", { type: "text", placeholder: "Filter by name / domain / group…", value: topFilter.q, "aria-label": "Filter topics" })]);
+      f.querySelector("input").addEventListener("input", function (e) { topFilter.q = e.target.value; paint(); });
+      tb.appendChild(f);
+      var chips = E("div", { class: "io-chipbar", role: "group", "aria-label": "Filter by layer" });
+      D.layers.forEach(function (ly) {
+        var c = E("button", { class: "hx-chip hx-chip--type io-chiptoggle", type: "button", "aria-pressed": topFilter.layer === ly ? "true" : "false", text: ly });
+        c.addEventListener("click", function () { topFilter.layer = topFilter.layer === ly ? null : ly; renderTopicsTab(); });
+        chips.appendChild(c);
+      });
+      tb.appendChild(chips);
+      root.appendChild(tb);
+
+      var wrapT = E("div", { class: "io-table-wrap" });
+      var tbl = E("table", { class: "io-table" });
+      tbl.appendChild(E("thead", {}, [E("tr", {}, [
+        th("Topic"), th("Layer"), th("Domain"), th("Group"), th("PHI"), th("Throughput/min", "num"), th("Lag"), th("Parts", "num"), th("Compat")
+      ])]));
+      var tbody = E("tbody", {});
+      tbl.appendChild(tbody); wrapT.appendChild(tbl); root.appendChild(wrapT);
+      function paint() {
+        CLEAR(tbody);
+        var nq = topFilter.q.toLowerCase();
+        var rows = D.topics.filter(function (t) {
+          if (topFilter.layer && t.layer !== topFilter.layer) return false;
+          if (nq && (t.name + " " + t.domain + " " + t.group).toLowerCase().indexOf(nq) < 0) return false;
+          return true;
+        });
+        if (!rows.length) { tbody.appendChild(E("tr", {}, [E("td", { colspan: 9 }, [E("span", { class: "io-empty-note", text: "No topics match." })])])); return; }
+        rows.forEach(function (t) {
+          var tr = E("tr", { tabindex: "0", title: "Open " + t.name });
+          tr.appendChild(td(E("span", { class: "hx-mono", text: t.name })));
+          tr.appendChild(td(HX.chip("type", t.layer)));
+          tr.appendChild(td(t.domain));
+          tr.appendChild(td(HX.groupChip(t.group)));
+          tr.appendChild(td(HX.phiChip(t.phiClass)));
+          tr.appendChild(td(num(t.throughputPerMin), "num"));
+          tr.appendChild(td(HX.chip(lagMod(t.lagBand), t.lagBand, { title: "Max consumer lag " + lagText(maxConsumerLag(t)) })));
+          tr.appendChild(td(String(t.partitions), "num"));
+          tr.appendChild(td(E("span", { class: "hx-version-chip", text: t.compatibility })));
+          tr.addEventListener("click", function () { go("/topic/" + t.name); });
+          tr.addEventListener("keydown", function (e) { if (e.key === "Enter") go("/topic/" + t.name); });
+          tbody.appendChild(tr);
+        });
+      }
+      paint();
+    }
+
+    /* ---------------------------------------------------------------- Topic page */
+    function topicInspector(t) {
+      var c = E("div", {});
+      c.appendChild(E("div", { class: "hx-row", style: "margin-bottom:8px" }, [HX.chip("type", t.layer), HX.groupChip(t.group), HX.phiChip(t.phiClass)]));
+      c.appendChild(E("div", { class: "hx-mono hx-caption", text: t.name }));
+      var kv = E("dl", { class: "io-kv", style: "margin-top:8px" });
+      kvRow(kv, "Throughput", num(t.throughputPerMin) + " /min");
+      kvRow(kv, "Lag band", t.lagBand);
+      kvRow(kv, "Partitions", t.partitions);
+      kvRow(kv, "Retention", t.retention);
+      c.appendChild(kv);
+      var open = E("button", { class: "hx-btn hx-btn--sm hx-btn--primary", style: "margin-top:8px" }, ["Open topic page"]);
+      open.addEventListener("click", function () { go("/topic/" + t.name); });
+      c.appendChild(open);
+      return c;
+    }
+    var topicSub = "overview";
+    function renderTopic(name) {
+      var t = IX.topic[name];
+      root.appendChild(breadcrumb([["Operations", "/ops"], ["Topics", "/ops/topics"], [name, null]]));
+      if (!t) { root.appendChild(empty("No such topic", "Topic " + name + " is not in this synthetic dataset.")); return; }
+      var head = objectHeader({
+        type: "Topic", id: t.name, label: shortName(t.name),
+        chips: [HX.chip("type", t.layer), HX.groupChip(t.group), HX.phiChip(t.phiClass), HX.chip(lagMod(t.lagBand), "lag " + t.lagBand), E("span", { class: "hx-version-chip", text: t.compatibility })],
+        actions: [actWatch(t.name)]
+      });
+      root.appendChild(head);
+
+      // meta strip
+      var strip = E("div", { class: "hx-trust-strip", role: "group", "aria-label": "Topic facts" });
+      stripItem(strip, "Throughput", E("span", { class: "hx-trust-strip__v", text: num(t.throughputPerMin) + "/min" }));
+      stripItem(strip, "Max lag", E("span", { class: "hx-trust-strip__v", text: lagText(maxConsumerLag(t)) }));
+      stripItem(strip, "Partitions", E("span", { class: "hx-trust-strip__v", text: String(t.partitions) }));
+      stripItem(strip, "Retention", E("span", { class: "hx-trust-strip__v", text: t.retention }));
+      stripItem(strip, "Owner", E("span", { class: "hx-trust-strip__v", text: t.owner || "—" }));
+      root.appendChild(strip);
+
+      var SUBS = [["overview", "Overview"], ["schema", "Schema versions"], ["consumers", "Consumers"], ["replay", "Replay"]];
+      var subbar = E("div", { class: "io-subtabs", role: "tablist", "aria-label": "Topic sections" });
+      SUBS.forEach(function (s) {
+        var b = E("button", { class: "hx-tab", role: "tab", "aria-selected": topicSub === s[0] ? "true" : "false" }, [s[1]]);
+        b.addEventListener("click", function () { topicSub = s[0]; renderTopic(name); });
+        subbar.appendChild(b);
+      });
+      root.appendChild(subbar);
+      var panel = E("div", { class: "hx-tabpanel" }); root.appendChild(panel);
+
+      if (topicSub === "overview") {
+        var grid = E("div", { class: "io-grid2" });
+        // per-partition lag heat
+        var lagCard = E("div", { class: "hx-card" });
+        lagCard.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Per-partition consumer lag" })]));
+        if (t.lagByPartition && t.lagByPartition.length) {
+          var heat = E("div", { class: "io-heat", role: "img", "aria-label": "Per-partition lag, " + t.lagByPartition.length + " partitions" });
+          var maxL = Math.max.apply(null, t.lagByPartition);
+          t.lagByPartition.forEach(function (v, i) {
+            var band = v > 300 ? "critical" : v > 60 ? "warn" : "ok";
+            var cell = E("span", { class: "io-heat__cell", title: "partition " + i + ": " + lagText(v), text: String(i) });
+            cell.style.background = sloColor(lagMod(band));
+            heat.appendChild(cell);
+          });
+          lagCard.appendChild(heat);
+          lagCard.appendChild(lagLegend());
+          lagCard.appendChild(E("div", { class: "io-legend-note", text: "Max partition lag " + lagText(maxL) + " · each cell is one of " + t.partitions + " partitions." }));
+        } else {
+          lagCard.appendChild(E("div", { class: "io-empty-note", text: "No per-partition lag recorded for this topic." }));
+        }
+        grid.appendChild(lagCard);
+
+        // producers / consumers
+        var flowCard = E("div", { class: "hx-card" });
+        flowCard.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Producers & consumers" })]));
+        var pl = E("div", { class: "hx-row", style: "margin-bottom:8px" }, [E("span", { class: "hx-trust-strip__k", text: "Producers" })]);
+        (t.producers || []).forEach(function (p) { var b = linkBtn(p, "/connector/" + p, "hx-btn--ghost"); pl.appendChild(b); });
+        flowCard.appendChild(pl);
+        var ct = E("table", { class: "io-table" });
+        ct.appendChild(E("thead", {}, [E("tr", {}, [th("Consumer group"), th("Lag", "num"), th("Status")])]));
+        var ctb = E("tbody", {});
+        (t.consumers || []).forEach(function (c) {
+          var band = c.lagSec > 300 ? "critical" : c.lagSec > 60 ? "warn" : "ok";
+          var r = E("tr", {}, [td(E("span", { class: "hx-mono", text: c.group })), td(lagText(c.lagSec), "num"), td(HX.chip(lagMod(band), band))]);
+          ctb.appendChild(r);
+        });
+        ct.appendChild(ctb); flowCard.appendChild(ct);
+        grid.appendChild(flowCard);
+        panel.appendChild(grid);
+
+        // correlated CRs by time
+        var crCard = E("div", { class: "hx-card", style: "margin-top:16px" });
+        crCard.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Correlated change requests" })]));
+        if (t.correlatedCrs && t.correlatedCrs.length) {
+          var crr = E("div", { class: "hx-row" });
+          t.correlatedCrs.forEach(function (cr) { crr.appendChild(linkBtn(cr, "/cr/" + cr)); });
+          crCard.appendChild(crr);
+        } else crCard.appendChild(E("div", { class: "io-empty-note", text: "No change requests are correlated with this topic in the current window." }));
+        panel.appendChild(crCard);
+      } else if (topicSub === "schema") {
+        (t.subjects || []).forEach(function (sub) {
+          var c = E("div", { class: "hx-card", style: "margin-bottom:12px" });
+          c.appendChild(E("div", { class: "hx-card__head" }, [E("h3", {}, [E("span", { class: "hx-mono", text: sub.name })]), E("span", { class: "hx-chip hx-chip--neutral", text: "format " + (t.format || "avro") })]));
+          var vrow = E("div", { class: "hx-row" });
+          (sub.versions || []).forEach(function (v, i) {
+            var latest = i === sub.versions.length - 1;
+            var ch = HX.chip(latest ? "pass" : "neutral", "v" + v + (latest ? " · active" : ""));
+            vrow.appendChild(ch);
+          });
+          c.appendChild(vrow);
+          c.appendChild(E("div", { class: "io-legend-note", text: "Compatibility: " + t.compatibility + (t.rolledBackSchema ? " · schema v" + t.rolledBackSchema + " was rolled back" : "") }));
+          panel.appendChild(c);
+        });
+      } else if (topicSub === "consumers") {
+        var ct2 = E("div", { class: "io-table-wrap" });
+        var tt = E("table", { class: "io-table" });
+        tt.appendChild(E("thead", {}, [E("tr", {}, [th("Consumer group"), th("Lag", "num"), th("Status"), th("")])]));
+        var ttb = E("tbody", {});
+        (t.consumers || []).forEach(function (c) {
+          var band = c.lagSec > 300 ? "critical" : c.lagSec > 60 ? "warn" : "ok";
+          var r = E("tr", {}, [td(E("span", { class: "hx-mono", text: c.group })), td(lagText(c.lagSec), "num"), td(HX.chip(lagMod(band), band))]);
+          var connExists = IX.conn[c.group];
+          r.appendChild(td(connExists ? linkBtn("Open connector", "/connector/" + c.group, "hx-btn--ghost") : E("span", { class: "io-empty-note", text: "sink consumer" })));
+          ttb.appendChild(r);
+        });
+        tt.appendChild(ttb); ct2.appendChild(tt); panel.appendChild(ct2);
+      } else if (topicSub === "replay") {
+        panel.appendChild(replayForm(t.name));
+      }
+      provFooter("topic_catalog", "schema-registry / kafka-admin", t.name);
+    }
+
+    /* ---------------------------------------------------------------- Connectors tab */
+    function renderConnectorsTab() {
+      root.appendChild(pageTitle("Connectors & processors", D.connectors.length + " ingest connectors and stream processors"));
+      var cards = E("div", { class: "io-cards" });
+      D.connectors.forEach(function (c) {
+        var mod = connMod(c.state);
+        var card = E("button", { class: "hx-card io-conn", title: "Open " + c.name });
+        card.appendChild(E("div", { class: "io-conn__head" }, [
+          HX.chip("type", c.kind), E("span", { class: "io-conn__name", text: c.name }), HX.chip(mod, c.state, { title: "State " + c.state })
+        ]));
+        card.appendChild(E("div", { class: "hx-caption hx-muted", text: c.type + (c.source ? " · " + c.source : "") }));
+        var kv = E("dl", { class: "io-kv" });
+        kvRow(kv, "Lag", lagText(c.lagSec));
+        kvRow(kv, "Watermark", HX.format.time(c.watermark, "event"));
+        kvRow(kv, "DLQ", (c.dlq && c.dlq.count ? num(c.dlq.count) : "0"));
+        card.appendChild(kv);
+        if (c.playbookRuns && c.playbookRuns.length) { var pr = E("div", { class: "hx-row", style: "margin-top:4px" }); c.playbookRuns.forEach(function (i) { pr.appendChild(HX.chip("warn", i)); }); card.appendChild(pr); }
+        card.addEventListener("click", function () { go("/" + c.kind + "/" + c.name); });
+        cards.appendChild(card);
+      });
+      root.appendChild(cards);
+    }
+
+    var connSub = "metrics";
+    function renderConnector(name) {
+      var c = IX.conn[name];
+      root.appendChild(breadcrumb([["Operations", "/ops"], ["Connectors", "/ops/connectors"], [name, null]]));
+      if (!c) { root.appendChild(empty("No such connector", name + " is not in this synthetic dataset.")); return; }
+      var mod = connMod(c.state);
+      root.appendChild(objectHeader({
+        type: TC(c.kind), id: c.name, label: c.name,
+        chips: [HX.chip(mod, c.state), HX.chip("neutral", c.type)],
+        actions: [actWatch(c.name)]
+      }));
+
+      var SUBS = [["metrics", "Metrics"], ["dlq", "DLQ (masked)"], ["runbook", "Runbook"]];
+      var subbar = E("div", { class: "io-subtabs", role: "tablist", "aria-label": "Connector sections" });
+      SUBS.forEach(function (s) {
+        var b = E("button", { class: "hx-tab", role: "tab", "aria-selected": connSub === s[0] ? "true" : "false" }, [s[1]]);
+        if (s[0] === "dlq" && c.dlq && c.dlq.count) b.appendChild(E("span", { class: "hx-tab__badge", text: num(c.dlq.count) }));
+        b.addEventListener("click", function () { connSub = s[0]; renderConnector(name); });
+        subbar.appendChild(b);
+      });
+      root.appendChild(subbar);
+      var panel = E("div", { class: "hx-tabpanel" }); root.appendChild(panel);
+
+      if (connSub === "metrics") {
+        var grid = E("div", { class: "io-grid2" });
+        var mcard = E("div", { class: "hx-card" });
+        mcard.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "State & flow" })]));
+        var kv = E("dl", { class: "io-kv" });
+        kvRow(kv, "State", c.state);
+        kvRow(kv, "Lag", lagText(c.lagSec));
+        kvRow(kv, "Watermark", HX.format.time(c.watermark, "event"));
+        kvRow(kv, "Source", c.source || "— (processor)");
+        if (c.replicas) kvRow(kv, "Replicas", c.replicas.current + " (was " + c.replicas.previous + ")");
+        mcard.appendChild(kv);
+        grid.appendChild(mcard);
+        var tcard = E("div", { class: "hx-card" });
+        tcard.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Topics" })]));
+        var tr = E("div", { class: "hx-stack" });
+        (c.topics || []).forEach(function (tn) { tr.appendChild(linkBtn(shortName(tn), "/topic/" + tn, "hx-btn--ghost")); });
+        tcard.appendChild(tr);
+        grid.appendChild(tcard);
+        panel.appendChild(grid);
+      } else if (connSub === "dlq") {
+        var dc = E("div", { class: "hx-card" });
+        dc.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Dead-letter queue" }), HX.chip(c.dlq && c.dlq.count ? "warn" : "pass", (c.dlq && c.dlq.count ? num(c.dlq.count) : "0") + " records")]));
+        if (c.dlq && c.dlq.topic) dc.appendChild(E("div", { class: "hx-caption hx-muted", text: "DLQ topic " + c.dlq.topic }));
+        if (c.dlq && c.dlq.samples && c.dlq.samples.length) {
+          var list = E("ul", { class: "hx-stack", style: "list-style:none;margin:8px 0 0;padding:0" });
+          c.dlq.samples.forEach(function (s) {
+            var li = E("li", { class: "hx-row", style: "gap:8px;align-items:flex-start" }, [
+              HX.chip("fail", "rejected"),
+              E("span", {}, [E("div", { class: "hx-dense", text: s.reason }), E("div", { class: "hx-row", style: "margin-top:2px" }, [E("span", { class: "io-empty-note", text: "payload" }), HX.masked("", c.dlq && /phi|clinical|direct/.test(JSON.stringify(c)) ? "phi:clinical" : "confidential")])])
+            ]);
+            list.appendChild(li);
+          });
+          dc.appendChild(list);
+          dc.appendChild(E("div", { class: "io-legend-note", text: "Reasons are shown; record payloads are masked — no PHI is displayed in this console." }));
+        } else dc.appendChild(E("div", { class: "io-empty-note", style: "margin-top:8px", text: "No dead-lettered records." }));
+        var acts = E("div", { class: "hx-row", style: "margin-top:12px" });
+        if (c.topics && c.topics[0]) { var rb = E("button", { class: "hx-btn hx-btn--sm" }, ["Replay from DLQ"]); rb.addEventListener("click", function () { connSub = "metrics"; go("/topic/" + c.topics[0]); setTimeout(function () { topicSub = "replay"; renderTopic(c.topics[0]); }, 0); }); acts.appendChild(rb); }
+        if (c.runbook) acts.appendChild(linkBtn("Runbook " + c.runbook, "/playbook/" + c.runbook, "hx-btn--ghost"));
+        dc.appendChild(acts);
+        panel.appendChild(dc);
+      } else if (connSub === "runbook") {
+        var rc = E("div", { class: "hx-card" });
+        if (c.runbook) {
+          rc.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Runbook " + c.runbook })]));
+          rc.appendChild(linkBtn("Open playbook " + c.runbook, "/playbook/" + c.runbook, "hx-btn--primary"));
+        } else rc.appendChild(E("div", { class: "hx-tabpanel--empty", text: "No runbook linked for this connector — propose one (playbook CR)." }));
+        if (c.playbookRuns && c.playbookRuns.length) {
+          rc.appendChild(E("h4", { style: "margin-top:12px", text: "Recent playbook runs" }));
+          var pr = E("div", { class: "hx-row" }); c.playbookRuns.forEach(function (i) { pr.appendChild(linkBtn(i, "/incident/" + i, "hx-btn--ghost")); }); rc.appendChild(pr);
+        }
+        panel.appendChild(rc);
+      }
+      provFooter("connector_telemetry", "kafka-connect / flink", c.name);
+    }
+
+    /* ---------------------------------------------------------------- DLQ tab */
+    function renderDlqTab() {
+      root.appendChild(pageTitle("Dead-letter queues", "Rejected records by connector — payloads masked, reasons shown"));
+      var withDlq = D.connectors.filter(function (c) { return c.dlq && c.dlq.count > 0; }).sort(function (a, b) { return b.dlq.count - a.dlq.count; });
+      if (!withDlq.length) { root.appendChild(empty("No dead-lettered records", "All connectors are draining cleanly.")); return; }
+      var wrap = E("div", { class: "io-table-wrap" });
+      var tbl = E("table", { class: "io-table" });
+      tbl.appendChild(E("thead", {}, [E("tr", {}, [th("Connector"), th("DLQ count", "num"), th("Top reason"), th("Payload"), th("")])]));
+      var tb = E("tbody", {});
+      withDlq.forEach(function (c) {
+        var reason = (c.dlq.samples && c.dlq.samples[0]) ? c.dlq.samples[0].reason : "—";
+        var tr = E("tr", {}, [
+          td(E("span", { class: "hx-mono", text: c.name })),
+          td(num(c.dlq.count), "num"),
+          td(E("span", { class: "hx-dense", text: reason })),
+          td(HX.masked("", "confidential")),
+          td(linkBtn("Open", "/" + c.kind + "/" + c.name, "hx-btn--ghost"))
+        ]);
+        tr.addEventListener("click", function () { go("/" + c.kind + "/" + c.name); });
+        tb.appendChild(tr);
+      });
+      tbl.appendChild(tb); wrap.appendChild(tbl); root.appendChild(wrap);
+      root.appendChild(E("p", { class: "io-legend-note", text: "proc.canonicalise-adt routes failing records to the clinical quarantine topic (DQR-VALIDITY-ENCOUNTER-004); kg-sink is dead-lettering on the rolled-back schema v5." }));
+    }
+
+    /* ---------------------------------------------------------------- Replay tab */
+    function renderReplayTab() {
+      root.appendChild(pageTitle("Replay", "Re-process a bounded offset range with schema and ontology versions pinned"));
+      var all = D.replays.concat(MEM.replays);
+      var listCard = E("div", { class: "hx-card", style: "margin-bottom:16px" });
+      listCard.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Replay jobs" })]));
+      if (all.length) {
+        var tbl = E("table", { class: "io-table" });
+        tbl.appendChild(E("thead", {}, [E("tr", {}, [th("Id"), th("Topic"), th("Offsets"), th("Pinned"), th("Dry-run", "num"), th("State"), th("By")])]));
+        var tb = E("tbody", {});
+        all.forEach(function (r) {
+          var stMod = r.state === "awaiting_approval" ? "pending" : r.state === "applied" ? "pass" : "neutral";
+          tb.appendChild(E("tr", {}, [
+            td(E("span", { class: "hx-mono", text: r.id })),
+            td(E("span", { class: "hx-mono hx-caption", text: shortName(r.topic) })),
+            td(E("span", { class: "hx-mono hx-caption", text: num(r.fromOffset) + "–" + num(r.toOffset) })),
+            td(E("span", { class: "hx-caption", text: "schema " + (r.versionsPinned && r.versionsPinned.schema) + " · ont " + (r.versionsPinned && r.versionsPinned.ontology) })),
+            td(num(r.dryRunCount), "num"),
+            td(HX.chip(stMod, TC(r.state))),
+            td(E("span", { class: "hx-mono hx-caption", text: r.requestedBy || "—" }))
+          ]));
+        });
+        tbl.appendChild(tb); listCard.appendChild(tbl);
+      } else listCard.appendChild(E("div", { class: "io-empty-note", text: "No replay jobs yet." }));
+      root.appendChild(listCard);
+      root.appendChild(replayForm(null));
+    }
+
+    function replayForm(topicName) {
+      var card = E("div", { class: "hx-card" });
+      card.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "New replay (dry-run first)" })]));
+      var form = E("div", { class: "io-replay-form" });
+      // topic
+      var topSel = E("select", { "aria-label": "Topic" }, D.topics.map(function (t) { return E("option", { value: t.name, text: t.name }); }));
+      if (topicName) topSel.value = topicName;
+      form.appendChild(E("div", { class: "hx-field" }, [E("label", { text: "Topic" }), topSel]));
+      var fromI = E("input", { type: "number", value: "918220341", "aria-label": "From offset" });
+      var toI = E("input", { type: "number", value: "918250741", "aria-label": "To offset" });
+      form.appendChild(E("div", { class: "hx-field" }, [E("label", { text: "From offset" }), fromI]));
+      form.appendChild(E("div", { class: "hx-field" }, [E("label", { text: "To offset" }), toI]));
+      var schemaI = E("input", { type: "text", value: "4", "aria-label": "Pinned schema version" });
+      var ontI = E("input", { type: "text", value: "v2026.10.0", "aria-label": "Pinned ontology version" });
+      form.appendChild(E("div", { class: "hx-field" }, [E("label", { text: "Pin schema" }), schemaI]));
+      form.appendChild(E("div", { class: "hx-field" }, [E("label", { text: "Pin ontology" }), ontI]));
+      card.appendChild(form);
+      var out = E("div", { class: "hx-row", style: "margin-top:8px" });
+      card.appendChild(out);
+      var btns = E("div", { class: "hx-row", style: "margin-top:12px" });
+      var dry = E("button", { class: "hx-btn" }, [I("play"), "Dry-run count"]);
+      dry.addEventListener("click", function () {
+        var n = Math.max(0, (parseInt(toI.value, 10) || 0) - (parseInt(fromI.value, 10) || 0));
+        CLEAR(out); out.appendChild(HX.chip("info", "Dry-run: " + num(n) + " records in range"));
+        out.appendChild(E("span", { class: "io-empty-note", text: "versions pinned: schema " + schemaI.value + " · ontology " + ontI.value }));
+        HX.live("Dry-run estimated " + n + " records", "polite");
+      });
+      var submit = E("button", { class: "hx-btn hx-btn--primary" }, ["Request replay"]);
+      submit.addEventListener("click", function () {
+        HX.env.confirmWrite().then(function (ok) {
+          if (!ok) return;
+          HX.confirm({ title: "Request replay", body: "Replay " + topSel.value + " offsets " + fromI.value + "–" + toI.value + " with schema " + schemaI.value + ", ontology " + ontI.value + ". A dry-run runs first; an operator approves before any writes.", confirmLabel: "Request" }).then(function (go2) {
+            if (!go2) return;
+            var rec = { id: "RPL-" + Math.random().toString(36).slice(2, 7).toUpperCase(), topic: topSel.value, fromOffset: parseInt(fromI.value, 10), toOffset: parseInt(toI.value, 10), versionsPinned: { schema: schemaI.value, ontology: ontI.value }, dryRunCount: Math.max(0, (parseInt(toI.value, 10) || 0) - (parseInt(fromI.value, 10) || 0)), state: "awaiting_approval", requestedBy: HX.role.get() };
+            MEM.replays.push(rec);
+            HX.audit.write({ type: "REPLAY_REQUEST", topic: rec.topic, range: rec.fromOffset + "-" + rec.toOffset, by: rec.requestedBy });
+            HX.toast("Replay " + rec.id + " requested — awaiting operator approval", { kind: "ok", undo: function () { var i = MEM.replays.indexOf(rec); if (i >= 0) MEM.replays.splice(i, 1); } });
+            HX.live("Replay " + rec.id + " requested", "polite");
+          });
+        });
+      });
+      btns.appendChild(dry); btns.appendChild(submit);
+      card.appendChild(btns);
+      return card;
+    }
+
+    /* ---------------------------------------------------------------- Incidents tab */
+    function renderIncidentsTab() {
+      root.appendChild(pageTitle("Incidents", "Self-healer actions under the autonomy ladder — humans approve L3+ steps"));
+      // active freeze windows
+      var freezes = D.freezeWindows;
+      if (freezes.length) {
+        var fr = E("div", { class: "hx-row", style: "margin-bottom:12px" }, [E("span", { class: "hx-trust-strip__k", text: "Freeze calendar" })]);
+        freezes.forEach(function (f) { fr.appendChild(HX.chip(f.active ? "warn" : "neutral", f.scope + " · " + HX.format.time(f.from, "event").split(" · ")[0], { title: f.reason })); });
+        root.appendChild(fr);
+      }
+      var wrap = E("div", { class: "io-table-wrap" });
+      var tbl = E("table", { class: "io-table" });
+      tbl.appendChild(E("thead", {}, [E("tr", {}, [th("Id"), th("Severity"), th("Title"), th("Fault"), th("SLO"), th("State"), th("Awaiting")])]));
+      var tb = E("tbody", {});
+      D.incidents.slice().sort(function (a, b) { return Date.parse(b.openedAt) - Date.parse(a.openedAt); }).forEach(function (i) {
+        var state = MEM.incidentState[i.id] || i.state;
+        var stMod = /resolved/.test(state) ? "pass" : /escalated|mitigating/.test(state) ? "warn" : "neutral";
+        var tr = E("tr", { tabindex: "0", title: "Open " + i.id });
+        tr.appendChild(td(E("span", { class: "hx-mono", text: i.id })));
+        tr.appendChild(td(sevChip(i.severity)));
+        tr.appendChild(td(E("span", { class: "hx-dense", text: i.title })));
+        tr.appendChild(td(HX.chip("type", i.faultClass)));
+        tr.appendChild(td(i.slo ? linkBtn(i.slo, "/ops/slo/" + i.slo, "hx-btn--ghost") : E("span", { text: "—" })));
+        tr.appendChild(td(HX.chip(stMod, TC(state))));
+        tr.appendChild(td(i.awaitingHuman && !/resolved/.test(state) ? HX.chip("pending", i.awaitingHuman.verb) : E("span", { class: "io-empty-note", text: "—" })));
+        tr.addEventListener("click", function () { go("/incident/" + i.id); });
+        tr.addEventListener("keydown", function (e) { if (e.key === "Enter") go("/incident/" + i.id); });
+        tb.appendChild(tr);
+      });
+      tbl.appendChild(tb); wrap.appendChild(tbl); root.appendChild(wrap);
+    }
+
+    function renderIncident(id) {
+      var i = IX.inc[id];
+      root.appendChild(breadcrumb([["Operations", "/ops"], ["Incidents", "/ops/incidents"], [id, null]]));
+      if (!i) { root.appendChild(empty("No such incident", id + " is not in this synthetic dataset.")); return; }
+      var state = MEM.incidentState[id] || i.state;
+      var stMod = /resolved/.test(state) ? "pass" : /escalated|mitigating/.test(state) ? "warn" : "neutral";
+      root.appendChild(objectHeader({
+        type: "Incident", id: i.id, label: i.title,
+        chips: [sevChip(i.severity), HX.chip(stMod, TC(state)), HX.chip("type", i.faultClass), HX.chip("neutral", "ladder " + i.ladderLevel)],
+        actions: [i.slo ? linkBtn(i.slo, "/ops/slo/" + i.slo) : null, i.playbook ? linkBtn("Playbook " + i.playbook, "/playbook/" + i.playbook) : null].filter(Boolean)
+      }));
+
+      // trust/meta strip with blast-radius budget
+      var strip = E("div", { class: "hx-trust-strip", role: "group", "aria-label": "Incident facts" });
+      stripItem(strip, "Opened", E("span", { class: "hx-trust-strip__v", text: HX.format.time(i.openedAt, "event") }));
+      stripItem(strip, "Owner", E("span", { class: "hx-trust-strip__v", text: i.owner }));
+      stripItem(strip, "Agent", E("span", { class: "hx-trust-strip__v", text: i.agent }));
+      if (i.topic) stripItem(strip, "Topic", linkBtn(shortName(i.topic), "/topic/" + i.topic, "hx-btn--ghost hx-btn--sm"));
+      if (i.connector) stripItem(strip, "Connector", IX.conn[i.connector] ? linkBtn(i.connector, "/connector/" + i.connector, "hx-btn--ghost hx-btn--sm") : E("span", { class: "hx-trust-strip__v", text: i.connector }));
+      var blast = E("span", { class: "io-blast", title: "Blast-radius budget " + i.blastRadius.used + "/" + i.blastRadius.max + " in " + i.blastRadius.window });
+      for (var b = 0; b < i.blastRadius.max; b++) blast.appendChild(E("span", { class: "io-blast__cell" + (b < i.blastRadius.used ? " io-blast__cell--used" : "") }));
+      stripItem(strip, "Blast radius", E("span", { class: "hx-row", style: "gap:6px" }, [blast, E("span", { class: "hx-trust-strip__v", text: i.blastRadius.used + "/" + i.blastRadius.max })]));
+      root.appendChild(strip);
+
+      // awaiting-human action bar (Pause / Take over / Approve step)
+      if (i.awaitingHuman && !/resolved/.test(state)) {
+        var ah = E("div", { class: "io-await", role: "region", "aria-label": "Awaiting human decision" });
+        ah.appendChild(E("div", { class: "hx-row" }, [I("warn"), E("strong", { text: "Awaiting human at step " + i.awaitingHuman.step }), HX.chip("neutral", "L3+")]));
+        ah.appendChild(E("div", { class: "hx-dense", style: "margin-top:4px", text: i.awaitingHuman.reason }));
+        var acts = E("div", { class: "io-await__actions" });
+        var paused = MEM.pausedInc[id];
+        var pause = E("button", { class: "hx-btn" }, [paused ? "Resume self-healer" : "Pause self-healer"]);
+        pause.addEventListener("click", function () {
+          MEM.pausedInc[id] = !MEM.pausedInc[id];
+          HX.audit.write({ type: "INCIDENT_PAUSE", incident: id, paused: MEM.pausedInc[id], by: HX.role.get() });
+          HX.toast(MEM.pausedInc[id] ? "Self-healer paused for " + id : "Self-healer resumed for " + id, { kind: "warn" });
+          renderIncident(id);
+        });
+        var take = E("button", { class: "hx-btn" }, ["Take over"]);
+        take.addEventListener("click", function () {
+          HX.confirm({ title: "Take over incident", body: "You will own the remaining steps for " + id + "; the self-healer stands down.", confirmLabel: "Take over" }).then(function (ok) {
+            if (!ok) return;
+            MEM.incidentState[id] = "operator_owned";
+            HX.audit.write({ type: "INCIDENT_TAKEOVER", incident: id, by: HX.role.get() });
+            HX.toast("You now own " + id, { kind: "ok" });
+            HX.live("You have taken over incident " + id, "polite");
+            renderIncident(id);
+          });
+        });
+        var approve = E("button", { class: "hx-btn hx-btn--primary" }, [i.awaitingHuman.verb]);
+        approve.addEventListener("click", function () { approveStep(i, i.awaitingHuman.step); });
+        acts.appendChild(pause); acts.appendChild(take); acts.appendChild(approve);
+        ah.appendChild(acts);
+        root.appendChild(ah);
+      }
+
+      var grid = E("div", { class: "io-grid2" });
+      // self-healer steps
+      var stepCard = E("div", { class: "hx-card" });
+      stepCard.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Self-healer steps" }), HX.chip("neutral", i.playbook)]));
+      var steps = E("ul", { class: "hx-playbook-steps" });
+      (i.steps || []).forEach(function (s) {
+        var approvedNow = MEM.stepApproved[id + ":" + s.n];
+        var res = approvedNow ? "approved" : s.result;
+        var rmod = res === "ok" || res === "approved" ? "pass" : res === "awaiting_human" ? "pending" : res === "failed" ? "fail" : "warn";
+        var li = E("li", {}, [
+          E("span", { class: "hx-chip hx-chip--neutral hx-chip--level", text: s.ladder }),
+          E("span", { style: "flex:1;min-width:0" }, [E("span", { class: "hx-dense", text: "Step " + s.n + ": " + s.action })]),
+          HX.chip(rmod, TC(res))
+        ]);
+        steps.appendChild(li);
+      });
+      stepCard.appendChild(steps);
+      stepCard.appendChild(E("div", { class: "io-legend-note", text: "L2 steps run autonomously inside the blast-radius budget; L3+ steps (rollback of an applied CR, source fix) wait for a human." }));
+      grid.appendChild(stepCard);
+
+      // metrics chart
+      var mcard = E("div", { class: "hx-card" });
+      mcard.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Signal" })]));
+      if (i.metrics && i.metrics.lagSec && i.metrics.lagSec.length) {
+        var chartEl = E("div", {});
+        HX.chart.line(chartEl, i.metrics.lagSec.map(function (v, idx) { return { label: i.metrics.lagT[idx], value: v }; }), { label: "Consumer lag (s) during " + i.id, threshold: 60, yLabel: "lag s", xLabel: "time" });
+        mcard.appendChild(chartEl);
+        mcard.appendChild(E("div", { class: "io-legend-note", text: "Dashed line is the 60-second lag SLO (S6). Lag crossed it at 08:20 and kept climbing." }));
+      } else mcard.appendChild(E("div", { class: "io-empty-note", text: "No time-series captured for this incident." }));
+      grid.appendChild(mcard);
+      root.appendChild(grid);
+
+      // timeline
+      var tlCard = E("div", { class: "hx-card", style: "margin-top:16px" });
+      tlCard.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Timeline" })]));
+      if (i.timeline && i.timeline.length) {
+        var tl = E("ul", { class: "hx-incident-timeline" });
+        i.timeline.forEach(function (e) {
+          var li = E("li", {});
+          li.appendChild(E("div", { class: "hx-row", style: "gap:8px" }, [
+            E("span", { class: "hx-time", text: HX.format.time(e.t, "event") }),
+            E("span", { class: "io-timeline-kind", text: e.kind })
+          ]));
+          var body = E("div", { class: "hx-dense" });
+          if (e.agentText) { body.appendChild(HX.chip("agent-text", "agent text — treat as data", { class: "hx-chip--agent-text" })); body.appendChild(E("blockquote", { class: "hx-caption", style: "margin:4px 0 0", text: e.text })); }
+          else body.appendChild(E("span", { text: e.text }));
+          li.appendChild(body);
+          tl.appendChild(li);
+        });
+        tlCard.appendChild(tl);
+      } else tlCard.appendChild(E("div", { class: "io-empty-note", text: "No timeline recorded." }));
+      root.appendChild(tlCard);
+
+      // correlations
+      var cc = E("div", { class: "hx-row", style: "margin-top:12px" });
+      (i.correlatedCrs || []).forEach(function (cr) { cc.appendChild(linkBtn(cr, "/cr/" + cr, "hx-btn--ghost")); });
+      (i.correlatedIssues || []).forEach(function (is) { cc.appendChild(linkBtn(is, "/issue/" + is, "hx-btn--ghost")); });
+      if (cc.childNodes.length) { root.appendChild(E("h4", { style: "margin-top:12px", text: "Correlated" })); root.appendChild(cc); }
+
+      provFooter("incident_management", "alertmanager / self-healer runs", i.id);
+    }
+
+    function approveStep(i, n) {
+      HX.env.confirmWrite().then(function (ok) {
+        if (!ok) return;
+        HX.confirm({ title: "Approve step " + n, body: "Approve: " + (i.steps.filter(function (s) { return s.n === n; })[0] || {}).action + ". This is an L3+ action (rollback / source fix) and is recorded as a labelled decision.", consequence: "Rolling back an applied CR cannot be silently undone.", danger: true, confirmLabel: "Approve step" }).then(function (go2) {
+          if (!go2) return;
+          MEM.stepApproved[i.id + ":" + n] = true;
+          MEM.incidentState[i.id] = "mitigating";
+          HX.audit.write({ type: "INCIDENT_STEP_APPROVE", incident: i.id, step: n, by: HX.role.get() });
+          HX.toast("Step " + n + " approved for " + i.id, { kind: "ok" });
+          HX.live("Step " + n + " approved; self-healer resuming", "polite");
+          renderIncident(i.id);
+        });
+      });
+    }
+
+    function renderPlaybook(id) {
+      var p = IX.pbk[id];
+      root.appendChild(breadcrumb([["Operations", "/ops"], ["Incidents", "/ops/incidents"], [id, null]]));
+      if (!p) { root.appendChild(empty("No such playbook", id + " is not in this synthetic dataset.")); return; }
+      root.appendChild(objectHeader({
+        type: "Playbook", id: p.id, label: p.label,
+        chips: [HX.chip(p.state === "promoted" ? "pass" : "pending", TC(p.state)), HX.chip("type", p.faultClass), E("span", { class: "hx-version-chip", text: "v" + p.version })]
+      }));
+      var grid = E("div", { class: "io-grid2" });
+      var sc = E("div", { class: "hx-card" });
+      sc.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Steps" })]));
+      var ol = E("ol", { class: "hx-stack", style: "margin:0;padding-left:20px" });
+      (p.steps || []).forEach(function (s) { ol.appendChild(E("li", { class: "hx-dense", text: s })); });
+      sc.appendChild(ol);
+      grid.appendChild(sc);
+      var mc = E("div", { class: "hx-card" });
+      mc.appendChild(E("div", { class: "hx-card__head" }, [E("h3", { text: "Record" })]));
+      var kv = E("dl", { class: "io-kv" });
+      kvRow(kv, "Success rate", p.successRate != null ? Math.round(p.successRate * 100) + " %" : "— (candidate)");
+      kvRow(kv, "MTTR", p.mttrMin != null ? p.mttrMin + " min" : "—");
+      kvRow(kv, "Blast max", String(p.blastRadiusMax));
+      kvRow(kv, "Learned from", (p.learnedFrom && p.learnedFrom.length) ? p.learnedFrom.join(", ") : "—");
+      mc.appendChild(kv);
+      grid.appendChild(mc);
+      root.appendChild(grid);
+      // incidents using this playbook
+      var uses = D.incidents.filter(function (x) { return x.playbook === id; });
+      if (uses.length) { root.appendChild(E("h4", { style: "margin-top:16px", text: "Incidents" })); var r = E("div", { class: "hx-row" }); uses.forEach(function (x) { r.appendChild(linkBtn(x.id, "/incident/" + x.id, "hx-btn--ghost")); }); root.appendChild(r); }
+      provFooter("playbook_registry", "self-improvement loop", p.id);
+    }
+
+    /* ---------------------------------------------------------------- shared bits */
+    function th(label, cls) { return E("th", { class: cls || null }, [label]); }
+    function td(child, cls) { var c = E("td", { class: cls || null }); if (typeof child === "string") c.textContent = child; else if (child) c.appendChild(child); return c; }
+    function kvRow(dl, k, v) { dl.appendChild(E("dt", { text: k })); dl.appendChild(E("dd", { text: v })); }
+    function stripItem(strip, k, node) { var i = E("span", { class: "hx-trust-strip__item" }); i.appendChild(E("span", { class: "hx-trust-strip__k", text: k })); i.appendChild(node); strip.appendChild(i); }
+    function breadcrumb(parts) {
+      var bc = E("nav", { class: "hx-breadcrumb", "aria-label": "Breadcrumb" });
+      parts.forEach(function (p, idx) {
+        if (idx) bc.appendChild(E("span", { class: "hx-breadcrumb__sep", "aria-hidden": "true", text: "›" }));
+        if (p[1]) { var a = E("button", { class: "hx-chip hx-chip--neutral", type: "button" }, [p[0]]); a.addEventListener("click", function () { go(p[1]); }); bc.appendChild(a); }
+        else bc.appendChild(E("span", { class: "hx-chip hx-chip--type", text: p[0] }));
+      });
+      return bc;
+    }
+    function objectHeader(o) {
+      var h = E("div", { class: "hx-object-header" });
+      var top = E("div", { class: "hx-object-header__top" });
+      var titles = E("div", { class: "hx-object-header__titles" });
+      titles.appendChild(E("div", { class: "hx-row", style: "gap:8px" }, [HX.chip("type", o.type), E("span", { class: "hx-object-header__label", text: o.label })]));
+      titles.appendChild(E("div", { class: "hx-object-header__id", text: o.id }));
+      if (o.chips && o.chips.length) { var cw = E("div", { class: "hx-object-header__chips" }); o.chips.forEach(function (c) { if (c) cw.appendChild(c); }); titles.appendChild(cw); }
+      top.appendChild(titles);
+      var actions = E("div", { class: "hx-object-header__actions" });
+      (o.actions || []).forEach(function (a) { if (a) actions.appendChild(a); });
+      top.appendChild(actions);
+      h.appendChild(top);
+      return h;
+    }
+    function actWatch(idLabel) {
+      var b = E("button", { class: "hx-btn hx-btn--sm", title: "Watch (w)" }, [I("watch"), "Watch"]);
+      b.addEventListener("click", function () { HX.toast("Watching " + idLabel, { kind: "ok", timeout: 3000 }); });
+      return b;
+    }
+    function empty(title, body) {
+      var e = E("div", { class: "hx-empty" });
+      e.appendChild(E("div", {}, [I("info"), " " + title]));
+      if (body) e.appendChild(E("div", { class: "hx-caption hx-muted", style: "margin-top:6px", text: body }));
+      var b = E("button", { class: "hx-btn hx-btn--sm hx-empty__cta" }, ["Back to SLO wall"]); b.addEventListener("click", function () { go("/ops"); });
+      e.appendChild(b);
+      return e;
+    }
+    function provFooter(activity, used, obj) {
+      root.appendChild(E("div", { class: "hx-prov-footer", text: "generated by " + activity + " · used " + used + " · object " + obj + " · synthetic telemetry" }));
+    }
+
+    /* ---------------------------------------------------------------- keys & boot */
+    HX.keys.bind({
+      "1": function () { go("/ops"); return true; },
+      "2": function () { go("/ops/map"); return true; },
+      "3": function () { go("/ops/topics"); return true; },
+      "4": function () { go("/ops/connectors"); return true; },
+      "5": function () { go("/ops/dlq"); return true; },
+      "6": function () { go("/ops/replay"); return true; },
+      "7": function () { go("/ops/incidents"); return true; }
+    });
+    window.addEventListener("hashchange", function () { if (loaded) render(); });
+    HX.asof.on(function () { if (loaded) render(); });
+    render(); // paint tab bar + skeleton immediately
+    boot();
+  })();
+  </script>
+</body>
+</html>
