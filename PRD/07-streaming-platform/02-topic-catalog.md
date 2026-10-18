@@ -36,7 +36,7 @@ the following fields:
 | `compatibility` | enum | Schema Registry compatibility mode; must equal the layer default |
 | `partitions` | integer | Immutable for the topic version (STR-TOP-013) |
 | `retention_ms` **or** `cleanup_policy: compact` | integer / const | Exactly one of the two |
-| `phi_class` | enum | `phi`, `phi-limited`, `de-identified`, `pii`, `non-phi` (module 11 scheme) |
+| `phi_class` | enum | Module 11 data-classification tag (GOV-01 §3): `phi:direct`, `phi:quasi`, `phi:clinical`, `phi:sensitive-category[/sud\|hiv\|mental-health\|reproductive\|genetic]`, `pii:workforce`, `confidential:financial`, `confidential:operational`, `internal`, `public`, `deidentified:safe-harbor`, `deidentified:expert`, `pseudonymised`; the most restrictive class of any record the topic may carry, and the ceiling for the `hc-phi-class` header (STR-03 §4) |
 | `producers`, `consumers` | list of principals | `connect.*`, `proc.*`, `sink.*`, `agent.*`, `svc.*`, `ci.*`, `sre.*`; these generate the ACLs (STR-TOP-007) |
 | `description` | string | Purpose; starts with the layer label |
 
@@ -72,7 +72,7 @@ hc.<layer>.<domain>[.<subdomain>].<entity>.<event-or-format>.v<N>
 stateDiagram-v2
   [*] --> Proposed: change request on hc.ops.agent.changerequest.v1<br/>(agent.source_mapper / agent.inventory / engineer)
   Proposed --> Review: catalog linter + schema validation pass
-  Review --> Approved: agent.evaluator score >= threshold<br/>and agent.privacy_guardian approval when phi_class in (phi, phi-limited, pii)
+  Review --> Approved: agent.evaluator score >= threshold<br/>and agent.privacy_guardian approval when phi_class is phi:* , pii:* or pseudonymised
   Review --> Rejected
   Approved --> Merged: PR to topics.yaml merged by agent.release_manager
   Merged --> Created: GitOps applies topic, ACLs, quotas, schema subject compatibility
@@ -87,7 +87,8 @@ stateDiagram-v2
 2. **Review.** CI runs `topics.schema.json` validation, the catalog linter (unique names, layer/name agreement,
    `schema_subject` = `<name>-value`, retention floors, source-named `raw`/`std` domains, every `raw` has a `std`
    counterpart) and schema compatibility. `agent.evaluator` scores completeness and consistency with the ontology
-   (entity bound to an ontology class IRI). PHI-bearing topics require `agent.privacy_guardian` approval.
+   (entity bound to an ontology class IRI). Topics classed `phi:*`, `pii:*` or `pseudonymised` require
+   `agent.privacy_guardian` approval.
 3. **Create.** `agent.release_manager` merges; the GitOps controller creates the topic with the catalog's parameters,
    applies ACLs for the listed principals, registers the subject's compatibility mode and emits
    `hc.ops.schema.change.v1`. Brokers run `auto.create.topics.enable=false`, so this is the only way a topic exists.
@@ -103,15 +104,15 @@ any difference.
 | Group | Kafka domain | Owner (steward team) | Owns topics in |
 |-------|--------------|----------------------|----------------|
 | source | `cerner`, `fusion`, `lis`, `ris`, `pacs`, `pharmacy`, `clearinghouse`, `payer`, `hie`, `portal`, `devices`, `credentialing`, `timekeeping`, `outbound` | Integration Engineering (per source team) | `raw`, `std` |
-| G1 | `party` | G1 Party & Identity stewards | `canonical.party.*`, `dq.quarantine.party`, `edw.cdc.g1` |
-| G2 | `clinical` | G2 Clinical data stewards | `canonical.clinical.*`, `dq.quarantine.clinical`, `edw.cdc.g2` |
-| G3 | `finance` | G3 Revenue Cycle & Finance stewards | `canonical.finance.*`, `dq.quarantine.finance`, `edw.cdc.g3` |
-| G4 | `supply` | G4 Supply Chain & Operations stewards | `canonical.supply.*`, `dq.quarantine.supply`, `edw.cdc.g4` |
-| G5 | `workforce` | G5 Workforce stewards | `canonical.workforce.*`, `dq.quarantine.workforce`, `edw.cdc.g5` |
-| G6 | `pophealth` | G6 Population Health stewards | `canonical.pophealth.*`, `dq.quarantine.pophealth`, `edw.cdc.g6` |
-| G7 | `research` | G7 Research & Analytics stewards | `canonical.research.*`, `dq.quarantine.research`, `edw.cdc.g7` |
-| G8 | `reference` | G8 Reference & Terminology stewards | `canonical.reference.*`, `dq.quarantine.reference`, `edw.cdc.g8` |
-| G9 | `governance` | G9 Metadata, Quality & Governance (Data Platform) | `dq.result/issue/scorecard/rule-activation`, `kg.*`, `edw.cdc.g9`, all `ops.*` |
+| G1 | `party` | G1 Party & Identity stewards | `canonical.party.*`, `dq.quarantine.party`, `dq.passed.party`, `kg.er.link`, `edw.cdc.g1` |
+| G2 | `clinical` | G2 Clinical data stewards | `canonical.clinical.*`, `dq.quarantine.clinical`, `dq.passed.clinical`, `edw.cdc.g2` |
+| G3 | `finance` | G3 Revenue Cycle & Finance stewards | `canonical.finance.*`, `dq.quarantine.finance`, `dq.passed.finance`, `edw.cdc.g3` |
+| G4 | `supply` | G4 Supply Chain & Operations stewards | `canonical.supply.*`, `dq.quarantine.supply`, `dq.passed.supply`, `edw.cdc.g4` |
+| G5 | `workforce` | G5 Workforce stewards | `canonical.workforce.*`, `dq.quarantine.workforce`, `dq.passed.workforce`, `edw.cdc.g5` |
+| G6 | `pophealth` | G6 Population Health stewards | `canonical.pophealth.*`, `dq.quarantine.pophealth`, `dq.passed.pophealth`, `edw.cdc.g6` |
+| G7 | `research` | G7 Research & Analytics stewards | `canonical.research.*`, `dq.quarantine.research`, `dq.passed.research`, `edw.cdc.g7` |
+| G8 | `reference` | G8 Reference & Terminology stewards | `canonical.reference.*`, `dq.quarantine.reference`, `dq.passed.reference`, `edw.cdc.g8` |
+| G9 | `governance` | G9 Metadata, Quality & Governance (Data Platform) | `dq.result/issue/scorecard/rule-activation`, `kg.assertion/retraction/load-receipt/dlq`, `edw.cdc.g9`, all `ops.*` (including `ops.dq.rulepack`, `ops.kg-edw-reconciliation`, `ops.audit.break-glass`, `ops.agent.*`, `ops.heal.*`) |
 
 Owners approve consumer onboarding, set DQ blocking thresholds for their quarantine topics (module 09) and are paged
 for consumer-lag SLO breaches on their topics (module 12).
@@ -120,163 +121,195 @@ for consumer-lag SLO breaches on their topics (module 12).
 
 | Layer | Partitions (default) | Retention / policy | Value format | Compatibility | Typical PHI |
 |-------|----------------------|--------------------|--------------|---------------|-------------|
-| `raw` | 6 (HL7 high-volume 12–24; BICC 3–6) | 30 d | `avro-envelope` (opaque) / `avro` (rows) | `BACKWARD` | `phi` |
+| `raw` | 6 (HL7 high-volume 12–24; BICC 3–6) | 30 d | `avro-envelope` (opaque) / `avro` (rows) | `BACKWARD` | `phi:direct` (clinical feeds), `pii:workforce` (HCM), `confidential:financial` (ERP), `internal` (reference) |
 | `std` | same as its `raw` | 14 d | `avro` / `fhir-json` | `BACKWARD` | same as `raw` |
 | `canonical` events | 6–12 (Encounter 24, Observation 48) | 90 d | `fhir-json` / `fhir-ext-json` | `BACKWARD_TRANSITIVE` | per resource |
 | `canonical` snapshots | same as event topic | compact | same | `BACKWARD_TRANSITIVE` | same |
-| `dq` | 6 (result 24) | 90 d (scorecard, rule-activation compact) | `avro` | `BACKWARD_TRANSITIVE` | `phi-limited` |
-| `kg` | 24 / 6 / 3 | 30 d | `avro` | `FULL` | `phi` |
+| `dq` | 6 (result 24; passed = canonical volume) | 90 d (scorecard, rule-activation compact) | `avro` | `BACKWARD_TRANSITIVE` | `phi:quasi` (result, issue); quarantine/passed inherit the domain's most restrictive class |
+| `kg` | 24 / 12 / 6 / 3 | 30 d | `avro` (`avro-envelope` for DLQ) | `FULL` | `phi:direct` |
 | `edw` | 12 (G2 24) | 14 d | `avro` | `FULL` | per group |
-| `ops` | 3–6 | 7 d (30 d exceptions) | `json` / `avro` / `avro-envelope` | `BACKWARD` | `non-phi` (DLQ `phi`) |
+| `ops` | 3–6 | 7 d (30 d exceptions; reconciliation 90 d; decision log 7 y; rulepack, memory, policy compact) | `json` / `avro` / `avro-envelope` | `BACKWARD` | `internal` (DLQ `phi:direct`; audit, break-glass, reconciliation, outbound ACK `phi:quasi`) |
 
 Deviation from a default is permitted only through the catalog entry and must be justified in the change request.
 
 ## 6. Initial topic list
 
-Counts: 48 `raw`, 50 `std` (48 parsed counterparts + 2 outbound), 60 `canonical` (51 event/compact-only + 9 snapshots),
-12 `dq`, 3 `kg`, 9 `edw`, 11 `ops` — **193 topics**, 14 compacted.
+Counts: 48 `raw`, 50 `std` (48 parsed counterparts + 2 outbound), 61 `canonical` (52 event/compact-only + 9 snapshots),
+22 `dq` (5 cross-domain + 9 quarantine + 8 passed), 5 `kg`, 9 `edw`, 25 `ops` — **220 topics**, 19 compacted.
+The PHI column holds the module 11 `phi_class` tag (§1).
 
 ### 6.1 Raw and standardised layers (per source and feed)
 
 Every registered feed has one `raw` topic and one `std` counterpart with the same key and partition count. Keys for HL7
-feeds are `MSH-4|PID-3.1`, falling back to `MSH-10` for messages without a PID segment (STR-01 §5.1).
+feeds are `MSH-4|PID-3.1`, falling back to `MSH-10` for messages without a PID segment (STR-01 §5.1). Feeds carrying
+patient identifiers are `phi:direct`; HCM/credentialing/timekeeping feeds are `pii:workforce`; ERP finance and supply
+feeds are `confidential:financial` (`confidential:operational` for on-hand balances); source reference data is `internal`.
 
 | Source feed | raw topic | std topic | Key | Parts | PHI |
 |---|---|---|---|---|---|
-| Cerner ADT (A01-A60) | `hc.raw.cerner.adt.hl7v2.v1` | `hc.std.cerner.adt.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 24 | phi |
-| Cerner ORM/OMG/OMP | `hc.raw.cerner.orm.hl7v2.v1` | `hc.std.cerner.orm.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 12 | phi |
-| Cerner ORU^R01 | `hc.raw.cerner.oru.hl7v2.v1` | `hc.std.cerner.oru.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 24 | phi |
-| Cerner SIU^S12-S26 | `hc.raw.cerner.siu.hl7v2.v1` | `hc.std.cerner.siu.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 6 | phi |
-| Cerner MDM^T02/T08 | `hc.raw.cerner.mdm.hl7v2.v1` | `hc.std.cerner.mdm.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 6 | phi |
-| Cerner DFT^P03 | `hc.raw.cerner.dft.hl7v2.v1` | `hc.std.cerner.dft.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 12 | phi |
-| Cerner RDE/RAS | `hc.raw.cerner.rde.hl7v2.v1` | `hc.std.cerner.rde.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 12 | phi |
-| Cerner VXU^V04 | `hc.raw.cerner.vxu.hl7v2.v1` | `hc.std.cerner.vxu.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 3 | phi |
-| Cerner MFN^M02/M05/M08 | `hc.raw.cerner.mfn.hl7v2.v1` | `hc.std.cerner.mfn.hl7v2-parsed.v1` | `MFI-1\|MFE-4` | 3 | non-phi |
-| V500.PERSON + PERSON_ALIAS | `hc.raw.cerner.cdc.person.avro.v1` | `hc.std.cerner.cdc.person.typed.v1` | `person_id` | 12 | phi |
-| V500.ENCOUNTER + ENCNTR_ALIAS | `hc.raw.cerner.cdc.encounter.avro.v1` | `hc.std.cerner.cdc.encounter.typed.v1` | `encntr_id` | 12 | phi |
-| V500.CLINICAL_EVENT (+CE_*) | `hc.raw.cerner.cdc.clinical_event.avro.v1` | `hc.std.cerner.cdc.clinical_event.typed.v1` | `event_id` | 24 | phi |
-| V500.ORDERS + ORDER_DETAIL | `hc.raw.cerner.cdc.orders.avro.v1` | `hc.std.cerner.cdc.orders.typed.v1` | `order_id` | 12 | phi |
-| V500.DIAGNOSIS + NOMENCLATURE | `hc.raw.cerner.cdc.diagnosis.avro.v1` | `hc.std.cerner.cdc.diagnosis.typed.v1` | `diagnosis_id` | 6 | phi |
-| V500.PROCEDURE | `hc.raw.cerner.cdc.procedure.avro.v1` | `hc.std.cerner.cdc.procedure.typed.v1` | `procedure_id` | 6 | phi |
-| V500.ALLERGY + REACTION | `hc.raw.cerner.cdc.allergy.avro.v1` | `hc.std.cerner.cdc.allergy.typed.v1` | `allergy_id` | 3 | phi |
-| V500.PRSNL + PRSNL_ALIAS | `hc.raw.cerner.cdc.prsnl.avro.v1` | `hc.std.cerner.cdc.prsnl.typed.v1` | `person_id` | 3 | pii |
-| V500.ORGANIZATION | `hc.raw.cerner.cdc.organization.avro.v1` | `hc.std.cerner.cdc.organization.typed.v1` | `organization_id` | 3 | non-phi |
-| V500.CODE_VALUE + CODE_SET | `hc.raw.cerner.cdc.code_value.avro.v1` | `hc.std.cerner.cdc.code_value.typed.v1` | `code_value` | 3 | non-phi |
-| Millennium FHIR R4 $export | `hc.raw.cerner.fhir.bulk.ndjson.v1` | `hc.std.cerner.fhir.bulk.validated.v1` | `resourceType\|id` | 12 | phi |
-| FscmTopModelAM.FinGlJournalsAM.JournalLinePVO | `hc.raw.fusion.gl.journal_line.bicc.v1` | `hc.std.fusion.gl.journal_line.typed.v1` | `je_header_id\|je_line_num` | 6 | non-phi |
-| FinGlCodeCombinationPVO | `hc.raw.fusion.gl.code_combination.bicc.v1` | `hc.std.fusion.gl.code_combination.typed.v1` | `code_combination_id` | 3 | non-phi |
-| FinApInvoicesPVO + InvoiceLinesPVO | `hc.raw.fusion.ap.invoice.bicc.v1` | `hc.std.fusion.ap.invoice.typed.v1` | `invoice_id` | 6 | non-phi |
-| PrcPoPurchaseOrderLinePVO | `hc.raw.fusion.po.order_line.bicc.v1` | `hc.std.fusion.po.order_line.typed.v1` | `po_line_id` | 6 | non-phi |
-| RcvTransactionPVO | `hc.raw.fusion.po.receipt_line.bicc.v1` | `hc.std.fusion.po.receipt_line.typed.v1` | `rcv_transaction_id` | 3 | non-phi |
-| EgpItemPVO | `hc.raw.fusion.inv.item.bicc.v1` | `hc.std.fusion.inv.item.typed.v1` | `inventory_item_id\|organization_id` | 3 | non-phi |
-| InvOnhandQuantitiesPVO | `hc.raw.fusion.inv.onhand_balance.bicc.v1` | `hc.std.fusion.inv.onhand_balance.typed.v1` | `inventory_item_id\|organization_id\|subinventory_code` | 6 | non-phi |
-| PozSupplierPVO + SitePVO | `hc.raw.fusion.scm.supplier.bicc.v1` | `hc.std.fusion.scm.supplier.typed.v1` | `vendor_id` | 3 | non-phi |
-| PerAllPeoplePVO + PersonNamesPVO | `hc.raw.fusion.hcm.worker.bicc.v1` | `hc.std.fusion.hcm.worker.typed.v1` | `person_id` | 6 | pii |
-| PerAllAssignmentsMPVO | `hc.raw.fusion.hcm.assignment.bicc.v1` | `hc.std.fusion.hcm.assignment.typed.v1` | `assignment_id` | 6 | pii |
-| HcmPositionsPVO | `hc.raw.fusion.hcm.position.bicc.v1` | `hc.std.fusion.hcm.position.typed.v1` | `position_id` | 3 | non-phi |
-| FaAdditionsPVO + FaBooksPVO | `hc.raw.fusion.fa.asset.bicc.v1` | `hc.std.fusion.fa.asset.typed.v1` | `asset_id` | 3 | non-phi |
-| LIS ORU^R01 | `hc.raw.lis.oru.hl7v2.v1` | `hc.std.lis.oru.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 12 | phi |
-| RIS ORU^R01 | `hc.raw.ris.oru.hl7v2.v1` | `hc.std.ris.oru.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 6 | phi |
-| DICOMweb QIDO-RS study metadata | `hc.raw.pacs.study.dicom-json.v1` | `hc.std.pacs.study.typed.v1` | `study_instance_uid` | 6 | phi |
-| Pharmacy RDS^O13 | `hc.raw.pharmacy.rds.hl7v2.v1` | `hc.std.pharmacy.rds.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 6 | phi |
-| X12 005010X222/X223 837P/837I | `hc.raw.clearinghouse.x12.837.v1` | `hc.std.clearinghouse.x12.837-parsed.v1` | `isa13\|gs06\|st02` | 6 | phi |
-| X12 005010X221 835 | `hc.raw.clearinghouse.x12.835.v1` | `hc.std.clearinghouse.x12.835-parsed.v1` | `isa13\|gs06\|st02` | 6 | phi |
-| X12 005010X214 277CA | `hc.raw.clearinghouse.x12.277.v1` | `hc.std.clearinghouse.x12.277-parsed.v1` | `isa13\|gs06\|st02` | 3 | phi |
-| X12 005010X279 271 | `hc.raw.payer.x12.271.v1` | `hc.std.payer.x12.271-parsed.v1` | `isa13\|gs06\|st02` | 6 | phi |
-| X12 005010X217 278 | `hc.raw.payer.x12.278.v1` | `hc.std.payer.x12.278-parsed.v1` | `isa13\|gs06\|st02` | 3 | phi |
-| Payer attribution/roster files | `hc.raw.payer.attribution.csv.v1` | `hc.std.payer.attribution.csv-parsed.v1` | `payer_id\|member_id` | 3 | phi |
-| C-CDA 2.1 via IHE XDS.b / Direct | `hc.raw.hie.ccda.v1` | `hc.std.hie.ccda.parsed.v1` | `document_id` | 6 | phi |
-| HIE ADT notifications | `hc.raw.hie.adt.hl7v2.v1` | `hc.std.hie.adt.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 6 | phi |
-| Portal FHIR Subscription (QuestionnaireResponse) | `hc.raw.portal.questionnaireresponse.fhir-json.v1` | `hc.std.portal.questionnaireresponse.validated.v1` | `patient_id` | 3 | phi |
-| Device gateway JSON (IEEE 11073 mapped) | `hc.raw.devices.observation.json.v1` | `hc.std.devices.observation.typed.v1` | `device_id` | 12 | phi |
-| Credentialing export (CSV) | `hc.raw.credentialing.practitioner.csv.v1` | `hc.std.credentialing.practitioner.csv-parsed.v1` | `npi` | 3 | pii |
-| Timekeeping export (CSV) | `hc.raw.timekeeping.timecard.csv.v1` | `hc.std.timekeeping.timecard.csv-parsed.v1` | `person_number` | 3 | pii |
+| Cerner ADT (A01-A60) | `hc.raw.cerner.adt.hl7v2.v1` | `hc.std.cerner.adt.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 24 | phi:direct |
+| Cerner ORM/OMG/OMP | `hc.raw.cerner.orm.hl7v2.v1` | `hc.std.cerner.orm.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 12 | phi:direct |
+| Cerner ORU^R01 | `hc.raw.cerner.oru.hl7v2.v1` | `hc.std.cerner.oru.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 24 | phi:direct |
+| Cerner SIU^S12-S26 | `hc.raw.cerner.siu.hl7v2.v1` | `hc.std.cerner.siu.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 6 | phi:direct |
+| Cerner MDM^T02/T08 | `hc.raw.cerner.mdm.hl7v2.v1` | `hc.std.cerner.mdm.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 6 | phi:direct |
+| Cerner DFT^P03 | `hc.raw.cerner.dft.hl7v2.v1` | `hc.std.cerner.dft.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 12 | phi:direct |
+| Cerner RDE/RAS | `hc.raw.cerner.rde.hl7v2.v1` | `hc.std.cerner.rde.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 12 | phi:direct |
+| Cerner VXU^V04 | `hc.raw.cerner.vxu.hl7v2.v1` | `hc.std.cerner.vxu.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 3 | phi:direct |
+| Cerner MFN^M02/M05/M08 | `hc.raw.cerner.mfn.hl7v2.v1` | `hc.std.cerner.mfn.hl7v2-parsed.v1` | `MFI-1\|MFE-4` | 3 | internal |
+| V500.PERSON + PERSON_ALIAS | `hc.raw.cerner.cdc.person.avro.v1` | `hc.std.cerner.cdc.person.typed.v1` | `person_id` | 12 | phi:direct |
+| V500.ENCOUNTER + ENCNTR_ALIAS | `hc.raw.cerner.cdc.encounter.avro.v1` | `hc.std.cerner.cdc.encounter.typed.v1` | `encntr_id` | 12 | phi:direct |
+| V500.CLINICAL_EVENT (+CE_*) | `hc.raw.cerner.cdc.clinical_event.avro.v1` | `hc.std.cerner.cdc.clinical_event.typed.v1` | `event_id` | 24 | phi:direct |
+| V500.ORDERS + ORDER_DETAIL | `hc.raw.cerner.cdc.orders.avro.v1` | `hc.std.cerner.cdc.orders.typed.v1` | `order_id` | 12 | phi:direct |
+| V500.DIAGNOSIS + NOMENCLATURE | `hc.raw.cerner.cdc.diagnosis.avro.v1` | `hc.std.cerner.cdc.diagnosis.typed.v1` | `diagnosis_id` | 6 | phi:direct |
+| V500.PROCEDURE | `hc.raw.cerner.cdc.procedure.avro.v1` | `hc.std.cerner.cdc.procedure.typed.v1` | `procedure_id` | 6 | phi:direct |
+| V500.ALLERGY + REACTION | `hc.raw.cerner.cdc.allergy.avro.v1` | `hc.std.cerner.cdc.allergy.typed.v1` | `allergy_id` | 3 | phi:direct |
+| V500.PRSNL + PRSNL_ALIAS | `hc.raw.cerner.cdc.prsnl.avro.v1` | `hc.std.cerner.cdc.prsnl.typed.v1` | `person_id` | 3 | pii:workforce |
+| V500.ORGANIZATION | `hc.raw.cerner.cdc.organization.avro.v1` | `hc.std.cerner.cdc.organization.typed.v1` | `organization_id` | 3 | internal |
+| V500.CODE_VALUE + CODE_SET | `hc.raw.cerner.cdc.code_value.avro.v1` | `hc.std.cerner.cdc.code_value.typed.v1` | `code_value` | 3 | internal |
+| Millennium FHIR R4 $export | `hc.raw.cerner.fhir.bulk.ndjson.v1` | `hc.std.cerner.fhir.bulk.validated.v1` | `resourceType\|id` | 12 | phi:direct |
+| FscmTopModelAM.FinGlJournalsAM.JournalLinePVO | `hc.raw.fusion.gl.journal_line.bicc.v1` | `hc.std.fusion.gl.journal_line.typed.v1` | `je_header_id\|je_line_num` | 6 | confidential:financial |
+| FinGlCodeCombinationPVO | `hc.raw.fusion.gl.code_combination.bicc.v1` | `hc.std.fusion.gl.code_combination.typed.v1` | `code_combination_id` | 3 | confidential:financial |
+| FinApInvoicesPVO + InvoiceLinesPVO | `hc.raw.fusion.ap.invoice.bicc.v1` | `hc.std.fusion.ap.invoice.typed.v1` | `invoice_id` | 6 | confidential:financial |
+| PrcPoPurchaseOrderLinePVO | `hc.raw.fusion.po.order_line.bicc.v1` | `hc.std.fusion.po.order_line.typed.v1` | `po_line_id` | 6 | confidential:financial |
+| RcvTransactionPVO | `hc.raw.fusion.po.receipt_line.bicc.v1` | `hc.std.fusion.po.receipt_line.typed.v1` | `rcv_transaction_id` | 3 | confidential:financial |
+| EgpItemPVO | `hc.raw.fusion.inv.item.bicc.v1` | `hc.std.fusion.inv.item.typed.v1` | `inventory_item_id\|organization_id` | 3 | confidential:financial |
+| InvOnhandQuantitiesPVO | `hc.raw.fusion.inv.onhand_balance.bicc.v1` | `hc.std.fusion.inv.onhand_balance.typed.v1` | `inventory_item_id\|organization_id\|subinventory_code` | 6 | confidential:operational |
+| PozSupplierPVO + SitePVO | `hc.raw.fusion.scm.supplier.bicc.v1` | `hc.std.fusion.scm.supplier.typed.v1` | `vendor_id` | 3 | confidential:financial |
+| PerAllPeoplePVO + PersonNamesPVO | `hc.raw.fusion.hcm.worker.bicc.v1` | `hc.std.fusion.hcm.worker.typed.v1` | `person_id` | 6 | pii:workforce |
+| PerAllAssignmentsMPVO | `hc.raw.fusion.hcm.assignment.bicc.v1` | `hc.std.fusion.hcm.assignment.typed.v1` | `assignment_id` | 6 | pii:workforce |
+| HcmPositionsPVO | `hc.raw.fusion.hcm.position.bicc.v1` | `hc.std.fusion.hcm.position.typed.v1` | `position_id` | 3 | internal |
+| FaAdditionsPVO + FaBooksPVO | `hc.raw.fusion.fa.asset.bicc.v1` | `hc.std.fusion.fa.asset.typed.v1` | `asset_id` | 3 | confidential:financial |
+| LIS ORU^R01 | `hc.raw.lis.oru.hl7v2.v1` | `hc.std.lis.oru.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 12 | phi:direct |
+| RIS ORU^R01 | `hc.raw.ris.oru.hl7v2.v1` | `hc.std.ris.oru.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 6 | phi:direct |
+| DICOMweb QIDO-RS study metadata | `hc.raw.pacs.study.dicom-json.v1` | `hc.std.pacs.study.typed.v1` | `study_instance_uid` | 6 | phi:direct |
+| Pharmacy RDS^O13 | `hc.raw.pharmacy.rds.hl7v2.v1` | `hc.std.pharmacy.rds.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 6 | phi:direct |
+| X12 005010X222/X223 837P/837I | `hc.raw.clearinghouse.x12.837.v1` | `hc.std.clearinghouse.x12.837-parsed.v1` | `isa13\|gs06\|st02` | 6 | phi:direct |
+| X12 005010X221 835 | `hc.raw.clearinghouse.x12.835.v1` | `hc.std.clearinghouse.x12.835-parsed.v1` | `isa13\|gs06\|st02` | 6 | phi:direct |
+| X12 005010X214 277CA | `hc.raw.clearinghouse.x12.277.v1` | `hc.std.clearinghouse.x12.277-parsed.v1` | `isa13\|gs06\|st02` | 3 | phi:direct |
+| X12 005010X279 271 | `hc.raw.payer.x12.271.v1` | `hc.std.payer.x12.271-parsed.v1` | `isa13\|gs06\|st02` | 6 | phi:direct |
+| X12 005010X217 278 | `hc.raw.payer.x12.278.v1` | `hc.std.payer.x12.278-parsed.v1` | `isa13\|gs06\|st02` | 3 | phi:direct |
+| Payer attribution/roster files | `hc.raw.payer.attribution.csv.v1` | `hc.std.payer.attribution.csv-parsed.v1` | `payer_id\|member_id` | 3 | phi:direct |
+| C-CDA 2.1 via IHE XDS.b / Direct | `hc.raw.hie.ccda.v1` | `hc.std.hie.ccda.parsed.v1` | `document_id` | 6 | phi:direct |
+| HIE ADT notifications | `hc.raw.hie.adt.hl7v2.v1` | `hc.std.hie.adt.hl7v2-parsed.v1` | `MSH-4\|PID-3.1` | 6 | phi:direct |
+| Portal FHIR Subscription (QuestionnaireResponse) | `hc.raw.portal.questionnaireresponse.fhir-json.v1` | `hc.std.portal.questionnaireresponse.validated.v1` | `patient_id` | 3 | phi:direct |
+| Device gateway JSON (IEEE 11073 mapped) | `hc.raw.devices.observation.json.v1` | `hc.std.devices.observation.typed.v1` | `device_id` | 12 | phi:direct |
+| Credentialing export (CSV) | `hc.raw.credentialing.practitioner.csv.v1` | `hc.std.credentialing.practitioner.csv-parsed.v1` | `npi` | 3 | pii:workforce |
+| Timekeeping export (CSV) | `hc.raw.timekeeping.timecard.csv.v1` | `hc.std.timekeeping.timecard.csv-parsed.v1` | `person_number` | 3 | pii:workforce |
 
 Outbound HL7 v2 (generated from canonical, STR-05 §2.7):
 
 | Topic | Key | Parts | PHI | Purpose |
 |---|---|---|---|---|
-| `hc.std.outbound.adt.hl7v2.v1` | `patient_bk` | 12 | phi | ADT for legacy consumers, derived from canonical Encounter/Patient |
-| `hc.std.outbound.oru.hl7v2.v1` | `patient_bk` | 12 | phi | ORU^R01 derived from canonical Observation/DiagnosticReport |
+| `hc.std.outbound.adt.hl7v2.v1` | `patient_bk` | 12 | phi:direct | ADT for legacy consumers, derived from canonical Encounter/Patient |
+| `hc.std.outbound.oru.hl7v2.v1` | `patient_bk` | 12 | phi:direct | ORU^R01 derived from canonical Observation/DiagnosticReport |
 
 ### 6.2 Canonical layer (FHIR R4 per domain)
 
 `fhir` topics carry FHIR R4 resources conforming to US Core 6.1 plus HEALIX profiles; `fhir-ext` topics carry
 HEALIX-ERP extension resources (module 06). A **snapshot** topic is compacted and keyed identically; it exists for the
 conformed-dimension entities (Patient, Practitioner, Organization, Location, Encounter, Account, Coverage, Item,
-Worker). Reference topics are compact-only (no separate event topic).
+Worker). Reference topics are compact-only (no separate event topic). Classification: resources carrying patient,
+member or account identifiers (Patient, RelatedPerson, Account, Coverage, Claim*, PaymentReconciliation, Attribution,
+ResearchSubject) are `phi:direct`; clinical resources keyed by `patient_bk` without direct identifiers are
+`phi:clinical`; limited data sets (Invoice, SupplyDelivery, MeasureReport) are `phi:quasi`; practitioner and workforce
+resources are `pii:workforce`; ERP finance/supply resources are `confidential:financial` or `confidential:operational`;
+published terminology and the organisation directory are `public`. Snapshot topics inherit the event topic's class.
 
 | Group | Event topic | FHIR resource / profile | Key | Parts | PHI | Snapshot |
 |---|---|---|---|---|---|---|
-| G1 | `hc.canonical.party.patient.fhir.v1` | Patient (US Core) | `patient_bk (EMPI id)` | 12 | phi | `...fhir-snapshot.v1` |
-| G1 | `hc.canonical.party.practitioner.fhir.v1` | Practitioner (US Core) | `practitioner_bk (NPI or source id)` | 6 | pii | `...fhir-snapshot.v1` |
-| G1 | `hc.canonical.party.practitionerrole.fhir.v1` | PractitionerRole (US Core) | `practitioner_bk` | 6 | pii | no |
-| G1 | `hc.canonical.party.organization.fhir.v1` | Organization (US Core) | `organization_bk` | 3 | non-phi | `...fhir-snapshot.v1` |
-| G1 | `hc.canonical.party.location.fhir.v1` | Location (US Core) | `location_bk` | 3 | non-phi | `...fhir-snapshot.v1` |
-| G1 | `hc.canonical.party.relatedperson.fhir.v1` | RelatedPerson | `patient_bk` | 3 | phi | no |
-| G2 | `hc.canonical.clinical.encounter.fhir.v1` | Encounter (US Core) | `patient_bk` | 24 | phi | `...fhir-snapshot.v1` |
-| G2 | `hc.canonical.clinical.condition.fhir.v1` | Condition (US Core) | `patient_bk` | 12 | phi | no |
-| G2 | `hc.canonical.clinical.procedure.fhir.v1` | Procedure (US Core) | `patient_bk` | 12 | phi | no |
-| G2 | `hc.canonical.clinical.observation.fhir.v1` | Observation (US Core Lab/Vitals) | `patient_bk` | 48 | phi | no |
-| G2 | `hc.canonical.clinical.diagnosticreport.fhir.v1` | DiagnosticReport (US Core) | `patient_bk` | 12 | phi | no |
-| G2 | `hc.canonical.clinical.servicerequest.fhir.v1` | ServiceRequest (US Core) | `patient_bk` | 12 | phi | no |
-| G2 | `hc.canonical.clinical.medicationrequest.fhir.v1` | MedicationRequest (US Core) | `patient_bk` | 12 | phi | no |
-| G2 | `hc.canonical.clinical.medicationdispense.fhir.v1` | MedicationDispense | `patient_bk` | 6 | phi | no |
-| G2 | `hc.canonical.clinical.medicationadministration.fhir.v1` | MedicationAdministration | `patient_bk` | 12 | phi | no |
-| G2 | `hc.canonical.clinical.allergyintolerance.fhir.v1` | AllergyIntolerance (US Core) | `patient_bk` | 6 | phi | no |
-| G2 | `hc.canonical.clinical.immunization.fhir.v1` | Immunization (US Core) | `patient_bk` | 3 | phi | no |
-| G2 | `hc.canonical.clinical.documentreference.fhir.v1` | DocumentReference (US Core) | `patient_bk` | 6 | phi | no |
-| G2 | `hc.canonical.clinical.specimen.fhir.v1` | Specimen | `patient_bk` | 6 | phi | no |
-| G2 | `hc.canonical.clinical.imagingstudy.fhir.v1` | ImagingStudy | `patient_bk` | 6 | phi | no |
-| G3 | `hc.canonical.finance.account.fhir.v1` | Account | `account_bk` | 12 | phi | `...fhir-snapshot.v1` |
-| G3 | `hc.canonical.finance.chargeitem.fhir.v1` | ChargeItem | `account_bk` | 12 | phi | no |
-| G3 | `hc.canonical.finance.claim.fhir.v1` | Claim | `claim_bk` | 12 | phi | no |
-| G3 | `hc.canonical.finance.claimresponse.fhir.v1` | ClaimResponse | `claim_bk` | 6 | phi | no |
-| G3 | `hc.canonical.finance.paymentreconciliation.fhir.v1` | PaymentReconciliation | `claim_bk` | 6 | phi | no |
-| G3 | `hc.canonical.finance.coverage.fhir.v1` | Coverage (US Core) | `patient_bk` | 6 | phi | `...fhir-snapshot.v1` |
-| G3 | `hc.canonical.finance.invoice.fhir.v1` | Invoice | `invoice_bk` | 6 | phi-limited | no |
-| G3 | `hc.canonical.finance.gl-journal-line.fhir-ext.v1` | HEALIX-ERP GLJournalLine | `ledger_id\|je_header_id` | 6 | non-phi | no |
-| G3 | `hc.canonical.finance.fixed-asset.fhir-ext.v1` | HEALIX-ERP FixedAsset | `asset_bk` | 3 | non-phi | no |
-| G4 | `hc.canonical.supply.item.fhir-ext.v1` | HEALIX-ERP Item | `item_bk` | 3 | non-phi | `...fhir-ext-snapshot.v1` |
-| G4 | `hc.canonical.supply.inventory-balance.fhir-ext.v1` | HEALIX-ERP InventoryBalance | `item_bk\|location_bk` | 6 | non-phi | no |
-| G4 | `hc.canonical.supply.purchase-order-line.fhir-ext.v1` | HEALIX-ERP PurchaseOrderLine | `po_header_bk` | 6 | non-phi | no |
-| G4 | `hc.canonical.supply.supplyrequest.fhir.v1` | SupplyRequest | `item_bk\|location_bk` | 6 | non-phi | no |
-| G4 | `hc.canonical.supply.supplydelivery.fhir.v1` | SupplyDelivery | `item_bk\|location_bk` | 6 | phi-limited | no |
-| G4 | `hc.canonical.supply.appointment.fhir.v1` | Appointment | `patient_bk` | 12 | phi | no |
-| G4 | `hc.canonical.supply.slot.fhir.v1` | Schedule/Slot | `location_bk` | 3 | non-phi | no |
-| G5 | `hc.canonical.workforce.worker.fhir-ext.v1` | HEALIX-ERP Worker | `worker_bk (person number)` | 6 | pii | `...fhir-ext-snapshot.v1` |
-| G5 | `hc.canonical.workforce.assignment.fhir-ext.v1` | HEALIX-ERP Assignment | `worker_bk` | 6 | pii | no |
-| G5 | `hc.canonical.workforce.position.fhir-ext.v1` | HEALIX-ERP Position | `position_bk` | 3 | non-phi | no |
-| G5 | `hc.canonical.workforce.credential.fhir-ext.v1` | HEALIX-ERP Credential | `worker_bk` | 3 | pii | no |
-| G5 | `hc.canonical.workforce.timecard.fhir-ext.v1` | HEALIX-ERP Timecard | `worker_bk` | 6 | pii | no |
-| G6 | `hc.canonical.pophealth.measurereport.fhir.v1` | MeasureReport | `measure_bk\|period` | 3 | phi-limited | no |
-| G6 | `hc.canonical.pophealth.sdoh-observation.fhir.v1` | Observation (SDOH Clinical Care) | `patient_bk` | 6 | phi | no |
-| G6 | `hc.canonical.pophealth.caregap.fhir-ext.v1` | HEALIX CareGap | `patient_bk` | 6 | phi | no |
-| G6 | `hc.canonical.pophealth.attribution.fhir-ext.v1` | HEALIX Attribution | `patient_bk` | 6 | phi | no |
-| G7 | `hc.canonical.research.researchstudy.fhir.v1` | ResearchStudy | `study_bk` | 3 | non-phi | no |
-| G7 | `hc.canonical.research.researchsubject.fhir.v1` | ResearchSubject | `study_bk` | 3 | phi | no |
-| G7 | `hc.canonical.research.consent.fhir.v1` | Consent | `patient_bk` | 3 | phi | no |
-| G8 | `hc.canonical.reference.codesystem.fhir.v1` | CodeSystem | `url\|version` | 3 | non-phi | compact-only |
-| G8 | `hc.canonical.reference.valueset.fhir.v1` | ValueSet | `url\|version` | 3 | non-phi | compact-only |
-| G8 | `hc.canonical.reference.conceptmap.fhir.v1` | ConceptMap | `url\|version` | 3 | non-phi | compact-only |
+| G1 | `hc.canonical.party.patient.fhir.v1` | Patient (US Core) | `patient_bk (EMPI id)` | 12 | phi:direct | `...fhir-snapshot.v1` |
+| G1 | `hc.canonical.party.practitioner.fhir.v1` | Practitioner (US Core) | `practitioner_bk (NPI or source id)` | 6 | pii:workforce | `...fhir-snapshot.v1` |
+| G1 | `hc.canonical.party.practitionerrole.fhir.v1` | PractitionerRole (US Core) | `practitioner_bk` | 6 | pii:workforce | no |
+| G1 | `hc.canonical.party.organization.fhir.v1` | Organization (US Core) | `organization_bk` | 3 | public | `...fhir-snapshot.v1` |
+| G1 | `hc.canonical.party.location.fhir.v1` | Location (US Core) | `location_bk` | 3 | internal | `...fhir-snapshot.v1` |
+| G1 | `hc.canonical.party.relatedperson.fhir.v1` | RelatedPerson | `patient_bk` | 3 | phi:direct | no |
+| G2 | `hc.canonical.clinical.encounter.fhir.v1` | Encounter (US Core) | `patient_bk` | 24 | phi:clinical | `...fhir-snapshot.v1` |
+| G2 | `hc.canonical.clinical.condition.fhir.v1` | Condition (US Core) | `patient_bk` | 12 | phi:clinical | no |
+| G2 | `hc.canonical.clinical.procedure.fhir.v1` | Procedure (US Core) | `patient_bk` | 12 | phi:clinical | no |
+| G2 | `hc.canonical.clinical.observation.fhir.v1` | Observation (US Core Lab/Vitals) | `patient_bk` | 48 | phi:clinical | no |
+| G2 | `hc.canonical.clinical.diagnosticreport.fhir.v1` | DiagnosticReport (US Core) | `patient_bk` | 12 | phi:clinical | no |
+| G2 | `hc.canonical.clinical.servicerequest.fhir.v1` | ServiceRequest (US Core) | `patient_bk` | 12 | phi:clinical | no |
+| G2 | `hc.canonical.clinical.medicationrequest.fhir.v1` | MedicationRequest (US Core) | `patient_bk` | 12 | phi:clinical | no |
+| G2 | `hc.canonical.clinical.medicationdispense.fhir.v1` | MedicationDispense | `patient_bk` | 6 | phi:clinical | no |
+| G2 | `hc.canonical.clinical.medicationadministration.fhir.v1` | MedicationAdministration | `patient_bk` | 12 | phi:clinical | no |
+| G2 | `hc.canonical.clinical.allergyintolerance.fhir.v1` | AllergyIntolerance (US Core) | `patient_bk` | 6 | phi:clinical | no |
+| G2 | `hc.canonical.clinical.immunization.fhir.v1` | Immunization (US Core) | `patient_bk` | 3 | phi:clinical | no |
+| G2 | `hc.canonical.clinical.documentreference.fhir.v1` | DocumentReference (US Core) | `patient_bk` | 6 | phi:clinical | no |
+| G2 | `hc.canonical.clinical.specimen.fhir.v1` | Specimen | `patient_bk` | 6 | phi:clinical | no |
+| G2 | `hc.canonical.clinical.imagingstudy.fhir.v1` | ImagingStudy | `patient_bk` | 6 | phi:clinical | no |
+| G3 | `hc.canonical.finance.account.fhir.v1` | Account | `account_bk` | 12 | phi:direct | `...fhir-snapshot.v1` |
+| G3 | `hc.canonical.finance.chargeitem.fhir.v1` | ChargeItem | `account_bk` | 12 | phi:clinical | no |
+| G3 | `hc.canonical.finance.claim.fhir.v1` | Claim | `claim_bk` | 12 | phi:direct | no |
+| G3 | `hc.canonical.finance.claimresponse.fhir.v1` | ClaimResponse | `claim_bk` | 6 | phi:direct | no |
+| G3 | `hc.canonical.finance.paymentreconciliation.fhir.v1` | PaymentReconciliation | `claim_bk` | 6 | phi:direct | no |
+| G3 | `hc.canonical.finance.coverage.fhir.v1` | Coverage (US Core) | `patient_bk` | 6 | phi:direct | `...fhir-snapshot.v1` |
+| G3 | `hc.canonical.finance.invoice.fhir.v1` | Invoice | `invoice_bk` | 6 | phi:quasi | no |
+| G3 | `hc.canonical.finance.gl-journal-line.fhir-ext.v1` | HEALIX-ERP GLJournalLine | `ledger_id\|je_header_id` | 6 | confidential:financial | no |
+| G3 | `hc.canonical.finance.fixed-asset.fhir-ext.v1` | HEALIX-ERP FixedAsset | `asset_bk` | 3 | confidential:financial | no |
+| G4 | `hc.canonical.supply.item.fhir-ext.v1` | HEALIX-ERP Item | `item_bk` | 3 | confidential:financial | `...fhir-ext-snapshot.v1` |
+| G4 | `hc.canonical.supply.inventory-balance.fhir-ext.v1` | HEALIX-ERP InventoryBalance | `item_bk\|location_bk` | 6 | confidential:operational | no |
+| G4 | `hc.canonical.supply.purchase-order-line.fhir-ext.v1` | HEALIX-ERP PurchaseOrderLine | `po_header_bk` | 6 | confidential:financial | no |
+| G4 | `hc.canonical.supply.supplyrequest.fhir.v1` | SupplyRequest | `item_bk\|location_bk` | 6 | confidential:operational | no |
+| G4 | `hc.canonical.supply.supplydelivery.fhir.v1` | SupplyDelivery | `item_bk\|location_bk` | 6 | phi:quasi | no |
+| G4 | `hc.canonical.supply.appointment.fhir.v1` | Appointment | `patient_bk` | 12 | phi:clinical | no |
+| G4 | `hc.canonical.supply.slot.fhir.v1` | Schedule/Slot | `location_bk` | 3 | confidential:operational | no |
+| G5 | `hc.canonical.workforce.worker.fhir-ext.v1` | HEALIX-ERP Worker | `worker_bk (person number)` | 6 | pii:workforce | `...fhir-ext-snapshot.v1` |
+| G5 | `hc.canonical.workforce.assignment.fhir-ext.v1` | HEALIX-ERP Assignment | `worker_bk` | 6 | pii:workforce | no |
+| G5 | `hc.canonical.workforce.position.fhir-ext.v1` | HEALIX-ERP Position | `position_bk` | 3 | internal | no |
+| G5 | `hc.canonical.workforce.credential.fhir-ext.v1` | HEALIX-ERP Credential | `worker_bk` | 3 | pii:workforce | no |
+| G5 | `hc.canonical.workforce.timecard.fhir-ext.v1` | HEALIX-ERP Timecard | `worker_bk` | 6 | pii:workforce | no |
+| G6 | `hc.canonical.pophealth.measurereport.fhir.v1` | MeasureReport | `measure_bk\|period` | 3 | phi:quasi | no |
+| G6 | `hc.canonical.pophealth.sdoh-observation.fhir.v1` | Observation (SDOH Clinical Care) | `patient_bk` | 6 | phi:clinical | no |
+| G6 | `hc.canonical.pophealth.caregap.fhir-ext.v1` | HEALIX CareGap | `patient_bk` | 6 | phi:clinical | no |
+| G6 | `hc.canonical.pophealth.attribution.fhir-ext.v1` | HEALIX Attribution | `patient_bk` | 6 | phi:direct | no |
+| G7 | `hc.canonical.research.researchstudy.fhir.v1` | ResearchStudy | `study_bk` | 3 | internal | no |
+| G7 | `hc.canonical.research.researchsubject.fhir.v1` | ResearchSubject | `study_bk` | 3 | phi:direct | no |
+| G7 | `hc.canonical.research.consent.fhir.v1` | Consent | `patient_bk` | 3 | phi:clinical | no |
+| G8 | `hc.canonical.reference.codesystem.fhir.v1` | CodeSystem | `url\|version` | 3 | public | compact-only |
+| G8 | `hc.canonical.reference.valueset.fhir.v1` | ValueSet | `url\|version` | 3 | public | compact-only |
+| G8 | `hc.canonical.reference.conceptmap.fhir.v1` | ConceptMap | `url\|version` | 3 | public | compact-only |
+| G9 | `hc.canonical.governance.provenance.fhir.v1` | Provenance (`healix-provenance`) | `anchor resource key` | 12 | phi:quasi | no |
 
 ### 6.3 Data-quality layer
 
+Quarantine and passed topics wrap the canonical record in the DQ envelope (`hc.common.DqVerdict` + record bytes) and
+carry the module 09 headers `hc-dq-status`, `hc-dq-failed-rules` (STR-03 §4). Compiled rules reach the evaluators on the
+`ops` control topic `hc.ops.dq.rulepack.v1` (§6.6).
+
 | Topic | Key | Parts | Policy | PHI | Purpose |
 |---|---|---|---|---|---|
-| `hc.dq.result.v1` | `subject_key` | 24 | 90 d | phi-limited | One verdict per (rule, record) with pointer to the evaluated topic/partition/offset; no payload copy |
-| `hc.dq.issue.v1` | `issue_id` | 3 | 90 d | phi-limited | Aggregated issues (anomaly, drift, breach) and remediation ticket lifecycle |
-| `hc.dq.scorecard.v1` | `scope_id` | 3 | compact | non-phi | Composite DQ index and dimension scores per domain/rule-set/period |
-| `hc.dq.rule-activation.v1` | `rule_id` | 3 | compact | non-phi | Active rule versions and thresholds broadcast to evaluators |
-| `hc.dq.quarantine.<domain>.v1` for `party`, `clinical`, `finance`, `supply`, `workforce`, `pophealth`, `research`, `reference` | key of the quarantined record | 6 | 90 d | as domain | Canonical records failing a blocking rule, wrapped with failing rule ids and remediation state |
+| `hc.dq.result.v1` | `subject_key (key of evaluated record)` | 24 | 90 d | phi:quasi | One verdict per (rule, record) with pointer to the evaluated topic/partition/offset; no payload copy |
+| `hc.dq.issue.v1` | `issue_id` | 3 | 90 d | phi:quasi | Aggregated issues (anomaly, drift, breach) and remediation ticket lifecycle |
+| `hc.dq.scorecard.v1` | `scope_id (domain\|rule_set\|period)` | 3 | compact | internal | Composite DQ index and dimension scores per domain/rule-set/period |
+| `hc.dq.rule-activation.v1` | `rule_id` | 3 | compact | internal | Activation state per rule id (active/suspended/retired, threshold, pack version); rule bodies travel on `hc.ops.dq.rulepack.v1` |
+| `hc.dq.validation.v1` | `same key as the validated canonical record` | 24 | 90 d | phi:quasi | One FHIR `OperationOutcome` (`healix-validation-outcome`) per validated canonical record, pass or fail, with validator/IG/TS/SHACL release ids (module 06 IOP-05 §2.1); verdicts mirrored to `hc.dq.result.v1` |
+| `hc.dq.quarantine.party.v1` | `same key as the quarantined canonical record` | 6 | 90 d | phi:direct | G1 canonical records failing a blocking rule, wrapped with failing rule ids and remediation state |
+| `hc.dq.quarantine.clinical.v1` | `same key as the quarantined canonical record` | 6 | 90 d | phi:clinical | G2 canonical records failing a blocking rule, wrapped with failing rule ids and remediation state |
+| `hc.dq.quarantine.finance.v1` | `same key as the quarantined canonical record` | 6 | 90 d | phi:direct | G3 canonical records failing a blocking rule, wrapped with failing rule ids and remediation state |
+| `hc.dq.quarantine.supply.v1` | `same key as the quarantined canonical record` | 6 | 90 d | phi:clinical | G4 canonical records failing a blocking rule, wrapped with failing rule ids and remediation state |
+| `hc.dq.quarantine.workforce.v1` | `same key as the quarantined canonical record` | 6 | 90 d | pii:workforce | G5 canonical records failing a blocking rule, wrapped with failing rule ids and remediation state |
+| `hc.dq.quarantine.pophealth.v1` | `same key as the quarantined canonical record` | 6 | 90 d | phi:direct | G6 canonical records failing a blocking rule, wrapped with failing rule ids and remediation state |
+| `hc.dq.quarantine.research.v1` | `same key as the quarantined canonical record` | 6 | 90 d | phi:direct | G7 canonical records failing a blocking rule, wrapped with failing rule ids and remediation state |
+| `hc.dq.quarantine.reference.v1` | `same key as the quarantined canonical record` | 6 | 90 d | internal | G8 canonical records failing a blocking rule, wrapped with failing rule ids and remediation state |
+| `hc.dq.quarantine.governance.v1` | `same key as the quarantined canonical record` | 3 | 90 d | phi:direct | Restricted-ACL (G9) quarantine for `PRIV` validation failures (prohibited identifier, unclassified Z-field, missing purpose of use); readable by `agent.privacy_guardian` and the privacy office only (module 06 IOP-VAL-013) |
+| `hc.dq.passed.party.v1` | `same key as the evaluated canonical record` | 12 | 90 d | phi:direct | G1 canonical records that passed all blocking rules, forwarded to KG/EDW sinks with `hc-dq-status` and `hc-dq-failed-rules` headers |
+| `hc.dq.passed.clinical.v1` | `same key as the evaluated canonical record` | 48 | 90 d | phi:clinical | G2 canonical records that passed all blocking rules, forwarded to KG/EDW sinks with `hc-dq-status` and `hc-dq-failed-rules` headers |
+| `hc.dq.passed.finance.v1` | `same key as the evaluated canonical record` | 12 | 90 d | phi:direct | G3 canonical records that passed all blocking rules, forwarded to KG/EDW sinks with `hc-dq-status` and `hc-dq-failed-rules` headers |
+| `hc.dq.passed.supply.v1` | `same key as the evaluated canonical record` | 12 | 90 d | phi:clinical | G4 canonical records that passed all blocking rules, forwarded to KG/EDW sinks with `hc-dq-status` and `hc-dq-failed-rules` headers |
+| `hc.dq.passed.workforce.v1` | `same key as the evaluated canonical record` | 6 | 90 d | pii:workforce | G5 canonical records that passed all blocking rules, forwarded to KG/EDW sinks with `hc-dq-status` and `hc-dq-failed-rules` headers |
+| `hc.dq.passed.pophealth.v1` | `same key as the evaluated canonical record` | 6 | 90 d | phi:direct | G6 canonical records that passed all blocking rules, forwarded to KG/EDW sinks with `hc-dq-status` and `hc-dq-failed-rules` headers |
+| `hc.dq.passed.research.v1` | `same key as the evaluated canonical record` | 3 | 90 d | phi:direct | G7 canonical records that passed all blocking rules, forwarded to KG/EDW sinks with `hc-dq-status` and `hc-dq-failed-rules` headers |
+| `hc.dq.passed.reference.v1` | `same key as the evaluated canonical record` | 3 | 90 d | public | G8 canonical records that passed all blocking rules, forwarded to KG/EDW sinks with `hc-dq-status` and `hc-dq-failed-rules` headers |
 
 ### 6.4 Knowledge-graph layer
 
 | Topic | Key | Parts | Policy | PHI | Purpose |
 |---|---|---|---|---|---|
-| `hc.kg.assertion.v1` | `subject_iri` | 24 | 30 d | phi | Bitemporal RDF-star assertion batches (valid time, transaction time, PROV-O activity) |
-| `hc.kg.retraction.v1` | `subject_iri` | 6 | 30 d | phi | Closes valid or transaction time; never a physical delete |
-| `hc.kg.load-receipt.v1` | `batch_ulid` | 3 | 30 d | non-phi | Per named-graph batch receipt for KG/EDW reconciliation |
+| `hc.kg.assertion.v1` | `subject_iri` | 24 | 30 d | phi:direct | Bitemporal RDF-star assertion batches (valid time, transaction time, PROV-O activity) |
+| `hc.kg.retraction.v1` | `subject_iri` | 6 | 30 d | phi:direct | Closes valid or transaction time; never a physical delete |
+| `hc.kg.load-receipt.v1` | `batch_ulid` | 3 | 30 d | internal | Per named-graph batch receipt for KG/EDW reconciliation |
+| `hc.kg.dlq.v1` | `source_topic\|business_key` | 6 | 30 d | phi:direct | Resources failing FHIR-to-RDF conversion, SHACL violation or commit, with reason and validation report (TKG-04 §8) |
+| `hc.kg.er.link.v1` | `source_record_iri` | 12 | 30 d | phi:direct | Entity-resolution link/re-score/unlink/golden-split events between source person records and golden records (TKG-03 §6) |
 
 ### 6.5 EDW layer
 
@@ -285,31 +318,45 @@ columns populated and surrogate keys resolved (STR-05 §2.6).
 
 | Group | Subject area | Topic | Target schemas | Parts | PHI |
 |---|---|---|---|---|---|
-| G1 | Party & Identity | `hc.edw.cdc.g1.v1` | `edw_g1_*` | 12 | phi |
-| G2 | Clinical Care | `hc.edw.cdc.g2.v1` | `edw_g2_*` | 24 | phi |
-| G3 | Revenue Cycle & Finance | `hc.edw.cdc.g3.v1` | `edw_g3_*` | 12 | phi |
-| G4 | Supply Chain & Operations | `hc.edw.cdc.g4.v1` | `edw_g4_*` | 12 | phi-limited |
-| G5 | Workforce | `hc.edw.cdc.g5.v1` | `edw_g5_*` | 12 | pii |
-| G6 | Population Health & Quality | `hc.edw.cdc.g6.v1` | `edw_g6_*` | 12 | phi |
-| G7 | Research & Analytics | `hc.edw.cdc.g7.v1` | `edw_g7_*` | 12 | phi |
-| G8 | Reference & Terminology | `hc.edw.cdc.g8.v1` | `edw_g8_*` | 12 | non-phi |
-| G9 | Metadata, Quality & Governance | `hc.edw.cdc.g9.v1` | `edw_g9_*` | 12 | phi-limited |
+| G1 | Party & Identity | `hc.edw.cdc.g1.v1` | `edw_g1_*` | 12 | phi:direct |
+| G2 | Clinical Care | `hc.edw.cdc.g2.v1` | `edw_g2_*` | 24 | phi:clinical |
+| G3 | Revenue Cycle & Finance | `hc.edw.cdc.g3.v1` | `edw_g3_*` | 12 | phi:direct |
+| G4 | Supply Chain & Operations | `hc.edw.cdc.g4.v1` | `edw_g4_*` | 12 | phi:quasi |
+| G5 | Workforce | `hc.edw.cdc.g5.v1` | `edw_g5_*` | 12 | pii:workforce |
+| G6 | Population Health & Quality | `hc.edw.cdc.g6.v1` | `edw_g6_*` | 12 | phi:direct |
+| G7 | Research & Analytics | `hc.edw.cdc.g7.v1` | `edw_g7_*` | 12 | phi:direct |
+| G8 | Reference & Terminology | `hc.edw.cdc.g8.v1` | `edw_g8_*` | 12 | internal |
+| G9 | Metadata, Quality & Governance | `hc.edw.cdc.g9.v1` | `edw_g9_*` | 12 | phi:quasi |
 
 ### 6.6 Operations layer
 
 | Topic | Key | Format | Parts | PHI | Retention | Purpose |
 |---|---|---|---|---|---|---|
-| `hc.ops.lineage.openlineage.v1` | `run_id` | json | 6 | non-phi | 7 d | OpenLineage RunEvent JSON (START/COMPLETE/FAIL) for every job run; projected to PROV-O in the KG. |
-| `hc.ops.agent.changerequest.v1` | `cr_id` | json | 3 | non-phi | 30 d | Typed change requests (vocabulary, mapping, schema, DQ rule, topic) emitted by agents; schema owned by module 10. |
-| `hc.ops.agent.evaluation.v1` | `cr_id` | json | 3 | non-phi | 30 d | Evaluator scores, rubric results and veto decisions per change request. |
-| `hc.ops.audit.v1` | `correlation_id` | avro | 6 | phi-limited | 30 d | FHIR AuditEvent-shaped records for PHI access, config change and admin actions; sunk to immutable storage within 60 s. |
-| `hc.ops.dlq.connect.v1` | `source_topic\|connector` | avro-envelope | 6 | phi | 30 d | Dead letters from Kafka Connect source/sink tasks with error headers and original record bytes. |
-| `hc.ops.dlq.processor.v1` | `source_topic\|processor` | avro-envelope | 6 | phi | 30 d | Dead letters from stream processors (unparseable, unmappable, schema-incompatible) with stack/diagnostic headers. |
-| `hc.ops.connector.bicc.manifest.v1` | `extract_job_id` | avro | 3 | non-phi | 30 d | BICC extract manifests (PVO, files, row counts, watermark) used for exactly-once file processing and completeness checks. |
-| `hc.ops.replay.request.v1` | `replay_id` | avro | 3 | non-phi | 30 d | Replay/backfill requests and their state transitions (requested, approved, running, completed). |
-| `hc.ops.schema.change.v1` | `subject` | avro | 3 | non-phi | 30 d | Schema Registry subject version events emitted by the GitOps pipeline (registered, deprecated, compatibility changed). |
-| `hc.ops.outbound.hl7v2.ack.v1` | `message_control_id` | avro | 3 | phi-limited | 7 d | ACK/NAK outcomes for outbound HL7 v2 messages (MSA-1, MSA-3, retries). |
-| `hc.ops.processor.checkpoint.v1` | `processor\|partition` | avro | 3 | non-phi | 7 d | Watermark and checkpoint progress per processor and partition for lag and late-data dashboards. |
+| `hc.ops.lineage.openlineage.v1` | `run_id` | json | 6 | internal | 7 d | OpenLineage RunEvent JSON (START/COMPLETE/FAIL) for every job run; projected to PROV-O in the KG. |
+| `hc.ops.agent.changerequest.v1` | `cr_id` | json | 3 | internal | 30 d | Typed change requests (vocabulary, mapping, schema, DQ rule, topic) emitted by agents; schema owned by module 10. |
+| `hc.ops.agent.evaluation.v1` | `cr_id` | json | 3 | internal | 30 d | Evaluator scores, rubric results and veto decisions per change request. |
+| `hc.ops.audit.v1` | `correlation_id` | avro | 6 | phi:quasi | 30 d | FHIR AuditEvent-shaped records for PHI access, config change and admin actions; sunk to immutable storage within 60 s. |
+| `hc.ops.dlq.connect.v1` | `source_topic\|connector` | avro-envelope | 6 | phi:direct | 30 d | Dead letters from Kafka Connect source/sink tasks with error headers and original record bytes. |
+| `hc.ops.dlq.processor.v1` | `source_topic\|processor` | avro-envelope | 6 | phi:direct | 30 d | Dead letters from stream processors (unparseable, unmappable, schema-incompatible) with stack/diagnostic headers. |
+| `hc.ops.connector.bicc.manifest.v1` | `extract_job_id` | avro | 3 | internal | 30 d | BICC extract manifests (PVO, files, row counts, watermark) used for exactly-once file processing and completeness checks. |
+| `hc.ops.replay.request.v1` | `replay_id` | avro | 3 | internal | 30 d | Replay/backfill requests and their state transitions (requested, approved, running, completed). |
+| `hc.ops.schema.change.v1` | `subject` | avro | 3 | internal | 30 d | Schema Registry subject version events emitted by the GitOps pipeline (registered, deprecated, compatibility changed). |
+| `hc.ops.outbound.hl7v2.ack.v1` | `message_control_id` | avro | 3 | phi:quasi | 7 d | ACK/NAK outcomes for outbound HL7 v2 messages (MSA-1, MSA-3, retries). |
+| `hc.ops.processor.checkpoint.v1` | `processor\|partition` | avro | 3 | internal | 7 d | Watermark and checkpoint progress per processor and partition for lag and late-data dashboards. |
+| `hc.ops.dq.rulepack.v1` | `rule_id` | avro | 3 | internal | compact | Compacted DQ control topic: compiled rule per rule_id (pack_version, rule_version, plane bundles, thresholds); tombstone = retired. Planes hot-reload from it (module 09 DQ-03 sections 2 and 3.3). |
+| `hc.ops.kg-edw-reconciliation.v1` | `group\|entity_type\|recorded_day` | avro | 3 | phi:quasi | 90 d | Nightly and on-demand KG vs EDW reconciliation results per (group, entity type, recorded day): counts, content hashes, ER link counts, retraction counts and differing business keys (capped at 1,000); mismatches open DQR-CONSISTENCY-KG-EDW-001 issues (module 08 TKG-04 section 7.2). |
+| `hc.ops.audit.break-glass.v1` | `correlation_id` | avro | 3 | phi:quasi | 30 d | Emergency (break-glass) access events: operator, purpose of use, scope, time box and the records touched by reference; notifies the privacy office and is sunk to immutable storage within 60 s (module 08 TKG-02 section 7, module 11). |
+| `hc.ops.agent.trigger.v1` | `dedup_key (event_type\|subject)` | json | 6 | internal | 7 d | Normalised agent-facing events (event_type: new_source_discovered, schema_drift, unmapped_code, dq_anomaly, ontology_release ...) with per-type debounce key; the orchestrator deduplicates and derives workflow ids from the key (module 10 AGT-01 section 4.1). |
+| `hc.ops.agent.decision.v1` | `decision_id` | json | 6 | internal | 7 y | Append-only episodic decision log: every consequential agent decision (propose, approve, apply, rollback, budget stop) with CR id, target, prompt and model version, trace id and PHI-scan verdict; 7-year retention, PHI-free by construction (module 10 AGT-06 section 1.2). |
+| `hc.ops.healing.incident.event.v1` | `incident_id` | avro | 3 | internal | 30 d | Self-healing incident lifecycle: detected, diagnosed, playbook selected, acting, verified, resolved or escalated, with symptom fingerprint and blast-radius budget; mirrored to fact_healing_incident (module 14). |
+| `hc.ops.healing.playbookrun.event.v1` | `playbook_run_id` | avro | 3 | internal | 30 d | Self-healing playbook actions per incident step: action kind, target, blast-radius check result, outcome and rollback pointer; every action is PROV-O linked to its incident (module 14). |
+| `hc.ops.memory.write.v1` | `record_id` | avro | 6 | internal | compact | Compacted event-sourced agent memory write log (episodes, reflections, corrections, tombstones) emitted by the Memory API write-gate after PHI and injection scans; Mem0 and Graphiti are derived projections rebuilt from it (module 14 MEM-01 section 8). |
+| `hc.ops.agent.policy.release.v1` | `agent_id\|artifact_id` | avro | 3 | internal | compact | Compacted release events for agent prompts, policies, playbooks and rubrics (artifact id, version, signed tag, autonomy level); source of cache invalidation and of the procedural-memory index (module 14 MEM-04/05). |
+| `hc.ops.agent.policy.v1` | `agent_id` | avro | 3 | internal | compact | Current active agent policy (prompt, few-shots, thresholds, tool allow-list) per agent, compacted to latest; release events are on hc.ops.agent.policy.release.v1 (module 14). |
+| `hc.ops.registry.release.v1` | `version_iri` | avro | 3 | internal | compact | Compacted ontology registry release events (version IRI, SemVer, diff reference, breaking flag, affected consumers) so modules 05, 06, 08 and 09 regenerate R2RML, re-sync the TS and re-derive DQ shapes (module 02 ONT-GOV-007); `FULL` compatibility. |
+| `hc.ops.improvement.canary.event.v1` | `canary_id` | avro | 3 | internal | 30 d | Improvement-candidate canary lifecycle (proposed, canary 5 %, canary 25 %, promoted, rolled back) with evaluation scores, guard results and rollback pointer; mirrored to G9 facts (module 14 MEM-05). |
+| `hc.ops.cache.invalidate.v1` | `namespace\|version_tag` | json | 3 | internal | 7 d | Cache invalidation commands per cache namespace (C0–C4) and version tag on ontology, policy, rule-pack and mapping releases (module 14 MEM-03). |
+| `hc.ops.connector.file.manifest.v1` | `source\|file_id` | avro | 3 | internal | 30 d | Bulk file manifests for non-BICC file sources (source, object-store URI, schema version, row count, SHA-256) for exactly-once file processing and completeness checks (module 06 IOP-03 §8). |
 
 ## 7. Consumer group naming
 
@@ -328,7 +375,8 @@ python3 -I -c "import json,sys,yaml,jsonschema; \
     format_checker=jsonschema.FormatChecker()).validate(cat); print(len(cat['topics']),'topics valid')"
 ```
 
-followed by the linter rules in §3 step 2. Result for this version: 193 topics valid, 0 lint findings.
+followed by the linter rules in §3 step 2 (plus: every `phi_class` is in `defaults.phi_classes`; the cross-module topics
+named by modules 08, 09, 10 and 14 are present). Result for this version: 220 topics valid, 0 lint findings.
 
 ## 9. Requirements
 
@@ -347,7 +395,7 @@ followed by the linter rules in §3 step 2. Result for this version: 193 topics 
 
 > **STR-TOP-020** (P0, test) — Topic creation, evolution and deprecation MUST flow through a typed change request on
 > `hc.ops.agent.changerequest.v1`, evaluated by `agent.evaluator`, with `agent.privacy_guardian` approval for
-> `phi`, `phi-limited` and `pii` topics.
+> topics whose `phi_class` is any `phi:*` tag, `pii:workforce` or `pseudonymised`.
 
 > **STR-TOP-021** (P1, inspection) — A deprecated topic version MUST be dual-published for at least 90 days and MUST NOT
 > be deleted while any consumer group has committed an offset within the last 30 days.
@@ -363,13 +411,18 @@ followed by the linter rules in §3 step 2. Result for this version: 193 topics 
 > Location, Encounter, Account, Coverage, Item, Worker).
 
 > **STR-TOP-025** (P0, test) — `hc.dq.result.v1` MUST reference the evaluated record by topic, partition, offset and
-> key and MUST NOT copy its payload; every group domain except `governance` MUST have a quarantine topic.
+> key and MUST NOT copy its payload; every group domain except `governance` MUST have a `hc.dq.quarantine.<domain>.v1`
+> and a `hc.dq.passed.<domain>.v1` topic, each classed with the most restrictive `phi_class` of that domain's canonical
+> topics; `hc.dq.quarantine.governance.v1` is the single additional restricted-ACL quarantine for `PRIV` failures and
+> has no `passed` counterpart.
 
 > **STR-TOP-026** (P0, inspection) — Exactly one `hc.edw.cdc.gN.v1` topic MUST exist per subject-area group, keyed by
 > `table_name|business_key`, with `FULL` compatibility.
 
-> **STR-TOP-027** (P0, inspection) — The `ops` layer MUST provide lineage, audit, dead-letter, change-request,
-> evaluation, replay and schema-change topics; wildcard producer principals are permitted only here.
+> **STR-TOP-027** (P0, inspection) — The `ops` layer MUST provide lineage, audit (including break-glass), dead-letter,
+> change-request, evaluation, agent trigger and decision-log, DQ rule-pack control, KG/EDW reconciliation, self-healing
+> incident/action, agent memory and policy-release, replay and schema-change topics; wildcard producer principals are
+> permitted only here.
 
 > **STR-TOP-028** (P1, analysis) — Each `canonical` catalog entry SHOULD reference the ontology class IRI of its entity
 > (module 02) and each `raw` entry SHOULD reference its Source Registry feed id, enabling the semantic-coverage KPI.

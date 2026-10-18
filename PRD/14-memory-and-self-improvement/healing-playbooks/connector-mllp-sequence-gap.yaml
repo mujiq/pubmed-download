@@ -1,0 +1,550 @@
+# playbook_id: PBK-ING-001
+# module: 14-memory-and-self-improvement
+# artefact: healing playbook (validated by healing-playbooks/playbook.schema.json; rules MEM-HEAL-036…050 in 04-self-healing.md)
+# status: shadow — recommend-only until graduated via a `playbook` CR (MEM-HEAL-012, MEM-HEAL-037, MEM-HEAL-044)
+#
+# Heals HL7 v2 MLLP sequence gaps, ACK (`AE`/`AR`) storms and interface-engine silence on the Cerner Millennium
+# outbound interfaces that feed `hc.raw.cerner.{adt,orm,oru,siu,dft}.hl7v2.v1`. "Heal the pipe, never the data":
+# this playbook may reconnect a listener, ask the hospital's interface engine (Cloverleaf/Rhapsody) to resend a
+# sequence range, and replay HEALIX's own raw topic into its own processors. It never sends anything into Millennium
+# (SRC-CER-024), never writes `canonical`/`kg`/`edw` (GOV-ACC-011) and never alters message content (DQ-REM-005).
+#
+# No tier of memory (M0–M4 as used by this module) and no cache tier (C0–C4) may hold content whose `hc-phi-class` is
+# anything but `non-phi`/`internal` (steward preferences: `pii:workforce` with consent flag). This includes the C0
+# provider prompt cache: pseudonymised PHI is not permitted. Everything this playbook records (incident, symptoms,
+# lessons, ticket packet) is therefore metadata only: channel ids, MSH-13 ranges, MSH-10 control ids, counts, offsets.
+
+id: PBK-ING-001
+name: Cerner MLLP sequence gap, ACK storm and engine-silence recovery
+version: 0.1.0
+status: shadow
+owners:
+  - Platform SRE
+  - Agent Platform
+  - Stream & semantic engineering
+fault_classes:
+  - FLT-ING-002   # MSH-13 sequence gap
+  - FLT-ING-003   # ACK timeout / AE-AR NAK storm
+  - FLT-ING-005   # interface engine queue backlog masking source ACKs
+severity_default: S3           # OPS-00 §7 SEV3 (single component degraded); S2 when ACK storm spans ≥ 2 channels (see decision_tree)
+risk_class: medium
+autonomy_required: L3          # ARC-01 §5 autonomy level of agent.self_healer (not the healing ladder)
+mttd_target_s: 120
+mttr_target_s: 900
+
+scope:
+  environments: [dev, test, uat, prod]
+  source_systems: [cerner-millennium]
+  interfaces:
+    - connect.mllp-cerner        # STR-04 §2.2: one listener (task) per sending facility channel
+  groups: [G1, G2, G3, G5, G6]   # ADT/encounter, clinical results, orders, scheduling, charges (DFT)
+  facilities: ["*"]              # resolved at run time to the single facility channel named in the trigger
+
+# -----------------------------------------------------------------------------------------------------------------
+# Triggers — all are per sending-facility channel (MSH-4) and per raw topic. The healing engine (Temporal) evaluates
+# them from module 12 signals; the self_healer never polls sources directly.
+# -----------------------------------------------------------------------------------------------------------------
+triggers:
+  - signal: hl7v2.sequence_gap
+    description: MSH-13 sequence gap detected by the MLLP listener when the sender uses sequence protocol (STR-CDC-008)
+    source_module: 07-streaming-platform
+    topic: hc.dq.issue.v1                        # issue type `sequence-gap`, keyed by channel
+    metric: healix.connect.mllp.sequence_gap_total{connector="connect.mllp-cerner",channel}
+    comparator: ">"
+    threshold: 0
+    window_s: 60
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-ING-002
+  - signal: hl7v2.ack_error_rate
+    description: Inbound ACK outcome `AE`+`AR` share of all ACKs returned on the channel (STR-OPS-007 monitors at 0.1 %/5 min; healing fires at the storm threshold)
+    source_module: 12-platform-and-operations
+    metric: healix.connect.mllp.ack_rate{connector="connect.mllp-cerner",channel,result=~"AE|AR"}
+    comparator: ">"
+    threshold: 0.01                              # 1 % of ACKs over the window
+    window_s: 60
+    min_occurrences: 1
+    for_s: 60
+    fault_class: FLT-ING-003
+  - signal: hl7v2.channel_silence
+    description: No message framed on the channel for > 2× the channel's p99 inter-arrival interval during expected hours (engine backlog masking source ACKs)
+    source_module: 12-platform-and-operations
+    alert: SourceSilent                          # OPS-03 §4.2; S3 ingest availability
+    metric: healix.connect.mllp.seconds_since_last_message{connector="connect.mllp-cerner",channel}
+    comparator: ">"
+    threshold: "2 * p99_over_7d(healix.connect.mllp.inter_arrival_seconds{channel})"
+    window_s: 300
+    min_occurrences: 1
+    for_s: 120
+    fault_class: FLT-ING-005
+
+dedupe_key: "${env}|connect.mllp-cerner|${trigger.labels.channel}|${trigger.topic}"
+correlation_window_s: 900
+
+# -----------------------------------------------------------------------------------------------------------------
+# Preconditions — any failure either skips the run (recommend-only annotation) or escalates straight to humans.
+# -----------------------------------------------------------------------------------------------------------------
+preconditions:
+  - check: single_interface_in_scope
+    tool: {server: source-registry, operation: get_interface}
+    params: {interface_id: "connect.mllp-cerner", channel: "${trigger.labels.channel}"}
+    expect: "result.channels | length == 1"
+    on_fail: escalate
+  - check: interface_engine_reachable
+    tool: {server: observability, operation: query_metric}
+    params: {query: "healix.connect.mllp.engine_heartbeat_age_seconds{channel='${trigger.labels.channel}'}"}
+    expect: "value < 300"
+    on_fail: escalate                 # engine itself is down → hospital IT, not HEALIX
+  - check: not_in_change_freeze_window
+    tool: {server: observability, operation: freeze_calendar_check}
+    params: {scope: ["release", "millennium-code-upgrade", "facility:${trigger.labels.facility}"]}
+    expect: "frozen == false"
+    on_fail: skip                     # MEM-HEAL-010: observe/annotate only during freeze windows
+  - check: no_kill_switch
+    tool: {server: cr-engine, operation: kill_switch_status}
+    params: {scopes: ["platform", "environment:${env}", "agent:agent.self_healer", "module14:healing", "playbook:PBK-ING-001"]}
+    expect: "all_released == true"
+    on_fail: skip
+  - check: connector_task_not_oscillating
+    tool: {server: kafka-admin, operation: describe_connector}
+    params: {connector: "connect.mllp-cerner"}
+    expect: "tasks[channel='${trigger.labels.channel}'].restarts_last_hour < 3"   # MEM-HEAL-011 oscillation guard
+    on_fail: escalate
+
+# -----------------------------------------------------------------------------------------------------------------
+# Diagnosis — read-only (MEM-HEAL-045). Produces symptoms/hypotheses recorded on the incident and in Graphiti.
+# -----------------------------------------------------------------------------------------------------------------
+diagnosis:
+  - step: listener_task_state
+    tool: {server: kafka-admin, operation: describe_connector}
+    params: {connector: "connect.mllp-cerner", task_filter: {channel: "${trigger.labels.channel}"}}
+    read_only: true
+    timeout_s: 15
+    record_as: symptom
+  - step: tls_certificate_expiry
+    tool: {server: observability, operation: query_metric}
+    params: {query: "healix.connect.mllp.tls_cert_expiry_seconds{channel='${trigger.labels.channel}'}"}
+    read_only: true
+    timeout_s: 10
+    record_as: hypothesis            # < 14 d expiry → FLT-PLAT-005 handoff, not this playbook
+  - step: engine_heartbeat_and_queue_depth
+    tool: {server: observability, operation: query_metric}
+    params:
+      query: >-
+        healix.connect.mllp.engine_queue_depth{channel='${trigger.labels.channel}'},
+        healix.connect.mllp.engine_heartbeat_age_seconds{channel='${trigger.labels.channel}'}
+    read_only: true
+    timeout_s: 10
+    record_as: engine_state          # Cloverleaf/Rhapsody thread/route backlog masking source ACKs (FLT-ING-005)
+  - step: produce_ack_latency
+    tool: {server: observability, operation: query_metric}
+    params: {query: "histogram_quantile(0.99, healix.connect.mllp.produce_ack_seconds{channel='${trigger.labels.channel}'})"}
+    read_only: true
+    timeout_s: 10
+    record_as: hypothesis            # slow acks=all produce → sender re-queues → AE storm (STR-CDC-007)
+  - step: dedupe_window_state
+    tool: {server: kafka-admin, operation: describe_processor_state}
+    params: {processor: "connect.mllp-cerner", store: "msh10-dedupe", channel: "${trigger.labels.channel}"}
+    read_only: true
+    timeout_s: 15
+    record_as: symptom               # IOP-V2-004: duplicates by (MSH-3, MSH-4, MSH-10); a replaying engine re-sends already-ACKed ids
+  - step: connect_dlq_growth
+    tool: {server: kafka-admin, operation: consumer_lag}
+    params: {topic: "hc.ops.dlq.connect.v1", filter: {hc-dlq-connector: "connect.mllp-cerner", channel: "${trigger.labels.channel}"}, window_s: 900}
+    read_only: true
+    timeout_s: 15
+    record_as: symptom               # AR with ERR → poison frames; DLQ growth with the gap = unparseable, not lost
+  - step: last_acked_control_id
+    tool: {server: kafka-admin, operation: sample_records}
+    params:
+      topic: "${trigger.topic}"
+      partition_key_prefix: "${trigger.labels.facility}|"
+      tail: 1
+      fields: [headers.hc-msh-10, headers.hc-msh-13, headers.hc-source-time, offset]   # header-only; message body never read
+    read_only: true
+    timeout_s: 15
+    record_as: last_acked            # MSH-10 control id + MSH-13 of the last durably produced message
+  - step: gap_range_in_raw
+    tool: {server: kafka-admin, operation: search_offsets_by_header}
+    params:
+      topic: "${trigger.topic}"
+      header: hc-msh-13
+      range: {from: "${trigger.labels.gap_from}", to: "${trigger.labels.gap_to}"}
+      channel: "${trigger.labels.channel}"
+    read_only: true
+    timeout_s: 30
+    record_as: gap_in_raw            # if the missing sequence numbers are present in raw, the gap is downstream of the listener
+  - step: std_consumer_lag
+    tool: {server: kafka-admin, operation: consumer_lag}
+    params: {group: "std.hl7v2.parser", topic: "${trigger.topic}"}
+    read_only: true
+    timeout_s: 15
+    record_as: symptom
+  - step: playbook_memory
+    tool: {server: memory, operation: search_playbooks}
+    params:
+      symptoms: ["sequence_gap", "ack_storm", "engine_silence"]
+      scope: {kind: interface, id: "connect.mllp-cerner", facility: "${trigger.labels.facility}"}
+    read_only: true
+    timeout_s: 5
+    record_as: prior_outcomes        # MEM-02 `playbook_match` / `incident_triage` profiles; degraded → continue from Git (MEM-HEAL-014)
+
+# -----------------------------------------------------------------------------------------------------------------
+# Decision tree — maps diagnosis to the ordered action list. Only autonomous_allowed actions execute when the
+# playbook is `autonomous`; in `shadow` every branch is recorded as a recommendation and compared with the human's.
+# -----------------------------------------------------------------------------------------------------------------
+decision_tree:
+  - when: "tls_certificate_expiry.value < 14*86400"
+    then_actions: [A5-dq-issue-and-ticket]      # certificate work is FLT-PLAT-005 (CertificateExpiring), human-owned
+  - when: "listener_task_state.state in ['FAILED','UNASSIGNED'] or produce_ack_latency.value > 0.2"
+    then_actions: [A1-reconnect-listener, A4-replay-raw-range, A5-dq-issue-and-ticket]
+  - when: "gap_in_raw.found_count == gap_in_raw.expected_count"
+    then_actions: [A4-replay-raw-range]         # messages landed in raw; the gap is a std/dedupe consumer gap
+  - when: "gap_in_raw.found_count < gap_in_raw.expected_count and engine_state.heartbeat_age_seconds < 300"
+    then_actions: [A2-request-engine-resend, A4-replay-raw-range, A5-dq-issue-and-ticket]
+  - when: "engine_state.queue_depth > 0 and engine_state.heartbeat_age_seconds >= 300"
+    then_actions: [A1-reconnect-listener, A5-dq-issue-and-ticket]   # FLT-ING-005: engine backlog; HEALIX cannot drain the engine
+  - when: "ack_error_rate.channels_affected >= 2"
+    then_actions: [A0-raise-severity, A1-reconnect-listener, A5-dq-issue-and-ticket]
+  - when: "connect_dlq_growth.rate > 0 and gap_in_raw.found_count == 0"
+    then_actions: [A5-dq-issue-and-ticket]      # poison frames (AR); parser fix is a CR, not a replay
+  - when: "default"
+    then_actions: [A1-reconnect-listener, A2-request-engine-resend, A4-replay-raw-range, A5-dq-issue-and-ticket]
+
+# -----------------------------------------------------------------------------------------------------------------
+# Actions — every action carries blast_radius_class + budget + compensation/idempotency (MEM-HEAL-038).
+# Ladder: L0 observe · L1 safe automatic · L2 after dry-run · L3 propose CR/ticket. No L2 here: nothing mutates data.
+# -----------------------------------------------------------------------------------------------------------------
+actions:
+  - id: A0-raise-severity
+    ladder_level: L0
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: connector, max: 1, scope_expr: "connector == 'connect.mllp-cerner'", time_box_s: 60}
+    requires_dry_run: false
+    tool: {server: memory, operation: record_incident, permission: propose}
+    params: {incident_id: "${incident.id}", severity: S2, reason: "ACK storm on >= 2 facility channels"}
+    idempotency_key_recipe: "sha256(${incident.id}|A0|S2)"
+    timeout_s: 10
+    retries: 1
+    verify: {probe: "incident.severity", expect: "S2", within_s: 10}
+    on_failure: continue
+    compensating_action: {tool: {server: memory, operation: correct}, params: {memory_id: "${incident.id}", change_kind: correction, new_content: {severity: S3}}}
+
+  - id: A1-reconnect-listener
+    ladder_level: L1
+    blast_radius_class: restart
+    autonomous_allowed: true
+    blast_radius: {unit: connector, max: 1, scope_expr: "connector == 'connect.mllp-cerner' and task.channel == '${trigger.labels.channel}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: connector.restart_task, permission: apply}
+    params:
+      connector: connect.mllp-cerner
+      task_selector: {channel: "${trigger.labels.channel}"}
+      drain_first: true                 # finish in-flight produce so AA is never returned for an unproduced message (STR-CDC-007, IOP-V2-002)
+      preserve_offsets: true
+    idempotency_key_recipe: "sha256(${incident.id}|A1|${trigger.labels.channel}|${floor(now/900)})"
+    timeout_s: 120
+    retries: 1
+    verify:
+      probe: "healix.connect.mllp.listener_state{channel='${trigger.labels.channel}'} and healix.connect.mllp.messages_total rate(60s)"
+      expect: "state == 'RUNNING' and rate > 0"
+      within_s: 180
+    on_failure: escalate
+    rollback:
+      tool: {server: playbook-runner, operation: connector.restore_task_state}
+      params: {connector: connect.mllp-cerner, task_selector: {channel: "${trigger.labels.channel}"}, snapshot: "pre-A1"}
+
+  - id: A2-request-engine-resend
+    ladder_level: L1
+    blast_radius_class: reroute
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 50000, scope_expr: "channel == '${trigger.labels.channel}' and msh13 in [${gap_from}, ${gap_to}]", time_box_s: 900}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: engine.request_resend, permission: apply}
+    params:
+      engine: "${interface.engine}"      # Cloverleaf / Rhapsody management API of the hospital's interface engine — NOT Millennium
+      channel: "${trigger.labels.channel}"
+      sequence_range: {from: "${gap_in_raw.missing_from}", to: "${gap_in_raw.missing_to}"}
+      after_control_id: "${last_acked.msh10}"
+      note: "Requests the engine to replay its own outbound queue; HEALIX sends no HL7 v2 message to Cerner Millennium (SRC-CER-024)."
+    idempotency_key_recipe: "sha256(${incident.id}|A2|${trigger.labels.channel}|${gap_in_raw.missing_from}-${gap_in_raw.missing_to})"
+    timeout_s: 60
+    retries: 0
+    verify:
+      probe: "healix.connect.mllp.sequence_gap_open{channel='${trigger.labels.channel}'} and dedupe hc-duplicate rate"
+      expect: "open_gaps == 0 and duplicate_rate_increase_is_expected"   # resent frames hit IOP-V2-004 dedupe, never double-process
+      within_s: 600
+    on_failure: continue                # no engine API in this estate (precondition skipped) → fall through to A4/A5
+    compensating_action:
+      tool: {server: playbook-runner, operation: engine.cancel_resend}
+      params: {engine: "${interface.engine}", channel: "${trigger.labels.channel}", request_id: "${A2.request_id}"}
+
+  - id: A4-replay-raw-range
+    ladder_level: L1
+    blast_radius_class: replay
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 50000, scope_expr: "topic == '${trigger.topic}' and partition_key startswith '${trigger.labels.facility}|'", time_box_s: 1200}
+    requires_dry_run: false             # MEM-HEAL-046: dry-run mandatory only when max > 50,000; budget capped at exactly 50k
+    tool: {server: playbook-runner, operation: processor.replay_range, permission: apply}
+    params:
+      source_topic: "${trigger.topic}"   # hc.raw.cerner.<type>.hl7v2.v1 — byte-exact landing zone (SRC-CER-001), ≥ 30 d retention (ARC-NFR-005)
+      consumer_group: std.hl7v2.parser
+      offset_range: "${gap_in_raw.offset_range}"
+      replay_marker_header: {hc-replay: "${incident.id}"}   # downstream idempotency by (MSH-3, MSH-4, MSH-10) + hc-replay
+      target_layer: std                 # replays into HEALIX's own parser only; canonical/kg/edw are reached by the normal pipeline
+    idempotency_key_recipe: "sha256(${incident.id}|A4|${trigger.topic}|${gap_in_raw.offset_range})"
+    timeout_s: 900
+    retries: 1
+    verify:
+      probe: "hc.dq.issue.v1 type='sequence-gap' status for channel; S1 ingest latency; std consumer lag"
+      expect: "gap_issue.status == 'resolved' and consumer_lag_s < 60"
+      within_s: 900
+    on_failure: escalate
+    compensating_action:
+      tool: {server: playbook-runner, operation: processor.replay_cancel}
+      params: {consumer_group: std.hl7v2.parser, replay_marker: "${incident.id}", quarantine_partial: true}   # partial output tagged, never deleted (DQ-PIPE-014)
+
+  - id: A5-dq-issue-and-ticket
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: facility, max: 1, scope_expr: "facility == '${trigger.labels.facility}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: ticketing, operation: create_issue, permission: apply}
+    params:
+      template: ticket_template          # PHI-free packet (see escalation.ticket_template)
+      assignee_role: integration-engineer
+      cc_roles: [cerner-interface-team, platform-sre]
+      link_dq_issue:
+        tool: {server: dq-engine, operation: open_issue}
+        params:
+          rule_id: DQR-COMPLETENESS-HL7V2-MESSAGE-001
+          dimension: completeness
+          topic: "${trigger.topic}"
+          channel: "${trigger.labels.channel}"
+          missing_sequence_range: "${gap_in_raw.missing_from}-${gap_in_raw.missing_to}"
+          severity: non-blocking
+    idempotency_key_recipe: "sha256(${incident.id}|A5|${trigger.labels.channel})"   # AGT-TOOL ticketing dedup by (incident, type)
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "ticketing.get_issue", expect: "status in ['open','acknowledged'] and linked_incident == '${incident.id}'", within_s: 120}
+    on_failure: escalate
+    compensating_action:
+      tool: {server: ticketing, operation: update_issue}
+      params: {issue_id: "${A5.issue_id}", status: "cancelled", reason: "healing run rolled back"}
+
+# -----------------------------------------------------------------------------------------------------------------
+# Verification — success is measured on the same signals that triggered the incident (window ≥ 3× detection window).
+# -----------------------------------------------------------------------------------------------------------------
+verification:
+  probes:
+    - {id: V1-sequence-resumes, metric: "healix.connect.mllp.sequence_gap_open{channel='${trigger.labels.channel}'}", expect: "== 0"}
+    - {id: V2-ack-error-rate, metric: "healix.connect.mllp.ack_rate{channel='${trigger.labels.channel}',result=~'AE|AR'}", expect: "< 0.001 for 600s"}   # STR-OPS-007 threshold
+    - {id: V3-ingest-lag, metric: "healix.connect.mllp.produce_lag_seconds{channel='${trigger.labels.channel}'} and std consumer lag", expect: "< 60"}
+    - {id: V4-ingest-latency-slo, sli: S1, expect: "p95 <= 5s over the verification window"}                           # ARC-NFR-001
+    - {id: V5-no-duplicate-processing, metric: "healix.std.hl7v2.duplicate_processed_total{channel='${trigger.labels.channel}'}", expect: "delta == 0"}  # IOP-V2-004
+    - {id: V6-dlq-stable, topic: hc.ops.dlq.connect.v1, expect: "growth_rate(channel) == 0"}
+  duration_s: 600
+  success_criteria: "V1 and V2 and V3 and V4 and V5 and V6 all true for the full duration; otherwise verifying → rolled_back (compensations in reverse order) → escalated"
+
+# -----------------------------------------------------------------------------------------------------------------
+# Limits — FIXED-POINT PROTECTED (MEM-HEAL-042/048): changed only by a `policy`-class CR from DGC / Privacy Office.
+# -----------------------------------------------------------------------------------------------------------------
+limits:
+  max_runs_per_hour: 3
+  cooldown_s: 900
+  max_actions_per_incident: 5
+  max_concurrent_per_target: 1
+  circuit_breaker: {consecutive_failures: 3, open_for_s: 86400, page: true}
+  change_freeze_calendar_ref: OPS-02/freeze-calendar            # release windows, Millennium code upgrades (facility scoped)
+  recursion:
+    max_depth: 2
+    may_trigger: [PBK-DQ-001]        # a replay can legitimately surface a DQ storm; PBK-DQ-001 may never re-trigger PBK-ING-001 (MEM-HEAL-009)
+  per_action_overrides:
+    A1-reconnect-listener: {max_runs_per_hour: 3}
+    A4-replay-raw-range: {max_records_per_action: 50000, max_runs_per_day: 4}
+
+# -----------------------------------------------------------------------------------------------------------------
+# Guards — FIXED-POINT PROTECTED (MEM-HEAL-042/043).
+# -----------------------------------------------------------------------------------------------------------------
+guards:
+  kill_switch_paths:
+    - cr-engine.kill_switch.platform
+    - cr-engine.kill_switch.environment.${env}
+    - cr-engine.kill_switch.agent.agent.self_healer
+    - module14.kill_switch.healing
+    - module14.kill_switch.playbook.PBK-ING-001
+  phi_ceiling: none
+  data_mutation: none
+  requires_dry_run_in: [test]
+  forbidden_targets:
+    - cerner-millennium                # SRC-CER-024: no HL7 v2, FHIR write or CCL into Millennium
+    - "hc.canonical.*"
+    - "hc.kg.*"
+    - "hc.edw.*"                       # GOV-ACC-011: agents never write canonical/kg/edw directly
+  forbidden_params: [message_body, PID, NK1, IN1, NTE, OBX-5]   # never read, logged or memorised
+
+suppression:
+  notifications_only: true
+  max_s: 3600                          # MEM-HEAL-006: never suppresses detection or evaluation; visible on the incident
+
+conflicts_with:
+  - PBK-DQ-001                         # MEM-04 §7 conflict matrix: while A4 replays a topic, PBK-DQ-001 waits on that topic's partitions
+  # PBK-ING-002 shares no target (Debezium connector vs MLLP connector) and is not mutually exclusive
+
+escalation:
+  to:
+    - platform-sre-primary             # OPS-03 §4.3 Platform SRE primary (first responder)
+    - stream-semantic-engineering      # OPS-03 §4.3 Stream & semantic engineering (connectors)
+    - cerner-interface-team            # OPS-03 §4.3 Cerner interface team (external, per hospital IT rota) — MLLP source issues
+    - integration-engineer             # VIS-00 persona; owns the interface-engine resend and sequence reconciliation
+  after_s: 900
+  sla_minutes: {S1: 15, S2: 30, S3: 240, S4: 1440}   # OPS-00 §7 severities, aligned with DQ-SCORE-006
+  ticket_template: |
+    [HEALIX self-healer] MLLP sequence gap / ACK storm — ${env} — channel ${trigger.labels.channel}
+    Incident: ${incident.id}  Fault class: ${incident.fault_class}  Severity: ${incident.severity}
+    Topic: ${trigger.topic}  Facility code: ${trigger.labels.facility}
+    Last durably produced MSH-10: ${last_acked.msh10}  MSH-13: ${last_acked.msh13}  Offset: ${last_acked.offset}
+    Missing MSH-13 range: ${gap_in_raw.missing_from}-${gap_in_raw.missing_to} (${gap_in_raw.expected_count - gap_in_raw.found_count} messages)
+    ACK AE/AR rate (60 s): ${ack_error_rate.value}  Engine queue depth: ${engine_state.queue_depth}  Heartbeat age: ${engine_state.heartbeat_age_seconds}s
+    Actions attempted: ${run.actions_summary}  Verification: ${run.verification_summary}
+    Required from Integration Engineer / Cerner interface team: confirm engine outbound queue state and resend the range above.
+    This ticket contains identifiers of messages and channels only; no patient, visit or clinical content (hc-phi-class: non-phi).
+  page: false                          # S3 default; page=true is forced by the engine when severity is raised to S2 by A0
+  on_failure: page
+
+learning:
+  memory_classes_written: [incident, root_cause, observation, playbook_step, drift_signature]
+  lesson_template: >-
+    On ${env} channel ${trigger.labels.channel} (${trigger.topic}) a ${incident.fault_class} with missing-range size
+    ${gap_in_raw.expected_count - gap_in_raw.found_count} was ${incident.outcome} by ${run.successful_action_id} in
+    ${run.duration_s}s; engine queue depth at detection ${engine_state.queue_depth}; hour-of-day ${incident.hour}.
+  record_episode: true                 # Graphiti JSON episode: Incident -EXHIBITED_SYMPTOM-> Symptom, -RESOLVED_BY-> Action, -PRODUCED_OUTCOME-> Outcome
+  emit_reflexion: true                 # masked (GOV-LIN-015), trust T1, untrusted_text: true; never promotes without a CR
+  candidate_for_tuning:                # MEM-HEAL-050: thresholds/windows/timeouts only — never limits/guards/blast_radius
+    - triggers[hl7v2.ack_error_rate].threshold
+    - triggers[hl7v2.ack_error_rate].for_s
+    - triggers[hl7v2.channel_silence].threshold
+    - triggers[hl7v2.channel_silence].for_s
+    - correlation_window_s
+    - actions[A1-reconnect-listener].verify.within_s
+    - actions[A2-request-engine-resend].verify.within_s
+    - verification.duration_s
+  learned_from:
+    description: >-
+      Seed authored from the STR-04 §2.2 MLLP connector design, the Cerner outbound interface contract (SRC-01 §3.1)
+      and typical Fortune-100 interface-engine behaviour (Cloverleaf/Rhapsody acknowledging to Millennium while the
+      outbound route to HEALIX backs up). No production incidents yet; `compiled_from_incidents` fills as the curator
+      mines Graphiti incident communities (MEM-04 §9).
+    signatures_to_learn:
+      - "gap size vs hour-of-day per facility (engine nightly restarts, Millennium batch windows)"
+      - "AE storm preceded by produce-ack p99 > 200 ms (broker side) vs engine-side resend loops"
+      - "silence that is a scheduled interface downtime (freeze calendar) vs a true backlog"
+  graduation: {shadow_matches_required: 10, min_agreement: 0.9, harmful_recommendations_allowed: 0}
+
+references:
+  requirements:
+    - IOP-V2-002      # AA/CA only after raw message durably produced
+    - IOP-V2-004      # duplicate handling by (MSH-3, MSH-4, MSH-10) — safe resend/replay
+    - IOP-V2-009      # ACK latency p99 ≤ 200 ms
+    - STR-CDC-007     # AA only after Kafka acks=all
+    - STR-CDC-008     # single ordered producer task; MSH-13 gaps open an issue
+    - STR-OPS-006     # connector/task state and MLLP queue depth exported to module 12
+    - STR-OPS-007     # AE/AR rate alert 0.1 % / 5 min
+    - SRC-CER-001     # byte-exact ADT capture to hc.raw.cerner.adt.hl7v2.v1
+    - SRC-CER-024     # read-only integration — never write into Millennium
+    - ARC-NFR-001     # p95 source → canonical ≤ 5 s
+    - ARC-NFR-005     # raw retention ≥ 30 d enables replay
+    - DQ-REM-005      # never alter clinical/financial values
+    - DQ-PIPE-014     # never delete DQ results
+    - GOV-ACC-011     # no direct writes to canonical/kg/edw
+    - GOV-LIN-015     # masked agent transcripts
+    - MEM-HEAL-001
+    - MEM-HEAL-002
+    - MEM-HEAL-003
+    - MEM-HEAL-006
+    - MEM-HEAL-008
+    - MEM-HEAL-009
+    - MEM-HEAL-010
+    - MEM-HEAL-011
+    - MEM-HEAL-012
+    - MEM-HEAL-014
+    - MEM-HEAL-036
+    - MEM-HEAL-037
+    - MEM-HEAL-038
+    - MEM-HEAL-041
+    - MEM-HEAL-042
+    - MEM-HEAL-043
+    - MEM-HEAL-045
+    - MEM-HEAL-046
+    - MEM-HEAL-047
+    - MEM-HEAL-050
+  runbooks:
+    - OPS-03 §4.2 SourceSilent
+    - OPS-03 §4.2 CertificateExpiring   # hand-off when TLS expiry is the root cause (FLT-PLAT-005)
+    - STR-04 §2.2 HL7 v2 MLLP source
+  slo_ids: [S1, S3]
+  topics:
+    - hc.raw.cerner.adt.hl7v2.v1
+    - hc.raw.cerner.orm.hl7v2.v1
+    - hc.raw.cerner.oru.hl7v2.v1
+    - hc.raw.cerner.siu.hl7v2.v1
+    - hc.raw.cerner.dft.hl7v2.v1
+    - hc.ops.dlq.connect.v1
+    - hc.dq.issue.v1
+    - hc.ops.healing.incident.event.v1
+    - hc.ops.healing.playbookrun.event.v1
+    - hc.ops.audit.v1
+  connector_manifest: connect.mllp-cerner
+
+chaos_tests:                           # MEM-HEAL-013/041: ≥ 1 per trigger; run in `test` with the HL7 v2 simulator sending sequence protocol
+  - id: CT1-kill-listener
+    trigger: hl7v2.channel_silence
+    injection: "SIGKILL the connect.mllp-cerner task for facility channel HOSP_A while the simulator keeps sending 20 msg/s"
+    expected_mttd_s: 120
+    expected_mttr_s: 600
+    blast_radius_assert: "exactly 1 connector task restarted; 0 writes outside hc.std.*; 0 messages to simulator (SRC-CER-024)"
+  - id: CT2-inject-msh13-gap
+    trigger: hl7v2.sequence_gap
+    injection: "Simulator skips MSH-13 1001–1050 then continues; the skipped frames are later available via the engine resend stub"
+    expected_mttd_s: 60
+    expected_mttr_s: 900
+    blast_radius_assert: "resend request covers exactly 50 sequence numbers; dedupe absorbs any duplicate; records replayed ≤ 50,000"
+  - id: CT3-downstream-gap-in-raw
+    trigger: hl7v2.sequence_gap
+    injection: "Frames 2001–2200 produced to raw but std.hl7v2.parser consumer group offset advanced past them (simulated consumer skip)"
+    expected_mttd_s: 120
+    expected_mttr_s: 600
+    blast_radius_assert: "replay limited to the 200-record offset range on one partition key prefix; V5 duplicate_processed delta == 0"
+  - id: CT4-ack-storm
+    trigger: hl7v2.ack_error_rate
+    injection: "Broker min.insync.replicas violated for 90 s so produce times out and the listener returns AE on 100 % of frames"
+    expected_mttd_s: 60
+    expected_mttr_s: 600
+    blast_radius_assert: "no AA returned for an unproduced frame (STR-CDC-007); listener restarted ≤ 1×; A4 replay only if gap_in_raw confirms"
+  - id: CT5-engine-backlog-masked
+    trigger: hl7v2.channel_silence
+    injection: "Engine stub keeps ACKing the simulator but stops forwarding to HEALIX; queue depth grows to 5,000"
+    expected_mttd_s: 120
+    expected_mttr_s: 900
+    blast_radius_assert: "A1 at most once; A2 not attempted while engine heartbeat age ≥ 300 s; ticket to Integration Engineer opened; no replay"
+  - id: CT6-oscillation-and-freeze
+    trigger: hl7v2.channel_silence
+    injection: "Listener flaps 4× within 60 min while a facility freeze window is active"
+    expected_mttd_s: 120
+    expected_mttr_s: 0                 # expected outcome is suppressed/escalated, not healed
+    blast_radius_assert: "0 restarts executed (freeze guard + oscillation guard); incident escalated with reason codes; suppression ≤ 3600 s notifications-only"
+
+phi: none
+
+change_request:
+  type: playbook
+  risk_class: medium                   # ladder L1 only; would be `high` if any L2 action were added (MEM-04 §8)
+
+provenance:
+  created_by: agent.self_healer        # drafted from the MEM-04 fault taxonomy; reviewed by Platform SRE and Privacy & Security Office
+  compiled_from_incidents: []
+  approved_cr_id: null                 # required before status may leave `shadow` (MEM-HEAL-044)
+  created_at: "2026-10-17T00:00:00Z"
+  schema_ref: healing-playbooks/playbook.schema.json

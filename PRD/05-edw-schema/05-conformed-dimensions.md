@@ -114,7 +114,7 @@ Oracle Fusion legal entity / business unit.
 | `organization_sk`, `organization_bk`, `party_sk` | keys | `organization_bk` = resolved golden id |
 | `organization_name`, `organization_alias` | VARCHAR(255) | — |
 | `organization_type_code_sk` | → `dim_code` | FHIR organization-type + HEALIX-ERP extensions (`legal-entity`, `business-unit`) |
-| `npi_type2`, `ein_hash`, `tax_id_type` | identifiers | EIN hashed (`phi_class none` but confidential) |
+| `npi_type2`, `ein_hash`, `tax_id_type` | identifiers | EIN hashed (`phi_class` = `confidential:financial`) |
 | `parent_organization_sk` | self FK | ragged hierarchy |
 | `level1_name … level5_name`, `hierarchy_level` | flattened | health system → region → facility → division → department |
 | `fusion_legal_entity_id`, `fusion_business_unit_id`, `cerner_organization_id` | natural ids | — |
@@ -268,7 +268,7 @@ surrogate), adding display columns BI tools need.
 | `concept_status` (`active / inactive / retired`), `effective_from`, `effective_to` | per terminology release |
 | `is_abstract_flag` | grouping concepts |
 | `parent_code_sk` (primary parent) | full closure in `ref_concept_hierarchy` |
-| `sensitive_category_code` | from `healix:scheme/sensitive-categories` (drives `phi_sensitive`) |
+| `sensitive_category_code` | from `healix:scheme/sensitive-categories` (drives the row-level `phi:sensitive-category/*` tag) |
 
 **Versioning.** Not SCD2 in the usual sense: a concept's identity is `(code_system, code)`, its versions are terminology
 releases. `code_sk` is stable per `(code_system, code)`; version-specific attributes are in `ref_concept` keyed by

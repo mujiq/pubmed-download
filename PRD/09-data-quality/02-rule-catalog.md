@@ -36,7 +36,7 @@ rules: [ ... ]
 
 | Field | Type | Req. | Meaning |
 |-------|------|------|---------|
-| `id` | string `^DQR-[A-Z]+-[A-Z0-9]+-\d{3}$` | MUST | Stable identifier `DQR-<DIMENSION>-<DOMAIN>-<NNN>`; `<DIMENSION>` MUST equal `dimension` upper-cased |
+| `id` | string `^DQR-[A-Z]+-[A-Z0-9]+(-[A-Z0-9]+)?-\d{3}$` | MUST | Stable identifier `DQR-<DIMENSION>-<DOMAIN>-<NNN>`; `<DIMENSION>` MUST equal `dimension` upper-cased; `<DOMAIN>` is a registered token (§4) or two registered tokens joined by one hyphen (`KG-EDW`) |
 | `name` | string ≤ 120 | MUST | Short human title |
 | `description` | string | MUST | What is checked and why (one paragraph) |
 | `dimension` | enum | MUST | `completeness, validity, accuracy, consistency, uniqueness, timeliness, integrity, temporal, lineage, semantic` |
@@ -147,6 +147,9 @@ clearinghouse, CRD credentialing, SCH scheduling, EMPI, PLT platform. Rules mark
 | DQR-SEMANTIC-MEDICATION-003 | Route compatible with dose form (`healix:compatibleRoute` axiom) | CER, PHA | M | G W | ontology |
 | DQR-TIMELINESS-ADT-001 † | ADT (A01/A02/A03/A04/A08) canonicalised within 5 min of `MSH-7` | CER | C | S W | policy |
 | DQR-TIMELINESS-RESULT-002 | Lab result canonical within 10 min of LIS verification time | LIS | M | S | policy |
+| DQR-TIMELINESS-ENCOUNTER-001 † | In-progress inpatient/observation encounter without discharge > 30 d (ghost admit, SRC-CER §9) | CER | m | S W | policy |
+| DQR-TIMELINESS-ENCOUNTER-002 † | Encounter change canonicalised within 5 s p95 (`hc-event-time − hc-source-time`; data contract `dc.cerner.encounter.v2`, ARC-NFR-001) | CER | M | S W | policy |
+| DQR-TIMELINESS-SKEW-001 † | Source time ahead of platform event time by > 5 min (facility clock skew / DST / missing offset) | CER | M | S W | policy |
 | DQR-VALIDITY-ALLERGY-001 | `AllergyIntolerance.code` in SNOMED CT substance ∪ RxNorm allergen VS | CER | C | S W | terminology |
 | DQR-VALIDITY-IMMUNIZATION-001 | `Immunization.vaccineCode` in CVX | CER | M | S W | terminology |
 | DQR-INTEGRITY-SPECIMEN-001 | `DiagnosticReport.specimen` resolves to Specimen with `collection.collectedDateTime` | LIS | M | S G | ontology |
@@ -241,6 +244,33 @@ clearinghouse, CRD credentialing, SCH scheduling, EMPI, PLT platform. Rules mark
 | DQR-CONSISTENCY-PLANE-001 | Stream vs warehouse pass rate for the same rule/window differs by ≤ 0.5 pp | PLT | M | W | policy |
 | DQR-TIMELINESS-ISSUE-001 | Blocker issues acknowledged ≤ 15 min, critical ≤ 30 min | PLT | C | W | policy |
 
+#### 3.9.1 Bitemporal contract, provenance and dual-projection rules (pack `temporal-and-provenance`)
+
+These rules realise the module 08 contract table (TKG-01 §9, clauses C1–C12), TKG-STORE-007 and TKG-04 §7.2. Each rule
+tagged `templated-bitemporal` names `edw_g1_party.hist_dim_patient` as its reference warehouse target and is instantiated
+by the rule compiler over every `hist_*`, `fact_*` and `bridge_*` table carrying the bitemporal block (EDW-ARCH-003,
+EDW-06); graph targets apply to every `healix-time:BitemporalAssertion`. Columns follow TKG-01 §9 exactly: `valid_from`,
+`valid_to`, `recorded_at`, `superseded_at`, `change_kind`, `event_time`, `source_time`, `source_tz`, `prov_activity_iri`.
+
+| Rule id | Check | TKG-01 clause | Sev | Planes | Derivation |
+|---------|-------|---------------|-----|--------|-----------|
+| DQR-COMPLETENESS-TEMPORAL-001 † | `validFrom` / `valid_from` present on every assertion and row | C1 | C | G W | ontology (`healix-time:validFrom`) |
+| DQR-COMPLETENESS-TEMPORAL-002 † | `recordedAt` / `recorded_at` present and not before `event_time` (sink clock) | C3 | C | G W | ontology (`healix-time:recordedAt`) |
+| DQR-COMPLETENESS-TEMPORAL-003 † | `sourceTimeZone` / `source_tz` present | C12 | M | G W | ontology (`healix-time:sourceTimeZone`) |
+| DQR-COMPLETENESS-TEMPORAL-004 † | Closed assertion (`supersededAt` set) carries `changeKind` | C6 (TKG-TIME-006) | C | G W | ontology (`healix-time:changeKind`) |
+| DQR-VALIDITY-TEMPORAL-001 † | `valid_to > valid_from` (retraction tombstone `valid_to = valid_from` exempt, C10) | C2 | C | G W | ontology (`healix-time:validTo`) |
+| DQR-VALIDITY-TEMPORAL-002 † | Open interval is NULL; no sentinel end dates (≥ 4000-01-01, Oracle 4712, 9999) | C2, C4 | C | G W | ontology (`BitemporalAssertionShape`) |
+| DQR-VALIDITY-TEMPORAL-003 † | `change_kind` ∈ `ChangeKindScheme` {`new`, `new-version`, `correction`, `retraction`, `merge`, `unmerge`} | C6 | C | G W | ontology (`healix-time:ChangeKindScheme`) |
+| DQR-CONSISTENCY-TEMPORAL-001 † | No overlapping valid intervals per (subject, functional predicate) / per business key within the current transaction-time slice | C9 | C | G W | ontology (`healix-shape:NoOverlapFunctional`) |
+| DQR-CONSISTENCY-TEMPORAL-002 † | At most one current row per `(bk, valid_from)`; one current assertion per (subject, functional predicate, validFrom) | C4 (EDW-HIST-003) | C | G W | ontology (`healix-time:supersededAt`) |
+| DQR-CONSISTENCY-TEMPORAL-003 † | `superseded_at ≥ recorded_at`; `change_kind = retraction` ⇒ `superseded_at` set, valid time kept | C4, C10 | C | G W | ontology (`healix-time:retractedBy`) |
+| DQR-COMPLETENESS-PROV-001 † | `prov:wasGeneratedBy` IRI / `prov_activity_iri` present on every assertion and row | C5 | C | G W | ontology (`BitemporalAssertionShape`) |
+| DQR-INTEGRITY-PROV-002 † | `prov_activity_iri` resolves to `fact_lineage_activity`; activity typed `prov:Activity` | C5 | M | G W | policy |
+| DQR-CONSISTENCY-KG-001 † | `graph/current/<Gn>` has no drift against current assertions in the batch graphs (nightly rebuild, TKG-STORE-007) | — | C | G | policy |
+| DQR-CONSISTENCY-KG-EDW-001 † | Nightly KG ↔ EDW reconciliation per (group, entity type, recorded day): current count, recorded count, content hash, ER link count, retraction count (TKG-04 §7.2; results on `hc.ops.kg-edw-reconciliation.v1`) | C11 | C | W G | policy |
+| DQR-TIMELINESS-TEMPORAL-001 † | `recorded_at − event_time ≤ 30 min` for 99 % of versions per hour | C3, C7 | M | W | policy |
+| DQR-TIMELINESS-TEMPORAL-002 † | Valid time derived from the §5.1 fallback chain (`validTimePrecision = approximate`) observed per predicate | C1 (TKG-01 §5.1) | m | G | ontology (`healix-time:validTimePrecision`) |
+
 ### 3.10 Cross-system reconciliation (`group: XSYS`)
 
 Reconciliation rules compare aggregates or sets across source systems after both sides have landed in the EDW/KG.
@@ -259,7 +289,7 @@ They run in the warehouse plane at a declared grain and tolerance, with a graph 
 | DQR-CONSISTENCY-XSYS-009 † | LIS verified result count = Cerner lab Observation count per day per lab section (± 0.5 %) | LIS ↔ CER | M | W | policy |
 | DQR-CONSISTENCY-XSYS-010 † | KG entity count = EDW row count per group per as-of time (ADR-07 dual projection, exact) | PLT | C | W G | policy |
 
-**Catalogue size:** 98 rules (64 in YAML packs †). Rules not yet in packs are authored by `agent.dq_author` in the
+**Catalogue size:** 117 rules (83 in YAML packs †). Rules not yet in packs are authored by `agent.dq_author` in the
 first release sprint using the DSL and must pass the schema.
 
 ## 4. Domain token registry
@@ -270,7 +300,9 @@ first release sprint using the DSL and must pass the schema.
 ADT, RESULT, ALLERGY, IMMUNIZATION, SPECIMEN, IMAGING, CLAIM, CLAIMRESPONSE, GL, CHARGE, COVERAGE, INVOICE,
 COSTCENTER, ITEM, PO, RECEIPT, INVENTORY, APPOINTMENT, BED, WORKER, ASSIGNMENT, POSITION, LICENCE, TIMECARD,
 MEASUREREPORT, CAREGAP, SDOH, RESEARCHSUBJECT, CONSENT, COHORT, VALUESET, CONCEPTMAP, UCUM, TERMINOLOGY, RECORD,
-EDW, DQRESULT, PLANE, ISSUE, XSYS`. New tokens are added by the Data Quality Lead through a change request.
+EDW, DQRESULT, PLANE, ISSUE, XSYS, TEMPORAL, PROV, KG, KG-EDW, SKEW`. `TEMPORAL` and `PROV` denote the bitemporal block and
+provenance reference shared by every entity (TKG-01 §9); `KG` and the compound `KG-EDW` denote the knowledge-graph projection
+and its reconciliation with the EDW (ADR-07). New tokens are added by the Data Quality Lead through a change request.
 
 ## 5. Requirements
 
@@ -291,7 +323,7 @@ EDW, DQRESULT, PLANE, ISSUE, XSYS`. New tokens are added by the Data Quality Lea
 > `ontology` rules MUST be an IRI under `https://ontology.healix.example.org/`, for `terminology` rules a ValueSet
 > canonical URL, for `profiling` rules a `urn:healix:dq:baseline:` URN, for `policy` rules a governance document URI.
 
-> **DQ-RULE-006** (P0, test) — The first release MUST ship at least the 98 rules catalogued in §3 in status `active`
+> **DQ-RULE-006** (P0, test) — The first release MUST ship at least the 117 rules catalogued in §3 in status `active`
 > or `review`, covering every group G1–G9 and every source class (Cerner, Oracle Fusion ERP/HCM/SCM, ≥ 6 peripherals).
 
 > **DQ-RULE-007** (P1, test) — Every rule SHOULD ship with at least one passing and one failing fixture under `tests`;
@@ -311,3 +343,8 @@ EDW, DQRESULT, PLANE, ISSUE, XSYS`. New tokens are added by the Data Quality Lea
 
 > **DQ-RULE-012** (P0, inspection) — Rules MUST NOT embed PHI literals (names, MRNs, dates of birth) in expressions,
 > fixtures or hints; fixtures MUST use synthetic data (module 11).
+
+> **DQ-RULE-013** (P0, test) — Every TKG-01 §9 contract clause that names a DQ rule family (C1–C6, C9) MUST be covered by
+> an `active` rule in the `temporal-and-provenance` pack with a graph target and a warehouse target; the compiler MUST
+> instantiate every rule tagged `templated-bitemporal` over every table that carries the bitemporal block (EDW-ARCH-003)
+> and every `healix-time:BitemporalAssertion`, reporting results per table under the same rule id.

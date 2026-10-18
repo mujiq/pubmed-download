@@ -163,7 +163,7 @@ GRAPH <https://ontology.healix.example.org/graph/prov> {
       a healix:BatchGraph ;
       prov:wasGeneratedBy   provact:01J8Q6Z3M9K2V7XW4R5T6Y8ABC ;
       healix:group          "G2" ;
-      healix:phiClassMax    "PHI-CLINICAL" ;
+      healix:phiClassMax    "phi:clinical" ;
       healix:assertionCount 3 ;
       healix:contentHash    "sha256:5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8" .
 
@@ -185,7 +185,7 @@ GRAPH <https://ontology.healix.example.org/graph/prov> {
       a healix:BatchGraph ;
       prov:wasGeneratedBy   provact:01J9R1T5N7P3W8XY2Z4V6B9CDE ;
       healix:group          "G2" ;
-      healix:phiClassMax    "PHI-CLINICAL" ;
+      healix:phiClassMax    "phi:clinical" ;
       healix:assertionCount 1 ;
       healix:contentHash    "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae" .
 }

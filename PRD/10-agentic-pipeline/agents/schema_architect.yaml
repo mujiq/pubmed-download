@@ -107,6 +107,6 @@ graduation:
   criteria:
     - ">= 150 human-approved edw_ddl CRs with approval rate >= 0.90 over >= 180 days"
     - "Zero failed production migrations"
-    - "PRD revision approving L2 for additive, non-PHI column/dimension-member changes only"
+    - "PRD revision approving L2 for additive column/dimension-member changes classed internal or public only"
   demotion_triggers:
     - Any production migration requiring manual rollback (stays L1; incident).

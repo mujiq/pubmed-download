@@ -21,12 +21,12 @@ flowchart LR
   SRC[/Source payload/] --> RAW[(hc.raw.<src>.<fmt>.v1)]
   RAW --> PARSE[Format parser · schema / Schematron / SNIP / DICOM dictionary]
   PARSE -->|typed| STD[(hc.std.<src>.<fmt>.v1)]
-  PARSE -->|structural error| Q1[(hc.dq.interop.<fmt>.quarantine.v1)]
+  PARSE -->|structural error| Q1[(hc.ops.dlq.processor.v1 · typed issue on hc.dq.issue.v1)]
   STD --> MAP[Mapping · format → FHIR Bundle]
   MAP <--> TS[Terminology Service]
   MAP --> VAL[Validation IOP-05]
   VAL -->|pass| CAN[(hc.canonical.*.fhir.v1)]
-  VAL -->|fail| Q2[(hc.dq.<domain>.<resource>.quarantine.v1)]
+  VAL -->|fail| Q2[(hc.dq.quarantine.<domain>.v1)]
   RAW -. document bytes .-> OBJ[(Object store · attachments)]
   OBJ -.-> CAN
 ```
@@ -47,7 +47,8 @@ IEEE 11073 and Bulk Data into FHIR).
 ### 2.2 Processing model
 
 1. **Validate structurally.** XML schema (CDA R2 `CDA.xsd`) then the C-CDA 2.1 Schematron (HL7 published rules plus
-   the ONC C-CDA Validator rule set). Errors → `hc.dq.interop.ccda.quarantine.v1`; warnings are recorded but not blocking.
+   the ONC C-CDA Validator rule set). Errors (`IOP-E-PARSE-010`) → the document is retained on `hc.ops.dlq.processor.v1` and a typed issue is published to
+   `hc.dq.issue.v1`; warnings are recorded but not blocking.
 2. **Persist the document.** The full XML is stored in the object store; a `DocumentReference` (profile
    `healix-documentreference`) is always produced with `content.attachment.url`, `hash`, `format = urn:hl7-org:sdwg:ccda-structuredBody:2.1`,
    `type` = LOINC document type from `ClinicalDocument/code`, `masterIdentifier` from `ClinicalDocument/id`.
@@ -220,7 +221,7 @@ as native 11073-10201 DIM / 11073-20601 PHD payloads converted by the gateway. B
 | Measurement value + MDC unit (e.g. `MDC_DIM_PERCENT`) | `valueQuantity` with UCUM via ConceptMap `mdc-unit-to-ucum` | — |
 | Measurement status | `status` + `interpretation` + `ext-device-measurement-status` | Invalid / questionable → `status = cancelled`/`preliminary` |
 | Timestamp (device clock) + gateway time | `effectiveDateTime` (device), `issued` (gateway) ; clock skew recorded in `Provenance.extension[clock-offset]` | Skew > 60 s raises a DQ warning |
-| Patient association (gateway ADT binding) | `subject` | Unassociated device data goes to `hc.dq.clinical.observation.quarantine.v1` with `IOP-E-REF-003` |
+| Patient association (gateway ADT binding) | `subject` | Unassociated device data goes to `hc.dq.quarantine.clinical.v1` with `IOP-E-REF-003` |
 | Waveforms | `SampledData` only when ≤ 1 MiB; otherwise `DocumentReference` to object store | Alarm events → `Observation` category `alarm` (P2) |
 
 Sampling policy: high-frequency device streams (≥ 1 Hz) are down-sampled or windowed at the gateway per device profile
@@ -231,7 +232,7 @@ before canonicalisation; raw rates are retained in `raw` for the retention windo
 Low-frequency sources (payer attribution files, SDOH screening extracts, research registries, Oracle Fusion seeded
 reference data) arrive as files. HEALIX treats them as **Bulk Data**:
 
-1. Files land in the object store; a manifest (`hc.raw.files.<src>.manifest.v1`) records source, schema version,
+1. Files land in the object store; a manifest (`hc.ops.connector.file.manifest.v1`) records source, schema version,
    row count and SHA-256.
 2. A declarative column → FHIR mapping (same YAML dialect as IOP-02 §10, IOP-V2-026) converts rows to FHIR resources
    written as **ndjson** files, one resource type per file, following the FHIR Bulk Data Access IG 2.0 output format.

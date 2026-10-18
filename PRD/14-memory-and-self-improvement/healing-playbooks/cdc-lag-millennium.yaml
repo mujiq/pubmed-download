@@ -1,0 +1,684 @@
+# doc_id: PBK-ING-002
+# module: 14-memory-and-self-improvement
+# artefact: healing playbook (M3 procedural memory of agent.self_healer; MEM-04 §8, MEM-A3 §2)
+# schema: playbook.schema.json (contract B, MEM-04 §8 / MEM-A3 §2.1)
+# status: shadow (recommend-only) — MEM-HEAL-037; promotion only via `playbook` CR — MEM-HEAL-027/044
+#
+# Hard rule (MEM-01 §6, binding on this file and on the Graphiti index of it):
+#   No tier of memory (M0–M4 as used by this module) and no cache tier (C0–C4) may hold content whose
+#   `hc-phi-class` is anything but `non-phi`/`internal` (steward preferences: `pii:workforce` with consent
+#   flag). This includes the C0 provider prompt cache: pseudonymised PHI is not permitted.
+#   This playbook therefore carries ids, counts, SCN/offset pointers, metric names and thresholds only. No
+#   Millennium row content, PERSON_ID, MRN/FIN, or Debezium `before`/`after` payload may appear in any
+#   diagnosis record, ticket packet, lesson or chaos fixture (MEM-HEAL-033/043/047, GOV-PHI-004).
+#
+# Heal the pipe, never the data (MEM-04 §1): this playbook restarts, re-tunes, re-scales, suppresses
+# notifications and (after dry-run) re-snapshots ONE whitelisted table through the Debezium signal table on the
+# read-only Millennium replica (STR-CDC-001/002). It never writes to Cerner Millennium (SRC-CER-024), never
+# touches `canonical`/`kg`/`edw` (GOV-ACC-011), never changes supplemental logging or archive-log retention
+# (DBA-only), never mutates a clinical or financial value (DQ-REM-005), never raises a budget (MEM-HEAL-015).
+
+id: PBK-ING-002
+name: Debezium Oracle CDC lag on Millennium replica
+version: 0.1.0
+status: shadow
+
+owners:
+  - Platform SRE primary                   # OPS-03 §4.3 rotation
+  - Stream & semantic engineering          # OPS-03 §4.3 rotation (connectors)
+  - DBA                                    # registered steward role: Millennium replica DBA (LogMiner, archive logs)
+
+fault_classes:
+  - FLT-ING-006                            # Debezium LogMiner lag (P0, ladder L1, SEV2, MTTD 600 s / MTTR 1,800 s)
+  - FLT-ING-007                            # Archive-log gap / SCN not mineable / supplemental logging lost (P0, L4 page, SEV1)
+  - FLT-ING-008                            # LogMiner redo-volume ceiling / DDL mid-stream (P0, ladder L2, SEV2)
+
+severity_default: S2                       # OPS-00 §7 SEV2 — SLO breach affecting clinical consumers (S1 ingest latency)
+risk_class: high                           # contains a ladder-L2 action (incremental re-snapshot) — MEM-HEAL-027
+autonomy_required: L3                      # agent.self_healer roster level, ARC-01 §5 (autonomy L3; never "ladder L3")
+
+mttd_target_s: 600                         # strictest class MTTD among FLT-ING-006/008 = 600 s; FLT-ING-007 detection ≤ 300 s via trigger T3
+mttr_target_s: 1800                        # FLT-ING-006 MTTR; FLT-ING-008 allows 3,600 s; FLT-ING-007 MTTR is `manual` (DBA)
+
+scope:
+  environments: [dev, test, uat, prod]
+  source_systems: [cerner-millennium]
+  interfaces: [connect.debezium-millennium]          # STR-04 §2.1 connector family (one connector per table group)
+  groups: [G1, G2, G3, G4, G5, G8]                   # subject-area groups fed by Millennium CDC (ARC-01 §4)
+  facilities: []                                     # CDC is estate-wide (replica is multi-facility); facility scoping by table partition only
+
+# ---------------------------------------------------------------------------------------------------------------
+# Triggers — one per detection signal (MEM-HEAL-041: each has ≥ 1 chaos test below; thresholds are versioned config
+# changed only by `playbook`/`policy` CR, MEM-HEAL-055). Signals are consumed by id from module 12 / STR-02 (MEM-04 §4).
+# ---------------------------------------------------------------------------------------------------------------
+triggers:
+  - id: T1-lag
+    signal: debezium.MilliSecondsBehindSource                # STR-OPS-006 source lag export; STR-04 §7 (> 60 s alert)
+    source_module: 12-platform-and-operations
+    metric: healix.connect.cdc.seconds_behind_source{connector}
+    comparator: ">"
+    threshold: 300                                           # seconds; alert line in STR-04 §7 is 60 s — healing starts at 5× to avoid chasing batch-window noise
+    window_s: 600
+    min_occurrences: 1
+    for_s: 600                                               # sustained 10 min
+    fault_class: FLT-ING-006
+
+  - id: T2-checkpoint-stale
+    signal: hc.ops.processor.checkpoint.v1                   # STR-02 (key `processor|partition`, internal, 7 d)
+    topic: hc.ops.processor.checkpoint.v1
+    comparator: absent_for                                   # no heartbeat/checkpoint from the connector (STR-CDC-006: heartbeat ≤ 10 s)
+    threshold: 120                                           # seconds without a checkpoint for the connector's processor id
+    window_s: 300
+    min_occurrences: 1
+    for_s: 120
+    fault_class: FLT-ING-006
+
+  - id: T3-scn-gap
+    signal: hc.ops.processor.checkpoint.v1
+    topic: hc.ops.processor.checkpoint.v1
+    metric: healix.connect.cdc.scn_gap{connector}            # derived: committed SCN not contiguous with replica current mineable SCN range
+    comparator: ">"
+    threshold: 0
+    window_s: 300
+    min_occurrences: 1
+    for_s: 0                                                 # immediate — archive-log gap is SEV1 and cannot self-heal
+    fault_class: FLT-ING-007
+    severity_override: S1
+
+  - id: T4-connector-failed
+    signal: healix.connect.connector.state{connector,state="FAILED"}   # STR-04 §7 connector/task status; STR-OPS-006
+    source_module: 12-platform-and-operations
+    comparator: ">="
+    threshold: 1
+    window_s: 120
+    min_occurrences: 1
+    for_s: 120                                               # STR-04 §7: FAILED > 2 min
+    fault_class: FLT-ING-006
+
+  - id: T5-redo-ceiling
+    signal: healix.connect.cdc.redo_bytes_per_s{connector}   # replica redo generation rate (read-only v$ views via dba-readonly probe)
+    source_module: 12-platform-and-operations
+    comparator: ">"
+    threshold: 0.8                                           # fraction of the LogMiner mining-rate ceiling measured in `test` baselines
+    window_s: 600
+    min_occurrences: 1
+    for_s: 600
+    fault_class: FLT-ING-008
+
+  - id: T6-ddl-midstream
+    signal: hc.ops.schema.change.v1                          # STR-02 (key `subject`); STR-CDC-005 `schema.evolve` CR raised by agent.source_mapper
+    topic: hc.ops.schema.change.v1
+    comparator: ">="
+    threshold: 1
+    window_s: 600
+    min_occurrences: 1
+    for_s: 0
+    filter: "subject matches 'hc.raw.cerner.cdc.*' and event in ['schema.evolve','compatibility_failed']"
+    fault_class: FLT-ING-008
+
+dedupe_key: "{{env}}|{{connector}}"                          # one incident per connector; table-level symptoms attach to it
+correlation_window_s: 900                                    # ≤ limits.cooldown_s
+
+# ---------------------------------------------------------------------------------------------------------------
+# Preconditions — read-only, gate the whole run (MEM-HEAL-019/045)
+# ---------------------------------------------------------------------------------------------------------------
+preconditions:
+  - check: connector_registered_in_source_registry
+    tool: { server: source-registry, operation: get_connector, permission: read }
+    params: { connector: "{{connector}}" }
+    expect: "manifest.source_system == 'cerner-millennium' and manifest.capture_target == 'read-only-replica'"   # STR-CDC-001
+    on_fail: escalate
+  - check: not_in_change_freeze_window
+    tool: { server: observability, operation: freeze_calendar.query, permission: read }
+    params: { scope: ["release", "millennium-code-upgrade", "fusion-quarterly-update"], at: "{{now}}" }
+    expect: "frozen == false or requested_ladder_max <= 'L1'"   # MEM-HEAL-010: only observe/restart during a freeze
+    on_fail: skip
+  - check: no_conflicting_playbook_on_target
+    tool: { server: playbook-runner, operation: active_runs, permission: read }
+    params: { target: "{{connector}}" }
+    expect: "none_of(['PBK-ING-003','PBK-AGT-001'])"          # MEM-A3 §7: ING-003 ▶ ING-002, AGT-001 ▶ ING-002
+    on_fail: skip
+  - check: kill_switch_clear
+    tool: { server: cr-engine, operation: kill_switch.status, permission: read }
+    params: { scopes: ["platform", "environment:{{env}}", "agent:agent.self_healer", "module14.playbook:PBK-ING-002"] }
+    expect: "all_clear == true"
+    on_fail: skip
+
+# ---------------------------------------------------------------------------------------------------------------
+# Diagnosis — read-only probes (MEM-HEAL-045). Records are symptoms/hypotheses/variables: ids, counts, SCNs, rates.
+# Never record Debezium `before`/`after` payloads, row keys or table data.
+# ---------------------------------------------------------------------------------------------------------------
+diagnosis:
+  - step: connector_and_task_state
+    tool: { server: kafka-admin, operation: connect.status, permission: read }
+    params: { connector: "{{connector}}" }
+    read_only: true
+    timeout_s: 20
+    record_as: connector_state                               # RUNNING | FAILED | PAUSED, task 0 state, last error class (class only, message hashed)
+
+  - step: checkpoint_and_scn_position
+    tool: { server: kafka-admin, operation: consume_tail, permission: read }
+    params: { topic: hc.ops.processor.checkpoint.v1, key_prefix: "{{connector}}|", max_records: 50 }
+    read_only: true
+    timeout_s: 30
+    record_as: last_committed_scn                            # committed SCN, checkpoint age_s, per-table watermark lag
+
+  - step: archive_log_availability
+    tool: { server: observability, operation: probe.dba_readonly, permission: read }   # read-only v$ views on the replica, via module-12 probe (no table access)
+    params: { probe: "v$archived_log.min_available_scn", connector: "{{connector}}" }
+    read_only: true
+    timeout_s: 30
+    record_as: min_mineable_scn                              # lowest SCN still mineable from online/archived redo on the replica
+
+  - step: scn_gap_assessment
+    tool: { server: observability, operation: expr.eval, permission: read }
+    params: { expr: "last_committed_scn.scn < min_mineable_scn.scn" }
+    read_only: true
+    timeout_s: 5
+    record_as: symptom                                       # symptom `scn_not_mineable` ⇒ FLT-ING-007 ⇒ cannot self-heal; page DBA
+
+  - step: supplemental_logging_state
+    tool: { server: observability, operation: probe.dba_readonly, permission: read }
+    params: { probe: "v$database.supplemental_log_data_min_and_whitelist_tables", connector: "{{connector}}" }
+    read_only: true
+    timeout_s: 30
+    record_as: supplemental_logging_ok                       # boolean per whitelisted table (table names are `internal`, not PHI)
+
+  - step: redo_rate_and_batch_window
+    tool: { server: observability, operation: metrics.query, permission: read }
+    params:
+      queries:
+        - healix.connect.cdc.redo_bytes_per_s{connector="{{connector}}"}[30m]
+        - healix.connect.cdc.mining_rate_bytes_per_s{connector="{{connector}}"}[30m]
+      calendar: millennium-batch-windows                     # known Millennium nightly/month-end batch windows (estate config, module 12)
+    read_only: true
+    timeout_s: 30
+    record_as: redo_profile                                  # redo/mining ratio, in_batch_window boolean, hour-of-day
+
+  - step: logminer_session_health
+    tool: { server: observability, operation: probe.dba_readonly, permission: read }
+    params: { probe: "v$logmnr_session_and_pga_for_connector_principal", connector: "{{connector}}" }
+    read_only: true
+    timeout_s: 30
+    record_as: logminer_session                              # session present, PGA MB, mining strategy, batch size currently applied
+
+  - step: ddl_events_in_window
+    tool: { server: kafka-admin, operation: consume_tail, permission: read }
+    params: { topic: hc.ops.schema.change.v1, subject_prefix: "hc.raw.cerner.cdc.", since_s: 3600, max_records: 100 }
+    read_only: true
+    timeout_s: 30
+    record_as: ddl_event                                     # subject, event kind, schema.evolve CR id if present (STR-CDC-005)
+
+  - step: snapshot_mode_and_signal_table_state
+    tool: { server: kafka-admin, operation: connect.config, permission: read }
+    params: { connector: "{{connector}}", keys: ["snapshot.mode", "incremental.snapshot.chunk.size", "log.mining.batch.size.default", "log.mining.batch.size.min", "log.mining.batch.size.max", "tasks.max"] }
+    read_only: true
+    timeout_s: 20
+    record_as: connector_config                              # current tuning; confirms no incremental snapshot already in flight (HEALIX_DBZ_SIGNAL pending rows count via probe)
+
+  - step: downstream_consumer_lag
+    tool: { server: observability, operation: metrics.query, permission: read }
+    params: { queries: ["healix.kafka.consumer_group.lag_s{group=~'kg-sink|edw-sink|dq-engine', topic=~'hc.raw.cerner.cdc.*'}"] }
+    read_only: true
+    timeout_s: 20
+    record_as: downstream_lag                                # S6 consumer lag; distinguishes source lag from sink lag (PBK-SINK-001 territory)
+
+  - step: recall_lag_signatures
+    tool: { server: memory, operation: recall, permission: read }
+    params:
+      scopes: ["healix.{{env}}.source.cerner-millennium", "healix.{{env}}.interface.{{connector}}"]
+      retrieval_profile: incident_triage                     # MEM-02 §7, k=10, ≤ 1,500 tokens, as-of now
+      filters: { classes: [incident, root_cause, drift_signature, outcome], min_trust_tier: T1 }
+      top_k: 10
+    read_only: true
+    timeout_s: 10
+    record_as: hypothesis                                    # prior lag signatures by hour-of-day/batch window; wrapped as untrusted (MEM-ARCH-009, MEM-GRA-021); degraded ⇒ memory_degraded=true (MEM-HEAL-014)
+
+# ---------------------------------------------------------------------------------------------------------------
+# Decision tree — first match wins; every action id below exists in actions[]
+# ---------------------------------------------------------------------------------------------------------------
+decision_tree:
+  - when: "symptom == 'scn_not_mineable' or supplemental_logging_ok == false"
+    then_actions: [A0-annotate, A6-page-dba]                 # FLT-ING-007: archive-log gap / supplemental logging lost — never self-heal, page ≤ 5 min
+  - when: "ddl_event.present == true and ddl_event.schema_evolve_cr_id == null"
+    then_actions: [A0-annotate, A7-request-schema-evolve-cr]  # FLT-ING-008 DDL mid-stream without CR — hand to source_mapper (STR-CDC-005), ING-003 takes precedence
+  - when: "ddl_event.present == true and ddl_event.schema_evolve_cr_id != null"
+    then_actions: [A0-annotate, A4-suppress-timeliness-notifications]   # CR already open; lag is expected until applied — suppress noise only
+  - when: "connector_state.state == 'FAILED' and connector_state.error_class in ['ConnectException','SQLRecoverableException','IOException']"
+    then_actions: [A1-restart-task, A4-suppress-timeliness-notifications]
+  - when: "connector_state.state == 'RUNNING' and redo_profile.in_batch_window == true and redo_profile.redo_to_mining_ratio > 0.8"
+    then_actions: [A2-tune-mining-batch, A4-suppress-timeliness-notifications, A3-scale-connectors]   # FLT-ING-008 redo ceiling during Millennium batch window
+  - when: "connector_state.state == 'RUNNING' and logminer_session.present == false"
+    then_actions: [A1-restart-task]
+  - when: "connector_state.state == 'RUNNING' and last_committed_scn.per_table_watermark_lag_s.max > 3600 and last_committed_scn.lagging_table_count == 1"
+    then_actions: [A2-tune-mining-batch, A5-incremental-resnapshot-one-table]   # single table far behind: dry-run row estimate then signal-table re-snapshot (L2)
+  - when: "downstream_lag.max_s > 60 and connector_state.lag_s < 60"
+    then_actions: [A0-annotate]                              # not a source problem — link incident to PBK-SINK-001 / consumer owners; no action here
+  - when: "true"
+    then_actions: [A1-restart-task, A2-tune-mining-batch, A4-suppress-timeliness-notifications]
+
+# ---------------------------------------------------------------------------------------------------------------
+# Actions — every action carries class + budget + (compensation or provable idempotency) — MEM-HEAL-038/046.
+# Budgets only tighten the engine defaults (≤ 1 connector, ≤ 1 table re-seed/day, ≤ 500k records/action,
+# time_box_s ≤ 1,800). No action has class `schema` or `data_mutation` with autonomous_allowed: true (MEM-HEAL-001).
+# ---------------------------------------------------------------------------------------------------------------
+actions:
+  - id: A0-annotate
+    description: Annotate the incident with diagnosis variables (SCN pointers, lag seconds, redo ratio, DDL subject, batch-window flag) and link CAUSED_BY/CONTRADICTED_BY to any concurrent PBK-SINK-001 / PBK-ING-003 incident.
+    ladder_level: L0
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: { unit: connector, max: 1, scope_expr: "connector == '{{connector}}'", time_box_s: 60 }
+    requires_dry_run: false
+    tool: { server: memory, operation: record_incident, permission: propose }
+    params: { incident_id: "{{incident_id}}", fault_class: "{{fault_class}}", symptoms: "{{symptoms}}", hypotheses: "{{hypotheses}}", memory_degraded: "{{memory_degraded}}" }
+    idempotency_key_recipe: "{{incident_id}}|A0|{{connector}}|{{last_committed_scn.scn}}"
+    timeout_s: 30
+    retries: 2
+    verify: { probe: "incident.symptoms.count", expect: ">= 1", within_s: 30 }
+    on_failure: continue
+
+  - id: A1-restart-task
+    description: Restart the Debezium connector task via Connect REST (task 0 only; Oracle connector runs tasks.max=1). Offsets are preserved; LogMiner resumes from the committed SCN.
+    ladder_level: L1
+    blast_radius_class: restart
+    autonomous_allowed: true
+    blast_radius: { unit: connector, max: 1, scope_expr: "connector == '{{connector}}'", time_box_s: 300 }
+    requires_dry_run: false
+    tool: { server: kafka-admin, operation: connect.restart_task, permission: apply }
+    params: { connector: "{{connector}}", task: 0, include_tasks: true, only_failed: false }
+    idempotency_key_recipe: "{{incident_id}}|A1|{{connector}}|{{window_start}}"
+    timeout_s: 120
+    retries: 1
+    verify: { probe: "healix.connect.connector.state{connector='{{connector}}'}", expect: "== 'RUNNING' and checkpoint_age_s < 30", within_s: 180 }
+    on_failure: escalate
+    rollback: { tool: { server: kafka-admin, operation: connect.pause, permission: apply }, params: { connector: "{{connector}}" }, note: "pause to stop crash-loop; offsets untouched; escalation picks up" }
+    limits_note: "oscillation detector: > 3 restarts/h on this connector across all playbooks ⇒ escalated (MEM-HEAL-011); STR-OPS-010 auto-restart ≤ 3× is counted toward the same total"
+
+  - id: A2-tune-mining-batch
+    description: Re-tune LogMiner batch sizing within the bounds declared in `candidate_for_tuning[]` (never outside); applied through Connect config PUT, which Debezium reloads without losing offsets.
+    ladder_level: L1
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: { unit: connector, max: 1, scope_expr: "connector == '{{connector}}'", time_box_s: 600 }
+    requires_dry_run: false
+    tool: { server: kafka-admin, operation: connect.update_config, permission: apply }
+    params:
+      connector: "{{connector}}"
+      config:
+        log.mining.batch.size.default: "{{clamp(connector_config.log_mining_batch_size_default * 2, 10000, 100000)}}"   # STR-04 §2.1 baseline 20000
+        log.mining.batch.size.min: "{{clamp(connector_config.log_mining_batch_size_min, 1000, 20000)}}"
+        log.mining.batch.size.max: "{{clamp(connector_config.log_mining_batch_size_max * 2, 20000, 200000)}}"
+        log.mining.sleep.time.default.ms: "{{clamp(connector_config.log_mining_sleep_time_default_ms / 2, 200, 2000)}}"
+      allowed_keys_only: true                                # engine rejects any key outside candidate_for_tuning[] (whitelist, MEM-HEAL-050)
+    idempotency_key_recipe: "{{incident_id}}|A2|{{connector}}|{{params.config | sha256}}"
+    timeout_s: 120
+    retries: 0
+    verify: { probe: "rate(healix.connect.cdc.seconds_behind_source{connector='{{connector}}'}[10m])", expect: "< 0 for 10m", within_s: 900 }   # lag trending down
+    on_failure: compensate
+    compensating_action:
+      tool: { server: kafka-admin, operation: connect.update_config, permission: apply }
+      params: { connector: "{{connector}}", config: "{{connector_config.snapshot_before_change}}", allowed_keys_only: true }
+      note: "restore the exact prior tuning captured in diagnosis step snapshot_mode_and_signal_table_state"
+
+  - id: A3-scale-connectors
+    description: Scale mining capacity ≤ 2× by activating the pre-provisioned standby connector of the same table group (STR-CDC-006 volume split; the Oracle connector itself stays at tasks.max=1) and raising Connect worker CPU/heap requests within the platform's declared headroom. No table leaves the whitelist; no new topic or schema is created.
+    ladder_level: L1
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: { unit: connector, max: 1, scope_expr: "connector_group == group_of('{{connector}}') and replicas_after <= 2 * replicas_before", time_box_s: 900 }
+    requires_dry_run: false
+    tool: { server: playbook-runner, operation: connect.scale_group, permission: apply }
+    params: { connector_group: "{{connector_group}}", target_replicas: "{{min(2 * connector_group.replicas, 2)}}", worker_resources: "{{connector_group.headroom_profile}}", respect_tasks_max: 1 }
+    idempotency_key_recipe: "{{incident_id}}|A3|{{connector_group}}|{{target_replicas}}"
+    timeout_s: 600
+    retries: 0
+    verify: { probe: "healix.connect.cdc.seconds_behind_source{connector_group='{{connector_group}}'}", expect: "< 300 and trending_down", within_s: 900 }
+    on_failure: compensate
+    compensating_action:
+      tool: { server: playbook-runner, operation: connect.scale_group, permission: apply }
+      params: { connector_group: "{{connector_group}}", target_replicas: "{{connector_group.replicas_before}}", worker_resources: "{{connector_group.profile_before}}" }
+
+  - id: A4-suppress-timeliness-notifications
+    description: Suppress downstream timeliness *notifications* (S1/S2 freshness tickets, DQ timeliness issue pages for `hc.raw.cerner.cdc.*`-derived topics) while the lag is being worked. Detection, DQ evaluation and SLO burn accounting continue untouched (MEM-HEAL-006). Visible on the incident and the topic event.
+    ladder_level: L1
+    blast_radius_class: reroute
+    autonomous_allowed: true
+    blast_radius: { unit: connector, max: 1, scope_expr: "connector == '{{connector}}' and notification_classes subset_of ['timeliness','freshness']", time_box_s: 3600 }
+    requires_dry_run: false
+    tool: { server: observability, operation: notifications.suppress, permission: apply }
+    params: { incident_id: "{{incident_id}}", selector: { source: "{{connector}}", classes: [timeliness, freshness] }, max_s: 3600, notifications_only: true, reason: "PBK-ING-002 healing in progress" }
+    idempotency_key_recipe: "{{incident_id}}|A4|{{connector}}"
+    timeout_s: 30
+    retries: 1
+    verify: { probe: "suppression.active{incident='{{incident_id}}'}", expect: "== true and expires_in_s <= 3600", within_s: 30 }
+    on_failure: continue
+    rollback: { tool: { server: observability, operation: notifications.unsuppress, permission: apply }, params: { incident_id: "{{incident_id}}" } }
+
+  - id: A5-incremental-resnapshot-one-table
+    description: Incremental re-snapshot of exactly ONE whitelisted table via the Debezium signal table (HEALIX_DBZ_SIGNAL on the replica, STR-CDC-002), after a mandatory dry-run that estimates the row count from replica statistics (read-only). Streams of other tables are never paused. Runs only outside the 06:00–20:00 clinical window (STR-04 §2.1). Tables `PERSON`, `ENCOUNTER`, `CLINICAL_EVENT` (and their alias/CE_* companions) are NEVER re-snapshotted autonomously — they are redirected to escalation for a human (DBA + Platform SRE) decision.
+    ladder_level: L2
+    blast_radius_class: replay
+    autonomous_allowed: true                                  # only after dry-run + engine budget check; `replay` class, no data mutation
+    blast_radius: { unit: table, max: 1, scope_expr: "table == '{{lagging_table}}' and table not in ['PERSON','PERSON_ALIAS','ENCOUNTER','ENCNTR_ALIAS','CLINICAL_EVENT','CE_BLOB','CE_DATE_RESULT','CE_STRING_RESULT','CE_CODED_RESULT'] and per_day_count('{{connector}}') < 1 and dry_run.estimated_rows <= 500000 and now not in clinical_window('06:00','20:00',replica_tz)", time_box_s: 1800 }
+    requires_dry_run: true                                    # MEM-HEAL-046 (replay, incremental re-snapshot)
+    dry_run:
+      tool: { server: observability, operation: probe.dba_readonly, permission: read }
+      params: { probe: "dba_tab_statistics.num_rows_and_blocks", table: "{{lagging_table}}", connector: "{{connector}}" }
+      record_as: dry_run                                      # estimated_rows, estimated_chunks (= rows / incremental.snapshot.chunk.size 4096), estimated_duration_s
+      abort_when: "dry_run.estimated_rows > 500000 or dry_run.estimated_duration_s > 1800"
+    tool: { server: playbook-runner, operation: debezium.signal_incremental_snapshot, permission: apply }
+    params: { connector: "{{connector}}", signal_table: HEALIX_DBZ_SIGNAL, data_collections: ["{{lagging_table}}"], type: incremental, chunk_size: 4096, surrogate_key_only: true }
+    idempotency_key_recipe: "{{incident_id}}|A5|{{connector}}|{{lagging_table}}|{{date_utc}}"   # one per table per UTC day
+    timeout_s: 1800
+    retries: 0
+    verify: { probe: "healix.connect.cdc.table_watermark_lag_s{connector='{{connector}}',table='{{lagging_table}}'}", expect: "< 60", within_s: 1800 }
+    on_failure: compensate
+    compensating_action:
+      tool: { server: playbook-runner, operation: debezium.signal_stop_snapshot, permission: apply }
+      params: { connector: "{{connector}}", signal_table: HEALIX_DBZ_SIGNAL, data_collections: ["{{lagging_table}}"] }
+      note: "stop-snapshot signal; already-emitted `r` (read) events are idempotent at `std` (keyed by table PK + SCN, ARC-NFR-004) so no clean-up of produced records is needed and none is attempted"
+    emits_cr: null
+
+  - id: A6-page-dba
+    description: Archive-log gap, SCN not mineable or supplemental logging lost (FLT-ING-007) — the pipeline cannot recover without DBA action on the replica (restore archive logs, re-enable supplemental logging, or sanction a full re-snapshot of the affected table group). Open a PHI-free ticket and page.
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: { unit: connector, max: 1, scope_expr: "connector == '{{connector}}'", time_box_s: 60 }
+    requires_dry_run: false
+    tool: { server: ticketing, operation: create_and_page, permission: apply }
+    params:
+      template: escalation.ticket_template
+      severity: S1
+      to: [DBA, Platform SRE primary]
+      extra_fields: { last_committed_scn: "{{last_committed_scn.scn}}", min_mineable_scn: "{{min_mineable_scn.scn}}", supplemental_logging_ok: "{{supplemental_logging_ok}}", affected_table_count: "{{last_committed_scn.lagging_table_count}}" }
+    idempotency_key_recipe: "{{incident_id}}|A6|{{connector}}"
+    timeout_s: 60
+    retries: 2
+    verify: { probe: "ticket.state{incident='{{incident_id}}'}", expect: "in ['open','acknowledged'] and paged == true", within_s: 300 }   # DBA paged ≤ 5 min (MEM-04 §10 acceptance)
+    on_failure: escalate
+
+  - id: A7-request-schema-evolve-cr
+    description: DDL detected mid-stream on a `hc.raw.cerner.cdc.*` subject with no `schema.evolve` CR yet (STR-CDC-005). Propose the CR to `agent.source_mapper` (owner of `mapping`/`schema.evolve`); never register a `raw` schema or alter the registry subject here. PBK-ING-003 precedence applies once the schema event exists.
+    ladder_level: L3
+    blast_radius_class: schema
+    autonomous_allowed: false                                 # MEM-HEAL-001: schema class ⇒ CR only
+    blast_radius: { unit: connector, max: 1, scope_expr: "connector == '{{connector}}' and subject == '{{ddl_event.subject}}'", time_box_s: 60 }
+    requires_dry_run: false
+    tool: { server: cr-engine, operation: propose, permission: propose }
+    params: { cr_type: mapping, subtype: schema.evolve, subject: "{{ddl_event.subject}}", connector: "{{connector}}", evidence: ["{{incident_id}}", "hc.ops.schema.change.v1@{{ddl_event.offset}}"], recalled_memory_ids: "{{hypothesis.record_ids}}" }
+    idempotency_key_recipe: "{{connector}}|A7|{{ddl_event.subject}}|{{ddl_event.schema_hash}}"
+    timeout_s: 60
+    retries: 1
+    verify: { probe: "cr.state{cr_id='{{result.cr_id}}'}", expect: "in ['proposed','under_review']", within_s: 120 }
+    on_failure: escalate
+    emits_cr: { cr_type: mapping, risk_class: medium, gates_required: [schema_compat_check, phi_scan, prompt_injection_scan, idempotency_check, human_review] }
+
+# ---------------------------------------------------------------------------------------------------------------
+# Verification — held ≥ 3× the widest trigger window (600 s ⇒ 1,800 s) before `resolved` (MEM-HEAL-022)
+# ---------------------------------------------------------------------------------------------------------------
+verification:
+  probes:
+    - { name: lag, metric: "healix.connect.cdc.seconds_behind_source{connector='{{connector}}'}" }
+    - { name: state, metric: "healix.connect.connector.state{connector='{{connector}}'}" }
+    - { name: checkpoint_age, metric: "healix.connect.cdc.checkpoint_age_s{connector='{{connector}}'}" }
+    - { name: scn_gap, metric: "healix.connect.cdc.scn_gap{connector='{{connector}}'}" }
+    - { name: dlq_rate, topic: hc.ops.dlq.connect.v1, filter: "connector == '{{connector}}'" }
+    - { name: s1_latency, sli: S1 }
+  duration_s: 1800
+  success_criteria: "lag < 60 for 1800s and state == 'RUNNING' and checkpoint_age < 30 and scn_gap == 0 and dlq_rate == 0 and s1_latency.p95_s <= 5"
+  # S1 (OPS-03 §3): p95 source→canonical ≤ 5 s (ARC-NFR-001); lag < 60 s is the STR-04 §7 alert line
+
+# ---------------------------------------------------------------------------------------------------------------
+# limits — FIXED-POINT PROTECTED (MEM-HEAL-042, MEM-GOV-002). Automated CRs that touch this block are rejected by
+# cr-engine; only a `policy`-class CR by DGC / Privacy Office may change it, with a major version bump (MEM-HEAL-048).
+# Values tighten, never loosen, the engine defaults (MEM-04 §7).
+# ---------------------------------------------------------------------------------------------------------------
+limits:
+  max_runs_per_hour: 3                                       # ≤ 4 engine cap; tightened because restarts count toward the oscillation detector
+  cooldown_s: 900                                            # ≥ 900 per target
+  max_actions_per_incident: 5
+  max_concurrent_per_target: 1
+  circuit_breaker: { consecutive_failures: 3, open_for_s: 86400, page: true }
+  change_freeze_calendar_ref: ops.freeze-calendar            # module 12 (OPS-02): release windows, Fusion quarterly update, Millennium code upgrades
+  during_freeze_allowed_classes: [observe, restart]          # MEM-HEAL-010
+  recursion: { max_depth: 2, may_trigger: [PBK-DQ-001] }     # a re-snapshot may raise a transient DQ burst; child never re-triggers this parent (MEM-HEAL-009)
+  resnapshot_tables_per_day: 1                               # ≤ 1 table re-seed/day engine default
+  resnapshot_forbidden_tables_without_human: [PERSON, PERSON_ALIAS, ENCOUNTER, ENCNTR_ALIAS, CLINICAL_EVENT, CE_BLOB, CE_DATE_RESULT, CE_STRING_RESULT, CE_CODED_RESULT]
+  resnapshot_window_local: { not_between: ["06:00", "20:00"], tz_ref: replica_tz }   # STR-04 §2.1 clinical window
+
+# ---------------------------------------------------------------------------------------------------------------
+# guards — FIXED-POINT PROTECTED (MEM-HEAL-042). Literals enforced by lint (MEM-HEAL-043).
+# ---------------------------------------------------------------------------------------------------------------
+guards:
+  kill_switch_paths:
+    - cr-engine.kill_switch.platform
+    - cr-engine.kill_switch.environment.{{env}}
+    - cr-engine.kill_switch.agent.agent.self_healer
+    - cr-engine.kill_switch.cr_type.playbook
+    - module14.kill_switch.playbook.PBK-ING-002              # MEM-06 §9 module-14 scopes
+    - module14.kill_switch.module
+  phi_ceiling: none
+  data_mutation: none
+  requires_dry_run_in: [test]
+  forbidden_targets:                                         # MEM-HEAL-008: denied at the MCP gateway regardless of this list
+    - cerner-millennium.oltp
+    - cerner-millennium.replica.write                        # the self-healer holds no principal that can DDL/DML the replica (HEALIX_DBZ_SIGNAL insert is performed by the connector's own signalling channel via playbook-runner)
+    - oracle-fusion.*
+    - topics: ["hc.canonical.*", "hc.kg.*", "hc.edw.*"]
+    - schema-registry.subjects.write
+    - supplemental_logging
+    - archive_log_retention
+  never_raises: [tokens_per_run, runs_per_day, daily_token_cap, max_concurrent_runs]   # MEM-HEAL-015
+
+suppression:
+  notifications_only: true
+  max_s: 3600
+
+conflicts_with:                                              # mirrors MEM-A3 §7 (symmetric)
+  - PBK-ING-003                                              # ING-003 ▶ ING-002 on the same connector when a schema event is present
+  - PBK-DQ-001                                               # ING-002 ▶ DQ-001 on the re-snapshotted table's topic
+  - PBK-AGT-001                                              # AGT-001 ▶ ING-002 (same agent)
+
+# ---------------------------------------------------------------------------------------------------------------
+# Escalation — OPS-03 §4.3 rotations; SLA per OPS-00 §7 / MEM-04 §11. Packet is PHI-free (MEM-HEAL-033/047).
+# ---------------------------------------------------------------------------------------------------------------
+escalation:
+  to: [Platform SRE primary, Stream & semantic engineering, DBA]
+  after_s: 900                                               # 15 min without lag trending down ⇒ escalate
+  sla_minutes: { S1: 15, S2: 30, S3: 240, S4: 1440 }
+  page: true                                                 # SEV1/SEV2 page within 60 s of `escalated` (MEM-HEAL-032)
+  on_failure: page
+  ticket_template:
+    title: "[PBK-ING-002] CDC lag on {{connector}} — {{fault_class}} — {{incident_id}}"
+    fields:                                                  # ids, counts, pointers and masked hypotheses only — no row content, no payloads
+      incident_id: "{{incident_id}}"
+      fault_class: "{{fault_class}}"
+      connector: "{{connector}}"
+      environment: "{{env}}"
+      seconds_behind_source: "{{connector_state.lag_s}}"
+      last_committed_scn: "{{last_committed_scn.scn}}"
+      min_mineable_scn: "{{min_mineable_scn.scn}}"
+      scn_gap: "{{symptom == 'scn_not_mineable'}}"
+      supplemental_logging_ok: "{{supplemental_logging_ok}}"
+      redo_to_mining_ratio: "{{redo_profile.redo_to_mining_ratio}}"
+      in_batch_window: "{{redo_profile.in_batch_window}}"
+      ddl_subject: "{{ddl_event.subject}}"
+      lagging_table_count: "{{last_committed_scn.lagging_table_count}}"
+      actions_taken: "{{actions_executed | ids}}"
+      budget_checks: "{{budget_checks | summary}}"
+      hypothesis_masked: "{{hypothesis.text | mask(GOV-LIN-015) | untrusted}}"
+      runbook: "runbooks/connect/debezium-millennium-logminer.md"
+      dashboard: "ops/source-and-interface?connector={{connector}}"
+    phi_scan_required: true
+
+# ---------------------------------------------------------------------------------------------------------------
+# Learning — what this playbook writes to memory (MEM-01 §4 classes; write-gate mandatory, MEM-ARCH-002)
+# ---------------------------------------------------------------------------------------------------------------
+learning:
+  memory_classes_written: [incident, root_cause, playbook_step, outcome, drift_signature, observation]
+  record_episode: true                                       # Graphiti episode per run (MEM-02 §6): Incident → EXHIBITED_SYMPTOM → CAUSED_BY → RESOLVED_BY → APPLIED_ACTION → PRODUCED_OUTCOME
+  emit_reflexion: true                                       # `reflect` on rolled_back/escalated ⇒ T1 lessons, untrusted_text: true (MEM-HEAL-024)
+  lesson_template: "FLT {{fault_class}} on {{connector}} at hour {{redo_profile.hour_of_day}} (batch_window={{redo_profile.in_batch_window}}): actions {{actions_executed | ids}} → outcome {{outcome}}; lag {{lag_before_s}}s → {{lag_after_s}}s in {{mttr_s}}s. Masked per GOV-LIN-015; untrusted_text: true."
+  lag_signature:                                             # learned per connector: expected lag by hour-of-day / day-of-month (month-end) so T1 thresholds can be proposed as `playbook` CR, never auto-applied
+    class: drift_signature
+    scope: "healix.{{env}}.interface.{{connector}}"
+    features: [hour_of_day, day_of_month, in_batch_window, redo_to_mining_ratio, lag_s_p95]
+    retention_days: 180
+    trust_tier: T0
+  candidate_for_tuning:                                      # tunables only — never limits/guards/blast_radius (MEM-HEAL-050)
+    - triggers.T1-lag.threshold
+    - triggers.T1-lag.for_s
+    - triggers.T2-checkpoint-stale.threshold
+    - triggers.T5-redo-ceiling.threshold
+    - actions.A2-tune-mining-batch.params.config.log.mining.batch.size.default   # bounds 10000–100000
+    - actions.A2-tune-mining-batch.params.config.log.mining.batch.size.max       # bounds 20000–200000
+    - actions.A2-tune-mining-batch.params.config.log.mining.sleep.time.default.ms # bounds 200–2000
+    - actions.A1-restart-task.verify.within_s
+    - escalation.after_s
+  graduation: { shadow_matches_required: 10, min_agreement: 0.9 }   # MEM-HEAL-025; demotion on any rolled_back run or breaker trip (MEM-HEAL-026)
+
+# ---------------------------------------------------------------------------------------------------------------
+# References — all ids resolve at lint time (MEM-HEAL-049); ≥ 1 STR/SRC/OPS id constrains the actions (MEM-HEAL-040)
+# ---------------------------------------------------------------------------------------------------------------
+references:
+  requirements:
+    - STR-CDC-001            # capture from read-only replica only; whitelist from Source Registry
+    - STR-CDC-002            # incremental snapshots via signal table; re-snapshot of one table never pauses others
+    - STR-CDC-004            # raw envelope retained; `hc-source-version` = SCN (used as the lag/gap pointer)
+    - STR-CDC-005            # DDL ⇒ schema.evolve CR via agent.source_mapper; never auto-register raw schema
+    - STR-CDC-006            # connectors split by table volume; heartbeat ≤ 10 s
+    - STR-OPS-006            # connector state + CDC seconds-behind-source exported to module 12
+    - STR-OPS-009            # DLQ writes from phi:* connectors ⇒ issue within 1 min
+    - SRC-CER-003            # CDC configured for every §4.1 table with per-table raw topics
+    - SRC-CER-024            # HEALIX never writes into Cerner
+    - ARC-NFR-001            # p95 source → canonical ≤ 5 s (S1)
+    - ARC-NFR-004            # exactly-once std→canonical; idempotent sinks (makes re-snapshot `r` events safe)
+    - ARC-NFR-005            # replay from retention window
+    - OPS-SLO-001            # S1 ingest latency SLO
+    - GOV-ACC-011            # no direct writes to canonical/kg/edw by agents
+    - GOV-LIN-015            # masking of free text in lessons/tickets
+    - GOV-PHI-004            # PHI scanner on every memory write and ticket packet
+    - DQ-REM-005             # never mutate clinical/financial values
+    - MEM-HEAL-001
+    - MEM-HEAL-002
+    - MEM-HEAL-006
+    - MEM-HEAL-008
+    - MEM-HEAL-009
+    - MEM-HEAL-010
+    - MEM-HEAL-011
+    - MEM-HEAL-014
+    - MEM-HEAL-015
+    - MEM-HEAL-036
+    - MEM-HEAL-037
+    - MEM-HEAL-038
+    - MEM-HEAL-039
+    - MEM-HEAL-040
+    - MEM-HEAL-041
+    - MEM-HEAL-042
+    - MEM-HEAL-043
+    - MEM-HEAL-044
+    - MEM-HEAL-045
+    - MEM-HEAL-046
+    - MEM-HEAL-047
+    - MEM-HEAL-048
+    - MEM-HEAL-049
+    - MEM-HEAL-050
+    - MEM-HEAL-053
+    - MEM-GOV-002
+    - MEM-GOV-012
+  runbooks:
+    - runbooks/connect/debezium-millennium-logminer.md       # module 12 runbook: archive-log restore, supplemental logging, full re-snapshot (DBA-only steps)
+    - runbooks/connect/connect-worker-scaling.md
+  slo_ids: [S1, S6]
+  topics:
+    - hc.ops.processor.checkpoint.v1
+    - hc.ops.schema.change.v1
+    - hc.ops.dlq.connect.v1
+    - hc.ops.healing.incident.event.v1
+    - hc.ops.healing.playbookrun.event.v1
+    - hc.ops.audit.v1
+    - hc.raw.cerner.cdc.person.avro.v1                       # named only as the protected-table topic family; never consumed by this playbook
+  connector_manifest: connect.debezium-millennium            # STR-04 §2 table; principal `connect.debezium-millennium`
+  fault_taxonomy: MEM-04 §2 (FLT-ING-006, FLT-ING-007, FLT-ING-008); legacy outliers MEM-04 §3 rows "LogMiner redo-volume ceilings … DDL mid-stream"
+
+# ---------------------------------------------------------------------------------------------------------------
+# Chaos tests — ≥ 1 per trigger (MEM-HEAL-041); all must pass in `test` (MEM-HEAL-013); MEM-04 §10 acceptance:
+# "lag < 60 s within 30 min or DBA paged ≤ 5 min; no re-snapshot of PERSON". Fixtures use synthetic replica data only.
+# ---------------------------------------------------------------------------------------------------------------
+chaos_tests:
+  - id: CT-ING-002-01
+    trigger: T1-lag
+    injection: "Hold the test replica's redo apply for 12 min (simulated Millennium nightly batch) so MilliSecondsBehindSource exceeds 300 s"
+    expected_mttd_s: 600
+    expected_mttr_s: 1800
+    blast_radius_assert: "connectors_touched == 1 and tables_resnapshotted == 0 and config_keys_changed subset_of candidate_for_tuning and cerner_calls == 0"
+  - id: CT-ING-002-02
+    trigger: T2-checkpoint-stale
+    injection: "Suspend the connector's heartbeat producer so no checkpoint reaches hc.ops.processor.checkpoint.v1 for 3 min while the task reports RUNNING"
+    expected_mttd_s: 180
+    expected_mttr_s: 900
+    blast_radius_assert: "restarts <= 1 and connectors_touched == 1 and offsets_preserved == true"
+  - id: CT-ING-002-03
+    trigger: T3-scn-gap
+    injection: "Delete (in the test replica only) the archived redo covering the committed SCN range so the SCN is no longer mineable"
+    expected_mttd_s: 300
+    expected_mttr_s: 300                                     # 'healed' = DBA paged with PHI-free packet ≤ 5 min; no autonomous recovery attempted
+    blast_radius_assert: "actions_executed == ['A0-annotate','A6-page-dba'] and page_latency_s <= 300 and tables_resnapshotted == 0 and ticket.phi_scan == 'clean'"
+  - id: CT-ING-002-04
+    trigger: T4-connector-failed
+    injection: "Kill the Connect worker JVM hosting the connector task; worker restarts with the task in FAILED for > 2 min"
+    expected_mttd_s: 120
+    expected_mttr_s: 600
+    blast_radius_assert: "restarts <= 1 and oscillation_detector.restarts_per_hour <= 3 and connectors_touched == 1"
+  - id: CT-ING-002-05
+    trigger: T5-redo-ceiling
+    injection: "Generate synthetic redo on the test replica at 0.9× the measured LogMiner mining ceiling for 12 min on the CLINICAL_EVENT connector group"
+    expected_mttd_s: 600
+    expected_mttr_s: 3600
+    blast_radius_assert: "config_keys_changed subset_of candidate_for_tuning and log_mining_batch_size_default between 10000 and 100000 and connector_replicas_after <= 2 * connector_replicas_before and tables_resnapshotted == 0"
+  - id: CT-ING-002-06
+    trigger: T6-ddl-midstream
+    injection: "Emit a synthetic DDL (ALTER TABLE … ADD column) on a non-protected whitelisted test table and publish the resulting schema.change event on hc.ops.schema.change.v1 without a schema.evolve CR"
+    expected_mttd_s: 60
+    expected_mttr_s: 600                                     # 'healed' = CR proposed to agent.source_mapper and ING-003 precedence respected
+    blast_radius_assert: "schema_registry_writes == 0 and raw_schema_registered == 0 and cr_proposed.cr_type == 'mapping' and autonomous_schema_actions == 0"
+  - id: CT-ING-002-07
+    trigger: T1-lag
+    injection: "Single-table lag: stall only the test table ORGANIZATION_TEST (non-protected, ~120k rows) so per-table watermark lag > 1 h while the connector stays RUNNING; run at 22:00 replica time"
+    expected_mttd_s: 600
+    expected_mttr_s: 1800
+    blast_radius_assert: "dry_run.executed == true and tables_resnapshotted == 1 and resnapshot_table not in limits.resnapshot_forbidden_tables_without_human and other_tables_paused == 0 and records_emitted <= 500000"
+  - id: CT-ING-002-08
+    trigger: T1-lag
+    injection: "Adversarial: single-table lag on PERSON (protected) with estimated 400k rows; verify the engine refuses A5 and escalates instead"
+    expected_mttd_s: 600
+    expected_mttr_s: 1800
+    blast_radius_assert: "tables_resnapshotted == 0 and budget_check('A5-incremental-resnapshot-one-table') == 'refused' and incident.state == 'escalated'"
+  - id: CT-ING-002-09
+    trigger: T1-lag
+    injection: "Freeze window: raise lag during a scheduled Millennium code-upgrade freeze in the test calendar"
+    expected_mttd_s: 600
+    expected_mttr_s: 1800
+    blast_radius_assert: "actions_executed subset_of ['A0-annotate','A1-restart-task'] and suppressed_reason_for_others == 'freeze'"
+  - id: CT-ING-002-10
+    trigger: T1-lag
+    injection: "Degraded memory: take Mem0 and Graphiti offline in test, then inject CT-ING-002-01"
+    expected_mttd_s: 600
+    expected_mttr_s: 1800
+    blast_radius_assert: "incident.memory_degraded == true and recall_blocked_run == false and connectors_touched == 1"   # MEM-HEAL-014
+
+phi: none
+
+change_request:
+  type: playbook
+  risk_class: high                                           # ladder-L2 action present (A5) — MEM-HEAL-027
+  approvers_required: [Platform SRE, Agent Operator]
+  gates_required: [phi_scan, prompt_injection_scan, idempotency_check, privacy_review, chaos_suite_pass, dry_run_test]
+
+provenance:
+  created_by: human:Platform SRE                             # seed playbook, authored with DBA and Stream & semantic engineering
+  compiled_from_incidents: []                                # seed — no mined incidents; learned revisions add INC-<yyyymmdd>-<ULID> ids and DERIVED_FROM edges (MEM-HEAL-029)
+  approved_cr_id: null                                       # required before status may leave `shadow` (MEM-HEAL-044)
+  last_updated: 2026-10-17

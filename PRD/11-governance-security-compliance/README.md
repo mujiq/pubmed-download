@@ -91,7 +91,7 @@ matrix. `agent.privacy_guardian` reviews **every** CR for PHI impact regardless 
 | Change class | Example | Auto-approve allowed? | Human approver | Guardian review |
 |--------------|---------|-----------------------|----------------|-----------------|
 | `low` | New alternate label; DQ threshold ±5 % | Yes, if evaluator score ≥ threshold | — | Automated |
-| `medium` | New HL7 v2 → FHIR mapping; new value-set binding | Yes for non-PHI fields | Group steward | Automated + sampled human |
+| `medium` | New HL7 v2 → FHIR mapping; new value-set binding | Yes for fields classed `internal`/`public` | Group steward | Automated + sampled human |
 | `high` | New OWL axiom; EDW DDL migration; new topic | No | Ontology Board or EDW architect + group steward | Mandatory |
 | `phi-affecting` | Any change touching a `phi:*` element, consent rule or masking function | No | Privacy Office + group steward | Mandatory, veto-capable |
 | `policy` | Change to this module's taxonomy or access matrix | No | DGC | Author |

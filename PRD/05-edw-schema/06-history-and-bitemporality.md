@@ -12,8 +12,10 @@ last_updated: 2026-10-17
 # History and Bitemporality
 
 ADR-03 requires bitemporality on every row in EDW history tables. Module 08 (`TKG-01`) defines the semantics of
-**valid time** (`valid_from`, `valid_to`), **transaction time** (`recorded_at`, `superseded_at`) and the provenance
-reference (`prov_activity_iri`). This document specifies how the EDW implements those semantics so the warehouse and
+**valid time** (`valid_from`, `valid_to`), **transaction time** (`recorded_at`, `superseded_at`), the change kind, the
+event/source/decision times, the source time zone and the provenance reference (`prov_activity_iri`) — contract table
+C1–C12 in `TKG-01` §9. This document specifies how the EDW implements those semantics (§3.3 gives the clause-by-column
+mapping) so the warehouse and
 the knowledge graph are two faithful projections of the same facts (ADR-07). It does not redefine the semantics.
 
 ## 1. Concepts as used in the EDW
@@ -22,10 +24,15 @@ the knowledge graph are two faithful projections of the same facts (ADR-07). It 
 |------------------|-------------|--------|
 | `valid_from` | When the version became true in the real world (encounter admit, address effective date, code effective date) | source data (FHIR `period.start`, `effectiveDateTime`, HCM effective dates); falls back to source event time |
 | `valid_to` | Exclusive end of real-world validity; `NULL` = still valid | source end date, or the `valid_from` of the next version |
-| `recorded_at` | When the EDW first stored this version (transaction-time start) | loader clock (UTC) at commit, monotonic per batch |
+| `recorded_at` | When the EDW first stored this version (transaction-time start) | loader (sink) clock (UTC) at commit, monotonic per batch; DDL `DEFAULT CURRENT_TIMESTAMP` is only the C3 safety net, the loader always sets it explicitly so replays preserve the original value (EDW-HIST-021) |
 | `superseded_at` | When the EDW stopped believing this version (replaced, corrected, retracted); `NULL` = current belief | loader at the moment a newer version for the same `(bk, valid_from)` lands |
 | `prov_activity_iri` | PROV-O activity that created the version (load batch, correction job, agent action), resolvable in the KG | loader; equals `fact_lineage_activity.prov_activity_iri` |
-| `change_reason_code` | Why a new version exists | `insert / source-update / correction / merge / late-arrival / retraction / reload` |
+| `change_kind` | Why a version was **closed** — the `TKG-01` C6 `healix-time:changeKind` SKOS value, set on the superseded row at the moment `superseded_at` is set; NULL while the row is current belief | loader: `new-version / correction / retraction / merge / unmerge` (`new` is implied by a row with no predecessor) |
+| `change_reason_code` | Why a new version **exists** (EDW loader reason, finer than `change_kind`) | `insert / source-update / correction / merge / late-arrival / retraction / reload` |
+| `event_time` | `TKG-01` C7: the `hc-event-time` of the Kafka record (or platform event) that produced the version | copied from the record header, UTC |
+| `source_time` | `TKG-01` C7: the `hc-source-time`, i.e. the source system's own clock for the event | copied from the record header, UTC; NULL when the source does not stamp it |
+| `decision_time` | `TKG-01` C8: when the real-world decision behind the fact was taken (order signed, claim adjudicated), when the source carries it | source data; NULL otherwise |
+| `source_tz` | `TKG-01` C12: IANA zone of the source timestamps; all stored timestamps are UTC | `hc-source-time` offset or `dim_source_system.default_timezone` |
 
 Interval convention: **closed-open** `[from, to)`. A row is *valid at* `v` iff `valid_from <= v AND (valid_to IS NULL
 OR v < valid_to)`; *known at* `t` iff `recorded_at <= t AND (superseded_at IS NULL OR t < superseded_at)`.
@@ -83,13 +90,21 @@ one-row-per-version dimension without transaction-time filters.
 ### 3.1 Portable four-column pattern (committed DDL)
 
 ```sql
-valid_from       TIMESTAMP     NOT NULL,
-valid_to         TIMESTAMP,                 -- NULL = open
-recorded_at      TIMESTAMP     NOT NULL,
-superseded_at    TIMESTAMP,                 -- NULL = current belief
-prov_activity_iri VARCHAR(512) NOT NULL
+valid_from         TIMESTAMP     NOT NULL,                              -- C1
+valid_to           TIMESTAMP,                                           -- C2  NULL = open, exclusive
+recorded_at        TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,    -- C3  sink clock
+superseded_at      TIMESTAMP,                                           -- C4  NULL = current belief, exclusive
+change_kind        CHAR(12),                                            -- C6/C10 why closed; NOT NULL iff superseded_at IS NOT NULL
+change_reason_code VARCHAR(30),                                         -- EDW loader reason for this version
+event_time         TIMESTAMP     NOT NULL,                              -- C7  hc-event-time
+source_time        TIMESTAMP,                                           -- C7  hc-source-time
+decision_time      TIMESTAMP,                                           -- C8
+source_tz          VARCHAR(64),                                         -- C12 IANA zone; storage is UTC
+prov_activity_iri  VARCHAR(512)  NOT NULL                               -- C5
 ```
 
+(The historical name "four-column pattern" refers to the two intervals; the committed block has the eleven columns
+above and is identical in every `hist_*`, `fact_*`, `bridge_*` and G9 `agg_*` table — EDW-ARCH-003, EDW-HIST-006.)
 Works on every target; indexes/partitions on `recorded_at` (hist) or event date (facts) plus a `superseded_at IS NULL`
 sub-partition keep "current belief" cheap.
 
@@ -112,8 +127,33 @@ reconciliation, (b) `PERIOD` end-bound semantics (closed-open, `UNTIL_CHANGED`) 
 open intervals, (c) Teradata transaction time is DBMS-assigned and cannot be back-filled from Kafka replays, which
 breaks idempotent reload (EDW-ARCH-006).
 
-> **EDW-HIST-005** (P0, inspection) — The four-column bitemporal pattern MUST be the authoritative representation on
-> every platform; native temporal table features MAY be used only as generated, derived structures.
+> **EDW-HIST-005** (P0, inspection) — The portable bitemporal column pattern (§3.1) MUST be the authoritative
+> representation on every platform; native temporal table features MAY be used only as generated, derived structures.
+
+### 3.3 Mapping to the `TKG-01` §9 contract (C1–C12)
+
+Module 08 owns the semantics; this table states, clause by clause, how every `hist_*`, `fact_*` and `bridge_*` table
+(and the G9 `agg_*` roll-ups) realises them. A change to the contract is a breaking change of `TKG-01` and triggers a
+coordinated DDL migration (`04-physical-model-and-ddl.md` §5).
+
+| # | Clause (`TKG-01` §9) | KG term | EDW column(s) | EDW nullability / rule | Verified by |
+|---|----------------------|---------|---------------|------------------------|-------------|
+| C1 | Every fact carries `validFrom` | `healix-time:validFrom` | `valid_from TIMESTAMP` (UTC; `TIMESTAMP(3) WITH TIME ZONE` in the KG is rendered as UTC `TIMESTAMP` + `source_tz`, see C12) | `NOT NULL`; never the loader clock when the source carries a real-world time (EDW-HIST-004) | DQR-COMPLETENESS-TEMPORAL-*, EDW-HIST-004 |
+| C2 | `validTo` exclusive, NULL = open | `healix-time:validTo` | `valid_to TIMESTAMP` | `NULL` = open; closed-open `[valid_from, valid_to)`; `valid_to > valid_from` except retraction tombstones (`valid_to = valid_from`) | DQR-VALIDITY-TEMPORAL-001, EDW-HIST-022 |
+| C3 | `recordedAt` set by sink clock | `healix-time:recordedAt` | `recorded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP` | assigned by the loader from a monotonic UTC clock per batch; the DDL default is a safety net; replays re-use the original value (EDW-HIST-021) | DQR-TIMELINESS-*, EDW-HIST-004 |
+| C4 | `supersededAt` exclusive, NULL = current | `healix-time:supersededAt` | `superseded_at TIMESTAMP` | `NULL` = current belief; at most one current row per `(bk, valid_from)` (EDW-HIST-003) | DQR-CONSISTENCY-TEMPORAL-002 |
+| C5 | Provenance reference mandatory | `prov:wasGeneratedBy <activity IRI>` | `prov_activity_iri VARCHAR(512) NOT NULL` | resolves to `fact_lineage_activity.prov_activity_iri` and to a `prov:Activity` in the KG (reconciliation §5) | DQR-COMPLETENESS-PROV-001, EDW-REC-001 |
+| C6 | Change kind explicit | `healix-time:changeKind` (SKOS: `new`, `new-version`, `correction`, `retraction`, `merge`, `unmerge`) | `change_kind CHAR(12)` **plus** the EDW-local `change_reason_code VARCHAR(30)` | `change_kind` is set on the row being **closed** (NULL while current, NOT NULL whenever `superseded_at IS NOT NULL`); `change_reason_code` is set on the row being **created**. A KG `new` assertion is an EDW row with no predecessor | DQR-VALIDITY-TEMPORAL-003 |
+| C7 | Event / source time preserved | `healix-time:eventTime`, `healix-time:sourceTime` | `event_time TIMESTAMP NOT NULL`, `source_time TIMESTAMP` | copied from `hc-event-time` / `hc-source-time`; never recomputed | timeliness rules (`recorded_at − event_time`) |
+| C8 | Decision time when available | `healix-time:decisionTime` | `decision_time TIMESTAMP` | `NULL` when the source has none | — |
+| C9 | No overlapping valid intervals per `(subject, functional predicate)` within one transaction-time slice | SHACL `healix-shape:NoOverlapFunctional` | no column; invariant over `(bk, valid_from, valid_to)` among rows with the same transaction-time slice | enforced by the loader and tested (EDW-LOG-013, EDW-HIST-003) | DQR-CONSISTENCY-TEMPORAL-001 |
+| C10 | Retractions preserve valid time | `healix-time:retractedBy` | superseded rows keep `valid_from/valid_to`, get `change_kind = 'retraction'` and `superseded_at`; a tombstone version with `valid_to = valid_from`, `change_reason_code = 'retraction'` is inserted (§6) | — | EDW-HIST-022 |
+| C11 | Same business key and ontology IRI in both projections | subject IRI `<base>id/<entity>/<source>/<natural-id>` | `*_bk` carries the same natural id; the table-level `ontology_class_iri` and column `ontology_property_iri` (data dictionary, column comments) | — | reconciliation §5 (EDW-REC-001), EDW-LOG-020 |
+| C12 | UTC storage, source zone kept | `healix-time:sourceTimeZone` | all `TIMESTAMP` columns are UTC; `source_tz VARCHAR(64)` keeps the IANA zone | `NULL` only when the source system has no zone and `dim_source_system.default_timezone` is unknown | — |
+
+> **EDW-HIST-006** (P0, test) — Every `hist_*`, `fact_*`, `bridge_*` and `agg_*` table MUST carry the eleven columns
+> of §3.1 with the nullability stated in §3.3 (C1–C12); the DDL linter MUST reject a table missing any of them, and the
+> DQ rules named in §3.3 MUST be generated for every such table.
 
 ## 4. As-of query patterns
 
@@ -218,6 +258,7 @@ sequenceDiagram
 | Check | EDW side | KG side | Tolerance |
 |-------|----------|---------|-----------|
 | Row / assertion count by class, current belief | `COUNT(*) WHERE superseded_at IS NULL` | `COUNT(?s) WHERE healix:supersededAt unbound` | 0 after both sinks' consumer lag < 5 min; else re-check |
+| Closures by kind (C6) | `COUNT(*) GROUP BY change_kind WHERE superseded_at IS NOT NULL` | `COUNT(*) GROUP BY ?changeKind` | 0 per kind |
 | Version count by business key (sampled 1 %) | `COUNT(*) GROUP BY bk` | count of RDF-star annotated versions per IRI | 0 |
 | Content hash | XOR of `record_hash` per bk bucket | XOR of `healix:recordHash` per bucket | 0 (same algorithm version, EDW-LOG-012) |
 | Latest `recorded_at` | `MAX(recorded_at)` per table | `MAX(healix:recordedAt)` per class | ≤ 15 min apart |
@@ -232,7 +273,7 @@ hash is defined over properties, not column names, so the KG can compute the sam
 > version counts (sampled) and bucketed content hashes, and MUST write one `fact_reconciliation_check` row per check.
 
 > **EDW-REC-002** (P0, test) — A count or hash mismatch exceeding 0 after consumer-lag settling MUST open a
-> `fact_dq_issue` with severity `high` and MUST trigger a targeted replay of the affected Kafka offsets to the lagging
+> `fact_dq_issue` with severity `critical` (module-09 scale) and MUST trigger a targeted replay of the affected Kafka offsets to the lagging
 > sink; the mismatch MUST clear within 24 h or escalate to the DW Architect.
 
 > **EDW-REC-003** (P1, test) — Promotion of a DDL release to `prod` MUST be blocked while any reconciliation check from
@@ -243,31 +284,35 @@ hash is defined over properties, not column names, so the KG can compute the sam
 | Case | Example | EDW handling | Versions produced |
 |------|---------|--------------|-------------------|
 | **Late-arriving event** (valid time in the past, no prior version) | A lab result from last week arrives today | Insert with true `valid_from`; `recorded_at` = now; `change_reason_code = 'late-arrival'`; dimension lookups as of `valid_from` | 1 |
-| **Source update** (new real-world state) | Patient moves house | Close current `dim_patient` version (`valid_to` = move date), insert new version; `hist_*` gets a new row; nothing superseded | 1 new, 1 closed |
-| **Correction** (same real-world period, better knowledge) | Lab result amended; address was mistyped | Set `superseded_at` = now on the wrong row; insert corrected row with the **same** `valid_from`, `recorded_at` = now, `change_reason_code = 'correction'`; `prov_activity_iri` points to the correction activity, which `prov:wasInformedBy` the original | 1 superseded, 1 new |
-| **Retraction** (the event never happened) | Encounter entered on the wrong patient | Set `superseded_at` on all versions; insert a tombstone version with `valid_to = valid_from` and `change_reason_code = 'retraction'` so the retraction is itself queryable | n superseded, 1 tombstone |
-| **Merge / unmerge** (identity) | EMPI merges two patients | `05-conformed-dimensions.md` §1: dimension versions change; facts untouched; `fact_identity_event` row | dims only |
+| **Source update** (new real-world state) | Patient moves house | Close current `dim_patient` version (`valid_to` = move date), insert new version with `change_reason_code = 'source-update'`; `hist_*` gets a new row; nothing superseded (`change_kind` stays NULL — valid time, not belief, changed) | 1 new, 1 closed |
+| **Correction** (same real-world period, better knowledge) | Lab result amended; address was mistyped | Set `superseded_at` = now and `change_kind = 'correction'` on the wrong row; insert corrected row with the **same** `valid_from`, `recorded_at` = now, `change_reason_code = 'correction'`; `prov_activity_iri` points to the correction activity, which `prov:wasInformedBy` the original | 1 superseded, 1 new |
+| **Retraction** (the event never happened) | Encounter entered on the wrong patient | Set `superseded_at` and `change_kind = 'retraction'` on all versions (C10); insert a tombstone version with `valid_to = valid_from` and `change_reason_code = 'retraction'` so the retraction is itself queryable | n superseded, 1 tombstone |
+| **Merge / unmerge** (identity) | EMPI merges two patients | `05-conformed-dimensions.md` §1: dimension versions change (`change_kind = 'merge'` / `'unmerge'` on the superseded versions, `change_reason_code = 'merge'` on the new ones); facts untouched; `fact_identity_event` row | dims only |
 | **Replay** (Kafka re-consumption) | Sink rebuilt from offset 0 | Deterministic `record_hash` and `*_hk`: identical content → no new version; `recorded_at` for re-inserted rows is taken from the original `fact_load_batch` so transaction time is preserved | 0 |
 | **Terminology release** | SNOMED CT July release inactivates a code | `ref_concept` gains a version; facts unchanged; `dim_code.concept_status` reflects latest release; as-of queries resolve by `terminology_release_id` | ref only |
 
 Rules:
 
 - A correction **never updates in place**; it supersedes. `UPDATE` on business columns of a `hist_*`/fact row is
-  prohibited (loader uses insert + set `superseded_at` only).
+  prohibited (loader uses insert + set `superseded_at`/`change_kind` only).
+- Both sinks derive `change_kind` from the same canonical event (module 08 `04-graph-ingestion-from-kafka.md` §4), so
+  the per-kind counts reconcile (`change_kind = 'retraction'` ↔ `healix-time:changeKind = retraction`, §5).
 - Late data arriving in a **closed accounting or reporting period** loads with its true `valid_from`. Period-locked
   reports are reproduced with a transaction-time predicate (§4.3), and Finance's adjusting journal from Fusion arrives
   as a normal new fact — the EDW does not emulate period locks.
 - Corrections to **PHI identifiers** (wrong MRN) are also recorded in `fact_identity_event` and trigger a module-11
   audit row.
 
-> **EDW-HIST-020** (P0, test) — A correction MUST supersede the prior version (set `superseded_at`) and insert a new
-> version with identical `valid_from`; business columns of an existing version MUST never be updated in place.
+> **EDW-HIST-020** (P0, test) — A correction MUST supersede the prior version (set `superseded_at` and
+> `change_kind = 'correction'`) and insert a new version with identical `valid_from`; business columns of an existing
+> version MUST never be updated in place.
 
 > **EDW-HIST-021** (P0, test) — Replaying the same canonical offsets MUST produce no new versions (same `record_hash`
 > and `valid_from`) and MUST preserve original `recorded_at` values (EDW-ARCH-006).
 
-> **EDW-HIST-022** (P1, test) — Retractions MUST be represented as a tombstone version (`valid_to = valid_from`,
-> `change_reason_code = 'retraction'`) so that "was this ever asserted?" is answerable from `hist_*`/facts alone.
+> **EDW-HIST-022** (P1, test) — Retractions MUST set `change_kind = 'retraction'` on every superseded version and MUST
+> be represented as a tombstone version (`valid_to = valid_from`, `change_reason_code = 'retraction'`) so that "was
+> this ever asserted?" is answerable from `hist_*`/facts alone.
 
 ## 7. Retention
 
@@ -280,7 +325,9 @@ Rules:
 | `fact_*` G3 finance / claims | 10 years from fiscal year end | archive | Medicare 10 y (FCA look-back) |
 | `fact_*` G4, G5 | 7 years | archive | — |
 | `fact_*` G6, G7 | per study/program; G7 per IRB protocol | archive or destroy per protocol | — |
-| `fact_dq_result` (G9) | 13 months detail | `fact_dq_score_daily` aggregates kept indefinitely | — |
+| `fact_dq_result` (G9) | 90 days record-grain detail (DQ-SCORE-008) | rolled up to `agg_dq_result_day` (7 years, financial/clinical audit horizon) and `fact_dq_score_daily` (indefinite) | module 09 DQ-04 §6 |
+| `fact_dq_issue`, `fact_dq_profile` (G9) | 7 years (all bitemporal versions) | archive | DQ-REM-009, DQ-FW-009 |
+| `dim_data_steward`, `dim_dq_rule`, `ref_dq_weight`, `dim_dq_certification` (G9) | indefinite | — | scorecard reproducibility (DQ-SCORE-007) |
 | `fact_audit_event` (G9) | 6 years minimum online | archive, never destroyed within 10 y | HIPAA §164.316 |
 | `fact_lineage_activity`, `fact_schema_change`, `fact_reconciliation_check` | indefinite | — | provenance must outlive the data it describes |
 
@@ -301,7 +348,7 @@ bitemporal columns so as-of queries can be federated to the archive.
 
 | ID range | Topic |
 |----------|-------|
-| EDW-HIST-001…005 | Table families, invariants, physical representation |
+| EDW-HIST-001…006 | Table families, invariants, physical representation, `TKG-01` C1–C12 mapping (§3.3) |
 | EDW-HIST-010…011 | As-of accessors and performance |
 | EDW-HIST-020…022 | Corrections, replay, retraction |
 | EDW-HIST-030…032 | Retention and legal hold |

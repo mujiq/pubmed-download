@@ -1,0 +1,109 @@
+manifest_version: 0.1.0
+id: agent.self_healer
+role: Self-Healer
+mission: >-
+  Detect platform faults (connector down, MLLP sequence gaps, CDC lag, schema drift, registry incompatibility,
+  unmapped-code surges, DQ rule storms, graph load failures, EDW migration failures, agent loops/budget
+  exhaustion), run the matching healing playbook within policy and blast-radius limits, verify recovery, and
+  escalate when no playbook fits. Learns new playbooks from resolved incidents via the memory curator.
+pipeline_stage: []
+owns_modules: ["14", "12"]
+autonomy_level: L3
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_REASONING}"
+  recommended_default: claude-sonnet-5-5
+  fallback_ref: "${MODEL_CLASSIFICATION}"
+  temperature: 0.0
+  max_output_tokens: 8192
+  structured_output: true
+tools:
+  - server: healing-orchestrator
+    operations: [match_playbook, run_action, verify_recovery, list_incidents, open_incident, close_incident]
+    permission: apply
+    phi_access: none
+  - server: kafka-admin
+    operations: [describe_topic, get_consumer_lag, sample_records, restart_connector, replay_from_offset]
+    permission: apply
+    phi_access: masked
+  - server: schema-registry
+    operations: [get_schema_history, check_compatibility]
+    permission: read
+    phi_access: none
+  - server: lineage
+    operations: [get_upstream, impact_analysis, emit_run_event]
+    permission: apply
+    phi_access: none
+  - server: dq-engine
+    operations: [list_results, detect_drift]
+    permission: read
+    phi_access: masked
+  - server: ticketing
+    operations: [create_issue, update_issue, link_cr]
+    permission: apply
+    phi_access: none
+  - server: cr-engine
+    operations: [get_cr, list_crs, propose]
+    permission: propose
+    phi_access: none
+triggers:
+  - kind: event
+    topic: hc.ops.healing.incident.event.v1
+    event_type: fault_detected
+    description: Observability or a stream processor raised a fault signal.
+  - kind: schedule
+    cron: "*/5 * * * *"
+    description: Scan health signals (connector status, lag, DLQ depth, load backlog) for degradations.
+  - kind: manual
+inputs:
+  - Fault signals and health metrics (module 12 observability)
+  - Healing playbooks (module 14, healing-playbooks/*.yaml)
+  - Connector, topic, schema and load status
+  - Blast-radius and action policy (module 14 §safety limits)
+outputs:
+  - artefact: Healing actions with verification and rollback outcome
+    cr_type: null
+    destination: hc.ops.healing.playbookrun.event.v1
+  - artefact: Incident records (open/close, root cause, playbook used)
+    cr_type: null
+    destination: healing-orchestrator
+  - artefact: Proposed new/updated playbook (from a novel resolved incident)
+    cr_type: dq_rule
+    destination: cr-engine
+  - artefact: Escalations when no playbook fits
+    cr_type: null
+    destination: ticketing
+risk_classes: [low, medium]
+evaluation:
+  rubric_ids: [RUB-HEAL-01, RUB-EVD-01, RUB-PHI-01]
+  auto_approve_threshold: 0.90
+  human_agreement_target: 0.90
+  golden_sets: [labelled-incident-playbooks-v1]
+budgets:
+  tokens_per_run: 40000
+  runs_per_day: 300
+  daily_token_cap: 6000000
+  max_tool_calls_per_run: 150
+  wall_clock_minutes_per_run: 15
+  max_concurrent_runs: 4
+  max_open_change_requests: 5
+escalation:
+  to: [Platform SRE, Agent Operator]
+  sla_hours: 1
+  on_low_score: Execute read-only diagnosis only; hand the incident to SRE with findings.
+  on_budget_exhausted: Stop autonomous actions; page SRE for manual recovery.
+  on_tool_failure: Page SRE immediately if healing-orchestrator or kafka-admin is unreachable.
+  on_conflict: Honour the global kill switch and per-action cooldowns; never run two mutating actions on the same resource concurrently.
+memory:
+  working: true
+  episodic: true
+  semantic_write: false
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: none
+  criteria: [L3 is the ceiling; healing actions are bounded by playbook blast-radius classes and never alter ontology, schema or DQ artefacts except by proposing a change request.]
+  demotion_triggers:
+    - "A healing action caused a secondary incident (demotion to L1, diagnose-only, pending review)."
+    - "Recovery-verification precision < 0.85 over 20 incidents."

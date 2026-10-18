@@ -1,0 +1,845 @@
+# playbook_id: PBK-ING-003
+# module: 14-memory-and-self-improvement
+# artefact: healing playbook (validated by healing-playbooks/playbook.schema.json; rules MEM-HEAL-036…050 in 04-self-healing.md)
+# status: shadow — recommend-only until graduated via a `playbook` CR (MEM-HEAL-012, MEM-HEAL-037, MEM-HEAL-044)
+#
+# Heals Oracle Fusion Cloud BI Cloud Connector (BICC) view-object (PVO) schema drift: columns added, renamed, removed or
+# re-typed by a Fusion quarterly update, patch or custom descriptive flexfield; Schema Registry compatibility failures
+# on the `hc.raw.fusion.<pvo-slug>.bicc.v1` / `hc.std.fusion.<pvo-slug>.typed.v1` subjects; silent delta loss when
+# seeded or migrated rows carry `LAST_UPDATE_DATE` nulls; and the pre-emptive T−14 d dry-run before every Fusion
+# quarterly-update window (MEM-HEAL-059). "Heal the pipe, never the data": this playbook may register newly observed
+# PVO attributes as `discovered` elements, keep them out of `std` until a steward classifies them, pause one PVO's
+# parser, route incompatible rows to the processor DLQ, run HEALIX's own PK diff, and propose `mapping` CRs. It never
+# submits BICC jobs or any other write into Oracle Fusion (MEM-HEAL-008), never registers a schema or applies DDL
+# itself (STR-SR-006/012, GOV-ACC-011), never classifies PHI (privacy_guardian only, GOV-PHI-003) and never alters a
+# row value (DQ-REM-005). Breaking changes are never auto-applied: they become CRs with the dependent `edw_ddl` held.
+#
+# No tier of memory (M0–M4 as used by this module) and no cache tier (C0–C4) may hold content whose `hc-phi-class` is
+# anything but `non-phi`/`internal` (steward preferences: `pii:workforce` with consent flag). This includes the C0
+# provider prompt cache: pseudonymised PHI is not permitted. Everything this playbook reads and records is BICC
+# manifest metadata (PVO name, column names, declared types, row counts, watermarks, checksums), Schema Registry
+# subject/version ids, element ids and counts. Column VALUES are never read: a new column is `phi:direct` by default
+# (GOV-PHI-003) until reviewed, so its content is out of bounds for the self-healer and for memory.
+
+id: PBK-ING-003
+name: Oracle Fusion BICC view-object schema drift, registry compatibility failure and silent delta loss
+version: 0.1.0
+status: shadow
+owners:
+  - Platform SRE
+  - Agent Platform
+  - Integration Engineering
+  - Oracle Fusion administration
+fault_classes:
+  - FLT-ING-010   # BICC VO column add/remove/type change
+  - FLT-ING-011   # Oracle Fusion quarterly-update window (pre-emptive, T−14 d)
+  - FLT-ING-012   # BICC LAST_UPDATE_DATE nulls (silent delta loss)
+  - FLT-ING-017   # Schema Registry compatibility failure
+severity_default: S2           # OPS-00 §7 SEV2 for FLT-ING-010/012/017 (MEM-04 §2); S4 for the pre-emptive FLT-ING-011 run (see decision_tree)
+risk_class: high               # contains a ladder-L2 action (A1 register `discovered` elements after dry-run) — MEM-04 §8
+autonomy_required: L3          # ARC-01 §5 autonomy level of agent.self_healer (not the healing ladder)
+mttd_target_s: 900
+mttr_target_s: 3600            # FLT-ING-012 keeps its own 86,400 s / 172,800 s targets from MEM-04 §2 (daily extract cadence)
+
+scope:
+  environments: [dev, test, uat, prod]
+  source_systems: [oracle-fusion-cloud]
+  interfaces:
+    - connect.bicc-poller        # SRC-02 §3.1 / STR-04: UCM/OCI poller, one extract job per PVO per schedule
+  groups: [G1, G3, G4, G5, G8]   # party (suppliers, workers), finance (GL/AP/AR), supply chain, workforce, reference (lookups, value sets)
+  facilities: ["*"]              # Fusion is enterprise-wide; blast radius is bounded per PVO, not per facility
+
+# -----------------------------------------------------------------------------------------------------------------
+# Triggers — all are per PVO (`pvo` label = `FscmTopModelAM….<Name>PVO` or `HcmTopModelAnalyticsGlobalAM….<Name>PVO`,
+# `pvo_slug` = topic slug). The healing engine (Temporal) evaluates them from module 07/12 signals; the self_healer
+# never polls Fusion or UCM itself.
+# -----------------------------------------------------------------------------------------------------------------
+triggers:
+  - signal: bicc.manifest_column_drift
+    description: Column set (name, declared type, order) in the latest completed extract manifest / `.mdcsv` metadata differs from the registered Data Element Catalog columns for the PVO (STR-CDC-011/012)
+    source_module: 07-streaming-platform
+    topic: hc.ops.connector.bicc.manifest.v1          # keyed by extract_job_id; value carries PVO, files, columns, row counts, watermark
+    metric: healix.connect.bicc.manifest_column_drift_total{connector="connect.bicc-poller",pvo}
+    comparator: ">"
+    threshold: 0
+    window_s: 900
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-ING-010
+  - signal: schema.compatibility_failure
+    description: GitOps schema event `compatibility_failed` (or producer HTTP 409 on serialisation) for a `hc.raw.fusion.*.bicc.v1-value` or `hc.std.fusion.*.typed.v1-value` subject (STR-SR-004/005/012)
+    source_module: 07-streaming-platform
+    topic: hc.ops.schema.change.v1                    # keyed by subject; event_type ∈ {registered, deprecated, compatibility_changed, compatibility_failed}
+    metric: healix.schema_registry.compatibility_failures_total{subject=~"hc\\.(raw|std)\\.fusion\\..*"} + healix.producer.schema_409_total{topic=~"hc\\.(raw|std)\\.fusion\\..*"}
+    comparator: ">"
+    threshold: 0
+    window_s: 60
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-ING-017
+  - signal: fusion.quarterly_update_preemptive
+    description: Module 12 change-freeze calendar shows an Oracle Fusion quarterly-update window starting in ≤ 14 days and no pre-emptive dry-run has been recorded for that window (MEM-HEAL-059; MEM-04 §3 legacy outlier)
+    source_module: 12-platform-and-operations
+    metric: healix.freeze_calendar.days_until{window_kind="fusion-quarterly-update"}
+    comparator: "<="
+    threshold: 14
+    window_s: 86400
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-ING-011
+  - signal: bicc.last_update_date_null_rate
+    description: Rows in the latest incremental or PK extract whose `LAST_UPDATE_DATE` is null — such rows never match the incremental filter and their deltas are silently lost (SRC-OFC-001/002; MEM-04 §3)
+    source_module: 07-streaming-platform
+    metric: healix.connect.bicc.last_update_date_null_ratio{connector="connect.bicc-poller",pvo}   # computed by the poller from the `.mdcsv`-typed column, values never exported
+    comparator: ">"
+    threshold: 0
+    window_s: 86400
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-ING-012
+
+dedupe_key: "${env}|connect.bicc-poller|${trigger.labels.pvo}|${trigger.fault_class}"
+correlation_window_s: 3600     # a quarterly update typically drifts several PVOs within one extract cycle; each PVO is its own incident, correlated by window id
+
+# -----------------------------------------------------------------------------------------------------------------
+# Preconditions — any failure either skips the run (recommend-only annotation) or escalates straight to humans.
+# -----------------------------------------------------------------------------------------------------------------
+preconditions:
+  - check: single_pvo_in_scope
+    tool: {server: source-registry, operation: get_source}
+    params: {source_id: "oracle-fusion-cloud", interface_id: "connect.bicc-poller", pvo: "${trigger.labels.pvo}"}
+    expect: "result.pvos | length == 1 and result.pvos[0].lifecycle in ['active','drifted']"   # SRC-00 §4 element lifecycle
+    on_fail: escalate                 # unknown PVO ⇒ agent.inventory discovery path, not healing
+  - check: poller_connector_healthy
+    tool: {server: kafka-admin, operation: describe_connector}
+    params: {connector: "connect.bicc-poller"}
+    expect: "state == 'RUNNING' and tasks[pvo='${trigger.labels.pvo}'].state != 'FAILED'"
+    on_fail: escalate                 # a failed poller is FLT-ING-009 / STR-OPS-010 territory
+  - check: manifest_complete
+    tool: {server: kafka-admin, operation: sample_records}
+    params: {topic: "hc.ops.connector.bicc.manifest.v1", filter: {pvo: "${trigger.labels.pvo}"}, tail: 1, fields: [extract_job_id, pvo, files_complete, row_count, watermark, column_count]}
+    expect: "files_complete == true"  # STR-CDC-011: incomplete manifests are never processed, so drift on them is not actionable yet
+    on_fail: skip
+  - check: not_in_change_freeze_window_or_observe_only
+    tool: {server: observability, operation: freeze_calendar_check}
+    params: {scope: ["release", "fusion-quarterly-update"]}
+    expect: "frozen == false or trigger.signal == 'fusion.quarterly_update_preemptive'"   # MEM-HEAL-010: inside the window only observe/restart; pre-emptive dry-run is observe
+    on_fail: skip
+  - check: no_kill_switch
+    tool: {server: cr-engine, operation: kill_switch_status}
+    params: {scopes: ["platform", "environment:${env}", "agent:agent.self_healer", "module14:healing", "playbook:PBK-ING-003"]}
+    expect: "all_released == true"
+    on_fail: skip
+  - check: processor_not_oscillating
+    tool: {server: observability, operation: query_metric}
+    params: {query: "increase(healix.proc.parser.input_pause_total{topic='hc.raw.fusion.${trigger.labels.pvo_slug}.bicc.v1'}[1h])"}
+    expect: "value < 3"               # MEM-HEAL-011 oscillation guard on pause/resume of the same PVO input
+    on_fail: escalate
+
+# -----------------------------------------------------------------------------------------------------------------
+# Diagnosis — read-only (MEM-HEAL-045). Classifies the drift and records symptoms/hypotheses on the incident and in
+# Graphiti (SchemaVersion -DRIFTED_TO-> SchemaVersion, Interface -EXHIBITED_SYMPTOM-> Symptom). Metadata only.
+# -----------------------------------------------------------------------------------------------------------------
+diagnosis:
+  - step: manifest_columns
+    tool: {server: kafka-admin, operation: sample_records}
+    params:
+      topic: hc.ops.connector.bicc.manifest.v1
+      filter: {pvo: "${trigger.labels.pvo}"}
+      tail: 2                           # current and previous completed manifests
+      fields: [extract_job_id, pvo, "columns[].name", "columns[].declared_type", "columns[].nullable", row_count, watermark, md5, schedule_interval_s]
+    read_only: true
+    timeout_s: 15
+    record_as: manifest_columns       # column names/types from `.mdcsv` metadata (STR-CDC-012); no CSV row is ever opened
+  - step: registered_elements
+    tool: {server: source-registry, operation: list_elements}
+    params: {source_id: oracle-fusion-cloud, source_path_prefix: "${trigger.labels.pvo}.", fields: [element_id, source_path, datatype, phi_class, lifecycle, steward, semantic_type, is_flexfield]}
+    read_only: true
+    timeout_s: 15
+    record_as: registered_elements
+  - step: drift_classification
+    tool: {server: playbook-runner, operation: registry.diff_manifest_dry_run, permission: read}
+    params:
+      manifest: "${manifest_columns[0]}"
+      previous_manifest: "${manifest_columns[1]}"
+      registered: "${registered_elements}"
+      classify_as: [additive, rename, remove, type_change, reorder_only]
+      rename_heuristic: {same_type_same_position: true, confidence_floor: 0.8}   # a rename is reported as remove+add with a `probable_rename` hypothesis, never auto-merged
+    read_only: true
+    timeout_s: 30
+    record_as: drift_class            # {kind, added[], removed[], retyped[], probable_renames[], flexfields_added[]}
+  - step: registry_compatibility
+    tool: {server: schema-registry, operation: check_compatibility}
+    params:
+      subject: "hc.std.fusion.${trigger.labels.pvo_slug}.typed.v1-value"
+      candidate_schema_from: "${manifest_columns[0]}"   # Avro derived from `.mdcsv` declared types; raw subject is the opaque byte-exact envelope (STR-SR-009) and is not re-derived
+      level: BACKWARD                                   # STR-SR-004: `BACKWARD` for std.*; compatibility is set by GitOps and immutable by clients
+    read_only: true
+    timeout_s: 15
+    record_as: compat                 # {result: compatible|incompatible, violations[]} — informs the CR, never a registration
+  - step: schema_history
+    tool: {server: schema-registry, operation: get_schema_history}
+    params: {subject: "hc.std.fusion.${trigger.labels.pvo_slug}.typed.v1-value", last_n: 5}
+    read_only: true
+    timeout_s: 10
+    record_as: hypothesis             # a registered version without a matching `hc.ops.schema.change.v1` GitOps event ⇒ producer deploy outside GitOps (STR-SR-012)
+  - step: phi_default_for_new_columns
+    tool: {server: source-registry, operation: get_element}
+    params: {element_ids: "${drift_class.added[].candidate_element_id}", on_missing: "default"}
+    read_only: true
+    timeout_s: 10
+    record_as: phi_defaults           # every unreviewed column is `phi:direct` (GOV-PHI-003); flexfields (SRC-OFC-018) and excluded sensitive attributes (SRC-OFC-015/016) flagged for privacy_guardian
+  - step: downstream_bindings
+    tool: {server: lineage, operation: get_downstream}
+    params: {dataset: "hc.std.fusion.${trigger.labels.pvo_slug}.typed.v1", depth: 3, kinds: [mapping_spec, canonical_topic, edw_table, dq_rule]}
+    read_only: true
+    timeout_s: 20
+    record_as: downstream             # mapping specs, `hc.canonical.*`, `edw_g*` tables and DQ rules bound to the removed/retyped columns
+  - step: edw_column_bindings
+    tool: {server: edw-metadata, operation: get_column_bindings}
+    params: {source_paths: "${drift_class.removed[].source_path} + ${drift_class.retyped[].source_path}"}
+    read_only: true
+    timeout_s: 15
+    record_as: edw_bindings           # tables whose pending `edw_ddl` CRs must be held (A6)
+  - step: processor_dlq_growth
+    tool: {server: kafka-admin, operation: consumer_lag}
+    params: {topic: hc.ops.dlq.processor.v1, filter: {processor: proc.parser, source_topic: "hc.raw.fusion.${trigger.labels.pvo_slug}.bicc.v1", reason: schema_incompatible}, window_s: 3600}
+    read_only: true
+    timeout_s: 15
+    record_as: symptom                # STR-PROC: incompatible records already route to the processor DLQ with reason
+  - step: null_rate_profile
+    tool: {server: observability, operation: query_metric}
+    params: {query: "healix.connect.bicc.last_update_date_null_ratio{pvo='${trigger.labels.pvo}'} and healix.connect.bicc.last_update_date_null_total{pvo='${trigger.labels.pvo}'} and healix.connect.bicc.pk_extract_age_seconds{pvo='${trigger.labels.pvo}'}"}
+    read_only: true
+    timeout_s: 10
+    record_as: null_profile           # ratio, count and age of the last daily PK extract (SRC-OFC-002); never the rows themselves
+  - step: quarterly_window
+    tool: {server: observability, operation: freeze_calendar_check}
+    params: {scope: ["fusion-quarterly-update"], include: [window_start, window_end, release_label, preview_pod_available, announced_pvo_changes_ref]}
+    read_only: true
+    timeout_s: 10
+    record_as: quarterly              # Fusion publishes release notes/what's-new with PVO changes; Fusion admins attach the list as a metadata-only reference
+  - step: preview_pod_manifest
+    tool: {server: kafka-admin, operation: sample_records}
+    params: {topic: hc.ops.connector.bicc.manifest.v1, filter: {pvo: "${trigger.labels.pvo}", pod: preview}, tail: 1, fields: [extract_job_id, "columns[].name", "columns[].declared_type", release_label]}
+    read_only: true
+    timeout_s: 15
+    record_as: preview_manifest       # produced by `connect.bicc-poller` pointed at the customer's Fusion preview/test pod during the update lead time; absent outside the window
+  - step: playbook_memory
+    tool: {server: memory, operation: search_playbooks}
+    params:
+      symptoms: ["bicc_column_drift", "schema_compat_failure", "last_update_date_nulls", "fusion_quarterly_update"]
+      scope: {kind: interface, id: "connect.bicc-poller", pvo: "${trigger.labels.pvo}"}
+    read_only: true
+    timeout_s: 5
+    record_as: prior_outcomes        # MEM-02 `playbook_match` / `incident_triage` profiles; degraded → continue from Git (MEM-HEAL-014)
+
+# -----------------------------------------------------------------------------------------------------------------
+# Decision tree — maps diagnosis to the ordered action list. Only autonomous_allowed actions execute when the
+# playbook is `autonomous`; in `shadow` every branch is recorded as a recommendation and compared with the human's.
+# Breaking changes (rename / remove / type_change / incompatible) are NEVER auto-applied: they pause, quarantine and
+# propose.
+# -----------------------------------------------------------------------------------------------------------------
+decision_tree:
+  - when: "trigger.signal == 'fusion.quarterly_update_preemptive'"
+    then_actions: [A0-record-preemptive-dryrun, A7-preemptive-register-announced-columns, A8-ticket-integration-and-fusion-admins]   # severity S4; engine blocks canary starts until window end (MEM-HEAL-059)
+  - when: "drift_class.kind == 'reorder_only' and compat.result == 'compatible'"
+    then_actions: [A0-record-preemptive-dryrun]            # `.mdcsv` binds by name (STR-CDC-012); column order is irrelevant — annotate and close
+  - when: "drift_class.kind == 'additive' and compat.result == 'compatible' and drift_class.removed | length == 0 and drift_class.retyped | length == 0"
+    then_actions: [A1-register-discovered-elements, A2-exclude-new-columns-from-std, A3-mapping-cr-low]
+  - when: "drift_class.kind in ['rename','remove','type_change'] or compat.result == 'incompatible'"
+    then_actions: [A4-pause-pvo-parser, A5-quarantine-incompatible-rows, A6-mapping-cr-medium-hold-edw-ddl, A8-ticket-integration-and-fusion-admins]
+  - when: "trigger.signal == 'schema.compatibility_failure' and drift_class.kind == 'none' and schema_history.last_event_without_gitops == true"
+    then_actions: [A4-pause-pvo-parser, A5-quarantine-incompatible-rows, A6-mapping-cr-medium-hold-edw-ddl, A8-ticket-integration-and-fusion-admins]   # rogue producer deploy (STR-SR-012); the fix is GitOps, not healing
+  - when: "trigger.signal == 'bicc.last_update_date_null_rate' and null_profile.ratio > 0"
+    then_actions: [A9-run-pk-diff-now, A10-flag-freshness-suspect, A8-ticket-integration-and-fusion-admins]   # never invent timestamps (DQ-REM-005); Fusion data-fix stays manual
+  - when: "drift_class.flexfields_added | length > 0"
+    then_actions: [A1-register-discovered-elements, A2-exclude-new-columns-from-std, A8-ticket-integration-and-fusion-admins]   # SRC-OFC-018: flexfields are steward-classified, never auto-mapped (no A3)
+  - when: "default"
+    then_actions: [A0-record-preemptive-dryrun, A8-ticket-integration-and-fusion-admins]
+
+# -----------------------------------------------------------------------------------------------------------------
+# Actions — every action carries blast_radius_class + budget + compensation/idempotency (MEM-HEAL-038).
+# Ladder: L0 observe · L1 safe automatic · L2 after dry-run + blast-radius check · L3 propose CR/ticket.
+# The only L2 action (A1) writes registry METADATA (reversible, `discovered` lifecycle state); nothing touches rows.
+# -----------------------------------------------------------------------------------------------------------------
+actions:
+  - id: A0-record-preemptive-dryrun
+    ladder_level: L0
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "pvo == '${trigger.labels.pvo}'", time_box_s: 120}
+    requires_dry_run: false
+    tool: {server: memory, operation: record_incident, permission: propose}
+    params:
+      incident_id: "${incident.id}"
+      severity: "${trigger.signal == 'fusion.quarterly_update_preemptive' ? 'S4' : incident.severity}"
+      annotations:
+        drift_kind: "${drift_class.kind}"
+        added_count: "${drift_class.added | length}"
+        removed_count: "${drift_class.removed | length}"
+        retyped_count: "${drift_class.retyped | length}"
+        compat_result: "${compat.result}"
+        release_label: "${quarterly.release_label}"
+        window: "${quarterly.window_start}/${quarterly.window_end}"
+        canary_block_requested: "${trigger.signal == 'fusion.quarterly_update_preemptive'}"   # the engine, not this playbook, pauses MEM-05 canaries (MEM-HEAL-059)
+    idempotency_key_recipe: "sha256(${incident.id}|A0|${trigger.labels.pvo}|${quarterly.release_label})"
+    timeout_s: 10
+    retries: 1
+    verify: {probe: "incident.annotations.drift_kind", expect: "present", within_s: 10}
+    on_failure: continue
+    compensating_action: {tool: {server: memory, operation: correct}, params: {memory_id: "${incident.id}", change_kind: correction, new_content: {annotations: null}}}
+
+  - id: A1-register-discovered-elements
+    ladder_level: L2
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "pvo == '${trigger.labels.pvo}' and elements_written <= 200", time_box_s: 600}
+    requires_dry_run: true            # L2: dry-run diff (drift_classification) must show additive-only and ≤ 200 new attributes
+    tool: {server: playbook-runner, operation: registry.register_discovered_elements, permission: apply}
+    params:
+      source_id: oracle-fusion-cloud
+      pvo: "${trigger.labels.pvo}"
+      elements: "${drift_class.added}"                    # element_id, source_path `<PVO>.<ATTRIBUTE>`, declared datatype, nullable, is_flexfield
+      lifecycle: discovered                               # SRC-00 §4: discovered → profiled → proposed → approved → active; this playbook never advances past `discovered`
+      phi_class: phi:direct                               # GOV-PHI-003 default for unreviewed elements; set_phi_classification stays with agent.privacy_guardian
+      steward: "${registered_elements[0].steward}"        # inherit the PVO's steward of record; `propose_steward` is a vocabulary CR, not done here
+      note: "Delegated by the engine to agent.inventory's `source-registry.upsert_element` (AGT-04 §2.1, metadata-only, reversible); agent.self_healer holds no source-registry write."
+    idempotency_key_recipe: "sha256(${incident.id}|A1|${trigger.labels.pvo}|${sorted(drift_class.added[].source_path) | hash})"
+    timeout_s: 120
+    retries: 1
+    verify:
+      probe: "source-registry.list_elements{source_path_prefix='${trigger.labels.pvo}.'} count and lifecycle"
+      expect: "count == manifest_columns[0].columns | length and all(added[].lifecycle == 'discovered') and all(added[].phi_class == 'phi:direct')"
+      within_s: 60
+    on_failure: abort
+    rollback:
+      tool: {server: playbook-runner, operation: registry.retire_discovered_elements}
+      params: {source_id: oracle-fusion-cloud, element_ids: "${A1.element_ids}", reason: "healing run rolled back", keep_history: true}   # lifecycle → retired, history retained (SRC-00 §4)
+
+  - id: A2-exclude-new-columns-from-std
+    ladder_level: L1
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "processor == 'proc.parser' and input_topic == 'hc.raw.fusion.${trigger.labels.pvo_slug}.bicc.v1'", time_box_s: 600}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: processor.set_column_projection, permission: apply}
+    params:
+      processor: proc.parser
+      input_topic: "hc.raw.fusion.${trigger.labels.pvo_slug}.bicc.v1"
+      output_topic: "hc.std.fusion.${trigger.labels.pvo_slug}.typed.v1"
+      mode: allowlist                                      # only `active` elements are projected into `std`; raw stays byte-exact and complete (STR-SR-009, SRC-OFC-001)
+      exclude_elements: "${A1.element_ids}"
+      until: "element.lifecycle == 'active'"               # lifted automatically when the steward/privacy_guardian approve the element and the `mapping` CR applies
+      snapshot_name: "pre-A2-${incident.id}"
+    idempotency_key_recipe: "sha256(${incident.id}|A2|${trigger.labels.pvo_slug}|${sorted(A1.element_ids) | hash})"
+    timeout_s: 60
+    retries: 1
+    verify:
+      probe: "schema-registry.get_schema{subject='hc.std.fusion.${trigger.labels.pvo_slug}.typed.v1-value'} fields vs projection; hc.ops.dlq.processor.v1 rate"
+      expect: "std_fields == previous_version_fields and dlq_rate(schema_incompatible) == 0"
+      within_s: 300
+    on_failure: abort
+    rollback:
+      tool: {server: playbook-runner, operation: processor.restore_column_projection}
+      params: {processor: proc.parser, input_topic: "hc.raw.fusion.${trigger.labels.pvo_slug}.bicc.v1", snapshot: "pre-A2-${incident.id}"}
+
+  - id: A3-mapping-cr-low
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "pvo == '${trigger.labels.pvo}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: cr-engine, operation: propose_cr, permission: propose}
+    params:
+      type: mapping                                        # AGT-03 crType; `agent_policy`/`playbook` are module-14 requests and not used here
+      risk_class: low                                      # AGT-03: non-empty `phi_fields_touched` forces `phi_affecting` — expected for new `phi:direct` elements, so the gate escalates by schema, not by this playbook
+      target: {kind: mapping_spec, source_path_prefix: "${trigger.labels.pvo}.", std_subject: "hc.std.fusion.${trigger.labels.pvo_slug}.typed.v1-value"}
+      assignee: agent.source_mapper
+      title: "BICC additive drift on ${trigger.labels.pvo}: classify and map ${drift_class.added | length} new attribute(s)"
+      summary: "Additive column drift detected from manifest ${manifest_columns[0].extract_job_id} (release ${quarterly.release_label}). New attributes registered as `discovered`, default `phi:direct` (GOV-PHI-003), excluded from std until classified. Metadata only."
+      evidence:
+        sources:
+          - {kind: incident_id, id: "${incident.id}"}
+          - {kind: topic, id: hc.ops.connector.bicc.manifest.v1, ref: "${manifest_columns[0].extract_job_id}"}
+          - {kind: memory_record, id: "${prior_outcomes.record_ids}"}   # requested `evidence.sources[].kind` extension (README §6); omitted while not landed
+      phi_fields_touched: "${A1.element_ids}"              # element ids, never values
+      payload: {format: yaml, content_ref: "${drift_class.added | to_mapping_stub}"}   # column → candidate element, `semantic_type: null`, no target binding
+      automated_checks_requested: [phi_scan, prompt_injection_scan, idempotency_check, mapping_golden_tests]
+      provenance: {recalled_memory_ids: "${prior_outcomes.record_ids}", memory_degraded: "${memory.degraded}"}
+    idempotency_key_recipe: "sha256(PBK-ING-003|A3|${trigger.labels.pvo}|${sorted(drift_class.added[].source_path) | hash})"   # re-proposal of the same column set is a no-op (AGT-03 idempotency_check)
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "cr-engine.get_cr", expect: "state in ['proposed','evaluating','awaiting_approval'] and linked_incident == '${incident.id}'", within_s: 120}
+    on_failure: escalate
+    compensating_action:
+      tool: {server: cr-engine, operation: withdraw_cr}
+      params: {cr_id: "${A3.cr_id}", reason: "healing run rolled back"}
+    emits_cr: {cr_type: mapping, risk_class: low, gates_required: [evaluator, privacy_review]}
+
+  - id: A4-pause-pvo-parser
+    ladder_level: L1
+    blast_radius_class: reroute
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "processor == 'proc.parser' and input_topic == 'hc.raw.fusion.${trigger.labels.pvo_slug}.bicc.v1'", time_box_s: 3600}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: processor.pause_input, permission: apply}
+    params:
+      processor: proc.parser
+      input_topic: "hc.raw.fusion.${trigger.labels.pvo_slug}.bicc.v1"   # the poller keeps landing raw byte-exact (SRC-OFC-001); only typing into std pauses
+      commit_offsets_first: true
+      reason: "schema_drift_breaking:${drift_class.kind}:${compat.result}"
+      snapshot_name: "pre-A4-${incident.id}"
+    idempotency_key_recipe: "sha256(${incident.id}|A4|${trigger.labels.pvo_slug}|${floor(now/3600)})"
+    timeout_s: 60
+    retries: 1
+    verify:
+      probe: "healix.proc.parser.input_state{topic='hc.raw.fusion.${trigger.labels.pvo_slug}.bicc.v1'}; raw produce rate; std produce rate"
+      expect: "input_state == 'PAUSED' and raw_rate >= 0 and std_rate == 0 and other_pvo_inputs_unaffected"
+      within_s: 120
+    on_failure: escalate
+    rollback:
+      tool: {server: playbook-runner, operation: processor.resume_input}
+      params: {processor: proc.parser, input_topic: "hc.raw.fusion.${trigger.labels.pvo_slug}.bicc.v1", snapshot: "pre-A4-${incident.id}"}   # also the normal exit once the `mapping` CR applies
+
+  - id: A5-quarantine-incompatible-rows
+    ladder_level: L1
+    blast_radius_class: reroute
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 500000, scope_expr: "source_topic == 'hc.raw.fusion.${trigger.labels.pvo_slug}.bicc.v1' and reason == 'schema_incompatible'", time_box_s: 3600}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: processor.set_schema_mismatch_policy, permission: apply}
+    params:
+      processor: proc.parser
+      input_topic: "hc.raw.fusion.${trigger.labels.pvo_slug}.bicc.v1"
+      policy: dlq                                          # STR-CDC-018 / STR-PROC: full envelope to `hc.ops.dlq.processor.v1` with reason; nothing dropped
+      dlq_topic: hc.ops.dlq.processor.v1
+      reason: schema_incompatible
+      retain_envelope: true
+      dq_issue:
+        rule_id: DQR-COMPLETENESS-EXTRACT-FUSION-001     # SRC-02 §6 `DQR-COMPLETENESS-EXTRACT-*` family
+        dimension: completeness
+        topic: "hc.std.fusion.${trigger.labels.pvo_slug}.typed.v1"
+        severity: non-blocking                             # DQ-FW-007
+        reason: "rows quarantined pending mapping CR ${A6.cr_id}"
+    idempotency_key_recipe: "sha256(${incident.id}|A5|${trigger.labels.pvo_slug})"
+    timeout_s: 60
+    retries: 1
+    verify:
+      probe: "hc.ops.dlq.processor.v1 records for source_topic carry reason=schema_incompatible and hc-replay-eligible=true; hc.dq.issue.v1 open issue"
+      expect: "dlq_records_without_reason == 0 and dq_issue.status == 'open'"
+      within_s: 300
+    on_failure: escalate
+    compensating_action:
+      tool: {server: playbook-runner, operation: processor.restore_schema_mismatch_policy}
+      params: {processor: proc.parser, input_topic: "hc.raw.fusion.${trigger.labels.pvo_slug}.bicc.v1", snapshot: "pre-A4-${incident.id}"}   # quarantined records stay in the DLQ for re-drive after the CR applies (DQ-PIPE-014)
+
+  - id: A6-mapping-cr-medium-hold-edw-ddl
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "pvo == '${trigger.labels.pvo}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: cr-engine, operation: propose_cr, permission: propose}
+    params:
+      type: mapping
+      risk_class: medium                                   # AGT-03 escalates to `phi_affecting` automatically when `phi_fields_touched` is non-empty
+      target: {kind: mapping_spec, source_path_prefix: "${trigger.labels.pvo}.", std_subject: "hc.std.fusion.${trigger.labels.pvo_slug}.typed.v1-value"}
+      assignee: agent.source_mapper
+      reviewers: [agent.schema_architect, agent.privacy_guardian]
+      title: "BICC breaking drift on ${trigger.labels.pvo} (${drift_class.kind}): re-map ${drift_class.removed | length + drift_class.retyped | length} attribute(s); registry ${compat.result}"
+      summary: "Breaking view-object drift from manifest ${manifest_columns[0].extract_job_id} (release ${quarterly.release_label}). Parser input paused and incompatible rows quarantined to hc.ops.dlq.processor.v1. Candidate schema fails ${compat.level} compatibility: ${compat.violations | summarise}. Requires mapping revision, a `topic` CR for the std subject (STR-SR-005/006: vN+1 if the §5 matrix is violated) and hold of dependent edw_ddl. Metadata only."
+      evidence:
+        sources:
+          - {kind: incident_id, id: "${incident.id}"}
+          - {kind: topic, id: hc.ops.schema.change.v1, ref: "${trigger.labels.subject}"}
+          - {kind: topic, id: hc.ops.connector.bicc.manifest.v1, ref: "${manifest_columns[0].extract_job_id}"}
+          - {kind: memory_record, id: "${prior_outcomes.record_ids}"}
+      phi_fields_touched: "${drift_class.removed[].element_id} + ${drift_class.retyped[].element_id}"
+      payload: {format: yaml, content_ref: "${drift_class | to_mapping_delta_stub}"}   # removed → `deprecated` binding, retyped → `needs_recast`, probable_renames → hypothesis for the mapper (never auto-merged)
+      dependencies:
+        hold_until_applied:
+          - {cr_type: edw_ddl, target_tables: "${edw_bindings.tables}"}    # cr-engine holds dependent edw_ddl in its dependency graph; this playbook never touches DDL
+          - {cr_type: topic, subject: "hc.std.fusion.${trigger.labels.pvo_slug}.typed.v1-value"}
+        on_apply: [resume_parser_input, redrive_dlq_by_incident]           # executed by release_manager/cr-engine after `applied`, not by this run
+      automated_checks_requested: [phi_scan, prompt_injection_scan, idempotency_check, schema_compatibility, mapping_golden_tests, prov_completeness]
+      provenance: {recalled_memory_ids: "${prior_outcomes.record_ids}", memory_degraded: "${memory.degraded}"}
+    idempotency_key_recipe: "sha256(PBK-ING-003|A6|${trigger.labels.pvo}|${drift_class | hash})"
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "cr-engine.get_cr", expect: "state in ['proposed','evaluating','awaiting_approval'] and holds | length >= 1", within_s: 120}
+    on_failure: escalate
+    compensating_action:
+      tool: {server: cr-engine, operation: withdraw_cr}
+      params: {cr_id: "${A6.cr_id}", reason: "healing run rolled back", release_holds: true}
+    emits_cr: {cr_type: mapping, risk_class: medium, gates_required: [evaluator, privacy_review, human_approval]}
+
+  - id: A7-preemptive-register-announced-columns
+    ladder_level: L2
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "pvo == '${trigger.labels.pvo}' and elements_written <= 200", time_box_s: 600}
+    requires_dry_run: true            # dry-run diff of the preview-pod manifest against the registry (MEM-HEAL-059); executes only when preview_manifest is present
+    tool: {server: playbook-runner, operation: registry.register_discovered_elements, permission: apply}
+    params:
+      source_id: oracle-fusion-cloud
+      pvo: "${trigger.labels.pvo}"
+      elements: "${preview_manifest | diff(registered_elements).added}"
+      lifecycle: discovered
+      phi_class: phi:direct                               # GOV-PHI-003
+      tags: ["pre-announced", "release:${quarterly.release_label}"]
+      note: "Pre-warms the registry with announced VO changes (MEM-04 §3) so the production extract after the window is additive-known rather than drift. Removed/retyped announcements are reported in the ticket (A8) — never applied."
+    idempotency_key_recipe: "sha256(PBK-ING-003|A7|${trigger.labels.pvo}|${quarterly.release_label})"
+    timeout_s: 120
+    retries: 1
+    verify:
+      probe: "source-registry.list_elements{tag='release:${quarterly.release_label}'}"
+      expect: "count == preview_added_count and all(lifecycle == 'discovered')"
+      within_s: 60
+    on_failure: continue              # no preview pod in this estate → A8 ticket carries the dry-run report only
+    rollback:
+      tool: {server: playbook-runner, operation: registry.retire_discovered_elements}
+      params: {source_id: oracle-fusion-cloud, element_ids: "${A7.element_ids}", reason: "pre-announced change withdrawn by vendor", keep_history: true}
+
+  - id: A8-ticket-integration-and-fusion-admins
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "pvo == '${trigger.labels.pvo}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: ticketing, operation: create_issue, permission: apply}
+    params:
+      template: ticket_template          # PHI-free packet (see escalation.ticket_template)
+      assignee_role: integration-engineer
+      cc_roles: [fusion-admins, "steward:${registered_elements[0].steward_role}", platform-sre]
+      severity: "${incident.severity}"
+      links: {incident: "${incident.id}", crs: ["${A3.cr_id}", "${A6.cr_id}"], dq_issue: "${A5.dq_issue_id}"}
+    idempotency_key_recipe: "sha256(${incident.id}|A8|${trigger.labels.pvo})"
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "ticketing.get_issue", expect: "status in ['open','acknowledged'] and linked_incident == '${incident.id}'", within_s: 120}
+    on_failure: escalate
+    compensating_action:
+      tool: {server: ticketing, operation: update_issue}
+      params: {issue_id: "${A8.issue_id}", status: "cancelled", reason: "healing run rolled back"}
+
+  - id: A9-run-pk-diff-now
+    ladder_level: L1
+    blast_radius_class: replay
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 500000, scope_expr: "pvo == '${trigger.labels.pvo}' and job == 'pk_diff'", time_box_s: 1800}
+    requires_dry_run: false           # MEM-HEAL-046: max exactly 500,000 ≥ 50,000 ⇒ engine runs the row-estimate dry-run before execution
+    tool: {server: playbook-runner, operation: connector.run_local_job, permission: apply}
+    params:
+      connector: connect.bicc-poller
+      job: pk_diff                                         # SRC-OFC-002: HEALIX-side diff of the LATEST ALREADY-LANDED daily PK extract against compacted std state
+      pvo: "${trigger.labels.pvo}"
+      input: {pk_extract: latest_landed, max_age_s: 172800}
+      emit: logical_deletes_and_missing_keys               # keys only; rows with null LAST_UPDATE_DATE surface as "present in PK extract, absent/stale in std"
+      request_new_extract_from_fusion: false               # NEVER: submitting a BICC job is a write into Fusion (MEM-HEAL-008); stale PK extracts go to Fusion admins via A8
+      row_estimate_dry_run: true
+    idempotency_key_recipe: "sha256(${incident.id}|A9|${trigger.labels.pvo}|${null_profile.pk_extract_job_id})"
+    timeout_s: 1800
+    retries: 1
+    verify:
+      probe: "healix.connect.bicc.pk_diff_last_success_age_seconds{pvo='${trigger.labels.pvo}'}; hc.dq.issue.v1 missing-key count"
+      expect: "age < 1800 and missing_key_count_recorded"
+      within_s: 1800
+    on_failure: escalate
+    compensating_action:
+      tool: {server: playbook-runner, operation: connector.cancel_local_job}
+      params: {connector: connect.bicc-poller, job: pk_diff, pvo: "${trigger.labels.pvo}", quarantine_partial: true}   # partial diff output tagged, never deleted (DQ-PIPE-014)
+
+  - id: A10-flag-freshness-suspect
+    ladder_level: L1
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "pvo == '${trigger.labels.pvo}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: dq.flag_suspect, permission: apply}
+    params:
+      rule_id: DQR-TIMELINESS-EXTRACT-FUSION-001         # SRC-02 §6 extract-freshness family; opens via dq-engine.open_issue
+      dimension: timeliness
+      topics: ["hc.std.fusion.${trigger.labels.pvo_slug}.typed.v1", "${downstream.canonical_topics}"]
+      flag: suspect                                        # results are flagged, never deleted or altered (DQ-PIPE-013/014, DQ-REM-005)
+      reason: "LAST_UPDATE_DATE null ratio ${null_profile.ratio} on ${trigger.labels.pvo}; deltas for ${null_profile.count} rows may be lost until Fusion data-fix; weekly full-extract reconcile (SRC-OFC-003) scheduled"
+      severity: non-blocking                               # DQ-FW-007
+      clear_when: "null_ratio == 0 for 2 consecutive daily extracts and weekly reconcile within 0.01 %"
+    idempotency_key_recipe: "sha256(${incident.id}|A10|${trigger.labels.pvo_slug})"
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "hc.dq.issue.v1", expect: "issue.flag == 'suspect' and issue.status == 'open'", within_s: 120}
+    on_failure: escalate
+    compensating_action:
+      tool: {server: playbook-runner, operation: dq.clear_flag}
+      params: {issue_id: "${A10.issue_id}", reason: "healing run rolled back"}
+
+# -----------------------------------------------------------------------------------------------------------------
+# Verification — success is measured on the same signals that triggered the incident (window ≥ 3× detection window;
+# here one full BICC extract cycle so the NEXT extract is observed passing).
+# -----------------------------------------------------------------------------------------------------------------
+verification:
+  probes:
+    - {id: V1-next-extract-passes, topic: hc.ops.connector.bicc.manifest.v1, expect: "next manifest for pvo has files_complete == true and manifest_column_drift_total delta == 0 (additive branch) or input remains PAUSED with 0 schema_incompatible DLQ writes outside the quarantine (breaking branch)"}
+    - {id: V2-registry-matches-manifest, tool: "source-registry.list_elements", expect: "registered column count == manifest column count; new elements lifecycle == 'discovered' and phi_class == 'phi:direct'"}
+    - {id: V3-std-schema-unchanged, tool: "schema-registry.get_schema", expect: "hc.std.fusion.${trigger.labels.pvo_slug}.typed.v1-value version unchanged by this run (no registration outside GitOps)"}
+    - {id: V4-no-row-loss, metric: "raw row_count(manifest) == raw produced records for extract_job_id", expect: "== (SRC-OFC-001 manifest validation holds; nothing dropped)"}
+    - {id: V5-compat-events-quiet, topic: hc.ops.schema.change.v1, expect: "no new compatibility_failed for the subject for the full duration"}
+    - {id: V6-cr-or-ticket-open, tool: "cr-engine.get_cr / ticketing.get_issue", expect: "every emitted CR in a live state and ticket acknowledged within escalation.sla_minutes"}
+    - {id: V7-null-ratio, metric: "healix.connect.bicc.last_update_date_null_ratio{pvo}", expect: "== 0 or flagged suspect with pk_diff success age < 1800 s (FLT-ING-012 branch)"}
+    - {id: V8-other-pvos-unaffected, metric: "healix.proc.parser.input_state{topic!~'.*${trigger.labels.pvo_slug}.*'}", expect: "all RUNNING; std produce rate for other Fusion PVOs within ±10 % of 7-d baseline"}
+    - {id: V9-freshness-slo, sli: S1, expect: "ingest latency SLO breached only for the paused PVO, which is annotated suspect"}
+  duration_s: 7200
+  success_criteria: "V1 through V9 all true for the full duration; otherwise verifying → rolled_back (compensations in reverse order, CR withdrawals release holds) → escalated"
+
+# -----------------------------------------------------------------------------------------------------------------
+# Limits — FIXED-POINT PROTECTED (MEM-HEAL-042/048): changed only by a `policy`-class CR from DGC / Privacy Office.
+# -----------------------------------------------------------------------------------------------------------------
+limits:
+  max_runs_per_hour: 2
+  cooldown_s: 1800
+  max_actions_per_incident: 5
+  max_concurrent_per_target: 1
+  circuit_breaker: {consecutive_failures: 3, open_for_s: 86400, page: true}
+  change_freeze_calendar_ref: OPS-02/freeze-calendar            # release windows and `fusion-quarterly-update` windows; inside them only observe/restart (MEM-HEAL-010)
+  recursion:
+    max_depth: 2
+    may_trigger: [PBK-DQ-001]        # a paused PVO can surface a DQ freshness storm; PBK-DQ-001 may never re-trigger PBK-ING-003 (MEM-HEAL-009)
+  per_action_overrides:
+    A1-register-discovered-elements: {max_elements_per_run: 200, max_runs_per_day: 4}
+    A4-pause-pvo-parser: {max_runs_per_hour: 2, max_paused_pvos_platform_wide: 3}   # a quarterly update drifting many PVOs escalates to humans rather than pausing the whole Fusion feed
+    A9-run-pk-diff-now: {max_records_per_action: 500000, max_runs_per_day: 2}
+
+# -----------------------------------------------------------------------------------------------------------------
+# Guards — FIXED-POINT PROTECTED (MEM-HEAL-042/043).
+# -----------------------------------------------------------------------------------------------------------------
+guards:
+  kill_switch_paths:
+    - cr-engine.kill_switch.platform
+    - cr-engine.kill_switch.environment.${env}
+    - cr-engine.kill_switch.agent.agent.self_healer
+    - cr-engine.kill_switch.cr_type.mapping
+    - module14.kill_switch.healing
+    - module14.kill_switch.playbook.PBK-ING-003
+  phi_ceiling: none
+  data_mutation: none
+  requires_dry_run_in: [test]
+  forbidden_targets:
+    - oracle-fusion-cloud              # MEM-HEAL-008: no BICC job submission, console change, REST POST/PATCH, OIC call or data fix into Fusion
+    - "hc.canonical.*"
+    - "hc.kg.*"
+    - "hc.edw.*"                       # GOV-ACC-011: agents never write canonical/kg/edw directly
+  forbidden_operations:
+    - schema-registry.register_schema  # STR-SR-006/012: registration only via `topic` CR applied by release_manager through ci.gitops
+    - edw-metadata.apply_migration     # edw_ddl CRs are held, never applied, by this playbook
+    - source-registry.set_phi_classification   # privacy_guardian only (GOV-PHI-003; AGT-04 §2.1)
+    - source-registry.propose_steward  # stewardship is a vocabulary CR raised by stewards/inventory, not by healing
+  forbidden_params: [row_values, csv_body, sample_rows, PERSON_NUMBER, PARTY_ID, NATIONAL_IDENTIFIER, BANK_ACCOUNT, HOME_ADDRESS, SALARY, PAYROLL_RESULT]   # never read, logged or memorised (SRC-OFC-015/016, GOV-PHI-004 Fusion patterns)
+
+suppression:
+  notifications_only: true
+  max_s: 3600                          # MEM-HEAL-006: never suppresses detection or evaluation; visible on the incident
+
+conflicts_with:
+  - PBK-ING-002                        # README §7: ING-003▶ING-002 on the same connector when a schema event is present (Debezium DDL vs BICC drift share the schema-change signal)
+  - PBK-DQ-001                         # README §7: ING-003▶DQ-001 on topics fed by a paused PVO; DQ waits in `playbook_selected` until this run reaches `verifying`
+  # PBK-AGT-001 precedes this playbook on the same agent (AGT-001▶ING-003); declared on PBK-AGT-001's side of the matrix
+
+escalation:
+  to:
+    - integration-engineer             # VIS-00 persona; OPS-03 §4.3 "Source & interface" view (BICC extract status, schema drift events)
+    - fusion-admins                    # OPS-03 §4.3 Fusion admins — quarterly update calendar, BICC offering/PVO changes, data fixes
+    - group-steward                    # steward of record for the PVO's subject-area group (G1/G3/G4/G5/G8) — classification of new elements
+    - platform-sre-primary             # OPS-03 §4.3 Platform SRE primary when the paused-PVO count or registry failure spans the platform
+  after_s: 1800
+  sla_minutes: {S1: 15, S2: 30, S3: 240, S4: 1440}   # OPS-00 §7 severities, aligned with DQ-SCORE-006
+  ticket_template: |
+    [HEALIX self-healer] Oracle Fusion BICC schema drift — ${env} — PVO ${trigger.labels.pvo}
+    Incident: ${incident.id}  Fault class: ${incident.fault_class}  Severity: ${incident.severity}
+    Manifest: ${manifest_columns[0].extract_job_id}  Rows: ${manifest_columns[0].row_count}  Watermark: ${manifest_columns[0].watermark}
+    Drift: ${drift_class.kind}  added=${drift_class.added | length} removed=${drift_class.removed | length} retyped=${drift_class.retyped | length} probable_renames=${drift_class.probable_renames | length} flexfields=${drift_class.flexfields_added | length}
+    Registry compatibility (${compat.level}) on hc.std.fusion.${trigger.labels.pvo_slug}.typed.v1-value: ${compat.result}  Violations: ${compat.violations | summarise}
+    Fusion release: ${quarterly.release_label}  Window: ${quarterly.window_start}/${quarterly.window_end}  Preview pod manifest: ${preview_manifest.present}
+    LAST_UPDATE_DATE null ratio: ${null_profile.ratio} (${null_profile.count} rows)  PK extract age: ${null_profile.pk_extract_age_seconds}s
+    Downstream bindings: mapping specs ${downstream.mapping_spec_count}, canonical topics ${downstream.canonical_topic_count}, EDW tables ${edw_bindings.tables | length} (edw_ddl held: ${A6.holds | length})
+    Actions attempted: ${run.actions_summary}  Verification: ${run.verification_summary}
+    CRs: ${A3.cr_id} ${A6.cr_id}  DQ issues: ${A5.dq_issue_id} ${A10.issue_id}
+    Required from Integration Engineer / Fusion admins: confirm the VO change against the release notes, classify new elements with the group steward and privacy_guardian, run/schedule a fresh PK extract if stale, raise a Fusion data-fix for null LAST_UPDATE_DATE rows.
+    This ticket contains PVO, column and schema identifiers and counts only; no row values, worker, supplier, patient or financial content (hc-phi-class: non-phi).
+  page: false                          # S2 default pages per OPS-03 §4.3 rota only when escalation.after_s elapses without acknowledgement
+  on_failure: page
+
+learning:
+  memory_classes_written: [incident, root_cause, observation, drift_signature, source_quirk, playbook_step]
+  lesson_template: >-
+    On ${env} PVO ${trigger.labels.pvo} (release ${quarterly.release_label}) a ${incident.fault_class} drift of kind
+    ${drift_class.kind} (added ${drift_class.added | length}, removed ${drift_class.removed | length}, retyped
+    ${drift_class.retyped | length}; registry ${compat.result}) was ${incident.outcome} by ${run.successful_action_id}
+    in ${run.duration_s}s; mapping CR ${A6.cr_id || A3.cr_id} reached ${cr.final_state}; days since quarterly window
+    start ${quarterly.days_since_start}; null ratio ${null_profile.ratio}.
+  record_episode: true                 # Graphiti JSON episode: Interface -EXHIBITED_SYMPTOM-> Symptom, SchemaVersion -DRIFTED_TO-> SchemaVersion, Incident -RESOLVED_BY-> Action, -PRODUCED_OUTCOME-> Outcome
+  emit_reflexion: true                 # masked (GOV-LIN-015), trust T1, untrusted_text: true; never promotes without a CR
+  candidate_for_tuning:                # MEM-HEAL-050: thresholds/windows/timeouts only — never limits/guards/blast_radius
+    - triggers[schema.compatibility_failure].window_s
+    - triggers[fusion.quarterly_update_preemptive].threshold
+    - triggers[bicc.last_update_date_null_rate].threshold
+    - triggers[bicc.last_update_date_null_rate].window_s
+    - correlation_window_s
+    - diagnosis[drift_classification].params.rename_heuristic.confidence_floor
+    - actions[A2-exclude-new-columns-from-std].verify.within_s
+    - actions[A4-pause-pvo-parser].verify.within_s
+    - actions[A9-run-pk-diff-now].timeout_s
+    - verification.duration_s
+  learned_from:
+    description: >-
+      Seed authored from the Oracle Fusion extraction contract (SRC-02 §3.1, SRC-OFC-001…003/018), the BICC poller
+      and Schema Registry rules (STR-CDC-011/012, STR-SR-004…006/012) and typical Fortune-100 Fusion estates: mandatory
+      quarterly updates with a two-week lead, customer flexfields appearing mid-quarter, seeded/migrated rows that
+      bypass audit columns, and producers deployed outside GitOps. No production incidents yet; `compiled_from_incidents`
+      fills as the curator mines Graphiti incident communities (MEM-04 §9).
+    signatures_to_learn:
+      - "PVOs that drift at every quarterly update (release-note cadence) vs ad-hoc flexfield additions by Fusion admins"
+      - "renames that are really remove+add with a type change (false `probable_rename` rate per PVO family)"
+      - "null LAST_UPDATE_DATE bursts after data migrations / bulk loaders per offering (HCM vs FSCM)"
+      - "compatibility failures caused by nullable→non-nullable flips vs genuine type changes"
+      - "preview-pod manifest vs production manifest divergence per release (how trustworthy is the pre-emptive run)"
+  graduation: {shadow_matches_required: 10, min_agreement: 0.9, harmful_recommendations_allowed: 0}
+
+references:
+  requirements:
+    - SRC-OFC-001     # incremental BICC extraction by LAST_UPDATE_DATE with manifest validation before publishing
+    - SRC-OFC-002     # daily PK extract diffed against compacted std state (logical deletes / missing keys)
+    - SRC-OFC-003     # weekly full extract reconciles within 0.01 %; discrepancies → targeted re-extract + DQ issue
+    - SRC-OFC-015     # compensation, payroll, national identifiers excluded from extraction scope
+    - SRC-OFC-016     # sensitive person attributes excluded; PVO column lists reviewed
+    - SRC-OFC-018     # descriptive flexfields registered as elements, steward-classified, never auto-mapped
+    - STR-CDC-011     # poller processes only complete manifests; manifest state on hc.ops.connector.bicc.manifest.v1
+    - STR-CDC-012     # watermark per PVO; strict `.mdcsv` typing, no inference
+    - STR-CDC-018     # DLQ with full envelope; nothing dropped
+    - STR-OPS-006     # BICC manifest age / connector state exported to module 12
+    - STR-OPS-008     # BICC extract freshness per PVO; stale manifest → issue to Fusion integration team
+    - STR-SR-004      # compatibility levels per layer, set by GitOps, immutable by clients
+    - STR-SR-005      # evolution matrix; violation ⇒ new topic version vN+1
+    - STR-SR-006      # every schema change is a CR with compatibility, lint, consumer-impact and privacy review
+    - STR-SR-009      # raw payloads byte-exact
+    - STR-SR-012      # registration only through ci.gitops
+    - GOV-PHI-003     # unclassified elements default to phi:direct
+    - GOV-PHI-004     # identifier patterns (Fusion PERSON_NUMBER / PARTY_ID) in the scanner
+    - GOV-ACC-011     # no direct writes to canonical/kg/edw
+    - GOV-LIN-015     # masked agent transcripts
+    - DQ-FW-007       # non-blocking severity for aggregated/quarantine issues
+    - DQ-REM-005      # never alter clinical/financial values (no invented timestamps)
+    - DQ-PIPE-013     # results flagged, not rewritten
+    - DQ-PIPE-014     # never delete DQ results / quarantined records
+    - OPS-02          # release windows and change-freeze calendar (fusion-quarterly-update)
+    - MEM-HEAL-001
+    - MEM-HEAL-002
+    - MEM-HEAL-003
+    - MEM-HEAL-006
+    - MEM-HEAL-008
+    - MEM-HEAL-009
+    - MEM-HEAL-010
+    - MEM-HEAL-011
+    - MEM-HEAL-012
+    - MEM-HEAL-014
+    - MEM-HEAL-036
+    - MEM-HEAL-037
+    - MEM-HEAL-038
+    - MEM-HEAL-041
+    - MEM-HEAL-042
+    - MEM-HEAL-043
+    - MEM-HEAL-045
+    - MEM-HEAL-046
+    - MEM-HEAL-047
+    - MEM-HEAL-050
+    - MEM-HEAL-053
+    - MEM-HEAL-059
+  runbooks:
+    - OPS-02 freeze calendar — Oracle Fusion quarterly update window
+    - STR-04 §2 BICC poller (UCM / OCI Object Storage)
+    - STR-03 §5 schema evolution matrix and §6 linter (LINT-SR-01…12)
+    - SRC-02 §3.1 BI Cloud Connector; §6 extract completeness (`DQR-COMPLETENESS-EXTRACT-*`)
+  slo_ids: [S1, S3]
+  topics:
+    - hc.ops.connector.bicc.manifest.v1
+    - hc.ops.schema.change.v1
+    - hc.ops.dlq.processor.v1
+    - hc.raw.fusion.gl.journal_line.bicc.v1          # representative PVO topics; scope resolves `${pvo_slug}` at run time
+    - hc.std.fusion.gl.journal_line.typed.v1
+    - hc.raw.fusion.hcm.worker.bicc.v1
+    - hc.std.fusion.hcm.worker.typed.v1
+    - hc.dq.issue.v1
+    - hc.ops.agent.changerequest.v1
+    - hc.ops.healing.incident.event.v1
+    - hc.ops.healing.playbookrun.event.v1
+    - hc.ops.audit.v1
+  connector_manifest: connect.bicc-poller
+
+chaos_tests:                           # MEM-HEAL-013/041: ≥ 1 per trigger; run in `test` with the BICC simulator (UCM stub + manifest generator) and a disposable registry namespace
+  - id: CT1-additive-column
+    trigger: bicc.manifest_column_drift
+    injection: "Simulator adds nullable column ATTRIBUTE_CHAR21 (VARCHAR2) to InvoicePVO `.mdcsv` and manifest; registry has 48 columns, manifest 49"
+    expected_mttd_s: 900
+    expected_mttr_s: 3600
+    blast_radius_assert: "exactly 1 element written, lifecycle discovered, phi_class phi:direct; std schema version unchanged; 0 rows dropped; mapping CR low proposed once (re-run is idempotent no-op)"
+  - id: CT2-type-change
+    trigger: bicc.manifest_column_drift
+    injection: "Simulator changes AMOUNT from NUMBER(18,2) to VARCHAR2(40) on JournalLinePVO; next extract manifest declares the new type"
+    expected_mttd_s: 900
+    expected_mttr_s: 3600
+    blast_radius_assert: "only JournalLinePVO parser input paused; other 11 Fusion PVO inputs RUNNING; incompatible rows in hc.ops.dlq.processor.v1 with reason schema_incompatible; mapping CR medium with edw_ddl hold; no schema registered; no DDL applied"
+  - id: CT3-rename-column
+    trigger: bicc.manifest_column_drift
+    injection: "Simulator renames SUPPLIER_NAME → VENDOR_NAME (same type, same position) on SupplierPVO"
+    expected_mttd_s: 900
+    expected_mttr_s: 3600
+    blast_radius_assert: "classified remove+add with probable_rename hypothesis (confidence ≥ 0.8) — never auto-merged; parser paused; CR medium carries the hypothesis for agent.source_mapper; ticket opened"
+  - id: CT4-rogue-producer-compat-failure
+    trigger: schema.compatibility_failure
+    injection: "A test producer registers a non-BACKWARD schema version for hc.std.fusion.po.order_line.typed.v1-value outside ci.gitops; GitOps emits compatibility_failed"
+    expected_mttd_s: 60
+    expected_mttr_s: 1800
+    blast_radius_assert: "schema_history flags last_event_without_gitops; parser input paused for that PVO only; registry untouched by the healer (no register_schema call at the MCP gateway — denial counted 0 because never attempted); ticket + CR medium"
+  - id: CT5-quarterly-preemptive
+    trigger: fusion.quarterly_update_preemptive
+    injection: "Freeze calendar fixture puts a fusion-quarterly-update window at T+13 d with release_label 26C; preview-pod manifest for GlobalPersonPVO announces 2 added columns and 1 removed"
+    expected_mttd_s: 900
+    expected_mttr_s: 3600
+    blast_radius_assert: "severity S4; 2 elements registered discovered with tag release:26C; removed column reported in ticket only; engine records canary_block until window_end; 0 pauses, 0 CRs"
+  - id: CT6-last-update-date-nulls
+    trigger: bicc.last_update_date_null_rate
+    injection: "Simulator seeds 1,200 AssignmentPVO rows with null LAST_UPDATE_DATE in the daily PK extract and incremental extract"
+    expected_mttd_s: 86400
+    expected_mttr_s: 172800
+    blast_radius_assert: "pk_diff runs on the already-landed PK extract only (0 BICC jobs submitted — simulator job-submission endpoint receives 0 calls); ≤ 500,000 keys compared; dependent std/canonical topics flagged suspect; no timestamp written anywhere"
+  - id: CT7-drift-inside-freeze-window
+    trigger: bicc.manifest_column_drift
+    injection: "Type-change drift on ItemExtractPVO while the fusion-quarterly-update freeze window is active"
+    expected_mttd_s: 900
+    expected_mttr_s: 0                 # expected outcome is suppressed/escalated (observe only), not healed
+    blast_radius_assert: "0 pauses, 0 registry writes, 0 CRs; incident recorded suppressed with reason freeze (MEM-HEAL-010); ticket to fusion-admins; notifications suppression ≤ 3600 s"
+  - id: CT8-flexfield-with-phi-like-name
+    trigger: bicc.manifest_column_drift
+    injection: "Simulator adds descriptive flexfield ATTRIBUTE_CHAR05 labelled 'Employee SSN' to GlobalPersonPVO"
+    expected_mttd_s: 900
+    expected_mttr_s: 3600
+    blast_radius_assert: "element registered discovered with phi_class phi:direct and is_flexfield true; excluded from std; NO mapping CR (flexfield branch); privacy_guardian in ticket cc; memory record contains column name only — 0 honeytoken values stored (MEM-ARCH-025 probe)"
+  - id: CT9-many-pvos-drift-at-once
+    trigger: bicc.manifest_column_drift
+    injection: "Quarterly update fixture drifts 6 PVOs breaking within one extract cycle"
+    expected_mttd_s: 900
+    expected_mttr_s: 3600
+    blast_radius_assert: "at most 3 PVO parser inputs paused platform-wide (limits.per_action_overrides); remaining incidents escalated to humans without action; recursion depth ≤ 1; PBK-DQ-001 waits in playbook_selected on the paused topics"
+
+phi: none
+
+change_request:
+  type: playbook
+  risk_class: high                     # contains a ladder-L2 action (A1/A7 registry writes after dry-run) — MEM-04 §8; approvers SRE + Agent Operator, privacy_guardian review
+
+provenance:
+  created_by: agent.self_healer        # drafted from the MEM-04 fault taxonomy and the SRC-02/STR-04 Fusion contracts; reviewed by Platform SRE, Integration Engineering and Privacy & Security Office
+  compiled_from_incidents: []
+  approved_cr_id: null                 # required before status may leave `shadow` (MEM-HEAL-044)
+  created_at: "2026-10-17T00:00:00Z"
+  schema_ref: healing-playbooks/playbook.schema.json

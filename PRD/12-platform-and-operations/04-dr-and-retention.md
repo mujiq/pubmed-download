@@ -29,16 +29,20 @@ flowchart LR
     TSA[(Terminology DB)]
     WFA[(Workflow DB)]
     TVA[(Token vault)]
+    MEMA[(Mem0 · pgvector)]
+    GRAA[(Graphiti · Neo4j)]
+    RCA[(Redis caches · no backup)]
     OBJA[(Object storage · versioned)]
   end
   subgraph B[Secondary region · warm standby]
-    KB[(Kafka mirror)]
+    KB[(Kafka mirror · incl. hc.ops.memory.write.v1)]
     KGB[(Graph replica)]
     EDWB[(EDW replica)]
     TSB[(Terminology DB replica)]
     WFB[(Workflow DB replica)]
     TVB[(Token vault replica)]
-    OBJB[(Object storage replica)]
+    MEMB[(pgvector replica)]
+    OBJB[(Object storage replica · Neo4j backup set)]
   end
   GIT[(Git · specs · infra · ontology)]:::ext
   KMS[/KMS · HSM multi-region keys/]:::ext
@@ -48,7 +52,10 @@ flowchart LR
   EDWA -->|storage replication + continuous backup| EDWB
   TSA & WFA -->|streaming replica| TSB & WFB
   TVA -->|Raft replica + HSM key replication| TVB
-  GIT -.->|rebuild Ontology Registry · configs| B
+  MEMA -->|streaming replica + WAL| MEMB
+  GRAA -->|online backup every 15 min + tx logs| OBJA
+  KB -.->|rebuild Mem0 · Graphiti from write log ≤ 4 h| B
+  GIT -.->|rebuild Ontology Registry · configs · playbooks| B
   KMS -.-> A & B
   classDef ext fill:#eee,stroke:#999;
 ```
@@ -64,8 +71,8 @@ projections that can be rebuilt from `canonical` snapshots when a store backup i
 | **T0 — Control & security** | KMS/HSM keys, Vault, PDP bundle, IdP federation, Git | 0 (synchronous/multi-region) | 30 min | Nothing else can start without them |
 | **T1 — Ingest & backbone** | Kafka (all layers), Schema Registry, Connect offsets, MLLP VIP, on-prem circuits | ≤ 5 min (mirror lag SLO) | 1 h | Clinical events must resume; sources queue briefly |
 | **T2 — Processing** | Flink jobs (from checkpoint/savepoint), header guard, consent engine, Terminology Server, Ontology Registry | ≤ 15 min | 2 h | Rebuilt from checkpoints and Git |
-| **T3 — Projections** | Graph store, EDW, token vault, workflow engine | ≤ 15 min | 4 h (platform RTO) | Restore replica + replay Kafka from last applied offset |
-| **T4 — Agentic & consumer** | Agent runtime, MCP servers, SPARQL proxy, FHIR facade, dashboards | ≤ 15 min (state in T3) | 4 h | Stateless; depends on T3 |
+| **T3 — Projections** | Graph store, EDW, token vault, workflow engine, Mem0 (pgvector) and Graphiti (Neo4j) memory stores | ≤ 15 min | 4 h (platform RTO) | Restore replica + replay Kafka from last applied offset; memory stores are derived state rebuilt from the mirrored `hc.ops.memory.write.v1` log when the replica is unusable (MEM-ARCH-039) |
+| **T4 — Agentic & consumer** | Agent runtime, Memory API, MCP servers, Redis caches, healing and improvement controllers, SPARQL proxy, FHIR facade, dashboards | ≤ 15 min (state in T3) | 4 h | Stateless; depends on T3; Memory API starts in memoryless degraded mode until T3 memory stores are back; caches start cold with bypass (MEM-CACHE-004) and are never restored |
 | **T5 — Analytics extras** | Lineage service, cost exporter, long-term metrics | ≤ 24 h | 24 h | Rebuildable from `hc.ops.*` replay |
 
 Whole-platform targets (ARC-NFR-007): **RPO ≤ 15 min, RTO ≤ 4 h**, measured from declaration of disaster to the
@@ -87,6 +94,11 @@ moment S1–S12 SLIs (OPS-03) are green in the secondary region.
 | **Object storage** | Versioning + cross-region replication + object lock on backup prefixes (WORM) | Continuous | 2 regions | Yes (`backup` key) | Part of every drill |
 | **Observability** | Metrics long-term store and logs on replicated object storage; dashboards in Git | Continuous | 2 regions | Yes | Annual |
 | **Audit (`fact_audit_event`)** | Included in EDW backup **plus** independent WORM copy (object lock, 6 years) of daily hash-chained partitions | Daily | 3, one immutable | Yes | Quarterly chain verification from WORM copy |
+| **Memory write log (`hc.ops.memory.write.v1`)** | Compacted Kafka topic with infinite retention, mirrored like every topic; authoritative source of truth for Mem0 and Graphiti, which are derived state (MEM-ARCH-007) | Continuous (mirror lag SLO ≤ 5 min) | Primary RF3 + secondary RF3 | Yes | Quarterly `rebuild` drill: record counts ±0, identical `record_id` sets, ≤ 4 h (MEM-ARCH-008) |
+| **Mem0 (PostgreSQL + pgvector / Qdrant)** | Streaming replica to secondary + daily base backup + WAL archiving (PITR); full rebuild from the write log ≤ 4 h as fallback | Continuous / daily | 2 regions | Yes (`memory` key class; no PHI by contract) | Monthly PITR to ephemeral target; quarterly rebuild from write log |
+| **Graphiti (Neo4j 5.x / FalkorDB)** | Online backup every 15 min plus transaction logs to replicated object storage; weekly JSON-LD export of the hot window as vendor-independent copy; rebuild from write log as fallback | 15 min / weekly | 3 (backup set, export, write log) | Yes (`memory` key class) | Monthly restore to ephemeral cluster with MEM-GRA bitemporal fixtures; quarterly rebuild |
+| **Redis caches (C1/C2/C4 and C3 tier)** | **Not backed up and never replicated across environments** (`cache-policy.yaml` `backup: none`); rebuilt from origin by cache warming; clients bypass ≤ 50 ms during cold start | — | 0 | mTLS in transit, AES-256 at rest | Monthly cold-start chaos test (MEM-CACHE-004) |
+| **Playbooks, prompts, policies (M3)** | Git signed tags (ARC-NFR-006) + object store; re-indexed into Graphiti after rebuild | Per release | Git (multi-region) | Yes | Covered by the Ontology Registry Git rebuild test; healing continues from the Git index while Graphiti is down (MEM-ARCH-035) |
 
 Backups are encrypted with a key class distinct from live data (GOV-02 §6) and restoring to any environment other
 than `prod`/DR MUST pass through the pseudonymisation pipeline (OPS-02 §6), never raw.
@@ -128,7 +140,7 @@ the fallback path when both replica and backup are unusable and is tested annual
 | 3 | Re-point on-prem circuits and Oracle private endpoint to secondary (pre-provisioned); restart MLLP/Debezium/BICC connectors from stored offsets; sources drain queues | SRE + Cerner interface team | T+1 h |
 | 4 | Restore Flink jobs from latest checkpoint in replicated object storage; header guard and consent engine first | Stream engineering | T+1.5 h |
 | 5 | Promote graph replica and EDW replica; apply PITR if needed; resume sinks from recorded offsets | Store engineering | T+3 h |
-| 6 | Start agent runtime, MCP servers, proxies, facade; run SLI probes; declare recovered when S1–S12 green | SRE | T+4 h |
+| 6 | Start Memory API in memoryless degraded mode, promote the pgvector replica and restore Neo4j from the latest backup set (or `rebuild` both from the mirrored write log), start Redis cold; start agent runtime, MCP servers, healing/improvement controllers (playbooks `assisted` until S25 green), proxies, facade; run SLI probes; declare recovered when S1–S12 green | SRE + Agent operator | T+4 h |
 | 7 | Communicate: status page, DGC, Privacy Office (PHI handling during DR logged) | Platform Owner | Continuous |
 | Failback | Reverse mirroring once primary healthy; planned cut-over in a change window; reconcile KG/EDW; post-incident review | SRE | ≤ 7 days |
 
@@ -159,6 +171,10 @@ retention is set in `topics.yaml` (module 07) and enforced by the broker; store 
 | Flink checkpoints / savepoints | Operator state | Last 10 checkpoints; savepoints 90 days | Recovery | Lifecycle policy |
 | Backups | All stores | Daily 35 days; weekly 13 months; monthly 7 years for EDW/KG (WORM) | Restore and legal | Lifecycle policy |
 | Agent transcripts | Prompts, tool calls (masked) | 2 years; 6 years when attached to `phi-affecting` CR (GOV-LIN-015) | Evaluation and audit | Purge job |
+| `hc.ops.memory.write.v1` | Event-sourced agent memory writes (no PHI; GOV-01 §3 ceiling `internal`) | Infinite (compacted); `purge` writes a compaction tombstone | MEM-01 §8; ADR-08 | Tombstone + physical erasure in Mem0, Graphiti, C4 and archives (MEM-ARCH-037) |
+| Agent memory records (Mem0, Graphiti) | `decision`/`outcome`/`incident` classes; `preference` and `steward_feedback`; `observation`; Graphiti hot window | 2,555 d; 365 d rolling; 180 d; hot 400 d then JSON-LD archive (still rebuildable) | MEM-01 §4, §8 | `forget` = transaction-time close (tombstone); `purge` only with Privacy Office or DGC approval |
+| `hc.ops.healing.incident.event.v1`, `hc.ops.healing.playbookrun.event.v1`, `hc.ops.improvement.canary.event.v1`, `hc.ops.agent.policy.release.v1`, `hc.ops.cache.invalidate.v1` | Healing, canary, policy-release and cache-invalidation events | 30 d / 30 d / 30 d / compacted / 7 d in Kafka; mirrored to `fact_healing_incident` and G9 facts for 7 years | MEM-00 §5.1; GOV-03 | Broker deletion; EDW purge job |
+| Cache entries (C0–C4) | Derived accelerators (ceiling `internal`, GOV-01 §3) | TTL ≤ 24 h per namespace; purged on version-tag invalidation | MEM-03 §2 | TTL expiry; namespace purge |
 | Observability | Metrics 13 months; logs 90 days; traces 14 days | — | OPS-03 | Lifecycle policy |
 | Non-prod data | Synthetic/pseudonymised copies | Refresh cycle (weekly `uat`); fixtures 12 months | — | Overwritten at refresh |
 
@@ -188,6 +204,7 @@ PROV-O activity, and never delete `hist_*`/audit rows except at class expiry.
 | Decommissioned media (on-prem) | NIST SP 800-88 purge or destroy; certificate of destruction | Certificate filed in G9 |
 | Recipient copies (DSA) | Certificate of destruction from recipient (GOV-04 §7) | Filed in G9 |
 | Patient-requested erasure (GDPR workforce only; HIPAA has no erasure right for the medical record) | Erasure workflow for `pii:workforce` records of EU/UK staff within 30 days (GOV-PHI-020) | Workflow record |
+| Agent memory records | `purge`: compaction tombstone on `hc.ops.memory.write.v1` **plus** physical erasure from Mem0, Graphiti, C4 and JSON-LD archives; requires Privacy Office or DGC approval recorded in the AuditEvent (MEM-ARCH-037); steward `pii:workforce` preferences erased on request (GOV-PHI-020) | Purge receipt; AuditEvent; next rebuild drill shows the record absent |
 
 ## 9. DR test cadence
 
@@ -201,6 +218,7 @@ PROV-O activity, and never delete `hist_*`/audit rows except at class expiry.
 | Universal re-projection | Rebuild one EDW group and one KG group from canonical snapshots | Annually | Reconciliation ≥ 99.99 % | Report |
 | Breach reconstruction (GOV-PHI-018) | Reconstruct a simulated exposure from audit + lineage | Annually (with Privacy Office) | ≤ 24 h | Report |
 | Retention and legal-hold | Dry run showing eligible deletions and suppressed by hold; sample purge in `uat` | Quarterly | Zero held items deleted | Report |
+| Memory rebuild (module 14) | `rebuild` Mem0 and Graphiti from `hc.ops.memory.write.v1` into an ephemeral target; Redis cold-start under load | Quarterly | ≤ 4 h; record counts ±0 and identical `record_id` sets (MEM-ARCH-008); cache bypass ≤ 50 ms with ARC-NFR-001 unaffected | Automated report to G9 |
 | Tabletop | Scenario exercise with SRE, Privacy, Cerner IT, DGC | Semi-annually | Actions assigned | Minutes |
 
 A failed drill opens a `P0` reliability item; `prod` promotions of storage-layout changes are blocked until the next
@@ -267,6 +285,11 @@ successful drill (OPS-02 gate G-D).
 > **OPS-DR-020** (P2, test) — Retention jobs SHOULD produce a monthly report of deletions, suppressed deletions and
 > upcoming expiries per data class for the DGC.
 
+> **OPS-DR-021** (P1, test) — Mem0 and Graphiti MUST be recoverable within the T3 RPO/RTO by replica or backup
+> promotion or by `rebuild` from the mirrored `hc.ops.memory.write.v1` log, demonstrated quarterly (MEM-ARCH-039);
+> Redis caches MUST NOT be backed up or restored across environments and MUST start cold with bypass; memory retention
+> and `purge` MUST follow §6 and §8.
+
 ## 11. Traceability
 
 | Requirement | Verified by |
@@ -275,3 +298,4 @@ successful drill (OPS-02 gate G-D).
 | OPS-DR-005–007 | Weekly PITR restore jobs; annual re-projection test |
 | OPS-DR-008–010 | Backup policy tests (IaC); restore job evidence |
 | OPS-DR-011–015, 020 | Retention dry-run reports; legal-hold test; audit WORM verification |
+| OPS-DR-021 | Quarterly memory rebuild drill report; Redis cold-start chaos test; memory purge receipt inspection |

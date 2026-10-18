@@ -30,7 +30,9 @@ RTO ≤ 4 h (ARC-NFR-007) and the record-retention policy inputs from module 11.
 **In scope:** infrastructure topology and sizing, network zones, HA, environment strategy, GitOps, CI stages and
 promotion gates, release and versioning mechanics for ontology/schema/topics, observability stack, SLIs/SLOs,
 alerting, on-call, dashboards, cost observability, backup/restore, Kafka mirroring, point-in-time recovery, DR
-testing, retention execution, legal hold and data destruction.
+testing, retention execution, legal hold and data destruction. The module 14 memory stack (Memory API with Mem0,
+Graphiti memory graph, Redis semantic cache, healing and improvement controllers) is operated here as platform
+components C26–C29 (ARC-01 §3 rows "Agent memory", "Caching", "Self-improvement"; ADR-08, ADR-09).
 
 **Out of scope:** the content of policies (module 11), topic catalog semantics (module 07), DQ rule semantics
 (module 09), agent behaviour (module 10). Where this module *executes* a policy (retention, masking in non-prod),
@@ -65,6 +67,10 @@ the policy itself is owned elsewhere and referenced by requirement ID.
 | C23 | **GitOps and CI** | Argo CD / Flux reconcilers; CI runners | Argo CD, GitHub Actions / GitLab CI runners in management zone | Git | 12 | Pipeline duration |
 | C24 | **Object storage** | Flink checkpoints, backups, de-identified extracts, Parquet landing | S3 / ADLS / OCI Object Storage, versioned, encrypted | Yes | 12 | Durability 11 nines |
 | C25 | **Edge connectivity** | IPsec VPN / private link to Cerner Millennium on-prem; private endpoint to Oracle Cloud | Cloud VPN gateways / Direct Connect / ExpressRoute / FastConnect | — | 12 | Link availability 99.9 % |
+| C26 | **Agent memory service (Memory API + Mem0)** | MCP `memory` server with write-gate / PHI firewall (sole writer to all memory stores, MEM-ARCH-002); Mem0 OSS for M1 preferences, decisions and steward feedback; event-sourced from `hc.ops.memory.write.v1` (ADR-08) | Mem0 OSS self-hosted in-VPC (`enable_graph: false`) on PostgreSQL + pgvector (default) or Qdrant; one instance per environment | Yes (derived; rebuildable from the write log ≤ 4 h) | 14 | Memory write availability 99.9 %; recall p95 ≤ 200 ms (S23) |
+| C27 | **Agent memory graph (Graphiti)** | M1 episodes and M2 bitemporal entity graph of the agent layer (`valid_at/invalid_at/created_at/expired_at` aligned to TKG-01 §4); hybrid search; index of M3 playbooks and prompt versions; never stores PHI or patient instance IRIs (MEM-GRA-014) | Graphiti (Zep) on Neo4j 5.x Enterprise causal cluster, one database per environment; FalkorDB or Amazon Neptune swappable behind the Graphiti driver (MEM-GRA-001) | Yes (derived; rebuildable from the write log) | 14 | Hybrid recall p95 ≤ 500 ms; ingest lag p95 ≤ 60 s (S23) |
+| C28 | **Semantic / response cache (Redis)** | Cache tiers C1 exact-match, C2 semantic (Redis vector index), C4 memory-recall cache; C3 Terminology Service gateway cache shares the Redis-compatible tier (`ts.*`); fail-open bypass ≤ 50 ms; provider prompt cache (C0) is external to the platform | Redis Cluster with vector search (Redis Stack-compatible), 3 AZ, 1 replica per shard, one cluster per environment, keyspaces `rc.*` / `sc.*` / `mc.*` / `ts.*`, per-agent ACL users | Yes (ephemeral; never backed up — rebuilt from origin) | 14 | Hit ratio; bypass-on-failure ≤ 0.1 %; invalidation lag p95 ≤ 60 s (S24) |
+| C29 | **Self-healing and improvement controllers** | Temporal workflows `healing-incident-v1` (playbook engine, blast-radius budget check, kill-switch hierarchy) and `improvement-candidate-v1` (canary controller 5 % → 25 % → promoted, rollback ≤ 5 min); `playbook-runner` MCP server; recursion ledger (ADR-09) | Temporal workflows on C14; playbooks, prompts and policies as signed Git artefacts (M3); events on `hc.ops.healing.incident.event.v1`, `hc.ops.healing.playbookrun.event.v1`, `hc.ops.improvement.canary.event.v1`, `hc.ops.agent.policy.release.v1` | State in C14 and Git | 14 | Healing MTTR per fault class; canary rollback ≤ 5 min (S25) |
 
 ### 2.1 Component interaction (control and data paths)
 
@@ -90,6 +96,10 @@ flowchart LR
     MCP[MCP servers C15]
     PDP[PDP C17]
     TV[(Token vault C16)]
+    MEM[(Memory API · Mem0 C26)]
+    GRA[(Graphiti · Neo4j C27)]
+    RC[(Redis cache C28)]
+    HEAL[Healing · canary controllers C29]
   end
   subgraph MGMT[Management zone]
     OBS[Observability C20]
@@ -106,14 +116,23 @@ flowchart LR
   K --> EDW
   WF --> AGR --> MCP --> PDP
   MCP --> OR & TS & KG & EDW & TV
+  MCP --> MEM & RC
+  MEM --> GRA
+  MEM -. hc.ops.memory.write.v1 .-> K
+  HEAL --> WF
+  HEAL -. healing and canary events .-> K
+  OBS -. signals .-> HEAL
   GIT -->|reconcile| PLAT
   PLAT -. OTel .-> OBS
-  K -. hc.ops.lineage .-> LIN
+  K -. hc.ops.lineage.openlineage.v1 .-> LIN
   classDef ext fill:#eee,stroke:#999;
 ```
 
 Data paths are solid; control and telemetry paths are dotted. No component outside the source-connect zone opens a
-connection toward a source system; sources are reached only by C2 connectors (GOV-02 §8).
+connection toward a source system; sources are reached only by C2 connectors (GOV-02 §8). C26–C28 hold no PHI by
+contract (ADR-08, MEM-CACHE-001, GOV-01 §3 Table 3-A ceiling `internal`) and have no path to `raw`/`std` topics or PHI
+stores; C29 holds no credential that writes to sources, `canonical`/`kg`/`edw` topics, DDL or graph assertions
+(MEM-HEAL-008).
 
 ## 3. Interfaces this module exposes
 
@@ -136,22 +155,23 @@ connection toward a source system; sources are reached only by C2 connectors (GO
 | Module 07 (`STR-*`) | Topic catalog as the source of Kafka provisioning; retention per topic |
 | Module 08 (`TKG-*`), module 05 (`EDW-*`) | Store-specific backup/PITR capabilities |
 | Module 10 (`AGT-*`) | Agent manifests and evaluation suite as CI inputs; CR cycle metrics |
+| Module 14 (`MEM-*`) | Memory API, `memory-schema.yaml`, `cache-policy.yaml` and healing playbooks as deployable artefacts; `healix.memory.*` / `healix.cache.*` / healing and canary metrics registered as SLOs S23–S25 (MEM-ARCH-040); rebuild-from-write-log DR contract (MEM-ARCH-039); fault taxonomy and kill-switch hierarchy consumed by on-call |
 
 ## 5. Requirement index
 
 | Range | Topic | Document | P0 count (indicative) |
 |-------|-------|----------|-----------------------|
-| `OPS-DEP-001`–`OPS-DEP-020` | Kubernetes topology, zones, HA per component, sizing, cloud mapping, Cerner on-prem connectivity | 01 | 13 |
+| `OPS-DEP-001`–`OPS-DEP-021` | Kubernetes topology, zones, HA per component, sizing, cloud mapping, Cerner on-prem connectivity, module 14 memory stack placement | 01 | 14 |
 | `OPS-ENV-001`–`OPS-ENV-022` | Environments, GitOps, CI stages, promotion gates, non-prod data, release and versioning | 02 | 15 |
-| `OPS-OBS-001`–`OPS-OBS-014` | Telemetry, dashboards, alerting, on-call, cost | 03 | 8 |
-| `OPS-SLO-001`–`OPS-SLO-012` | SLI/SLO targets and error budgets | 03 | 9 |
-| `OPS-DR-001`–`OPS-DR-020` | Backup, mirroring, PITR, RPO/RTO tiers, retention, legal hold, destruction, DR tests | 04 | 14 |
+| `OPS-OBS-001`–`OPS-OBS-015` | Telemetry, dashboards, alerting, on-call, cost, module 14 signal registration | 03 | 8 |
+| `OPS-SLO-001`–`OPS-SLO-013` | SLI/SLO targets and error budgets, including memory, cache and healing SLOs | 03 | 9 |
+| `OPS-DR-001`–`OPS-DR-021` | Backup, mirroring, PITR, RPO/RTO tiers, retention, legal hold, destruction, DR tests, memory-store rebuild | 04 | 14 |
 
 ## 6. Operating model
 
 | Role | Responsibilities |
 |------|------------------|
-| Platform SRE (on-call) | Runs C1–C25; owns SLOs, incident response, DR drills, capacity |
+| Platform SRE (on-call) | Runs C1–C29; owns SLOs, incident response, DR drills, capacity; pairs with the Agent Operator for C26–C29 |
 | Data Platform Engineering | Builds connectors, Flink jobs, sinks, CI pipelines; pairs with module teams |
 | Agent Operator (module 10) | Tunes agent policies and evaluation thresholds; consumes agent SLOs |
 | Privacy & Security Office (module 11) | Approves non-prod data strategy, DR data handling, retention execution evidence |
@@ -162,7 +182,7 @@ connection toward a source system; sources are reached only by C2 connectors (GO
 | Standard | Rule |
 |----------|------|
 | Infrastructure as code | Every cluster, namespace, topic, database, bucket, policy and dashboard is declared in Git (Terraform, Helm, Kustomize, `topics.yaml`, Grafana JSON); console changes are reverted by reconciliation |
-| Runbooks | One runbook per component (C1–C25) and per alert, stored beside the Helm chart; a page without a runbook link is a CI failure |
+| Runbooks | One runbook per component (C1–C29) and per alert, stored beside the Helm chart; a page without a runbook link is a CI failure; module 14 healing playbooks are the machine-executable counterpart of the C1–C25 runbooks and reference them |
 | Change windows | `prod` promotions Tuesday–Thursday 09:00–15:00 local unless an emergency change is approved by the on-call lead and the release manager |
 | Incident severity | SEV1 PHI exposure or platform down; SEV2 SLO breach affecting clinical consumers; SEV3 single component degraded; SEV4 cosmetic. SEV1/2 trigger a blameless post-incident review within 5 business days |
 | Capacity reviews | Monthly; forecast 6 months using the sizing model in OPS-01 §5 |
@@ -178,3 +198,5 @@ connection toward a source system; sources are reached only by C2 connectors (GO
 3. SLO dashboards for every SLI in OPS-03 exist with error-budget burn alerts wired to on-call.
 4. A full DR test has restored `prod` to the secondary region within RTO and RPO (OPS-04 §7) at least once.
 5. Non-prod PHI scanner (GOV-PHI-011) has run daily for 30 days with zero findings.
+6. Memory stores (C26, C27) have been rebuilt from `hc.ops.memory.write.v1` within RTO in a drill (OPS-04 §9), the
+   Redis cold-start bypass test has passed, and SLOs S23–S25 are on dashboards with burn alerts (OPS-03).

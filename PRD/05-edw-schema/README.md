@@ -35,9 +35,9 @@ content (module 11; PHI tags defined here are *consumed* by module 11).
 |-------|----------|----------|
 | Logical Model Register (one YAML per entity: group, grain, keys, attributes bound to ontology IRIs) | Module 04 (`RDM-*`) | Seed for every `dim_*`/`fact_*`/`bridge_*`; the register is the only place entity semantics are authored |
 | Ontology Registry (SKOS/OWL/SHACL) | Module 02 (`ONT-*`) | `ontology_class_iri` per table, `ontology_property_iri` per column, value-set bindings for `*_code` columns |
-| Bitemporal model | Module 08 (`TKG-01`) | Column semantics of `valid_from/valid_to/recorded_at/superseded_at/prov_activity_iri`; EMPI linkage keys |
+| Bitemporal model | Module 08 (`TKG-01` §9 contract C1–C12) | Column semantics of `valid_from/valid_to/recorded_at/superseded_at/change_kind/event_time/source_time/decision_time/source_tz/prov_activity_iri`; EMPI linkage keys |
 | Canonical FHIR R4 profiles | Module 06 (`IOP-*`) | Source element paths recorded in the data dictionary (`source_fhir_path`) |
-| PHI classification | Module 11 (`GOV-PHI-*`) | `phi_class` tag per column |
+| PHI classification | Module 11 (`GOV-PHI-*`, taxonomy in `01-hipaa-phi-and-privacy.md` §3) | `phi_class` tag per column, values = `hc-phi-class` value set |
 | DQ result contract | Module 09 (`DQ-*`) | Shape of `fact_dq_result` in G9 |
 
 ### 1.2 Outputs this module produces
@@ -176,8 +176,9 @@ Derivation rules (normative detail in `03-logical-model.md` and `04-physical-mod
    and MUST NOT be denormalised locally.
 4. **IRI binding.** Every column receives `ontology_property_iri` (or `ontology_class_iri` for keys); columns without a
    resolvable IRI fail evaluation unless explicitly tagged `technical`.
-5. **PHI tagging.** `agent.privacy_guardian` assigns `phi_class` (`none | phi_direct | phi_quasi | phi_sensitive`) to
-   every column before the proposal can be evaluated.
+5. **PHI tagging.** `agent.privacy_guardian` assigns `phi_class` to every column before the proposal can be evaluated,
+   using the module-11 classification taxonomy (`phi:direct`, `phi:quasi`, `phi:clinical`, `phi:sensitive-category[/…]`,
+   `pii:workforce`, `confidential:*`, `internal`, `public`, `deidentified:*`, `pseudonymised`; `03-logical-model.md` §6).
 6. **Physical rendering.** Primary index / distribution key, partitioning and compression are chosen by table role and
    expected cardinality (`04-physical-model-and-ddl.md` §3).
 
@@ -203,10 +204,13 @@ dictionary), `HIST` (history/bitemporality), `REC` (reconciliation).
 > `edw_int` directly.
 
 > **EDW-ARCH-002** (P0, test) — Every presentation schema name MUST match `^edw_g[1-9]_[a-z]+$` and every table name
-> MUST match `^(dim|fact|bridge|ref|stg|hist)_[a-z0-9_]+$`; the linter in `agent.evaluator` MUST reject violations.
+> MUST match `^(dim|fact|bridge|ref|stg|hist|int|agg)_[a-z0-9_]+$` (`agg_` only for periodic roll-ups of a fact, e.g.
+> module 09's `agg_dq_result_day`); the linter in `agent.evaluator` MUST reject violations.
 
-> **EDW-ARCH-003** (P0, test) — Every `fact_*`, `bridge_*` and `hist_*` row MUST carry `valid_from`, `valid_to`,
-> `recorded_at`, `superseded_at` and `prov_activity_iri` with the semantics of `TKG-01`.
+> **EDW-ARCH-003** (P0, test) — Every `fact_*`, `bridge_*`, `hist_*` and `agg_*` row MUST carry `valid_from`, `valid_to`,
+> `recorded_at`, `superseded_at`, `change_kind`, `change_reason_code`, `event_time`, `source_time`, `decision_time`,
+> `source_tz` and `prov_activity_iri` with the semantics of `TKG-01` §9 (C1–C12; mapping in
+> `06-history-and-bitemporality.md` §3.3).
 
 > **EDW-ARCH-004** (P0, test) — Every table and column in a presentation schema MUST have an entry in the data
 > dictionary export with `ontology_class_iri` (tables) or `ontology_property_iri` (columns) resolvable in the Ontology
@@ -240,5 +244,7 @@ dictionary), `HIST` (history/bitemporality), `REC` (reconciliation).
 | Junk dimension | A small dimension collecting low-cardinality flags/indicators to keep facts narrow |
 | Bridge | A table resolving a many-to-many relation between a fact and a dimension, optionally weighted/ranked |
 | `hist_*` | Bitemporal history table holding all versions of a dimension or integration entity |
+| `agg_*` | Periodic roll-up of a fact kept for long-horizon trend reporting (G9 `agg_dq_result_day`) |
+| Bitemporal block | The eleven `TKG-01` C1–C12 columns every `hist_*`/`fact_*`/`bridge_*`/`agg_*` row carries (`06-history-and-bitemporality.md` §3) |
 | As-of query | Query constrained on both valid time and transaction time (`06-history-and-bitemporality.md` §4) |
 | Logical Model Register | Module 04's YAML-per-entity catalogue; the only authoring point for entity semantics |

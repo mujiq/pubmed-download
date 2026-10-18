@@ -6,7 +6,8 @@ version: 0.1.0
 status: draft
 owners: [Data Governance Lead, Enterprise Ontology Team]
 depends_on: [ARC-01, SRC-00, GOV-01]
-last_updated: 2026-10-17---
+last_updated: 2026-10-17
+---
 # Stage 0 — Metadata and Inventory
 
 ## 1. Purpose and the metadata-first principle
@@ -65,7 +66,7 @@ in `edw_g9_governance.ref_source_system` and as RDF under `<base>graph/governanc
 | `environment_binding` | map env → endpoint | MUST | `dev/test/uat/prod` endpoints; prod endpoints MUST NOT appear in non-prod records |
 | `steward` | person/role IRI | MUST | Business steward (G-group steward) |
 | `technical_owner` | person/role IRI | MUST | Integration or DBA team |
-| `phi_posture` | enum | MUST | `phi`, `phi-limited-dataset`, `de-identified`, `no-phi` (module 11 taxonomy) |
+| `phi_posture` | enum | MUST | Most restrictive module 11 tag (`hc-phi-class` value, GOV-01 §3) carried by the source, e.g. `phi:direct` (Cerner clinical feeds), `pii:workforce` (Oracle HCM), `confidential:financial` (Oracle ERP), `deidentified:expert` (limited data sets), `pseudonymised`, `internal` |
 | `groups` | list of G1–G9 | MUST | Groups this source feeds |
 | `refresh_mode`, `refresh_cadence` | enum, ISO 8601 duration | MUST | `stream`, `cdc`, `batch`; e.g. `PT15M` for BICC |
 | `authoritative_for` | list of entity IRIs | SHOULD | e.g. Cerner authoritative for `clinical/Encounter`; Oracle HCM for `party/Employee` |
@@ -86,12 +87,12 @@ Expressed as `dcat:Dataset` → `dcat:Distribution` → element records typed `h
 | `container` | string | MUST | table / segment / resource / view object, e.g. `ENCOUNTER`, `PV1`, `Encounter`, `GeneralLedgerJournalLinesPVO` |
 | `element` | string | MUST | column / field path / FHIR path / attribute: `ENCNTR_TYPE_CD`, `PV1-2`, `Encounter.class`, `JournalLineAccountedDr` |
 | `datatype` | source-native type + XSD mapping | MUST | `NUMBER(18)` → `xsd:decimal`; HL7 `CWE` → complex; FHIR `Coding` |
-| `phi_class` | enum from module 11 | MUST | `direct-identifier`, `quasi-identifier`, `sensitive-clinical`, `financial`, `none`, `unknown` (transitional only) |
+| `phi_class` | enum from module 11 | MUST | `hc-phi-class` values (GOV-01 §3): `phi:direct`, `phi:quasi`, `phi:clinical`, `phi:sensitive-category/{sud,hiv,mental-health,reproductive,genetic}`, `pii:workforce`, `confidential:financial`, `confidential:operational`, `internal`, `public`, `deidentified:safe-harbor`, `deidentified:expert`, `pseudonymised`; plus `unknown` (transitional only; treated as `phi:direct` fail-closed per GOV-PHI-003) |
 | `steward` | role IRI | MUST | Inherits from source unless overridden |
 | `cardinality` | `min..max` observed + declared | MUST | e.g. declared `0..1`, observed `0..1` at 99.97 % |
 | `nullable`, `is_key`, `is_code` | boolean | MUST | `is_code` flags Cerner `*_CD` columns, Oracle lookup codes, HL7 coded fields |
 | `code_set_ref` | string | SHOULD | Cerner `CODE_VALUE.CODE_SET` number (e.g. `71` encounter type, `72` encounter class, `4` admit source); Oracle `LOOKUP_TYPE`; FHIR binding URL |
-| `example_values_policy` | enum | MUST | `store-top-k` (non-PHI codes), `store-pattern-only` (regex/shape), `store-none` (direct identifiers). Default is `store-none`; agent MUST NOT store raw PHI examples |
+| `example_values_policy` | enum | MUST | `store-top-k` (codes classed `internal`/`public`), `store-pattern-only` (regex/shape), `store-none` (direct identifiers). Default is `store-none`; agent MUST NOT store raw PHI examples |
 | `example_values` | list ≤ 10 | per policy | Only when policy allows |
 | `profile_ref` | IRI | MUST once profiled | Pointer to latest profiling snapshot |
 | `lineage` | PROV-O fragment | MUST | `prov:wasDerivedFrom` physical object IRI; for views, derivation to base tables |
@@ -152,7 +153,7 @@ the catalogue:
 | `row_count`, `null_rate`, `distinct_count`, `distinct_ratio` | all | DQ completeness thresholds (09), cardinality axioms (Stage 4) |
 | `min/max/mean/stddev`, percentiles | numeric, date | Range constraints (SHACL `sh:minInclusive`) |
 | `pattern_histogram` (top 20 regex shapes) | string | Identifier formats (MRN, NPI, invoice number) |
-| `top_k_values` with counts | `is_code = true`, non-PHI | Term harvesting (Stage 1); value-set coverage |
+| `top_k_values` with counts | `is_code = true`, `phi_class` ∈ {`internal`, `public`} | Term harvesting (Stage 1); value-set coverage |
 | `code_set_hit_rate` | coded | % of values found in `CODE_VALUE` / lookup / external code system via TS `$validate-code` |
 | `fk_integrity_rate` | keyed | Referential DQ rules |
 | `temporal_profile` (first/last seen, update frequency) | all | Refresh cadence validation |

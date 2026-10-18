@@ -31,7 +31,7 @@ sequenceDiagram
   participant TS as Terminology Service
   participant V as Validation (IOP-05)
   participant C as hc.canonical.*.fhir.v1
-  participant Q as hc.dq.*.quarantine.v1
+  participant Q as hc.dq.quarantine.*.v1
   S->>L: MLLP frame (MSH ... )
   L->>R: raw bytes + headers
   L-->>S: ACK AA (commit ack, MSH-15/16 honoured)
@@ -65,11 +65,13 @@ The listener implements **enhanced acknowledgement mode** when MSH-15/MSH-16 are
 | Condition | ACK code (MSA-1) | When | Behaviour |
 |-----------|------------------|------|-----------|
 | Frame received and durably written to `hc.raw.*` | `AA` (original) / `CA` (enhanced commit) | Immediately after Kafka `acks=all` write | Sender may release the message. Semantic failures downstream never alter this ACK (they are handled by DQ, not re-sent). |
-| MSH malformed, unsupported version, unknown sending application, dedup hit on different content | `AR` / `CR` | Before raw write | Error detail in ERR segment (ERR-3 HL70357 code, ERR-8 user message). Message is still landed on `hc.raw.<src>.rejected.hl7v2.v1` for forensics. |
+| MSH malformed, unsupported version, unknown sending application, dedup hit on different content | `AR` / `CR` | Before raw write | Error detail in ERR segment (ERR-3 HL70357 code, ERR-8 user message). Message is still landed on the Connect dead-letter topic `hc.ops.dlq.connect.v1` (original bytes + error headers) for forensics. |
 | Transient platform fault (Kafka unavailable) | `AE` / `CE` | Before raw write | Sender retries; listener back-pressures by closing the connection after 3 consecutive `AE`. |
 | Application-level ACK requested (MSH-16 = `AL`/`ER`/`SU`) | `AA`/`AE`/`AR` application ACK | After `std` structural validation | Emitted asynchronously over the same connection; `AE` if structural validation fails, with ERR segments. |
 
-ACK messages are themselves recorded on `hc.ops.outbound.ack.hl7v2.v1` for audit. ACK latency target: p99 ≤ 200 ms
+The ACK code returned to the sender is recorded for audit on the corresponding `hc.raw.<src>.<msgfamily>.hl7v2.v1`
+(or, for rejected frames, `hc.ops.dlq.connect.v1`) record headers; there is no separate inbound-ACK topic in the module 07 catalog.
+ACK latency target: p99 ≤ 200 ms
 (ARC-NFR-001 budget).
 
 ## 4. Message types and trigger events in scope
@@ -86,9 +88,9 @@ ACK messages are themselves recorded on `hc.ops.outbound.ack.hl7v2.v1` for audit
 | VXU | V04 vaccination record | Cerner, state IIS | Immunization | `clinical.immunization` |
 | BAR | P01 add account, P05 update account | Cerner Patient Accounting | Account, Coverage, Patient | `finance.account` |
 
-Trigger events outside this table are landed in `raw`, acknowledged `AA`, and routed to
-`hc.dq.interop.unsupported-trigger.quarantine.v1`; `agent.source_mapper` opens a change request to add a mapping when
-volume exceeds a steward-set threshold.
+Trigger events outside this table are landed in `raw`, acknowledged `AA`, retained on `hc.ops.dlq.processor.v1`
+and reported as a typed issue on `hc.dq.issue.v1` (there is no canonical record yet, so nothing is quarantined);
+`agent.source_mapper` opens a change request to add a mapping when volume exceeds a steward-set threshold.
 
 ## 5. Segment-to-FHIR mapping conventions
 
@@ -220,7 +222,9 @@ requires for audit and module 09 uses for root-cause of DQ failures.
 ## 9. Outbound HL7 v2 generation from canonical
 
 Legacy consumers (e.g. a departmental system that only speaks ADT, a state registry, a dietary system) subscribe to
-`hc.ops.outbound.<family>.hl7v2.v1`. Generation is **FHIR → v2** using the inverse of the IG maps.
+`hc.std.outbound.<family>.hl7v2.v1` (module 07 convention: layer `std`, domain `outbound`; `hc.std.outbound.adt.hl7v2.v1`
+and `hc.std.outbound.oru.hl7v2.v1` are in `07/topics.yaml`, the SIU, DFT, MDM and VXU families below are proposed through
+`hc.ops.agent.changerequest.v1`). Generation is **FHIR → v2** using the inverse of the IG maps.
 
 | Outbound family | Trigger | Source canonical resources | Notes |
 |-----------------|---------|----------------------------|-------|
@@ -235,7 +239,7 @@ Outbound rules: the generator targets a per-consumer **HL7 v2 conformance profil
 code tables, Z-segments the consumer expects); codes are back-translated through the TS (`$translate` with
 `reverse = true`) to the table the consumer requires; identifiers are rendered with HD assigning authority from the
 registry; every outbound message is logged with its originating canonical ids in `Provenance` (activity `transmit`)
-and the consumer's ACK is captured on `hc.ops.inbound.ack.hl7v2.v1`.
+and the consumer's ACK/NAK is captured on `hc.ops.outbound.hl7v2.ack.v1`.
 
 ## 10. Requirements
 
@@ -254,8 +258,8 @@ and the consumer's ACK is captured on `hc.ops.inbound.ack.hl7v2.v1`.
 > **IOP-V2-005** (P0, test) — All trigger events listed in §4 MUST have a mapping specification, a conformance profile
 > and ≥ 5 fixture messages with expected canonical output in the regression suite.
 
-> **IOP-V2-006** (P1, test) — Trigger events not in scope MUST be landed, acknowledged and routed to
-> `hc.dq.interop.unsupported-trigger.quarantine.v1` without data loss.
+> **IOP-V2-006** (P1, test) — Trigger events not in scope MUST be landed, acknowledged, retained on
+> `hc.ops.dlq.processor.v1` and reported on `hc.dq.issue.v1` without data loss.
 
 > **IOP-V2-007** (P1, test) — Attachments in OBX-5 (ED) exceeding 256 KiB MUST be externalised to the object store at
 > the `std` layer and referenced by URL with a SHA-256 hash.

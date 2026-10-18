@@ -1,7 +1,13 @@
 # HEALIX identifier system URI registry
 # Source of truth for Identifier.system values permitted in hc.canonical.* records (IOP-01 §5, IOP-FHIR-004/015).
 # Any mapping that emits a system not listed here is rejected by agent.evaluator (IOP-FHIR-016).
-# phi_class values follow module 11: direct | indirect | restricted | public | none | prohibited
+# phi_class values are the module 11 hc-phi-class tags (11-governance-security-compliance/01-hipaa-phi-and-privacy.md section 3):
+#   phi:direct | phi:quasi | phi:clinical | phi:sensitive-category[/sud|/hiv|/mental-health|/reproductive|/genetic] |
+#   pii:workforce | confidential:financial | confidential:operational | internal | public |
+#   deidentified:safe-harbor | deidentified:expert | pseudonymised
+# Identifiers that uniquely identify a patient record (HIPAA identifiers 1-2, 4-18; order/accession/claim/document numbers
+# fall under identifier 18) are phi:direct unless certified as a non-derivable token (pseudonymised); unclassified -> phi:direct (GOV-PHI-003).
+# permitted_in_canonical: false marks systems the validator must reject (IOP-E-PRIV-301); there is no 'prohibited' class in module 11.
 # hl7_v2_type is the HL7 v2 table 0203 identifier type code used in Identifier.type and in CX-5.
 # assigning_authority gives the HL7 v2 HD (namespace id, universal id, universal id type) when the identifier appears in v2.
 version: 0.1.0
@@ -20,7 +26,7 @@ systems:
     assigner: HEALIX platform
     format: "^[0-9A-HJKMNP-TV-Z]{26}$"
     example: 01J9ZK8V2M3N4P5Q6R7S8T9UVW
-    phi_class: direct
+    phi_class: phi:direct
   - id: empi-ssn-token
     uri: https://id.healix.example.org/empi/ssn-token
     description: Keyed SHA-256 token of SSN produced by module 11; raw SSN is never emitted
@@ -28,7 +34,8 @@ systems:
     hl7_v2_type: SS
     assigner: HEALIX privacy service
     format: "^[a-f0-9]{64}$"
-    phi_class: restricted
+    phi_class: pseudonymised
+    note: keyed one-way token per module 11 section 6.3; still PHI under HIPAA
   - id: cerner-mrn
     uri: https://id.healix.example.org/cerner/mrn
     description: Cerner Millennium Medical Record Number (PERSON_ALIAS, alias type MRN)
@@ -38,7 +45,7 @@ systems:
     assigner: Cerner Millennium
     format: "^[0-9]{6,10}$"
     example: "123456"
-    phi_class: direct
+    phi_class: phi:direct
   - id: cerner-person-id
     uri: https://id.healix.example.org/cerner/person-id
     description: Cerner PERSON.PERSON_ID surrogate key
@@ -46,14 +53,15 @@ systems:
     hl7_v2_type: PI
     assigner: Cerner Millennium
     format: "^[0-9]{1,18}$"
-    phi_class: direct
+    phi_class: phi:direct
   - id: us-ssn
     uri: http://hl7.org/fhir/sid/us-ssn
     description: US Social Security Number
     applies_to: []
     hl7_v2_type: SS
     assigner: Social Security Administration
-    phi_class: prohibited
+    phi_class: phi:direct
+    permitted_in_canonical: false
     note: Listed so the validator can emit IOP-E-PRIV-301 when encountered; never permitted in canonical.
   - id: us-mbi
     uri: http://hl7.org/fhir/sid/us-mbi
@@ -62,14 +70,14 @@ systems:
     hl7_v2_type: MC
     assigner: CMS
     format: "^[1-9][AC-HJKMNP-RT-Yac-hjkmnp-rt-y][AC-HJKMNP-RT-Yac-hjkmnp-rt-y0-9][0-9][AC-HJKMNP-RT-Yac-hjkmnp-rt-y][AC-HJKMNP-RT-Yac-hjkmnp-rt-y0-9][0-9][AC-HJKMNP-RT-Yac-hjkmnp-rt-y]{2}[0-9]{2}$"
-    phi_class: direct
+    phi_class: phi:direct
   - id: payer-member-id
     uri_template: https://id.healix.example.org/payer/{payer-id}/member-id
     description: Payer-assigned member/subscriber identifier; one system per payer id
     applies_to: [Coverage, Patient, RelatedPerson]
     hl7_v2_type: MB
     assigner: Payer
-    phi_class: direct
+    phi_class: phi:direct
 
   # ---------- G1 Party & Identity: practitioners, organisations, locations ----------
   - id: us-npi
@@ -89,7 +97,7 @@ systems:
     hl7_v2_type: DEA
     assigner: US Drug Enforcement Administration
     format: "^[A-Z]{2}[0-9]{7}$"
-    phi_class: restricted
+    phi_class: pii:workforce
   - id: state-licence
     uri_template: https://id.healix.example.org/licence/{state-iso2}
     description: State professional licence number; one system per state
@@ -104,7 +112,7 @@ systems:
     hl7_v2_type: TAX
     assigner: IRS
     format: "^[0-9]{2}-?[0-9]{7}$"
-    phi_class: restricted
+    phi_class: confidential:financial
   - id: clia
     uri: urn:oid:2.16.840.1.113883.4.7
     description: CLIA laboratory certificate number
@@ -125,43 +133,43 @@ systems:
     description: Cerner ORGANIZATION.ORGANIZATION_ID
     applies_to: [Organization]
     assigner: Cerner Millennium
-    phi_class: none
+    phi_class: internal
   - id: cerner-location-cd
     uri: https://id.healix.example.org/cerner/location-cd
     description: Cerner location code value (code set 220 facility / nurse unit / room / bed hierarchy)
     applies_to: [Location]
     assigner: Cerner Millennium
-    phi_class: none
+    phi_class: internal
   - id: oracle-legal-entity-id
     uri: https://id.healix.example.org/oracle/legal-entity-id
     description: Oracle Fusion XLE_ENTITY_PROFILES.LEGAL_ENTITY_ID
     applies_to: [Organization]
     assigner: Oracle Fusion ERP
-    phi_class: none
+    phi_class: internal
   - id: oracle-business-unit-id
     uri: https://id.healix.example.org/oracle/business-unit-id
     description: Oracle Fusion FUN_ALL_BUSINESS_UNITS_V.BU_ID
     applies_to: [Organization]
     assigner: Oracle Fusion ERP
-    phi_class: none
+    phi_class: internal
   - id: oracle-ledger-id
     uri: https://id.healix.example.org/oracle/ledger-id
     description: Oracle Fusion GL_LEDGERS.LEDGER_ID
     applies_to: [Organization]
     assigner: Oracle Fusion GL
-    phi_class: none
+    phi_class: internal
   - id: oracle-cost-center
     uri: https://id.healix.example.org/oracle/cost-center
     description: Chart-of-accounts cost center segment value (FND_VS_VALUES_B)
     applies_to: [Organization]
     assigner: Oracle Fusion GL
-    phi_class: none
+    phi_class: internal
   - id: oracle-department-id
     uri: https://id.healix.example.org/oracle/department-id
     description: Oracle Fusion HCM PER_DEPARTMENTS.ORGANIZATION_ID
     applies_to: [Organization]
     assigner: Oracle Fusion HCM
-    phi_class: none
+    phi_class: internal
   - id: oracle-supplier-number
     uri: https://id.healix.example.org/oracle/supplier-number
     description: Oracle Fusion POZ_SUPPLIERS.SEGMENT1 (supplier number)
@@ -169,25 +177,25 @@ systems:
     assigner: Oracle Fusion SCM
     format: "^[0-9]{1,30}$"
     example: "10234"
-    phi_class: none
+    phi_class: internal
   - id: oracle-supplier-site-id
     uri: https://id.healix.example.org/oracle/supplier-site-id
     description: Oracle Fusion POZ_SUPPLIER_SITES_ALL_M.VENDOR_SITE_ID
     applies_to: [Organization, Location]
     assigner: Oracle Fusion SCM
-    phi_class: none
+    phi_class: internal
   - id: oracle-inventory-org-id
     uri: https://id.healix.example.org/oracle/inventory-org-id
     description: Oracle Fusion INV_ORG_PARAMETERS.ORGANIZATION_ID
     applies_to: [Organization, Location]
     assigner: Oracle Fusion Inventory
-    phi_class: none
+    phi_class: internal
   - id: oracle-location-id
     uri: https://id.healix.example.org/oracle/location-id
     description: Oracle Fusion HR_LOCATIONS_ALL.LOCATION_ID (HCM/SCM physical locations)
     applies_to: [Location]
     assigner: Oracle Fusion
-    phi_class: none
+    phi_class: internal
 
   # ---------- G1/G5 Workforce ----------
   - id: oracle-person-number
@@ -197,32 +205,32 @@ systems:
     hl7_v2_type: EI
     assigner: Oracle Fusion HCM
     format: "^[0-9]{1,30}$"
-    phi_class: direct
+    phi_class: pii:workforce
   - id: oracle-employee-number
     uri: https://id.healix.example.org/oracle/employee-number
     description: Oracle Fusion HCM employee number (legacy badge/employee id when distinct from person number)
     applies_to: [Practitioner, Person]
     hl7_v2_type: EN
     assigner: Oracle Fusion HCM
-    phi_class: direct
+    phi_class: pii:workforce
   - id: oracle-assignment-number
     uri: https://id.healix.example.org/oracle/assignment-number
     description: Oracle Fusion HCM PER_ALL_ASSIGNMENTS_M.ASSIGNMENT_NUMBER
     applies_to: [Basic]
     assigner: Oracle Fusion HCM
-    phi_class: indirect
+    phi_class: pii:workforce
   - id: oracle-position-code
     uri: https://id.healix.example.org/oracle/position-code
     description: Oracle Fusion HCM HR_ALL_POSITIONS_F.POSITION_CODE
     applies_to: [Basic]
     assigner: Oracle Fusion HCM
-    phi_class: none
+    phi_class: internal
   - id: cerner-prsnl-id
     uri: https://id.healix.example.org/cerner/prsnl-id
     description: Cerner PRSNL.PERSON_ID for clinical personnel
     applies_to: [Practitioner]
     assigner: Cerner Millennium
-    phi_class: indirect
+    phi_class: pii:workforce
 
   # ---------- G2 Clinical Care ----------
   - id: cerner-fin
@@ -234,80 +242,81 @@ systems:
     assigner: Cerner Millennium
     format: "^[A-Z0-9]{6,20}$"
     example: V2026001
-    phi_class: direct
+    phi_class: phi:direct
   - id: cerner-encntr-id
     uri: https://id.healix.example.org/cerner/encntr-id
     description: Cerner ENCOUNTER.ENCNTR_ID surrogate key
     applies_to: [Encounter]
     hl7_v2_type: VN
     assigner: Cerner Millennium
-    phi_class: direct
+    phi_class: phi:direct
   - id: cerner-placer-order
     uri: https://id.healix.example.org/cerner/placer-order
     description: Cerner ORDERS.ORDER_ID as placer order number (ORC-2 / OBR-2)
     applies_to: [ServiceRequest, MedicationRequest, DiagnosticReport, Observation]
     hl7_v2_type: PLAC
     assigner: Cerner Millennium
-    phi_class: indirect
+    phi_class: phi:direct
+    note: HIPAA identifier 18 (unique identifying number); phi:direct per module 11 section 2 unless tokenised
   - id: cerner-filler-order
     uri: https://id.healix.example.org/cerner/filler-order
     description: Filler order number (ORC-3 / OBR-3) from Cerner or the performing LIS/RIS; OBX-4 sub-id appended for Observation
     applies_to: [ServiceRequest, DiagnosticReport, Observation, Specimen]
     hl7_v2_type: FILL
     assigner: Cerner Millennium / LIS / RIS
-    phi_class: indirect
+    phi_class: phi:direct
   - id: lis-accession
     uri: https://id.healix.example.org/lis/accession
     description: Laboratory accession number
     applies_to: [DiagnosticReport, Observation, Specimen]
     hl7_v2_type: ACSN
     assigner: LIS
-    phi_class: indirect
+    phi_class: phi:direct
   - id: ris-accession
     uri: https://id.healix.example.org/ris/accession
     description: Imaging accession number (DICOM 0008,0050)
     applies_to: [ImagingStudy, DiagnosticReport, ServiceRequest]
     hl7_v2_type: ACSN
     assigner: RIS
-    phi_class: indirect
+    phi_class: phi:direct
   - id: dicom-uid
     uri: urn:dicom:uid
     description: DICOM UID (Study/Series/SOP Instance); value is urn:oid:<uid>
     applies_to: [ImagingStudy]
     assigner: Modality / PACS
     format: "^urn:oid:[0-2](\\.(0|[1-9][0-9]*))+$"
-    phi_class: indirect
+    phi_class: phi:direct
   - id: cerner-event-id
     uri: https://id.healix.example.org/cerner/clinical-event-id
     description: Cerner CLINICAL_EVENT.EVENT_ID (results, documents)
     applies_to: [Observation, DocumentReference, DiagnosticReport]
     assigner: Cerner Millennium
-    phi_class: indirect
+    phi_class: phi:direct
   - id: document-unique-id
     uri: urn:ietf:rfc:3986
     description: Document unique identifier (C-CDA ClinicalDocument/id, XDS uniqueId / entryUUID) as urn:oid or urn:uuid
     applies_to: [DocumentReference, List]
     assigner: Document source
-    phi_class: indirect
+    phi_class: phi:direct
   - id: pharmacy-dispense-id
     uri: https://id.healix.example.org/pharmacy/dispense-id
     description: Pharmacy system dispense/fill identifier (RXD-7)
     applies_to: [MedicationDispense]
     assigner: Pharmacy system
-    phi_class: indirect
+    phi_class: phi:direct
   - id: iis-immunization-id
     uri: https://id.healix.example.org/iis/immunization-id
     description: State immunisation registry event id
     applies_to: [Immunization]
     assigner: State IIS
-    phi_class: indirect
+    phi_class: phi:direct
   - id: cerner-sched-event-id
     uri: https://id.healix.example.org/cerner/sched-event-id
     description: Cerner SCH_EVENT.SCH_EVENT_ID (SCH-1 placer / SCH-2 filler)
     applies_to: [Appointment]
     hl7_v2_type: PLAC
     assigner: Cerner Scheduling
-    phi_class: indirect
+    phi_class: phi:direct
 
   # ---------- G3 Revenue Cycle & Finance ----------
   - id: rcm-claim-control-number
@@ -315,62 +324,62 @@ systems:
     description: Provider claim control / patient control number (837 CLM01, 835 CLP01)
     applies_to: [Claim, ExplanationOfBenefit, ClaimResponse]
     assigner: RCM system
-    phi_class: indirect
+    phi_class: phi:direct
   - id: payer-icn
     uri_template: https://id.healix.example.org/payer/{payer-id}/icn
     description: Payer internal control number (835 CLP07, 277 REF*1K)
     applies_to: [ExplanationOfBenefit, ClaimResponse]
     assigner: Payer
-    phi_class: indirect
+    phi_class: phi:direct
   - id: rcm-batch-id
     uri: https://id.healix.example.org/rcm/batch-id
     description: X12 batch / BHT03 reference
     applies_to: [Claim, PaymentReconciliation]
     assigner: RCM / clearinghouse
-    phi_class: none
+    phi_class: confidential:financial
   - id: x12-trace-number
     uri: https://id.healix.example.org/x12/trace-number
     description: 835 TRN02 / 277 TRN02 trace number with TRN03 originator
     applies_to: [PaymentReconciliation, ClaimResponse]
     assigner: Payer
-    phi_class: none
+    phi_class: confidential:financial
   - id: payer-prior-auth-number
     uri_template: https://id.healix.example.org/payer/{payer-id}/prior-auth
     description: Prior authorisation / referral number (278 HCR02, 837 REF*G1)
     applies_to: [ClaimResponse, Claim, ServiceRequest]
     assigner: Payer / UM vendor
-    phi_class: indirect
+    phi_class: phi:direct
   - id: cerner-charge-id
     uri: https://id.healix.example.org/cerner/charge-id
     description: Cerner CHARGE.CHARGE_ITEM_ID (FT1-2)
     applies_to: [ChargeItem]
     assigner: Cerner Charge Services
-    phi_class: indirect
+    phi_class: phi:direct
   - id: cerner-cdm-code
     uri: https://id.healix.example.org/cerner/cdm-code
     description: Charge Description Master code (FT1-7)
     applies_to: [ChargeItem]
     assigner: Cerner / RCM
-    phi_class: none
+    phi_class: internal
   - id: oracle-ar-invoice-number
     uri: https://id.healix.example.org/oracle/ar-invoice-number
     description: Oracle Fusion Receivables RA_CUSTOMER_TRX_ALL.TRX_NUMBER
     applies_to: [Invoice]
     assigner: Oracle Fusion Receivables
-    phi_class: none
+    phi_class: confidential:financial
   - id: oracle-ap-invoice-number
     uri: https://id.healix.example.org/oracle/ap-invoice-number
     description: Oracle Fusion Payables AP_INVOICES_ALL.INVOICE_NUM (scoped by supplier)
     applies_to: [Invoice]
     assigner: Oracle Fusion Payables
-    phi_class: none
+    phi_class: confidential:financial
   - id: oracle-gl-journal-header-id
     uri: https://id.healix.example.org/oracle/gl-journal-header-id
     description: Oracle Fusion GL_JE_HEADERS.JE_HEADER_ID
     applies_to: [Basic]
     assigner: Oracle Fusion GL
     format: "^[0-9]{1,18}$"
-    phi_class: none
+    phi_class: confidential:financial
   - id: oracle-gl-journal-line
     uri: https://id.healix.example.org/oracle/gl-journal-line
     description: Composite <JE_HEADER_ID>-<JE_LINE_NUM> identifying one GL journal line
@@ -378,25 +387,25 @@ systems:
     assigner: HEALIX mapping (derived)
     format: "^[0-9]{1,18}-[0-9]{1,6}$"
     example: 300000123456789-12
-    phi_class: none
+    phi_class: confidential:financial
   - id: oracle-code-combination-id
     uri: https://id.healix.example.org/oracle/code-combination-id
     description: Oracle Fusion GL_CODE_COMBINATIONS.CODE_COMBINATION_ID
     applies_to: [Basic]
     assigner: Oracle Fusion GL
-    phi_class: none
+    phi_class: confidential:financial
   - id: oracle-project-number
     uri: https://id.healix.example.org/oracle/project-number
     description: Oracle Fusion PJF_PROJECTS_ALL_B.SEGMENT1
     applies_to: [Basic]
     assigner: Oracle Fusion PPM
-    phi_class: none
+    phi_class: confidential:financial
   - id: oracle-asset-number
     uri: https://id.healix.example.org/oracle/asset-number
     description: Oracle Fusion FA_ADDITIONS_B.ASSET_NUMBER
     applies_to: [Device, Basic]
     assigner: Oracle Fusion Assets
-    phi_class: none
+    phi_class: confidential:financial
 
   # ---------- G4 Supply Chain & Operations ----------
   - id: oracle-item-number
@@ -404,37 +413,37 @@ systems:
     description: Oracle Fusion EGP_SYSTEM_ITEMS_B.ITEM_NUMBER
     applies_to: [Device, Medication, Basic, SupplyRequest, SupplyDelivery]
     assigner: Oracle Fusion Product Hub
-    phi_class: none
+    phi_class: internal
   - id: oracle-po-number
     uri: https://id.healix.example.org/oracle/po-number
     description: Oracle Fusion PO_HEADERS_ALL.SEGMENT1 (purchase order number)
     applies_to: [Basic, SupplyDelivery]
     assigner: Oracle Fusion Procurement
-    phi_class: none
+    phi_class: confidential:financial
   - id: oracle-po-line
     uri: https://id.healix.example.org/oracle/po-line
     description: Composite <PO_NUMBER>-<LINE_NUM>
     applies_to: [Basic]
     assigner: HEALIX mapping (derived)
-    phi_class: none
+    phi_class: confidential:financial
   - id: oracle-requisition-number
     uri: https://id.healix.example.org/oracle/requisition-number
     description: Oracle Fusion POR_REQUISITION_HEADERS_ALL.REQUISITION_NUMBER
     applies_to: [SupplyRequest]
     assigner: Oracle Fusion Self Service Procurement
-    phi_class: none
+    phi_class: confidential:financial
   - id: oracle-receipt-number
     uri: https://id.healix.example.org/oracle/receipt-number
     description: Oracle Fusion RCV_SHIPMENT_HEADERS.RECEIPT_NUM
     applies_to: [SupplyDelivery]
     assigner: Oracle Fusion Receiving
-    phi_class: none
+    phi_class: confidential:financial
   - id: oracle-contract-number
     uri: https://id.healix.example.org/oracle/contract-number
     description: Oracle Fusion OKC_K_HEADERS_ALL_B.CONTRACT_NUMBER
     applies_to: [Contract]
     assigner: Oracle Fusion Enterprise Contracts
-    phi_class: none
+    phi_class: confidential:financial
   - id: gs1-di
     uri: http://hl7.org/fhir/NamingSystem/gs1-di
     description: GS1 GTIN device identifier portion of UDI
@@ -442,27 +451,28 @@ systems:
     hl7_v2_type: UDI
     assigner: GS1 / FDA GUDID
     format: "^[0-9]{14}$"
-    phi_class: none
+    phi_class: public
   - id: hibcc-di
     uri: http://hl7.org/fhir/NamingSystem/hibcc-di
     description: HIBCC device identifier portion of UDI
     applies_to: [Device]
     hl7_v2_type: UDI
     assigner: HIBCC / FDA GUDID
-    phi_class: none
+    phi_class: public
   - id: device-serial
     uri_template: https://id.healix.example.org/device/{vendor}/serial
     description: Vendor serial number from device gateway or biomedical asset register
     applies_to: [Device]
     hl7_v2_type: SNO
     assigner: Device vendor
-    phi_class: indirect
+    phi_class: phi:direct
+    note: HIPAA identifier 13 when the device is patient-attached; module 11 section 2
   - id: biomed-asset-tag
     uri: https://id.healix.example.org/biomed/asset-tag
     description: Biomedical engineering asset tag
     applies_to: [Device]
     assigner: Biomed CMMS
-    phi_class: none
+    phi_class: confidential:operational
 
   # ---------- G6 / G7 ----------
   - id: measure-id
@@ -470,32 +480,33 @@ systems:
     description: Enterprise quality measure identifier (CMS eCQM id retained as additional identifier)
     applies_to: [Measure, MeasureReport]
     assigner: HEALIX quality programme
-    phi_class: none
+    phi_class: internal
   - id: cms-ecqm-id
     uri: https://ecqi.healthit.gov/ecqm
     description: CMS eCQM identifier (e.g. CMS165v12)
     applies_to: [Measure]
     assigner: CMS
-    phi_class: none
+    phi_class: public
   - id: irb-protocol-number
     uri: https://id.healix.example.org/research/irb-protocol
     description: IRB protocol number
     applies_to: [ResearchStudy]
     assigner: IRB
-    phi_class: none
+    phi_class: internal
   - id: clinicaltrials-gov
     uri: http://clinicaltrials.gov
     description: ClinicalTrials.gov NCT number
     applies_to: [ResearchStudy]
     assigner: NLM
     format: "^NCT[0-9]{8}$"
-    phi_class: none
+    phi_class: public
   - id: research-subject-id
     uri_template: https://id.healix.example.org/research/{protocol}/subject-id
     description: Study-specific subject identifier (never equal to MRN)
     applies_to: [ResearchSubject]
     assigner: Research system
-    phi_class: indirect
+    phi_class: pseudonymised
+    note: study-scoped pseudonym; the linkage key is held by the research system, never emitted
 
   # ---------- G9 Metadata & Governance ----------
   - id: hl7v2-message-control-id
@@ -503,40 +514,40 @@ systems:
     description: HL7 v2 MSH-10 scoped by sending application (MSH-3)
     applies_to: [Provenance]
     assigner: Sending application
-    phi_class: none
+    phi_class: internal
   - id: x12-transaction-id
     uri: https://id.healix.example.org/x12/transaction-id
     description: Composite ISA13-GS06-ST02 identifying one X12 transaction set
     applies_to: [Provenance]
     assigner: HEALIX parser (derived)
-    phi_class: none
+    phi_class: internal
   - id: cdc-change-id
     uri_template: https://id.healix.example.org/cdc/{source}/change-id
     description: Debezium/LogMiner (SCN, table, primary key) tuple for a CDC change
     applies_to: [Provenance]
     assigner: HEALIX CDC connector
-    phi_class: none
+    phi_class: internal
   - id: file-manifest-id
     uri: https://id.healix.example.org/files/manifest-id
     description: Batch file manifest id (IOP-03 §7)
     applies_to: [Provenance]
     assigner: HEALIX bulk loader
-    phi_class: none
+    phi_class: internal
   - id: source-registry-id
     uri: https://id.healix.example.org/source
     description: Source system / interface URI used in meta.source (module 03 Source Registry); value is the path suffix
     applies_to: [Provenance, Device]
     assigner: module 03 Source Registry
-    phi_class: none
+    phi_class: internal
   - id: dq-rule-id
     uri: https://id.healix.example.org/dq/rule-id
     description: DQ rule identifier DQR-<DIMENSION>-<DOMAIN>-<NNN> (module 09)
     applies_to: [Basic, Task]
     assigner: module 09
-    phi_class: none
+    phi_class: internal
   - id: prov-activity-iri
     uri: https://ontology.healix.example.org/graph/
     description: PROV-O activity IRI namespace used by module 08/11; value is the IRI suffix
     applies_to: [Provenance]
     assigner: HEALIX platform
-    phi_class: none
+    phi_class: internal

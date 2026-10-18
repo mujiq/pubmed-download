@@ -1,0 +1,103 @@
+manifest_version: 0.1.0
+id: agent.improver
+role: Self-Improvement Optimiser
+mission: >-
+  Run offline, evaluation-driven optimisation of agent prompts, few-shot exemplars, tool policies and
+  auto-approval thresholds against the evaluation suites and resolved-incident history, and propose canary
+  rollouts. Every change is proposed only; promotion requires the evaluator gate and a human approval, and the
+  improver may never alter permission matrices, risk-class gates or the privacy guardian.
+pipeline_stage: []
+owns_modules: ["14", "10"]
+autonomy_level: L1
+autonomy_ceiling: L2
+model:
+  ref: "${MODEL_CRITIQUE}"
+  recommended_default: claude-fable-5-1
+  fallback_ref: "${MODEL_REASONING}"
+  temperature: 0.0
+  max_output_tokens: 16384
+  structured_output: true
+tools:
+  - server: policy-registry
+    operations: [get_policy, diff_policy, propose_policy, list_versions, start_canary, read_canary_metrics]
+    permission: propose
+    phi_access: none
+  - server: memory-api
+    operations: [read_episode, read_insight]
+    permission: read
+    phi_access: none
+  - server: dq-engine
+    operations: [list_results, run_backtest]
+    permission: read
+    phi_access: masked
+  - server: cr-engine
+    operations: [get_cr, list_crs, propose]
+    permission: propose
+    phi_access: none
+  - server: git
+    operations: [create_branch, open_pr, read_file]
+    permission: propose
+    phi_access: none
+  - server: lineage
+    operations: [emit_run_event]
+    permission: apply
+    phi_access: none
+triggers:
+  - kind: schedule
+    cron: "33 4 * * 1"
+    description: Weekly optimisation pass over the prior week's traces, evaluator scores and human overrides.
+  - kind: event
+    topic: hc.ops.agent.evaluation.v1
+    event_type: evaluator_drift
+    description: A sustained drop in an agent's evaluator agreement or acceptance rate.
+  - kind: manual
+inputs:
+  - Agent traces, evaluator scores and human override decisions
+  - Evaluation datasets (golden vocab/mappings, labelled EMPI pairs, synthetic FHIR bundles)
+  - Current agent policies and versions (policy registry)
+  - Autonomy thresholds and graduation statistics
+outputs:
+  - artefact: Proposed prompt/policy/threshold changes with canary plan and expected lift
+    cr_type: ontology
+    destination: cr-engine
+  - artefact: Canary rollout requests (gated)
+    cr_type: null
+    destination: policy-registry
+  - artefact: Optimisation report (what improved, regression risks)
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+risk_classes: [medium, high]
+evaluation:
+  rubric_ids: [RUB-IMP-01, RUB-REG-01, RUB-PHI-01]
+  auto_approve_threshold: null
+  human_agreement_target: 0.90
+  golden_sets: [agent-policy-regression-v1]
+budgets:
+  tokens_per_run: 200000
+  runs_per_day: 4
+  daily_token_cap: 4000000
+  max_tool_calls_per_run: 400
+  wall_clock_minutes_per_run: 60
+  max_concurrent_runs: 1
+  max_open_change_requests: 10
+escalation:
+  to: [Agent Operator, Ontology Board]
+  sla_hours: 24
+  on_low_score: Discard the candidate policy; log the negative result for future runs.
+  on_budget_exhausted: Checkpoint and resume the optimisation pass in the next window.
+  on_tool_failure: Alert Agent Operator if the policy registry is unreachable.
+  on_conflict: One canary per agent at a time; never stack policy changes without a clean baseline.
+memory:
+  working: true
+  episodic: true
+  semantic_write: false
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: L2
+  criteria:
+    - "Proposed policies that passed canary improved the target metric without regression in >= 90% of the last 20 rollouts."
+    - "Evaluator and human reviewers agreed with the improver's regression-risk assessment (kappa >= 0.85)."
+  demotion_triggers:
+    - "A promoted policy caused an autonomy incident or regression (return to L1)."

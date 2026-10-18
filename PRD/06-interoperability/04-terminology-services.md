@@ -296,4 +296,4 @@ for the full retention window.
 > `effectivePeriod` and `source` properties.
 
 > **IOP-TS-026** (P2, test) — The TS MUST audit every write operation (CodeSystem/ValueSet/ConceptMap create, update,
-> release) as an `AuditEvent` on `hc.canonical.governance.auditevent.fhir.v1` with the acting agent or steward.
+> release) as an `AuditEvent` on `hc.ops.audit.v1` with the acting agent or steward.

@@ -241,48 +241,54 @@ The registry is machine-readable in [`profiles/identifier-systems.yaml`](profile
 below is the normative summary. Base for HEALIX-assigned systems is `https://id.healix.example.org/`. Where HL7 defines
 a system URI it is used unchanged.
 
-| Identifier | `Identifier.system` | v2-0203 type | Source / assigner | PHI class (module 11) |
+| Identifier | `Identifier.system` | v2-0203 type | Source / assigner | `hc-phi-class` (module 11 §3) |
 |------------|---------------------|--------------|-------------------|------------------------|
-| Enterprise person id (EMPI) | `https://id.healix.example.org/empi/enterprise-id` | `PI` | HEALIX entity resolution (module 08) | Direct identifier |
-| Medical Record Number | `https://id.healix.example.org/cerner/mrn` | `MR` | Cerner Millennium (PERSON_ALIAS, alias type MRN) | Direct identifier |
-| Cerner person id | `https://id.healix.example.org/cerner/person-id` | `PI` | Cerner PERSON.PERSON_ID | Direct identifier |
-| Financial / encounter number | `https://id.healix.example.org/cerner/fin` | `AN` | Cerner ENCNTR_ALIAS, alias type FIN NBR | Direct identifier |
-| Cerner encounter id | `https://id.healix.example.org/cerner/encntr-id` | `VN` | Cerner ENCOUNTER.ENCNTR_ID | Direct identifier |
-| Placer order number | `https://id.healix.example.org/cerner/placer-order` | `PLAC` | Cerner ORDERS / ORC-2 | Indirect |
-| Filler order number | `https://id.healix.example.org/cerner/filler-order` | `FILL` | Cerner / LIS ORC-3 | Indirect |
-| LIS accession number | `https://id.healix.example.org/lis/accession` | `ACSN` | LIS | Indirect |
-| Imaging accession number | `https://id.healix.example.org/ris/accession` | `ACSN` | RIS | Indirect |
-| DICOM Study Instance UID | `urn:dicom:uid` (value `urn:oid:<uid>`) | — | Modality / PACS | Indirect |
-| National Provider Identifier | `http://hl7.org/fhir/sid/us-npi` | `NPI` | CMS NPPES | Public |
-| DEA number | `urn:oid:2.16.840.1.113883.4.814` | `DEA` | DEA | Restricted |
-| State licence | `https://id.healix.example.org/licence/<state-iso2>` | `MD` etc. | State boards | Public |
-| Employer Identification Number | `urn:oid:2.16.840.1.113883.4.4` | `TAX` | IRS | Restricted |
-| CLIA number | `urn:oid:2.16.840.1.113883.4.7` | `XX` | CMS | Public |
-| Social Security Number | `http://hl7.org/fhir/sid/us-ssn` | `SS` | SSA — **never published to canonical**; hashed token only (module 11) | Direct, prohibited |
-| Medicare Beneficiary Identifier | `http://hl7.org/fhir/sid/us-mbi` | `MC` | CMS | Direct identifier |
-| Payer member id | `https://id.healix.example.org/payer/<payer-id>/member-id` | `MB` | Payer | Direct identifier |
-| Payer id (X12 NM109 / PI) | `https://id.healix.example.org/payer/payer-id` | `NIIP` / `PAYERID` | CAQH / clearinghouse | Public |
-| Claim control number | `https://id.healix.example.org/rcm/claim-control-number` | — | RCM / clearinghouse (CLM01) | Indirect |
-| Payer claim control number (ICN) | `https://id.healix.example.org/payer/<payer-id>/icn` | — | Payer (835 CLP07) | Indirect |
-| Oracle supplier number | `https://id.healix.example.org/oracle/supplier-number` | — | Oracle Fusion SCM (POZ_SUPPLIERS) | None |
-| Oracle supplier site | `https://id.healix.example.org/oracle/supplier-site-id` | — | Oracle Fusion SCM | None |
-| Oracle person number (HCM) | `https://id.healix.example.org/oracle/person-number` | `EI` | Oracle Fusion HCM | Direct identifier (workforce) |
-| Oracle employee number | `https://id.healix.example.org/oracle/employee-number` | `EN` | Oracle Fusion HCM | Direct identifier (workforce) |
-| Oracle assignment number | `https://id.healix.example.org/oracle/assignment-number` | — | Oracle Fusion HCM | Indirect |
-| Oracle position code | `https://id.healix.example.org/oracle/position-code` | — | Oracle Fusion HCM | None |
-| Oracle legal entity id | `https://id.healix.example.org/oracle/legal-entity-id` | — | Oracle Fusion ERP | None |
-| Oracle ledger id | `https://id.healix.example.org/oracle/ledger-id` | — | Oracle Fusion GL | None |
-| Oracle GL journal header id / line | `https://id.healix.example.org/oracle/gl-journal-header-id`, `.../gl-journal-line` | — | Oracle Fusion GL | None |
-| Oracle PO number / line | `https://id.healix.example.org/oracle/po-number`, `.../po-line` | — | Oracle Fusion Procurement | None |
-| Oracle item number | `https://id.healix.example.org/oracle/item-number` | — | Oracle Fusion Product Hub | None |
-| Oracle inventory organization | `https://id.healix.example.org/oracle/inventory-org-id` | — | Oracle Fusion Inventory | None |
-| Oracle AP/AR invoice number | `https://id.healix.example.org/oracle/ap-invoice-number`, `.../ar-invoice-number` | — | Oracle Fusion Payables / Receivables | None |
-| Device UDI (GS1) | `http://hl7.org/fhir/NamingSystem/gs1-di` | `UDI` | GS1 via FDA GUDID | None |
-| Device serial (gateway) | `https://id.healix.example.org/device/<vendor>/serial` | `SNO` | Device gateway | Indirect |
-| Document unique id | `urn:ietf:rfc:3986` (value `urn:oid:` or `urn:uuid:`) | — | C-CDA `ClinicalDocument/id`, XDS `uniqueId` | Indirect |
-| HL7 v2 message control id | `https://id.healix.example.org/hl7v2/<sending-app>/message-control-id` | — | MSH-10 | None |
+| Enterprise person id (EMPI) | `https://id.healix.example.org/empi/enterprise-id` | `PI` | HEALIX entity resolution (module 08) | `phi:direct` |
+| Medical Record Number | `https://id.healix.example.org/cerner/mrn` | `MR` | Cerner Millennium (PERSON_ALIAS, alias type MRN) | `phi:direct` |
+| Cerner person id | `https://id.healix.example.org/cerner/person-id` | `PI` | Cerner PERSON.PERSON_ID | `phi:direct` |
+| Financial / encounter number | `https://id.healix.example.org/cerner/fin` | `AN` | Cerner ENCNTR_ALIAS, alias type FIN NBR | `phi:direct` |
+| Cerner encounter id | `https://id.healix.example.org/cerner/encntr-id` | `VN` | Cerner ENCOUNTER.ENCNTR_ID | `phi:direct` |
+| Placer order number | `https://id.healix.example.org/cerner/placer-order` | `PLAC` | Cerner ORDERS / ORC-2 | `phi:direct` (identifier 18) |
+| Filler order number | `https://id.healix.example.org/cerner/filler-order` | `FILL` | Cerner / LIS ORC-3 | `phi:direct` (identifier 18) |
+| LIS accession number | `https://id.healix.example.org/lis/accession` | `ACSN` | LIS | `phi:direct` (identifier 18) |
+| Imaging accession number | `https://id.healix.example.org/ris/accession` | `ACSN` | RIS | `phi:direct` (identifier 18) |
+| DICOM Study Instance UID | `urn:dicom:uid` (value `urn:oid:<uid>`) | — | Modality / PACS | `phi:direct` (identifier 18) |
+| National Provider Identifier | `http://hl7.org/fhir/sid/us-npi` | `NPI` | CMS NPPES | `public` |
+| DEA number | `urn:oid:2.16.840.1.113883.4.814` | `DEA` | DEA | `pii:workforce` |
+| State licence | `https://id.healix.example.org/licence/<state-iso2>` | `MD` etc. | State boards | `public` |
+| Employer Identification Number | `urn:oid:2.16.840.1.113883.4.4` | `TAX` | IRS | `confidential:financial` |
+| CLIA number | `urn:oid:2.16.840.1.113883.4.7` | `XX` | CMS | `public` |
+| Social Security Number | `http://hl7.org/fhir/sid/us-ssn` | `SS` | SSA — **never published to canonical**; hashed token only (module 11) | `phi:direct`; prohibited in canonical (`IOP-E-PRIV-301`) |
+| Medicare Beneficiary Identifier | `http://hl7.org/fhir/sid/us-mbi` | `MC` | CMS | `phi:direct` |
+| Payer member id | `https://id.healix.example.org/payer/<payer-id>/member-id` | `MB` | Payer | `phi:direct` |
+| Payer id (X12 NM109 / PI) | `https://id.healix.example.org/payer/payer-id` | `NIIP` / `PAYERID` | CAQH / clearinghouse | `public` |
+| Claim control number | `https://id.healix.example.org/rcm/claim-control-number` | — | RCM / clearinghouse (CLM01) | `phi:direct` (identifier 18) |
+| Payer claim control number (ICN) | `https://id.healix.example.org/payer/<payer-id>/icn` | — | Payer (835 CLP07) | `phi:direct` (identifier 18) |
+| Oracle supplier number | `https://id.healix.example.org/oracle/supplier-number` | — | Oracle Fusion SCM (POZ_SUPPLIERS) | `internal` |
+| Oracle supplier site | `https://id.healix.example.org/oracle/supplier-site-id` | — | Oracle Fusion SCM | `internal` |
+| Oracle person number (HCM) | `https://id.healix.example.org/oracle/person-number` | `EI` | Oracle Fusion HCM | `pii:workforce` |
+| Oracle employee number | `https://id.healix.example.org/oracle/employee-number` | `EN` | Oracle Fusion HCM | `pii:workforce` |
+| Oracle assignment number | `https://id.healix.example.org/oracle/assignment-number` | — | Oracle Fusion HCM | `pii:workforce` |
+| Oracle position code | `https://id.healix.example.org/oracle/position-code` | — | Oracle Fusion HCM | `internal` |
+| Oracle legal entity id | `https://id.healix.example.org/oracle/legal-entity-id` | — | Oracle Fusion ERP | `internal` |
+| Oracle ledger id | `https://id.healix.example.org/oracle/ledger-id` | — | Oracle Fusion GL | `internal` |
+| Oracle GL journal header id / line | `https://id.healix.example.org/oracle/gl-journal-header-id`, `.../gl-journal-line` | — | Oracle Fusion GL | `confidential:financial` |
+| Oracle PO number / line | `https://id.healix.example.org/oracle/po-number`, `.../po-line` | — | Oracle Fusion Procurement | `confidential:financial` |
+| Oracle item number | `https://id.healix.example.org/oracle/item-number` | — | Oracle Fusion Product Hub | `internal` |
+| Oracle inventory organization | `https://id.healix.example.org/oracle/inventory-org-id` | — | Oracle Fusion Inventory | `internal` |
+| Oracle AP/AR invoice number | `https://id.healix.example.org/oracle/ap-invoice-number`, `.../ar-invoice-number` | — | Oracle Fusion Payables / Receivables | `confidential:financial` |
+| Device UDI (GS1) | `http://hl7.org/fhir/NamingSystem/gs1-di` | `UDI` | GS1 via FDA GUDID | `public` |
+| Device serial (gateway) | `https://id.healix.example.org/device/<vendor>/serial` | `SNO` | Device gateway | `phi:direct` (identifier 13 when patient-attached) |
+| Document unique id | `urn:ietf:rfc:3986` (value `urn:oid:` or `urn:uuid:`) | — | C-CDA `ClinicalDocument/id`, XDS `uniqueId` | `phi:direct` (identifier 18) |
+| HL7 v2 message control id | `https://id.healix.example.org/hl7v2/<sending-app>/message-control-id` | — | MSH-10 | `internal` |
 
-Rules: a system URI is registered once, in the YAML, with an owner and PHI class before any mapping may emit it;
+Classification follows module 11 §2–§3: identifiers that uniquely identify a patient record (HIPAA identifiers 1–2,
+4–18, including order, accession, claim and document numbers under identifier 18) are `phi:direct` unless certified as a
+non-derivable token (then `pseudonymised`); workforce identifiers are `pii:workforce`; organisation, ledger and metadata
+keys are `internal`, `confidential:financial` or `public`. Unclassified systems default to `phi:direct` (GOV-PHI-003).
+The class of the most restrictive identifier in a record contributes to its `hc-phi-class` header (§7).
+
+Rules: a system URI is registered once, in the YAML, with an owner and a module 11 `hc-phi-class` tag before any mapping may emit it;
 `agent.source_mapper` proposals that introduce an unregistered system are rejected by the evaluator.
 
 ## 6. Provenance conventions
@@ -316,7 +322,7 @@ record is a Bundle (§7).
 | Deletes / retractions | A FHIR `DELETE` request entry plus a `Provenance` with activity `DELETE`; consumers close valid time (module 08) rather than physically removing. Kafka tombstones are not used on `canonical` because provenance must survive. |
 | Schema Registry | JSON Schema generated from each HEALIX profile (`fhir.schema.json` subset + profile constraints) registered as `<topic>-value` with `BACKWARD_TRANSITIVE` compatibility (`CONVENTIONS.md` §5). |
 | Size | A record MUST be ≤ 1 MiB. Larger payloads (documents, images) are referenced via `DocumentReference.content.attachment.url` pointing to the object store, never embedded. |
-| Compacted snapshots | `hc.canonical.<domain>.<resource>.fhir.snapshot.v1` compacted topics hold the latest version per key for bootstrapping consumers (ARC-NFR-005). |
+| Compacted snapshots | `hc.canonical.<domain>.<resource>.fhir-snapshot.v1` (`fhir-ext-snapshot` for extension resources) compacted topics hold the latest version per key for bootstrapping consumers (ARC-NFR-005); they exist for the conformed-dimension entities listed in STR-TOP-024. |
 
 ## 8. Requirements
 
@@ -363,7 +369,7 @@ record is a Bundle (§7).
 > under `<topic>-value` with `BACKWARD_TRANSITIVE` compatibility.
 
 > **IOP-FHIR-015** (P0, inspection) — The identifier system registry MUST record, for each system, the URI, HL7 v2-0203
-> type, assigning authority (HD namespace and OID where applicable), owner, PHI class and value format.
+> type, assigning authority (HD namespace and OID where applicable), owner, module 11 `hc-phi-class` tag and value format.
 
 > **IOP-FHIR-016** (P1, test) — A mapping proposal that emits an unregistered identifier system or an unbound code system
 > MUST be rejected by `agent.evaluator` before it can be applied.

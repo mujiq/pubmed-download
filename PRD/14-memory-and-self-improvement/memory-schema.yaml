@@ -1,0 +1,1283 @@
+# doc_id: MEM-A1
+# title: HEALIX agent memory record schema (machine-readable contract for the Memory API)
+# module: 14-memory-and-self-improvement
+# validated_by: memory-schema.schema.json (meta-schema; CI lint, MEM-IDX DoD)
+# normative prose: 01-memory-architecture.md (MEM-01) and 02-graphiti-temporal-memory.md (MEM-02)
+# This file defines the record envelope, tiers, scopes, trust tiers, memory classes, the Graphiti and Mem0
+# bindings, retrieval profiles, consolidation parameters, the PHI firewall and the Memory API surface.
+# It is loaded by the Memory API at start-up; any change is a `policy`-class change request (GOV-00 §2.2)
+# owned by the Data Governance Council and the Privacy & Security Office (fixed-point protected, MEM-06 §4).
+
+schema_version: "1.0.0"
+
+artefact:
+  id: MEM-A1
+  module: 14-memory-and-self-improvement
+  version: "0.1.0"
+  status: draft
+  owners: [Agent Platform, Platform SRE, Privacy & Security Office]
+  last_updated: "2026-10-17"
+  depends_on: [MEM-01, MEM-02, MEM-03, MEM-06, TKG-01, AGT-03, AGT-06, GOV-01, GOV-03, OPS-04, STR-02]
+  change_class: policy          # GOV-00 §2.2; automated CRs targeting this file are rejected (MEM-GOV-002)
+  validated_by: memory-schema.schema.json
+
+# ---------------------------------------------------------------------------------------------------------
+# Hard rule (verbatim, binding on every store and cache this file describes)
+# ---------------------------------------------------------------------------------------------------------
+hard_rule:
+  id: MEM-NO-PHI
+  text: >-
+    No tier of memory (M0–M4 as used by this module) and no cache tier (C0–C4) may hold content whose
+    `hc-phi-class` is anything but `non-phi`/`internal` (steward preferences: `pii:workforce` with consent
+    flag). This includes the C0 provider prompt cache: pseudonymised PHI is not permitted.
+  enforced_by: [MEM-ARCH-002, MEM-ARCH-025, MEM-ARCH-026, MEM-ARCH-031, MEM-GRA-005, MEM-CACHE-001]
+  allowed_hc_phi_class: [non-phi, internal]
+  allowed_with_consent_flag: [pii:workforce]     # classes preference / steward_feedback only (GOV-PHI-020)
+
+# ---------------------------------------------------------------------------------------------------------
+# 1. Memory tiers (MEM-01 §2)
+# ---------------------------------------------------------------------------------------------------------
+tiers:
+  - id: M0
+    name: working
+    store: "Temporal workflow state + Redis KV (per run)"
+    scope_kinds: [run, agent]
+    phi_allowed: false
+    bitemporal: false            # run-local; transaction time only via Temporal history
+    retention: "24h"
+    writer: [runtime]
+    reader: [owning run]
+    event_sourced_topic: null
+    governing_doc: MEM-01
+    latency_target_ms: 5
+  - id: M1
+    name: episodic
+    store: "AGT-06 decision log (hc.ops.agent.decision.v1) + Mem0 OSS (pgvector | Qdrant) + Graphiti episodes"
+    scope_kinds: [env, tenant/facility, agent, group, source, interface, steward, run, purpose]
+    phi_allowed: false
+    bitemporal: true
+    retention: "per memory_classes[].retention_days (manifest episodic_retention_days taken when longer)"
+    writer: [Memory API write-gate only]
+    reader: [agents via recall, agent.memory_curator, agent.evaluator, humans via console]
+    event_sourced_topic: hc.ops.memory.write.v1
+    governing_doc: MEM-01
+    latency_target_ms: 150       # recall p95
+  - id: M2
+    name: agent-semantic
+    store: "Graphiti entity graph on Neo4j 5.x (FalkorDB | Neptune swappable), group_id partitioned"
+    scope_kinds: [global, env, tenant/facility, agent, group, source, interface, purpose]
+    phi_allowed: false
+    bitemporal: true
+    retention: "utility-decayed; hot window 400d then JSON-LD archive (rebuildable)"
+    writer: [Memory API write-gate only, agent.memory_curator consolidation via Memory API]
+    reader: [agents via recall]
+    event_sourced_topic: hc.ops.memory.write.v1
+    governing_doc: MEM-02
+    latency_target_ms: 400       # hybrid recall p95
+  - id: M3
+    name: procedural
+    store: "Git (signed tags) + object store; indexed as Graphiti Playbook / PromptVersion / PolicyVersion nodes"
+    scope_kinds: [global, env, agent, group]
+    phi_allowed: false
+    bitemporal: true
+    retention: "indefinite (Git history)"
+    writer: [cr-engine on applied `playbook` | `agent_policy` CR only]
+    reader: [agents, playbook engine, agent.improver]
+    event_sourced_topic: hc.ops.agent.policy.v1
+    governing_doc: MEM-04
+    latency_target_ms: 50
+  - id: M4
+    name: shared-semantic
+    store: "HEALIX ontology registry + temporal knowledge graph (module 02 / 08)"
+    scope_kinds: [global]
+    phi_allowed: false           # as used by this module; KG PHI governance is module 11's, not memory's
+    bitemporal: true
+    retention: "module 08 / OPS-04 §6"
+    writer: [applied CRs via agent.kg_builder only (AGT-MEM-004); never the `memory` server (MEM-ARCH-011)]
+    reader: [agents via graph-query / ontology-registry MCP servers]
+    event_sourced_topic: null
+    governing_doc: TKG-01
+    latency_target_ms: null
+
+# ---------------------------------------------------------------------------------------------------------
+# 2. Scopes (MEM-01 §3)
+# ---------------------------------------------------------------------------------------------------------
+scopes:
+  kinds: [global, env, tenant/facility, agent, group, source, interface, steward, run, purpose]
+  primary_scope_cardinality: 1          # exactly one primary scope; secondary scopes are filters only
+  group_id_template: "healix.<env>.<scope-kind>.<scope-id>"
+  env_source: "GOV-ACC-009 task token (never the request body)"
+  cross_env_reads: forbidden            # MEM-ARCH-004, MEM-GRA-019 → ENV_MISMATCH
+  prod_to_nonprod: "de-identified aggregates only (AGT-MEM-013)"
+  id_patterns:
+    global: '^global$'
+    env: '^(dev|test|uat|prod)$'
+    tenant/facility: '^[A-Z0-9_-]{2,16}$'                   # Source Registry facility code, never a name/address
+    agent: '^agent\.[a-z_]+$'
+    group: '^G[1-9]$'
+    source: '^src\.[a-z0-9_.-]+$'                           # Source Registry id
+    interface: '^if\.[a-z0-9_.-]+$'                         # interface id (e.g. if.cerner.adt.mllp.fac-07)
+    steward: '^steward:[0-9a-f]{64}$'                       # hmac-sha256(salt_env, oidc_sub), GOV-PHI-013
+    run: '^run_[0-9A-HJKMNP-TV-Z]{26}$'
+    purpose: '^[A-Z][A-Z0-9_-]{1,32}$'                      # GOV-01 §4 purpose-of-use code
+  graphiti_group_id_by_kind:
+    global: "healix.<env>.global.all"
+    env: "healix.<env>.env.<env>"
+    tenant/facility: "healix.<env>.facility.<code>"
+    agent: "healix.<env>.agent.<role>"
+    group: "healix.<env>.group.<Gn>"
+    source: "healix.<env>.source.<id>"
+    interface: "healix.<env>.interface.<id>"
+    steward: "healix.<env>.steward.<hash>"
+    run: null                                               # not partitioned; episode attribute
+    purpose: "healix.<env>.purpose.<code>"
+  mem0_mapping:
+    user_id: "steward:<hash> | agent:<agent_id>"
+    agent_id: "agent.<role> (mandatory)"
+    run_id: "run_<ULID> (mandatory)"
+    metadata.scope: "global | facility:<code> | group:<Gn> | source:<id> | interface:<id> | purpose:<code>"
+    metadata.env: "from token"
+  facility_partitioning: "multi-hospital estates partition facility-scoped memory per facility (Cerner multi-domain)"
+  x-requirements: [MEM-ARCH-004, MEM-ARCH-023, MEM-GRA-004, MEM-GRA-019]
+
+# ---------------------------------------------------------------------------------------------------------
+# 3. Trust tiers (MEM-06 §2)
+# ---------------------------------------------------------------------------------------------------------
+trust_tiers:
+  - id: T0
+    name: data-derived (untrusted)
+    ranking_weight: 0.5
+    settable_via_remember: true
+    may_influence: [observation ranking, hypothesis generation]
+    may_not_influence: [prompts, thresholds, playbooks, procedural promotion, contradiction of T2+]
+  - id: T1
+    name: agent-observed
+    ranking_weight: 0.7
+    settable_via_remember: true
+    may_influence: [recall context, episodic→semantic promotion (with ≥ 3 episodes / ≥ 2 runs)]
+    may_not_influence: [procedural promotion, playbook limits/guards]
+  - id: T2
+    name: evaluator-confirmed
+    ranking_weight: 0.85
+    settable_via_remember: true          # only by agent.evaluator; otherwise via confirm (MEM-ARCH-013)
+    may_influence: [semantic→procedural promotion (CR only), improvement hypotheses]
+    may_not_influence: [direct artefact change without CR]
+  - id: T3
+    name: human-confirmed
+    ranking_weight: 1.0
+    settable_via_remember: false         # reached only via confirm by human principal
+    may_influence: [procedural promotion (CR only), steward preference precedence]
+    may_not_influence: [policy-class artefacts]
+  - id: T4
+    name: policy
+    ranking_weight: 1.0
+    settable_via_remember: false         # unreachable through the API; humans/DGC only
+    may_influence: [everything, via policy-class CR]
+    may_not_influence: []
+x-requirements-trust-tiers: [MEM-ARCH-013, MEM-GOV-001, MEM-GRA-034]
+
+# ---------------------------------------------------------------------------------------------------------
+# 4. Memory classes (MEM-01 §4; record_type groups them into the five coarse kinds)
+#    record_type ∈ episode | decision | preference | playbook | insight
+# ---------------------------------------------------------------------------------------------------------
+memory_classes:
+  - id: preference
+    record_type: preference
+    tier: M1
+    materialised_in: [mem0, graphiti]
+    retention_days: 365                      # rolling; pii:workforce; consent flag; in-region (GOV-PHI-020)
+    purge_on_request_hours: 24
+    trust_floor: T1
+    writers: [L2+ agents on steward feedback, hitl-console]
+    untrusted_text_allowed: false
+    promotable_to: null
+    required_fields: [scope.steward_hash, content.json, evidence_refs]
+  - id: decision
+    record_type: decision
+    tier: M1
+    materialised_in: [mem0, graphiti]
+    retention_days: "manifest:episodic_retention_days"   # max(2555, manifest)
+    retention_days_min: 2555
+    trust_floor: T1
+    writers: [runtime, cr-engine]
+    untrusted_text_allowed: false
+    promotable_to: semantic
+    required_fields: [provenance.cr_id, content.json]
+  - id: outcome
+    record_type: decision
+    tier: M1
+    materialised_in: [graphiti]
+    retention_days: "manifest:episodic_retention_days"
+    retention_days_min: 2555
+    trust_floor: T1
+    writers: [cr-engine, agent.evaluator]
+    untrusted_text_allowed: false
+    promotable_to: semantic
+    required_fields: [provenance.cr_id, content.json]
+  - id: observation
+    record_type: episode
+    tier: M1
+    materialised_in: [graphiti]
+    retention_days: 180                      # then archive if utility < 0.1
+    trust_floor: T0
+    writers: [any agent, agent.memory_curator]
+    untrusted_text_allowed: true
+    promotable_to: hypothesis
+    required_fields: [content, evidence_refs]
+  - id: hypothesis
+    record_type: insight
+    tier: M1
+    materialised_in: [graphiti]
+    retention_days: 180
+    trust_floor: T0
+    writers: [any agent, agent.self_healer, agent.improver]
+    untrusted_text_allowed: true
+    promotable_to: semantic                  # after confirm (T2+)
+    required_fields: [content, confidence, evidence_refs]
+  - id: incident
+    record_type: episode
+    tier: M1
+    materialised_in: [graphiti]
+    retention_days: "manifest:episodic_retention_days"
+    retention_days_min: 2555
+    trust_floor: T1
+    writers: [agent.self_healer, playbook-engine]
+    untrusted_text_allowed: false
+    promotable_to: semantic
+    required_fields: [provenance.incident_id, content.json]
+  - id: root_cause
+    record_type: insight
+    tier: M1
+    also_tier: M2
+    materialised_in: [graphiti]
+    retention_days: "manifest:episodic_retention_days"
+    retention_days_min: 2555
+    trust_floor: T2
+    writers: [agent.self_healer after verification, human]
+    untrusted_text_allowed: true             # masked (GOV-LIN-015)
+    promotable_to: procedural                # via CR only
+    required_fields: [provenance.incident_id, content, confidence]
+  - id: playbook_step
+    record_type: playbook
+    tier: M3
+    materialised_in: [git, graphiti-index]
+    retention_days: indefinite
+    trust_floor: T2
+    writers: [cr-engine]                     # CR only (MEM-GRA-033)
+    untrusted_text_allowed: false
+    promotable_to: null
+    required_fields: [entities, provenance.cr_id, content.json]
+  - id: evaluation_lesson
+    record_type: insight
+    tier: M1
+    materialised_in: [graphiti]
+    retention_days: "manifest:episodic_retention_days"
+    retention_days_min: 2555
+    trust_floor: T1
+    writers: [agent.evaluator, agent.improver]   # via reflect
+    untrusted_text_allowed: true
+    promotable_to: semantic
+    required_fields: [provenance.evaluation_run_id, content]
+  - id: steward_feedback
+    record_type: preference
+    tier: M1
+    materialised_in: [mem0, graphiti]
+    retention_days: 365
+    purge_on_request_hours: 24
+    trust_floor: T3
+    writers: [hitl-console]
+    untrusted_text_allowed: true             # masked
+    promotable_to: preference
+    required_fields: [scope.steward_hash, provenance.cr_id, content]
+  - id: source_quirk
+    record_type: insight
+    tier: M2
+    materialised_in: [graphiti]
+    retention_days: 730
+    trust_floor: T1
+    writers: [agent.source_mapper, agent.inventory, agent.self_healer]
+    untrusted_text_allowed: false
+    promotable_to: procedural                # via CR only
+    required_fields: [entities, content.json, evidence_refs]
+  - id: mapping_rationale
+    record_type: decision
+    tier: M2
+    also_tier: M3
+    materialised_in: [graphiti, git]
+    retention_days: indefinite
+    trust_floor: T2
+    writers: [agent.source_mapper, agent.terminology_steward]   # via CR
+    untrusted_text_allowed: false
+    promotable_to: null
+    required_fields: [ontology_iris, provenance.cr_id, content.json]
+  - id: code_surge_signature
+    record_type: episode
+    tier: M2
+    materialised_in: [graphiti]
+    retention_days: 180
+    trust_floor: T0
+    writers: [agent.terminology_steward, agent.self_healer]
+    untrusted_text_allowed: false
+    promotable_to: source_quirk
+    required_fields: [entities, content.json]       # code system IRI + hour-of-day histogram + counts (n ≥ 11)
+  - id: drift_signature
+    record_type: episode
+    tier: M2
+    materialised_in: [graphiti]
+    retention_days: 180
+    trust_floor: T0
+    writers: [agent.dq_monitor, agent.self_healer]
+    untrusted_text_allowed: false
+    promotable_to: source_quirk
+    required_fields: [entities, content.json]       # rule id + statistic deltas + window
+x-requirements-memory-classes: [MEM-ARCH-010, MEM-ARCH-021, MEM-ARCH-036, MEM-GRA-033]
+
+# ---------------------------------------------------------------------------------------------------------
+# 5. Record envelope — JSON Schema (draft 2020-12). Validated at write-gate stage 1 (MEM-01 §6).
+#    Field aliases to Graphiti: valid_from→valid_at, valid_to→invalid_at, recorded_at→created_at,
+#    superseded_at→expired_at (see graphiti.time_mapping). Memory records are NOT healix-time:BitemporalAssertion
+#    instances; they export in TKG-TIME-014 n-ary form.
+# ---------------------------------------------------------------------------------------------------------
+record:
+  $schema: "https://json-schema.org/draft/2020-12/schema"
+  $id: "https://ontology.healix.example.org/schema/memory/record/1.0.0"
+  title: HEALIX memory record
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - record_type
+    - class
+    - scope
+    - content
+    - evidence_refs
+    - valid_from
+    - recorded_at
+    - change_kind
+    - confidence
+    - trust_tier
+    - provenance
+    - phi_class
+    - phi_scan
+    - untrusted_text
+    - status
+    - signature
+  properties:
+    id:
+      type: string
+      pattern: '^MEM-[0-9]{8}-[0-9A-HJKMNP-TV-Z]{26}$'
+      description: "MEM-<yyyymmdd>-<ULID>; yyyymmdd is the UTC recorded_at date"
+    record_type:
+      type: string
+      enum: [episode, decision, preference, playbook, insight]
+    class:
+      type: string
+      enum: [preference, decision, outcome, observation, hypothesis, incident, root_cause, playbook_step,
+             evaluation_lesson, steward_feedback, source_quirk, mapping_rationale, code_surge_signature,
+             drift_signature]
+    tier:
+      type: string
+      enum: [M1, M2, M3]
+      description: "Target tier; derived from class if omitted. M0 is never persisted; M4 is never written here."
+    scope:
+      type: object
+      additionalProperties: false
+      required: [kind, id, env]
+      properties:
+        kind:
+          type: string
+          enum: [global, env, tenant/facility, agent, group, source, interface, steward, run, purpose]
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        env:
+          type: string
+          enum: [dev, test, uat, prod]
+          description: "Set by the Memory API from the GOV-ACC-009 token; a caller-supplied value that differs ⇒ ENV_MISMATCH"
+        facility_code:
+          type: string
+          pattern: '^[A-Z0-9_-]{2,16}$'
+        group:
+          type: string
+          pattern: '^G[1-9]$'
+        steward_hash:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: "hmac-sha256(salt_env, oidc_sub); never name, e-mail or OIDC subject"
+        secondary:
+          type: array
+          maxItems: 8
+          items:
+            type: object
+            additionalProperties: false
+            required: [kind, id]
+            properties:
+              kind:
+                type: string
+                enum: [global, env, tenant/facility, agent, group, source, interface, steward, run, purpose]
+              id:
+                type: string
+                maxLength: 128
+        group_id:
+          type: string
+          pattern: '^healix\.(dev|test|uat|prod)\.(global|env|facility|agent|group|source|interface|steward|purpose)\.[A-Za-z0-9_.:-]{1,80}$'
+          description: "Graphiti group_id; computed by the Memory API, read-only to callers"
+    agent_id:
+      type: string
+      pattern: '^agent\.[a-z_]+$'
+      description: "Convenience copy of provenance.agent_id (must be identical)"
+    graphiti_episode_id:
+      type: string
+      maxLength: 128
+      description: "Set by the Memory API after async Graphiti ingestion; absent while pending or when Graphiti degraded"
+    content:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        text:
+          type: string
+          maxLength: 2000
+          description: "Masked reflection text (GOV-LIN-015). Requires untrusted_text: true."
+        json:
+          type: object
+          description: "Structured content ≤ 4 KiB serialised (enforced by the gate as SIZE)"
+        json_bytes:
+          type: integer
+          maximum: 4096
+        format:
+          type: string
+          enum: [text, json]
+    entities:
+      type: array
+      maxItems: 32
+      items:
+        type: object
+        additionalProperties: false
+        required: [type, id]
+        properties:
+          type:
+            type: string
+            enum: [SourceSystem, Interface, Connector, Topic, SchemaVersion, DataElement, CodeSystem, Code, ValueSet,
+                   MappingRule, DQRule, DQThreshold, SubjectAreaGroup, Incident, Symptom, RootCause, Playbook,
+                   PlaybookRun, Action, Outcome, Agent, Steward, ChangeRequest, EvaluationRun, Rubric, PromptVersion,
+                   PolicyVersion, Hypothesis, Lesson, Environment, Facility, Signal]
+          id:
+            type: string
+            maxLength: 256
+          registry_iri:
+            type: string
+            format: uri
+            pattern: '^https://ontology\.healix\.example\.org/(?!id/)'
+            description: "Ontology/registry IRIs only; instance IRIs <base>id/… are forbidden (MEM-GRA-014)"
+    relations:
+      type: array
+      maxItems: 32
+      items:
+        type: object
+        additionalProperties: false
+        required: [edge_type, from, to, fact]
+        properties:
+          edge_type:
+            type: string
+            enum: [EXHIBITED_SYMPTOM, CAUSED_BY, RESOLVED_BY, APPLIED_ACTION, PRODUCED_OUTCOME, PREFERS, REJECTED,
+                   APPROVED, DRIFTED_TO, SUGGESTED_MAPPING, THRESHOLD_SET, SUPERSEDES, DERIVED_FROM, CONFIRMED_BY,
+                   CONTRADICTED_BY, LEARNED_FROM, APPLIES_TO, EVALUATED_BY, PROMOTED_FROM, DEPENDS_ON, OWNED_BY,
+                   OBSERVED_ON]
+          from:
+            type: string
+            maxLength: 256
+          to:
+            type: string
+            maxLength: 256
+          fact:
+            type: string
+            maxLength: 512
+          confidence:
+            type: number
+            minimum: 0
+            maximum: 1
+    ontology_iris:
+      type: array
+      maxItems: 64
+      uniqueItems: true
+      items:
+        type: string
+        format: uri
+        pattern: '^https://ontology\.healix\.example\.org/(?!id/)'
+      description: "HEALIX ontology / scheme / value-set / ConceptMap IRIs the record is about (never instance IRIs)"
+    evidence_refs:
+      type: array
+      minItems: 1
+      maxItems: 32
+      items:
+        type: object
+        additionalProperties: false
+        required: [kind, ref]
+        properties:
+          kind:
+            type: string
+            enum: [cr_id, incident_id, run_id, artefact_iri, rule_id, topic]
+          ref:
+            type: string
+            maxLength: 512
+          resolved_at:
+            type: string
+            format: date-time
+            description: "Set by write-gate stage 6; unresolved ⇒ NO_EVIDENCE"
+    valid_from:
+      type: string
+      format: date-time
+      description: "healix-time:validFrom (TKG-01 C1); inclusive; UTC"
+    valid_to:
+      type: [string, "null"]
+      format: date-time
+      description: "healix-time:validTo (C2); exclusive; null = open"
+    valid_time_precision:
+      type: string
+      enum: [instant, day, month, year, approximate]
+      default: instant
+    recorded_at:
+      type: string
+      format: date-time
+      description: "healix-time:recordedAt (C3); Memory API commit clock at write-log append; never caller-supplied"
+    superseded_at:
+      type: [string, "null"]
+      format: date-time
+      description: "healix-time:supersededAt (C4); exclusive; null = current"
+    superseded_by:
+      type: [string, "null"]
+      pattern: '^MEM-[0-9]{8}-[0-9A-HJKMNP-TV-Z]{26}$'
+    change_kind:
+      type: string
+      enum: [new, new-version, correction, retraction, merge, unmerge]
+      description: "healix-time:changeKind SKOS scheme (TKG-01 §4); set by the Memory API, never by Graphiti heuristics"
+    source_tz:
+      type: string
+      default: UTC
+      description: "healix-time:sourceTimeZone (C12); UTC for agent events; source zone kept when the fact is about a source clock"
+    confidence:
+      type: number
+      minimum: 0
+      maximum: 1
+    trust_tier:
+      type: string
+      enum: [T0, T1, T2, T3, T4]
+      description: "remember accepts T0–T2 only (T2 only from agent.evaluator); T3 via confirm by human; T4 unreachable"
+    provenance:
+      type: object
+      additionalProperties: false
+      required: [agent_id, run_id, prompt_version, model, prov_activity_iri, trace_id]
+      properties:
+        agent_id:
+          type: string
+          pattern: '^(agent\.[a-z_]+|human:[0-9a-f]{64}|system\.(cr-engine|playbook-engine|hitl-console|runtime))$'
+        run_id:
+          type: string
+          pattern: '^run_[0-9A-HJKMNP-TV-Z]{26}$'
+        cr_id:
+          type: string
+          pattern: '^CR-[0-9]{8}-[0-9A-HJKMNP-TV-Z]{26}$'
+        incident_id:
+          type: string
+          pattern: '^INC-[0-9]{8}-[0-9A-HJKMNP-TV-Z]{26}$'
+        evaluation_run_id:
+          type: string
+          maxLength: 128
+        recursion_id:
+          type: string
+          pattern: '^REC-[0-9]{8}-[0-9A-HJKMNP-TV-Z]{26}$'
+        prompt_version:
+          type: string
+          pattern: '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+        model:
+          type: string
+          maxLength: 64
+        prov_activity_iri:
+          type: string
+          format: uri
+          description: "PROV-O activity minted by the write-gate (C5)"
+        trace_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        memory_degraded:
+          type: boolean
+          default: false
+        recalled_memory_ids:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            pattern: '^MEM-[0-9]{8}-[0-9A-HJKMNP-TV-Z]{26}$'
+    phi_class:
+      type: string
+      const: none
+      description: "MUST be none. Any other value fails validation before scanning (hard_rule)."
+    hc_phi_class:
+      type: string
+      enum: [non-phi, internal, pii:workforce]
+      default: non-phi
+      description: "GOV-01 §3 tag; pii:workforce only for preference / steward_feedback with consent_flag true"
+    consent_flag:
+      type: boolean
+      description: "Required true when hc_phi_class = pii:workforce (GOV-PHI-020)"
+    phi_scan:
+      type: object
+      additionalProperties: false
+      required: [version, result, scanned_at]
+      properties:
+        version:
+          type: string
+          description: "GOV-PHI-004 scanner_version in effect"
+        judge_model:
+          type: string
+        result:
+          type: string
+          enum: [clean, redacted, rejected]
+        scanned_at:
+          type: string
+          format: date-time
+        k_anonymity_ok:
+          type: boolean
+          description: "false ⇒ small cells (n < 11) were suppressed or the record rejected"
+    injection_scan:
+      type: object
+      additionalProperties: false
+      properties:
+        result:
+          type: string
+          enum: [clean, suspected]
+        version:
+          type: string
+    untrusted_text:
+      type: boolean
+      description: "true whenever content.text is present; such text is only ever rendered inside the quoted untrusted block (MEM-ARCH-009)"
+    ttl_days:
+      type: [integer, "null"]
+      minimum: 1
+      description: "Resolved from memory_classes[].retention_days and manifest episodic_retention_days (longer wins); null = indefinite"
+    retention_until:
+      type: [string, "null"]
+      format: date-time
+    legal_hold:
+      type: boolean
+      default: false
+      description: "OPS-04 §7; suspends disposition"
+    status:
+      type: string
+      enum: [proposed, active, superseded, retracted, expired, quarantined, tombstoned, purged]
+    stale:
+      type: boolean
+      default: false
+      description: "Set by nightly link check when a referenced HEALIX IRI no longer resolves (MEM-GRA-015)"
+    archived:
+      type: boolean
+      default: false
+      description: "Storage move to JSON-LD archive after utility decay; not a belief change"
+    utility:
+      type: number
+      minimum: 0
+      description: "recalls × outcome_correlation × 2^(−age/half_life); maintained by consolidation"
+    recall_count:
+      type: integer
+      minimum: 0
+    stored_in:
+      type: array
+      uniqueItems: true
+      items:
+        type: string
+        enum: [write_log, mem0, graphiti, git, archive]
+    signature:
+      type: object
+      additionalProperties: false
+      required: [alg, key_id, value]
+      properties:
+        alg:
+          type: string
+          enum: [ed25519, ecdsa-p256]
+        key_id:
+          type: string
+        value:
+          type: string
+          description: "Signature over canonical JSON of the record minus signature (write-gate stage 8)"
+  allOf:
+    - if:
+        properties:
+          content:
+            required: [text]
+      then:
+        properties:
+          untrusted_text:
+            const: true
+    - if:
+        required: [hc_phi_class]
+        properties:
+          hc_phi_class:
+            const: pii:workforce
+      then:
+        required: [consent_flag]
+        properties:
+          consent_flag:
+            const: true
+          class:
+            enum: [preference, steward_feedback]
+    - if:
+        properties:
+          change_kind:
+            enum: [retraction]
+      then:
+        properties:
+          status:
+            enum: [retracted]
+          superseded_at:
+            type: string
+    - if:
+        properties:
+          class:
+            enum: [preference, steward_feedback]
+      then:
+        properties:
+          scope:
+            required: [steward_hash]
+  x-requirements: [MEM-ARCH-001, MEM-ARCH-003, MEM-ARCH-009, MEM-ARCH-013, MEM-ARCH-014, MEM-GRA-002, MEM-GRA-014]
+
+# ---------------------------------------------------------------------------------------------------------
+# 6. Graphiti binding (MEM-02 §3–§5)
+# ---------------------------------------------------------------------------------------------------------
+graphiti:
+  deployment:
+    store_default: "Neo4j 5.x"
+    store_alternatives: [FalkorDB, Neptune]
+    one_database_per_env: true
+    llm_extract_model: "${MODEL_MEMORY_EXTRACT}"     # Haiku-class via GOV-ACC-018 proxy, GOV-PHI-017 zero retention
+    embedder: "${MODEL_EMBED}"
+    reranker: "${MODEL_RERANK}"
+    episode_types: [text, json, message]
+    async_ingestion: true
+    recall_after_append_p95_s: 60
+    cost_envelope_fraction_of_agent_tokens: 0.02
+    sizing_year1: {max_nodes: 50000000, max_edges: 500000000}
+  group_id_template: "healix.<env>.<scope-kind>.<scope-id>"
+  unknown_entity_policy: drop_and_count       # never auto-create; > 5 % per hour ⇒ FLT-PLAT-007 incident
+  forbidden_entity_types: [Patient, Person, Encounter, Claim, Worker, Practitioner, Location, Document]
+  forbidden_attributes:
+    - free-text names
+    - dates of birth
+    - MRN
+    - FIN_NBR
+    - PERSON_ID
+    - ENCNTR_ID
+    - PERSON_NUMBER
+    - PARTY_ID
+    - ASSIGNMENT_ID
+    - addresses
+    - phone or e-mail
+    - account or claim numbers
+    - segment text from PID/NK1/IN1/GT1/NTE/OBX-5
+    - raw tool outputs
+    - pseudonymised patient or worker tokens
+  entity_types:
+    - {name: SourceSystem, attributes: [id, kind, vendor], kind_enum: [cerner, fusion, peripheral]}
+    - {name: Interface, attributes: [id, protocol, engine], protocol_enum: [mllp, cdc, bicc, fhir, sftp], engine_enum: [cloverleaf, rhapsody, none]}
+    - {name: Connector, attributes: [id, type, manifest_version]}
+    - {name: Topic, attributes: [name, layer, phi_class]}
+    - {name: SchemaVersion, attributes: [subject, version, compat]}
+    - {name: DataElement, attributes: [element_id, registry_iri, phi_class]}
+    - {name: CodeSystem, attributes: [iri, version]}
+    - {name: Code, attributes: [system_iri, code], note: "code identity only; never a code in patient context"}
+    - {name: ValueSet, attributes: [iri, version]}
+    - {name: MappingRule, attributes: [rule_id, from_element, to_fhir_path, version]}
+    - {name: DQRule, attributes: [rule_id, dimension, version]}
+    - {name: DQThreshold, attributes: [rule_id, value, since]}
+    - {name: SubjectAreaGroup, attributes: [code], code_enum: [G1, G2, G3, G4, G5, G6, G7, G8, G9]}
+    - {name: Incident, attributes: [incident_id, fault_class, severity]}
+    - {name: Symptom, attributes: [signal_id, value_summary]}
+    - {name: RootCause, attributes: [category, summary_masked], untrusted_text: true}
+    - {name: Playbook, attributes: [playbook_id, version, status]}
+    - {name: PlaybookRun, attributes: [run_id, incident_id, outcome]}
+    - {name: Action, attributes: [action_id, blast_radius_class, ladder_level]}
+    - {name: Outcome, attributes: [status, verified_at]}
+    - {name: Agent, attributes: [agent_id, autonomy_level]}
+    - {name: Steward, attributes: [hash, role], forbidden_attributes: [name, email, oidc_sub, employee_number, PERSON_NUMBER]}
+    - {name: ChangeRequest, attributes: [cr_id, cr_type, risk_class, state]}
+    - {name: EvaluationRun, attributes: [eval_id, rubric_id, score]}
+    - {name: Rubric, attributes: [rubric_id, version]}
+    - {name: PromptVersion, attributes: [agent_id, semver, git_tag]}
+    - {name: PolicyVersion, attributes: [bundle_id, semver]}
+    - {name: Hypothesis, attributes: [summary_masked, confidence], untrusted_text: true}
+    - {name: Lesson, attributes: [summary_masked, trust_tier], untrusted_text: true}
+    - {name: Environment, attributes: [name], name_enum: [dev, test, uat, prod]}
+    - {name: Facility, attributes: [code], forbidden_attributes: [name, address, phone]}
+    - {name: Signal, attributes: [sli_id], note: "S1..S22 or OPS-03 §4.2 alert name"}
+  edge_required_facts: [confidence, evidence_refs, trust_tier, valid_at, invalid_at, created_at, expired_at, change_kind, prov_activity_iri]
+  edge_types:
+    - {name: EXHIBITED_SYMPTOM, domain: [Incident], range: [Symptom], fact_template: "{incident} exhibited {signal} {comparator} {value}", validity: "while symptom observed"}
+    - {name: CAUSED_BY, domain: [Incident], range: [RootCause], fact_template: "{incident} was caused by {category}", validity: "corrected if post-mortem changes cause"}
+    - {name: RESOLVED_BY, domain: [Incident], range: [Playbook], fact_template: "{incident} resolved by {playbook}@{version}", validity: "set on resolved; expired on rolled_back"}
+    - {name: APPLIED_ACTION, domain: [PlaybookRun], range: [Action], fact_template: "{run} applied {action} (ladder {L}, class {c})", validity: instant}
+    - {name: PRODUCED_OUTCOME, domain: [Action], range: [Outcome], fact_template: "{action} produced {status}", validity: instant}
+    - {name: PREFERS, domain: [Steward], range: [MappingRule, DQThreshold, ValueSet, ChangeRequest], fact_template: "steward {hash} prefers {artefact}", validity: "until changed (new-version)"}
+    - {name: REJECTED, domain: [Steward], range: [MappingRule, DQThreshold, ValueSet, ChangeRequest], fact_template: "steward {hash} rejected {artefact}", validity: "until changed (new-version)"}
+    - {name: APPROVED, domain: [Steward], range: [MappingRule, DQThreshold, ValueSet, ChangeRequest], fact_template: "steward {hash} approved {artefact}", validity: "until changed (new-version)"}
+    - {name: DRIFTED_TO, domain: [SchemaVersion, DQThreshold], range: [SchemaVersion, DQThreshold], fact_template: "{a} drifted to {b} observed at {t}", validity: "from observation"}
+    - {name: SUGGESTED_MAPPING, domain: [Agent], range: [MappingRule], fact_template: "{agent} suggested {rule} with evaluator {score}", validity: "expired when rule superseded"}
+    - {name: THRESHOLD_SET, domain: [DQRule], range: [DQThreshold], fact_template: "{rule} threshold set to {v}", validity: "closed by next threshold (new-version)"}
+    - {name: SUPERSEDES, domain: [any], range: [same-type], fact_template: "{new} supersedes {old} ({change_kind})", validity: "instant; mirrors healix-time:supersededBy"}
+    - {name: DERIVED_FROM, domain: [Playbook, PromptVersion, Lesson], range: [Incident, Lesson, EvaluationRun], fact_template: "{artefact} derived from {source}", validity: "permanent; recursion lineage (MEM-06 §5)"}
+    - {name: CONFIRMED_BY, domain: [Lesson, Hypothesis], range: [EvaluationRun, Steward, Outcome], fact_template: "{claim} confirmed by {evidence}", validity: permanent}
+    - {name: CONTRADICTED_BY, domain: [Lesson, Hypothesis], range: [EvaluationRun, Steward, Outcome], fact_template: "{claim} contradicted by {evidence}", validity: permanent}
+    - {name: LEARNED_FROM, domain: [Lesson], range: [Incident, PlaybookRun, ChangeRequest], fact_template: "{lesson} learned from {source}", validity: permanent}
+    - {name: APPLIES_TO, domain: [Playbook, DQRule, MappingRule], range: [Interface, Topic, DataElement, SourceSystem], fact_template: "{artefact} applies to {target}", validity: "while artefact version active"}
+    - {name: EVALUATED_BY, domain: [ChangeRequest, PromptVersion], range: [EvaluationRun], fact_template: "{cr} scored {score} on {rubric}", validity: instant}
+    - {name: PROMOTED_FROM, domain: [Lesson, Playbook], range: [Lesson], fact_template: "{semantic} promoted from {episodic}", validity: "permanent; consolidation lineage"}
+    - {name: DEPENDS_ON, domain: [Topic, Connector, Interface], range: [SchemaVersion, CodeSystem, Connector], fact_template: "{a} depends on {b}", validity: "while declared"}
+    - {name: OWNED_BY, domain: [DataElement, DQRule, ValueSet], range: [Steward, SubjectAreaGroup], fact_template: "{artefact} owned by {owner}", validity: "while assigned"}
+    - {name: OBSERVED_ON, domain: [Symptom, Hypothesis], range: [Interface, Topic, Environment, Facility], fact_template: "{thing} observed on {where}", validity: instant}
+  time_mapping:                               # normative (MEM-02 §5); Memory API owns change_kind
+    - {graphiti: valid_at, record_field: valid_from, tkg_term: "healix-time:validFrom", clause: C1, rule: "inclusive; from episode reference_time or explicit temporal statement; UTC"}
+    - {graphiti: invalid_at, record_field: valid_to, tkg_term: "healix-time:validTo", clause: C2, rule: "exclusive; null = open"}
+    - {graphiti: created_at, record_field: recorded_at, tkg_term: "healix-time:recordedAt", clause: C3, rule: "Memory API commit clock at write-log append; drift > 1 s alerted"}
+    - {graphiti: expired_at, record_field: superseded_at, tkg_term: "healix-time:supersededAt", clause: C4, rule: "exclusive; null = current; set by invalidate_edge / correct / retract; never delete"}
+    - {graphiti: "attr change_kind", record_field: change_kind, tkg_term: "healix-time:changeKind", clause: C6, rule: "new | new-version | correction | retraction | merge | unmerge; set by Memory API only"}
+    - {graphiti: "attr prov_activity_iri", record_field: provenance.prov_activity_iri, tkg_term: "prov:wasGeneratedBy", clause: C5, rule: "minted at write-gate stage 8"}
+    - {graphiti: "attr valid_time_precision", record_field: valid_time_precision, tkg_term: "healix-time:validTimePrecision", clause: null, rule: "approximate for LLM-inferred valid_at"}
+    - {graphiti: "attr source_tz", record_field: source_tz, tkg_term: "healix-time:sourceTimeZone", clause: C12, rule: "UTC for agent events"}
+  change_kind_derivation:
+    heuristic_invalidation_by_graphiti: correction       # valid time untouched; expired_at set; SUPERSEDES edge
+    explicit_temporal_statement: new-version             # invalid_at(old) = valid_at(new)
+    retract_operation: retraction                        # expired_at set; valid interval preserved; never deleted
+    entity_dedupe: merge                                 # merge events; endpoints never rewritten
+  skew_guard:
+    reference_time_required: true
+    max_future_s: 86400
+    min_reference_time: earliest_retained_write_log_offset
+    on_violation: {reason_code: TEMPORAL_SKEW, action: reject, clamp: false}
+  export_form: "TKG-TIME-014 n-ary (not healix-time:BitemporalAssertion instances)"
+  x-requirements: [MEM-GRA-002, MEM-GRA-005, MEM-GRA-008, MEM-GRA-009, MEM-GRA-010, MEM-GRA-011, MEM-GRA-013, MEM-GRA-014, MEM-GRA-016]
+
+# ---------------------------------------------------------------------------------------------------------
+# 7. Mem0 binding (MEM-01 §5)
+# ---------------------------------------------------------------------------------------------------------
+mem0:
+  deployment: "OSS self-hosted in-VPC"
+  vector_store: ["pgvector", "qdrant"]
+  embedding_model: "${MODEL_EMBED}"
+  llm_model: "${MODEL_MEMORY_EXTRACT}"            # via GOV-ACC-018 proxy, GOV-PHI-017 zero retention
+  graph_memory: false                             # enable_graph: true fails deployment (MEM-ARCH-015)
+  classes_materialised: [preference, decision, steward_feedback]
+  scoping:
+    user_id: "steward:<hash> | agent:<agent_id>"
+    agent_id: mandatory
+    run_id: mandatory
+    metadata_scope: mandatory
+  custom_prompts:
+    custom_fact_extraction_prompt_ref: "MEM-01 §5 (PHI-forbidding, class-enforcing, cross-scope-merge-forbidding)"
+    custom_update_memory_prompt_ref: "MEM-01 §5"
+    conformance_suite: {inputs: 200, expected_extracted_facts_from_phi: 0, expected_cross_scope_merges: 0}
+  metadata_keys:
+    required: [record_id, scope, env, class, trust_tier, phi_scan_version, provenance]
+    provenance_keys: [agent_id, run_id, prov_activity_iri]
+  server_side_filters: [env, scope]              # injected; not overridable by caller
+  dedupe:
+    key: [env, scope, class]
+    never_merge_across_key: true
+  history_api: "read-only transaction-time audit; reconciled nightly with hc.ops.memory.write.v1"
+  x-requirements: [MEM-ARCH-015, MEM-ARCH-016, MEM-ARCH-017, MEM-ARCH-018, MEM-ARCH-019, MEM-ARCH-020, MEM-ARCH-021, MEM-ARCH-022]
+
+# ---------------------------------------------------------------------------------------------------------
+# 8. Retrieval profiles (MEM-02 §7). Agents select by name; raw Cypher is never accepted.
+# ---------------------------------------------------------------------------------------------------------
+retrieval_defaults:
+  view: current                                   # TKG-01 §8 Current view
+  as_of_valid_supported: true
+  as_of_transaction_supported: true
+  top_k_max: 20
+  global_token_cap_fraction_of_tokens_per_run: 0.12
+  ranking: "fused_score × scope_match × recency × confidence × trust_weight × stale_penalty"
+  stale_penalty: 0.5
+  trust_weights: {T0: 0.5, T1: 0.7, T2: 0.85, T3: 1.0, T4: 1.0}
+  recall_cache_tier: C4
+  recall_cache_ttl_s: 60
+  context_assembly_order: [procedural_T3_T4, steward_decisions_same_artefact, incident_or_evaluation_precedents, community_summary_center_node, episodic_observations]
+  untrusted_wrapper_line: "[mem:<record_id> class=<class> conf=<c> trust=<T> from <evidence_ref> valid=<from>/<to> known=<recorded_at>]"
+  untrusted_block_tag: '<memory untrusted="true">'
+  audit: one AuditEvent per run on hc.ops.audit.v1 listing recalled record ids
+retrieval_profiles:
+  - id: mapping_context
+    agents: [agent.source_mapper, agent.terminology_steward]
+    graphiti_recipe: [EDGE_HYBRID_SEARCH_NODE_DISTANCE, NODE_HYBRID_SEARCH_RRF]
+    reranker: node_distance
+    center_node_strategy: "Interface or CodeSystem of the target element"
+    top_k: 20
+    token_budget: 2000
+    p95_ms: 500
+  - id: dq_tuning
+    agents: [agent.dq_author, agent.dq_monitor]
+    graphiti_recipe: [EDGE_HYBRID_SEARCH_RRF]
+    edge_filter: [THRESHOLD_SET, DRIFTED_TO, PREFERS, REJECTED, APPROVED]
+    reranker: rrf
+    center_node_strategy: null
+    top_k: 15
+    token_budget: 1500
+    p95_ms: 500
+  - id: incident_triage
+    agents: [agent.self_healer]
+    graphiti_recipe: [EDGE_HYBRID_SEARCH_CROSS_ENCODER]
+    edge_filter: [EXHIBITED_SYMPTOM, CAUSED_BY, RESOLVED_BY]
+    reranker: cross_encoder
+    center_node_strategy: "Interface or Topic emitting the signal"
+    top_k: 10
+    token_budget: 1500
+    p95_ms: 500
+  - id: evaluation_memory
+    agents: [agent.evaluator]
+    graphiti_recipe: [EDGE_HYBRID_SEARCH_EPISODE_MENTIONS]
+    reranker: episode_mentions
+    center_node_strategy: "target ChangeRequest"
+    top_k: 10
+    token_budget: 1200
+    p95_ms: 500
+  - id: steward_preferences
+    agents: [L2 agents]
+    graphiti_recipe: [MEM0_FIRST, PREFERS_REJECTED_APPROVED_FALLBACK]
+    reranker: mmr
+    center_node_strategy: "Steward (role)"
+    top_k: 5
+    token_budget: 500
+    p95_ms: 150
+  - id: improvement_evidence
+    agents: [agent.improver]
+    graphiti_recipe: [COMMUNITY_HYBRID_SEARCH_RRF]
+    edge_filter: [CONTRADICTED_BY, CONFIRMED_BY, EVALUATED_BY]
+    reranker: rrf
+    center_node_strategy: "Agent under optimisation"
+    top_k: 8
+    token_budget: 1500
+    p95_ms: 800
+  - id: playbook_match
+    agents: [agent.self_healer]
+    graphiti_recipe: [SEARCH_PLAYBOOKS]              # Symptom → RESOLVED_BY → Playbook ranked by PRODUCED_OUTCOME success ratio
+    reranker: node_distance
+    center_node_strategy: "Symptom signal"
+    top_k: 5
+    token_budget: 800
+    p95_ms: 500
+    excludes: [retired playbook versions]
+    degraded_fallback: git_procedural_index           # MEM-ARCH-035
+x-requirements-retrieval-profiles: [MEM-GRA-019, MEM-GRA-020, MEM-GRA-021, MEM-GRA-022, MEM-GRA-023, MEM-GRA-024, MEM-GRA-025, MEM-GRA-026, MEM-GRA-027, MEM-GRA-028, MEM-GRA-029]
+
+# ---------------------------------------------------------------------------------------------------------
+# 9. Consolidation ("sleep cycle", MEM-02 §8) — run by agent.memory_curator (autonomy L3)
+# ---------------------------------------------------------------------------------------------------------
+consolidation:
+  schedule:
+    cron_utc: "0 2 * * *"
+    window: "02:00–04:00 UTC per environment"
+    max_duration_h: 2
+    skip_when: [release_window, change_freeze, kill_switch_module14, kill_switch_agent.memory_curator]
+  stages: [dedupe, contradiction_resolution, build_communities, promotion, utility_decay, phi_rescan, dangling_iri_check, report]
+  stage_properties: {idempotent: true, resumable: true, emits_write_log: true, recursion_ledger_kind: learn}
+  dedupe:
+    within_group_id_only: true
+    similarity_floor: 0.95
+    change_kind: merge
+    never_merge_steward_different_roles: true
+  contradiction:
+    order: [higher_trust_tier, newer_created_at]
+    loser_change_kind: correction
+    t0_may_override_t2_plus: false
+  communities:
+    algorithm: leiden
+    summaries_as_records: {class: observation, untrusted_text: true}
+    refresh_when_member_edges_changed_fraction: 0.10
+  promotion:
+    episodic_to_semantic:
+      min_episodes: 3
+      min_distinct_runs: 2
+      min_confidence: 0.7
+      min_trust_tier: T1
+      lineage_edge: PROMOTED_FROM
+    semantic_to_procedural:
+      via_cr_only: true
+      cr_types: [playbook, agent_policy]
+      min_resolved_incidents: 3
+      or_min_crs: 5
+      min_evaluator_score: 0.85
+      min_trust_tier: T2
+      lineage_edge: DERIVED_FROM
+  decay:
+    formula: "utility = recalls × outcome_correlation × 2^(−age_days / half_life_days)"
+    half_life_days: {episodic: 90, semantic: 365}
+    archive_below: 0.1
+    archive_format: json-ld
+    archive_is_belief_change: false
+  caps_per_day_per_env:
+    playbook_candidate_crs: 5
+    agent_policy_candidate_crs: 10
+  protected_from_curator: [playbook limits, playbook guards, rubrics RUB-*, golden sets, agent manifests, module-14 YAMLs]
+  quarterly_review_owner: DGC
+  x-requirements: [MEM-GRA-031, MEM-GRA-032, MEM-GRA-033, MEM-GRA-034, MEM-GRA-035, MEM-GRA-036, MEM-GRA-037, MEM-GRA-038, MEM-GRA-039, MEM-GRA-040]
+
+# ---------------------------------------------------------------------------------------------------------
+# 10. PHI firewall / write-gate (MEM-01 §6)
+# ---------------------------------------------------------------------------------------------------------
+phi_firewall:
+  scanner_version_ref: "GOV-PHI-004 scanner_version (pinned per environment)"
+  deterministic_scanner:
+    hipaa_identifier_classes: 18                 # GOV-01 §2
+    additional_patterns: [Cerner MRN, Cerner FIN_NBR, Cerner PERSON_ID, Cerner ENCNTR_ID, Fusion PERSON_NUMBER, Fusion PARTY_ID, Fusion ASSIGNMENT_ID]
+    recall_min: 0.98
+    precision_min: 0.90
+  llm_judge:
+    check: phi_scan                              # AGT-03 automated_checks[].check reused as-is
+    model_class: haiku
+    egress: "in-VPC or GOV-ACC-018 proxy, GOV-PHI-017 zero retention"
+    applies_to: every text field
+  either_detector_firing_is_hit: true
+  k_anonymity:
+    suppression_n: 11
+    on_violation: [redact, reject]
+  injection_scan:
+    check: prompt_injection_scan                 # AGT-03 automated_checks[].check reused as-is
+    applies_to: ["content.text", "relations[].fact"]
+  size_limits: {text_chars: 2000, json_bytes: 4096}
+  stages:
+    - {n: 1, name: json_schema_validate, reason_codes: [SIZE]}
+    - {n: 2, name: structural_allowlist, reason_codes: [CLASS_NOT_ALLOWED]}
+    - {n: 3, name: phi_scan_deterministic_plus_llm, reason_codes: [PHI_DETECTED]}
+    - {n: 4, name: k_anonymity, reason_codes: [PHI_DETECTED]}
+    - {n: 5, name: prompt_injection_scan_and_untrusted_quoting, reason_codes: [INJECTION_SUSPECTED]}
+    - {n: 6, name: evidence_ref_resolution, reason_codes: [NO_EVIDENCE]}
+    - {n: 7, name: scope_writer_authorisation, reason_codes: [SCOPE_DENIED, WRITER_NOT_AUTHORISED, FROZEN_SCOPE, ENV_MISMATCH]}
+    - {n: 8, name: prov_activity_and_signature, reason_codes: []}
+    - {n: 9, name: append_write_log, reason_codes: []}
+    - {n: 10, name: materialise_mem0_graphiti, reason_codes: [TEMPORAL_SKEW]}
+    - {n: 11, name: audit_event, reason_codes: []}
+  decisions: [allow, redact+flag, quarantine]
+  redact_flag_allowed_only_when: "untrusted_text record and ≥ 1 evidence ref survives redaction; any direct identifier hit ⇒ quarantine"
+  reason_codes:
+    - {code: PHI_DETECTED, stage: 3, decision: quarantine, alert: Privacy Office ≤ 5 min, triggers: [PGV-012, RT-11]}
+    - {code: NO_EVIDENCE, stage: 6, decision: reject}
+    - {code: SCOPE_DENIED, stage: 7, decision: reject}
+    - {code: SIZE, stage: 1, decision: reject}
+    - {code: INJECTION_SUSPECTED, stage: 5, decision: quarantine, alert: Privacy Office ≤ 5 min}
+    - {code: WRITER_NOT_AUTHORISED, stage: 7, decision: reject}
+    - {code: FROZEN_SCOPE, stage: 7, decision: reject}
+    - {code: CLASS_NOT_ALLOWED, stage: 2, decision: reject}
+    - {code: ENV_MISMATCH, stage: 7, decision: reject}
+    - {code: TEMPORAL_SKEW, stage: 10, decision: reject}
+  quarantine:
+    excluded_from_recall: true
+    max_retention_days: 30
+    hard_delete_dual_control: [Privacy Office, Agent Operator]
+    emits: [purge_receipt, AuditEvent]
+    applies_to_originating_run: [veto CRs, agent demotion, agent-scoped kill switch]   # PGV-012, AGT-SAFE-013
+  forbidden_fields_and_content:
+    - "HL7 v2 PID/NK1/IN1/GT1/NTE/OBX-5 text or any segment copy"
+    - "Oracle Fusion person/party/assignment rows or any row image"
+    - "clinical document text, notes, result comments"
+    - "raw tool outputs, samples, quarantined records"
+    - "pseudonymised PHI tokens of patients/workers"
+    - "dates tied to an individual"
+    - "steward names, e-mails, OIDC subjects in clear"
+  allowed_content:
+    - "CR, decision, incident, run ids"
+    - "DQ rule ids, rubric ids, playbook ids, topic names, partition/offset ranges"
+    - "ontology / value-set / ConceptMap IRIs and code-system versions"
+    - "aggregates with small-cell suppression (n ≥ 11)"
+    - "HMAC tokens per GOV-PHI-013 referencing artefacts"
+    - "masked sample hashes (sha256 of masked row)"
+    - "steward roles and salted steward hashes"
+  rescan_after_scanner_release_days: 7
+  honeytoken_red_team: {probes: 10000, max_stored: 0, owner: module 15}
+  x-requirements: [MEM-ARCH-002, MEM-ARCH-025, MEM-ARCH-026, MEM-ARCH-027, MEM-ARCH-028, MEM-ARCH-029, MEM-ARCH-030, MEM-ARCH-031, MEM-ARCH-032, MEM-ARCH-038, MEM-GRA-039]
+
+# ---------------------------------------------------------------------------------------------------------
+# 11. Memory API surface (MCP server `memory`; contract A). All ops: agent identity per GOV-ACC-009, env from
+#     token, phi_access none, AuditEvent on hc.ops.audit.v1 + OpenLineage facet, idempotency_key, reason-coded errors.
+# ---------------------------------------------------------------------------------------------------------
+api:
+  mcp_server: memory
+  permission_levels: [read, propose, apply, admin]
+  common: {identity: GOV-ACC-009, env_from_token: true, phi_access: none, audit_topic: hc.ops.audit.v1, openlineage_facet: true, idempotency_key: required, errors: reason_coded}
+  operations:
+    - {op: remember, permission: propose, audit: true, trust_tiers_accepted: [T0, T1, T2], writes: [write_log, mem0, graphiti], output: [record_id, status, reason_code, phi_scan, stored_in]}
+    - {op: recall, permission: read, audit: true, inputs: [scopes, query, retrieval_profile, as_of_valid, as_of_transaction, filters, budget_tokens, top_k, rerank, center_nodes], output: [memories, assembled_context, usage], cache: C4}
+    - {op: reflect, permission: propose, audit: true, output_class: evaluation_lesson, trust_tier: T1, untrusted_text: true, masking: GOV-LIN-015, promotes: false}
+    - {op: correct, permission: propose, audit: true, change_kind_allowed: [new-version, correction], effect: "closes old (superseded_at/expired_at), SUPERSEDES edge; valid time untouched on correction"}
+    - {op: retract, permission: propose, audit: true, change_kind: retraction, effect: "expired_at set; never deletes"}
+    - {op: record_incident, permission: propose, audit: true, emits: [graphiti episode, hc.ops.healing.incident.event.v1]}
+    - {op: record_playbook_run, permission: propose, audit: true, emits: [graphiti episode, hc.ops.healing.playbookrun.event.v1]}
+    - {op: confirm, permission: apply, audit: true, by: ["human:<hash>", agent.evaluator], trust_tier_set: [T2, T3], required_for: promotion}
+    - {op: forget, permission: apply, audit: true, reasons: [phi, retention, steward_request, poisoning, legal], effect: "transaction-time close (tombstone) only"}
+    - {op: consolidate, permission: apply, audit: true, callers: [agent.memory_curator], modes: [nightly, on_demand]}
+    - {op: promote, permission: apply, audit: true, to_tier: [semantic, procedural], procedural_creates_cr: [playbook, agent_policy]}
+    - {op: quarantine, permission: apply, audit: true, callers: [agent.privacy_guardian, agent.memory_curator, human]}
+    - {op: release, permission: apply, audit: true, callers: [agent.privacy_guardian, human]}
+    - {op: pin, permission: apply, audit: true}
+    - {op: lineage, permission: read, audit: true, alias: explain, output: [prov_chain, episodes, runs, crs, incidents, influenced_crs]}
+    - {op: search_playbooks, permission: read, audit: true, callers: [agent.self_healer], degraded_fallback: git_procedural_index}
+    - {op: stats, permission: read, audit: false, output: [counts, growth, contradiction_rate, lift]}
+    - {op: health, permission: read, audit: false, output: [tier_status, degraded_flags], drives: degraded_modes}
+    - {op: purge, permission: admin, audit: true, approver: [Privacy Office, DGC], effect: "compaction tombstone + physical erasure incl. Mem0/Graphiti/C4/archives", output: purge_receipt}
+    - {op: freeze, permission: admin, audit: true, effect: blocks writes (FROZEN_SCOPE)}
+    - {op: unfreeze, permission: admin, audit: true}
+    - {op: export, permission: admin, audit: true, formats: [jsonl, jsonld], as_known_at_supported: true}
+    - {op: rebuild, permission: admin, audit: true, source: hc.ops.memory.write.v1, max_duration_h: 4}
+  graph_sub_operations:
+    - {op: graph.add_episode, args: [group_id, masked_text | json, reference_time, source_refs]}
+    - {op: graph.search, args: [query, group_id, as_of, as_known_at, k]}
+    - {op: graph.invalidate_edge, args: [edge_id, invalid_at, change_kind, reason]}
+    - {op: graph.entities, args: [filter]}
+  forbidden_operations: [write to ontology registry, write to terminology service, write to HEALIX KG, write to Git]   # MEM-ARCH-011
+  degraded_modes:
+    mem0_down: {detection_s: 60, behaviour: memoryless, cr_provenance_flag: memory_degraded}
+    graphiti_down: {detection_s: 60, behaviour: "healing from Git playbooks only; memoryless recall", cr_provenance_flag: memory_degraded}
+    kafka_down: {behaviour: "buffer accepted writes durably ≥ 24 h; replay in order before materialising"}
+  x-requirements: [MEM-ARCH-005, MEM-ARCH-006, MEM-ARCH-007, MEM-ARCH-008, MEM-ARCH-011, MEM-ARCH-033, MEM-ARCH-034, MEM-ARCH-035, MEM-ARCH-037]
+
+# ---------------------------------------------------------------------------------------------------------
+# 12. Topics requested from module 07 (STR-02; layer ops, domain governance, group G9, phi_class non-phi,
+#     compatibility BACKWARD, JSON Schema values)
+# ---------------------------------------------------------------------------------------------------------
+topics:
+  requested:
+    - {name: hc.ops.memory.write.v1, key: record_id, retention: "infinite, compacted", purpose: "event-sourced memory write log; Mem0/Graphiti are derived state", value_schema: record}
+    - {name: hc.ops.healing.incident.event.v1, key: incident_id, retention: "30d (mirrored to fact_healing_incident)", purpose: "every healing state transition"}
+    - {name: hc.ops.healing.playbookrun.event.v1, key: "incident_id|step", retention: "30d", purpose: "every action/step with blast-radius budget check result"}
+    - {name: hc.ops.improvement.canary.event.v1, key: candidate_id, retention: "30d", purpose: "improvement state transitions, canary metrics, rollbacks"}
+    - {name: hc.ops.agent.policy.v1, key: "agent_id|prompt_version", retention: "30d, compacted", purpose: "prompt/policy/playbook release events; C0/C1/C2 invalidation source"}
+    - {name: hc.ops.cache.invalidate.v1, key: tag, retention: "7d", purpose: "version-tag invalidation fan-out"}
+  common: {layer: ops, domain: governance, group: G9, phi_class: non-phi, compatibility: BACKWARD, value_format: json-schema}
+  consumed_existing: [hc.ops.agent.decision.v1, hc.ops.audit.v1]
+
+# ---------------------------------------------------------------------------------------------------------
+# 13. EDW projection (G9; reached only via agent.kg_builder from hc.ops.* topics — never written by this module)
+# ---------------------------------------------------------------------------------------------------------
+edw_projection:
+  schema: edw_g9_governance
+  bitemporal_columns: [valid_from, valid_to, recorded_at, superseded_at, prov_activity_iri, change_kind, source_tz]   # TKG-01 §9
+  kg_named_graph_prefix: "<base>graph/healix-memory/<env>/<yyyy-mm-dd>/<batch-ulid>"
+  tables:
+    - name: dim_memory_scope
+      grain: one row per (env, scope_kind, scope_id) version
+      columns:
+        memory_scope_sk: surrogate
+        scope_kind: scope.kind
+        scope_id: scope.id (steward hash, never identity)
+        env: scope.env
+        group_id: scope.group_id
+    - name: fact_memory_event
+      grain: one row per hc.ops.memory.write.v1 record
+      source_topic: hc.ops.memory.write.v1
+      columns:
+        memory_event_sk: surrogate
+        record_bk: id
+        record_type: record_type
+        memory_class: class
+        tier: tier
+        memory_scope_sk: "→ dim_memory_scope"
+        agent_id: provenance.agent_id
+        run_bk: provenance.run_id
+        cr_bk: provenance.cr_id
+        incident_bk: provenance.incident_id
+        trust_tier: trust_tier
+        confidence: confidence
+        phi_scan_result: phi_scan.result
+        phi_scan_version: phi_scan.version
+        untrusted_text: untrusted_text
+        status: status
+        write_result: "accepted | rejected:<reason_code>"
+        valid_from: valid_from
+        valid_to: valid_to
+        recorded_at: recorded_at
+        superseded_at: superseded_at
+        prov_activity_iri: provenance.prov_activity_iri
+        change_kind: change_kind
+        source_tz: source_tz
+      content_columns: none          # content never projected to EDW
+    - name: fact_memory_recall
+      grain: aggregated per run (from recall AuditEvents on hc.ops.audit.v1)
+      source_topic: hc.ops.audit.v1
+      columns:
+        memory_recall_sk: surrogate
+        run_bk: run_id
+        agent_id: agent_id
+        retrieval_profile: retrieval_profile
+        recalled_count: count(record_id)
+        recalled_record_bks: array(record_id)      # ≤ 20
+        tokens_used: usage.tokens
+        c4_cache_hit: usage.cache_hit
+        memory_degraded: provenance.memory_degraded
+        influenced_cr_bk: cr_id (if any)
+        valid_from: run start
+        valid_to: null
+        recorded_at: audit recorded
+        superseded_at: null
+        prov_activity_iri: prov_activity_iri
+        change_kind: new
+        source_tz: UTC
+  x-requirements: [MEM-ARCH-005, MEM-ARCH-006, MEM-ARCH-011, MEM-GRA-028]
+
+# ---------------------------------------------------------------------------------------------------------
+# 14. Requirement annotations (every MEM id this artefact helps verify)
+# ---------------------------------------------------------------------------------------------------------
+x-requirements:
+  validates:
+    - MEM-ARCH-001
+    - MEM-ARCH-002
+    - MEM-ARCH-003
+    - MEM-ARCH-004
+    - MEM-ARCH-005
+    - MEM-ARCH-006
+    - MEM-ARCH-007
+    - MEM-ARCH-009
+    - MEM-ARCH-010
+    - MEM-ARCH-011
+    - MEM-ARCH-013
+    - MEM-ARCH-014
+    - MEM-ARCH-015
+    - MEM-ARCH-018
+    - MEM-ARCH-019
+    - MEM-ARCH-021
+    - MEM-ARCH-023
+    - MEM-ARCH-025
+    - MEM-ARCH-026
+    - MEM-ARCH-027
+    - MEM-ARCH-028
+    - MEM-ARCH-029
+    - MEM-ARCH-030
+    - MEM-ARCH-031
+    - MEM-ARCH-034
+    - MEM-ARCH-036
+    - MEM-ARCH-038
+    - MEM-GRA-002
+    - MEM-GRA-004
+    - MEM-GRA-005
+    - MEM-GRA-008
+    - MEM-GRA-009
+    - MEM-GRA-010
+    - MEM-GRA-011
+    - MEM-GRA-014
+    - MEM-GRA-016
+    - MEM-GRA-019
+    - MEM-GRA-020
+    - MEM-GRA-021
+    - MEM-GRA-024
+    - MEM-GRA-025
+    - MEM-GRA-033
+    - MEM-GRA-035
+    - MEM-GRA-036
+    - MEM-GRA-037
+  references_external: [TKG-01, TKG-TIME-012, TKG-TIME-014, AGT-03, AGT-06, AGT-MEM-004, AGT-MEM-013, GOV-PHI-004, GOV-PHI-013, GOV-PHI-017, GOV-PHI-020, GOV-LIN-006, GOV-LIN-008, GOV-LIN-015, GOV-ACC-009, GOV-ACC-018, OPS-04, STR-02, PGV-012, RT-11]
+  lint_rules:
+    - "yaml.safe_load succeeds"
+    - "record validates against JSON Schema draft 2020-12 meta-schema"
+    - "record.additionalProperties == false and phi_class.const == none"
+    - "record.properties.change_kind.enum == TKG-01 §4 SKOS scheme"
+    - "every graphiti.edge_types[].name ∈ record.properties.relations.items.properties.edge_type.enum"
+    - "every graphiti.entity_types[].name ∈ record.properties.entities.items.properties.type.enum"
+    - "every memory_classes[].id ∈ record.properties.class.enum"
+    - "every x-requirements id resolves to MEM-ARCH-001…040 or MEM-GRA-001…040"
+    - "hard_rule.text present verbatim"

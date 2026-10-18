@@ -166,7 +166,8 @@ flowchart LR
   window + lateness, last-asserted version (splitter) and SK cache (projector) unbounded but compacted from snapshots.
 - Kafka Streams state (parser duplicate window, snapshot compactor) uses RocksDB with changelog topics
   (`hc.ops.state.<app>.<store>-changelog`, internal, compact, RF 3).
-- State contains PHI; checkpoint buckets are encrypted with the `phi` key and access-restricted to the job principal.
+- State contains PHI; checkpoint buckets are encrypted with the PHI key class (as for `phi:direct` topics) and
+  access-restricted to the job principal.
 
 ## 5. Exactly-once and idempotency
 
@@ -213,8 +214,8 @@ sequenceDiagram
 1. **Scope**: a replay names a source layer/topic and a range (offset interval or `hc-event-time` interval), the target
    layer (e.g., re-canonicalise with mapping `encounter-v2@2.1.0`, re-evaluate DQ with rule pack `3.4.0`), and the
    pinned artefact versions. Backfills of a new topic (e.g., a new FHIR resource) replay from `raw` with the new mapping.
-2. **Approval**: `agent.evaluator` checks cost and blast radius; `agent.privacy_guardian` approves when `phi` topics
-   are involved; replays into `prod` canonical topics above 10 M records need a human approver.
+2. **Approval**: `agent.evaluator` checks cost and blast radius; `agent.privacy_guardian` approves when `phi:*`,
+   `pseudonymised` or `pii:workforce` topics are involved; replays into `prod` canonical topics above 10 M records need a human approver.
 3. **Execution**: the replay runs in a **separate consumer group** and processor instance with `hc-replay=<id>` on
    every output; outputs go to the **same** topics (idempotent sinks make this safe) unless the request specifies a
    shadow topic (`hc.<layer>...-shadow-<id>.v1`, auto-retired after 14 days) for comparison before promotion.
@@ -301,7 +302,8 @@ sequenceDiagram
 > `schema-incompatible`.
 
 > **STR-PROC-017** (P0, inspection) — Processors MUST propagate `hc-phi-class` unchanged and MUST NOT lower it; only
-> module 11 de-identification processors MAY produce a lower class, and only to topics catalogued for that class.
+> module 11 de-identification and pseudonymisation processors MAY produce a less restrictive class
+> (`deidentified:safe-harbor`, `deidentified:expert`, `pseudonymised`), and only to topics catalogued for that class.
 
 > **STR-PROC-018** (P0, test) — Processors MUST meet the latency budget of `ARC-NFR-001` at three times sustained load:
 > p95 `raw` produce to `canonical` produce ≤ 5 s for HL7 v2 and CDC sources.

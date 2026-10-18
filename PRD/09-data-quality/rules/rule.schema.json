@@ -71,7 +71,8 @@
     },
     "rule_id": {
       "type": "string",
-      "pattern": "^DQR-(COMPLETENESS|VALIDITY|ACCURACY|CONSISTENCY|UNIQUENESS|TIMELINESS|INTEGRITY|TEMPORAL|LINEAGE|SEMANTIC)-[A-Z][A-Z0-9]*-\\d{3}$"
+      "pattern": "^DQR-(COMPLETENESS|VALIDITY|ACCURACY|CONSISTENCY|UNIQUENESS|TIMELINESS|INTEGRITY|TEMPORAL|LINEAGE|SEMANTIC)-[A-Z][A-Z0-9]*(-[A-Z][A-Z0-9]*)?-\\d{3}$",
+      "description": "DQR-<DIMENSION>-<DOMAIN>-<NNN> (CONVENTIONS §3). <DOMAIN> is a registered token (02-rule-catalog.md §4); a compound token may join two registered tokens with one hyphen (KG-EDW)."
     },
     "threshold": {
       "type": "object",

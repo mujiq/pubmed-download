@@ -34,9 +34,10 @@ rules:
         sparql: |
           PREFIX finance: <https://ontology.healix.example.org/finance/>
           PREFIX prov: <http://www.w3.org/ns/prov#>
+          PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
           SELECT ?focus ("charge without AR transaction after 48h" AS ?detail) WHERE {
             ?focus a finance:ChargeItem ; finance:postedAt ?t ; prov:wasAttributedTo <https://ontology.healix.example.org/source/cerner> .
-            FILTER(?t < NOW() - "PT48H"^^xsd:duration)
+            FILTER(?t < NOW() - "PT48H"^^xsd:dayTimeDuration)
             FILTER NOT EXISTS { ?ar a finance:ARTransaction ; finance:settlesCharge ?focus }
           }
     severity: critical

@@ -1,0 +1,679 @@
+# HEALIX DQ rule pack — Bitemporal contract, provenance and dual-projection reconciliation (G9)
+# Validated by rule.schema.json; indexed in 02-rule-catalog.md §3.9 (table "Bitemporal contract rules").
+#
+# These rules are the module-09 realisation of the TKG-01 §9 contract table (clauses C1–C12), of TKG-STORE-007
+# (current-view drift) and of TKG-04 §7.2 (KG ↔ EDW reconciliation). Every warehouse target below names ONE
+# reference table (edw_g1_party.hist_dim_patient, the canonical hist_* example of EDW-06). The rule compiler
+# (03-dq-pipelines.md §2) instantiates each rule tagged `templated-bitemporal` once per table that carries the
+# bitemporal block (every hist_*, fact_* and bridge_* table, EDW-ARCH-003), substituting the table, its *_bk
+# column and `hist_sk`/row key; results are reported per instantiated table under the same rule id with
+# `subject.table` set. Graph targets use the RDF 1.1 export form of an assertion (TKG-01 §11: an
+# `healix-time:BitemporalAssertion` node with rdf:subject / rdf:predicate / rdf:object); the compiler rewrites
+# that pattern to the RDF-star triple term `<< ?s ?p ?o >>` for the primary store (TKG-02).
+pack: temporal-and-provenance
+version: 0.1.0
+group: G9
+owner: steward.dq_lead
+description: Bitemporal contract rules (TKG-01 §9 C1–C12), provenance completeness, KG current-view drift and KG vs EDW dual-projection reconciliation. Templated across every table and named graph carrying the bitemporal block.
+rules:
+  # --------------------------------------------------------------------------------------------------------------
+  # Completeness of the bitemporal block (C1, C3, C12, TKG-TIME-006)
+  # --------------------------------------------------------------------------------------------------------------
+  - id: DQR-COMPLETENESS-TEMPORAL-001
+    name: Every fact carries validFrom (C1)
+    description: TKG-01 §9 clause C1. Every assertion in the knowledge graph carries healix-time:validFrom and every bitemporal EDW row has a non-null valid_from. A fact without a valid-time start cannot be placed on the timeline, cannot be joined as-of and silently drops out of every Current and AsOf view. Templated over every hist_*, fact_* and bridge_* table.
+    dimension: completeness
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shape/BitemporalAssertionShape
+        as_of: batch
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: one row per version (hist_sk)
+        language: sql
+        key_columns: [hist_sk, patient_bk]
+        schedule: on_load
+        sql: SELECT hist_sk, patient_bk FROM {{ ref('hist_dim_patient') }} WHERE valid_from IS NULL
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/time/validFrom
+    remediation:
+      action: source_fix
+      hint: The temporal splitter or EDW loader emitted a version without valid time; fix the validTimeSource mapping for the resource (TKG-01 §5) and replay the batch. Never default valid_from to the load clock when the source carries a real-world time (EDW-HIST-004).
+      policy_ref: https://policy.healix.example.org/platform/bitemporal-contract
+    version: 1.0.0
+    status: active
+    tags: [bitemporal, tkg-c1, templated-bitemporal]
+    tests:
+      - {fixture: fixtures/g9/assertion-well-formed.trig, expect: pass, plane: graph}
+      - {fixture: fixtures/g9/assertion-missing-validfrom.trig, expect: fail, plane: graph}
+      - {fixture: fixtures/g9/hist-row-missing-valid-from.sql, expect: fail, plane: warehouse}
+
+  - id: DQR-COMPLETENESS-TEMPORAL-002
+    name: Every fact carries recordedAt set by the sink clock (C3)
+    description: TKG-01 §9 clause C3. Every assertion carries healix-time:recordedAt and every bitemporal EDW row has a non-null recorded_at; the value must come from the sink or loader clock (EDW-HIST-004), so it must never be earlier than the record's event_time. Without transaction-time start the AsOf view and audit replay are undefined.
+    dimension: completeness
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/time/BitemporalAssertion
+        as_of: batch
+        sparql: |
+          PREFIX ht: <https://ontology.healix.example.org/time/>
+          SELECT ?focus ?detail WHERE {
+            ?focus a ht:BitemporalAssertion .
+            OPTIONAL { ?focus ht:recordedAt ?rec }
+            OPTIONAL { ?focus ht:eventTime ?evt }
+            BIND(IF(!BOUND(?rec), 'recordedAt missing', IF(BOUND(?evt) && ?rec < ?evt, 'recordedAt before eventTime', '')) AS ?detail)
+            FILTER(?detail != '')
+          }
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: one row per version (hist_sk)
+        language: sql
+        key_columns: [hist_sk, patient_bk]
+        schedule: on_load
+        sql: SELECT hist_sk, patient_bk FROM {{ ref('hist_dim_patient') }} WHERE recorded_at IS NULL OR recorded_at < event_time
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/time/recordedAt
+    remediation:
+      action: source_fix
+      hint: The KG sink or EDW loader must stamp recorded_at from its own monotonic UTC clock at commit; a value earlier than event_time means the loader copied a source timestamp. Fix the loader and replay the batch.
+      policy_ref: https://policy.healix.example.org/platform/bitemporal-contract
+    version: 1.0.0
+    status: active
+    tags: [bitemporal, tkg-c3, templated-bitemporal]
+    tests:
+      - {fixture: fixtures/g9/assertion-well-formed.trig, expect: pass, plane: graph}
+      - {fixture: fixtures/g9/assertion-missing-recordedat.trig, expect: fail, plane: graph}
+
+  - id: DQR-COMPLETENESS-TEMPORAL-003
+    name: Source time zone recorded for every fact (C12)
+    description: TKG-01 §9 clause C12. Timestamps are stored in UTC and the originating zone is kept so that date-only and local-time source values (Cerner facility clocks, Oracle Fusion effective dates expanded to local midnight) can be re-interpreted; healix-time:sourceTimeZone is mandatory on every assertion and source_tz must be populated on every bitemporal EDW row.
+    dimension: completeness
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/time/BitemporalAssertion
+        as_of: batch
+        sparql: |
+          PREFIX ht: <https://ontology.healix.example.org/time/>
+          SELECT ?focus ('sourceTimeZone missing' AS ?detail) WHERE {
+            ?focus a ht:BitemporalAssertion .
+            FILTER NOT EXISTS { ?focus ht:sourceTimeZone ?tz }
+          }
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: one row per version (hist_sk)
+        language: sql
+        key_columns: [hist_sk, patient_bk]
+        schedule: on_load
+        sql: SELECT hist_sk, patient_bk FROM {{ ref('hist_dim_patient') }} WHERE source_tz IS NULL OR TRIM(source_tz) = ''
+    severity: major
+    threshold: {metric: pass_rate, min: 0.999, window: P1D}
+    owner: steward.dq_lead
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/time/sourceTimeZone
+    remediation:
+      action: auto_fix
+      fix_class: timestamp_repair
+      hint: Derive the IANA zone from the facility (Cerner LOCATION time zone) or the Fusion legal entity and republish the assertion with sourceTimeZone set; fall back to the source connector's configured zone and tag precision approximate.
+      policy_ref: https://policy.healix.example.org/platform/bitemporal-contract
+    version: 1.0.0
+    status: active
+    tags: [bitemporal, tkg-c12, templated-bitemporal]
+
+  - id: DQR-COMPLETENESS-TEMPORAL-004
+    name: Closed assertion carries a changeKind (TKG-TIME-006)
+    description: An assertion whose transaction time has been closed (healix-time:supersededAt bound; EDW superseded_at NOT NULL) must state why it was closed through healix-time:changeKind / change_kind. Without it consumers cannot distinguish a new version from a correction or a retraction, which changes how the valid-time history must be read (TKG-01 §6).
+    dimension: completeness
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/time/BitemporalAssertion
+        as_of: batch
+        sparql: |
+          PREFIX ht: <https://ontology.healix.example.org/time/>
+          SELECT ?focus ('closed assertion without changeKind' AS ?detail) WHERE {
+            ?focus a ht:BitemporalAssertion ; ht:supersededAt ?sup .
+            FILTER NOT EXISTS { ?focus ht:changeKind ?kind }
+          }
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: one row per version (hist_sk)
+        language: sql
+        key_columns: [hist_sk, patient_bk]
+        schedule: on_load
+        sql: SELECT hist_sk, patient_bk FROM {{ ref('hist_dim_patient') }} WHERE superseded_at IS NOT NULL AND (change_kind IS NULL OR TRIM(change_kind) = '')
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/time/changeKind
+    remediation:
+      action: source_fix
+      hint: The temporal splitter classifies every closure (TKG-01 §6 detection table); a closure without a kind indicates a bypass of the splitter or a manual EDW update. Re-run the classification for the affected business keys and republish.
+      policy_ref: https://policy.healix.example.org/platform/bitemporal-contract
+    version: 1.0.0
+    status: active
+    tags: [bitemporal, tkg-c6, templated-bitemporal]
+
+  # --------------------------------------------------------------------------------------------------------------
+  # Validity of the bitemporal block (C2, C6)
+  # --------------------------------------------------------------------------------------------------------------
+  - id: DQR-VALIDITY-TEMPORAL-001
+    name: validTo strictly after validFrom (C2)
+    description: TKG-01 §9 clause C2. The valid-time interval is half-open [valid_from, valid_to); when valid_to is present it must be strictly greater than valid_from. The only permitted zero-length interval is the retraction tombstone of EDW-06 §6 (change_kind = retraction with valid_to = valid_from), which records that the fact was never true (clause C10).
+    dimension: validity
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/time/BitemporalAssertion
+        as_of: batch
+        sparql: |
+          PREFIX ht: <https://ontology.healix.example.org/time/>
+          SELECT ?focus (CONCAT('validTo ', STR(?vt), ' <= validFrom ', STR(?vf)) AS ?detail) WHERE {
+            ?focus a ht:BitemporalAssertion ; ht:validFrom ?vf ; ht:validTo ?vt .
+            FILTER(?vt <= ?vf)
+            FILTER NOT EXISTS { ?focus ht:changeKind ht:ChangeKind_retraction . FILTER(?vt = ?vf) }
+          }
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: one row per version (hist_sk)
+        language: sql
+        key_columns: [hist_sk, patient_bk]
+        schedule: on_load
+        sql: SELECT hist_sk, patient_bk FROM {{ ref('hist_dim_patient') }} WHERE valid_to IS NOT NULL AND valid_to <= valid_from AND NOT (change_kind = 'retraction' AND valid_to = valid_from)
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/time/validTo
+    remediation:
+      action: source_fix
+      hint: Usually an inclusive end date that was not converted to the half-open convention (Oracle Fusion EFFECTIVE_END_DATE + 1 day) or a start/end swap in the source. Fix the mapping (TKG-01 §5.2) and republish; do not clamp in the warehouse.
+      policy_ref: https://policy.healix.example.org/platform/bitemporal-contract
+    version: 1.0.0
+    status: active
+    tags: [bitemporal, tkg-c2, templated-bitemporal]
+    tests:
+      - {fixture: fixtures/g9/assertion-well-formed.trig, expect: pass, plane: graph}
+      - {fixture: fixtures/g9/assertion-validto-before-validfrom.trig, expect: fail, plane: graph}
+      - {fixture: fixtures/g9/hist-row-retraction-tombstone.sql, expect: pass, plane: warehouse}
+
+  - id: DQR-VALIDITY-TEMPORAL-002
+    name: Open intervals are NULL, never sentinel dates (C2, C4)
+    description: TKG-01 §9 clauses C2 and C4. An open valid-time or transaction-time interval is expressed by an absent validTo / supersededAt (NULL in the EDW). Sentinel end dates inherited from sources (Oracle 31-DEC-4712, Cerner 2100-12-31, 9999-12-31) must have been normalised to NULL by the splitter; any end timestamp on or after 4000-01-01 is a sentinel (shape BitemporalAssertionShape sh:maxExclusive).
+    dimension: validity
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shape/BitemporalAssertionShape
+        as_of: batch
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: one row per version (hist_sk)
+        language: sql
+        key_columns: [hist_sk, patient_bk]
+        schedule: on_load
+        sql: SELECT hist_sk, patient_bk FROM {{ ref('hist_dim_patient') }} WHERE valid_to >= TIMESTAMP '4000-01-01 00:00:00' OR superseded_at >= TIMESTAMP '4000-01-01 00:00:00'
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shape/BitemporalAssertionShape
+    remediation:
+      action: auto_fix
+      fix_class: timestamp_repair
+      hint: Replace the sentinel with NULL (open interval) and republish the assertion under a correction activity; add the sentinel value to the splitter's per-source sentinel list so it is normalised at ingestion.
+      policy_ref: https://policy.healix.example.org/platform/bitemporal-contract
+    version: 1.0.0
+    status: active
+    tags: [bitemporal, tkg-c2, tkg-c4, templated-bitemporal]
+    tests:
+      - {fixture: fixtures/g9/assertion-sentinel-validto.trig, expect: fail, plane: graph}
+
+  - id: DQR-VALIDITY-TEMPORAL-003
+    name: changeKind drawn from the ChangeKind SKOS scheme (C6)
+    description: TKG-01 §9 clause C6. healix-time:changeKind must be a member of healix-time:ChangeKindScheme and the EDW change_kind column must carry the same notation, one of new, new-version, correction, retraction, merge, unmerge. Any other value breaks the shared history semantics between the graph and the warehouse (ADR-07) and the KG vs EDW retraction reconciliation.
+    dimension: validity
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/time/BitemporalAssertion
+        as_of: batch
+        sparql: |
+          PREFIX ht: <https://ontology.healix.example.org/time/>
+          PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+          SELECT ?focus (CONCAT('changeKind not in scheme: ', STR(?kind)) AS ?detail) WHERE {
+            ?focus a ht:BitemporalAssertion ; ht:changeKind ?kind .
+            FILTER NOT EXISTS { ?kind skos:inScheme ht:ChangeKindScheme }
+          }
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: one row per version (hist_sk)
+        language: sql
+        key_columns: [hist_sk, patient_bk]
+        schedule: on_load
+        sql: SELECT hist_sk, patient_bk FROM {{ ref('hist_dim_patient') }} WHERE change_kind IS NOT NULL AND TRIM(change_kind) NOT IN ('new', 'new-version', 'correction', 'retraction', 'merge', 'unmerge')
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/time/ChangeKindScheme
+    remediation:
+      action: source_fix
+      hint: A loader wrote a local reason code (for example an EDW change_reason_code value) into change_kind; map it to the scheme member and republish under a correction activity. change_reason_code remains the EDW-local detail column and never replaces change_kind.
+      policy_ref: https://policy.healix.example.org/platform/bitemporal-contract
+    version: 1.0.0
+    status: active
+    tags: [bitemporal, tkg-c6, templated-bitemporal]
+
+  # --------------------------------------------------------------------------------------------------------------
+  # Consistency of the bitemporal block (C4, C9, C10)
+  # --------------------------------------------------------------------------------------------------------------
+  - id: DQR-CONSISTENCY-TEMPORAL-001
+    name: No overlapping valid intervals per subject and functional predicate (C9)
+    description: "TKG-01 §9 clause C9. Within one transaction-time slice (here the Current slice, superseded_at IS NULL) a subject may hold at most one value of a functional predicate at any valid-time instant; two current assertions for the same (subject, owl:FunctionalProperty) whose valid-time intervals intersect are a contradiction. In the EDW a hist_* row is the version of the whole entity, so the check is per business key: no two current versions may overlap in valid time (EDW-HIST-003)."
+    dimension: consistency
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: shacl
+        shape: https://ontology.healix.example.org/shape/NoOverlapFunctional
+        as_of: current
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: pair of overlapping current versions per business key
+        language: sql
+        key_columns: [patient_bk, hist_sk]
+        schedule: both
+        sql: |
+          SELECT a.patient_bk, a.hist_sk, b.hist_sk AS overlapping_hist_sk
+          FROM {{ ref('hist_dim_patient') }} a
+          JOIN {{ ref('hist_dim_patient') }} b
+            ON b.patient_bk = a.patient_bk AND b.hist_sk > a.hist_sk
+          WHERE a.superseded_at IS NULL AND b.superseded_at IS NULL
+            AND a.valid_from < COALESCE(b.valid_to, TIMESTAMP '3999-12-31 00:00:00')
+            AND b.valid_from < COALESCE(a.valid_to, TIMESTAMP '3999-12-31 00:00:00')
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shape/NoOverlapFunctional
+    remediation:
+      action: steward
+      hint: Overlaps arise when a new version arrived without closing the previous one (missed supersession) or when two sources assert the same functional fact. The group steward decides which version is current; the platform closes the loser with changeKind correction and keeps both in history.
+      policy_ref: https://policy.healix.example.org/platform/bitemporal-contract
+    version: 1.0.0
+    status: active
+    tags: [bitemporal, tkg-c9, templated-bitemporal]
+    tests:
+      - {fixture: fixtures/g9/assertions-overlapping-functional.trig, expect: fail, plane: graph}
+      - {fixture: fixtures/g9/assertions-adjacent-versions.trig, expect: pass, plane: graph}
+
+  - id: DQR-CONSISTENCY-TEMPORAL-002
+    name: At most one current row per business key and valid_from (C4)
+    description: TKG-01 §9 clause C4 and EDW-HIST-003. supersededAt is exclusive and NULL means current belief; for any (business key, attribute, valid_from) exactly one assertion may be current. Two current rows for the same (bk, valid_from) mean a supersession was lost (non-idempotent replay, duplicate sink delivery) and every Current view returns duplicates.
+    dimension: consistency
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/time/BitemporalAssertion
+        as_of: current
+        sparql: |
+          PREFIX ht: <https://ontology.healix.example.org/time/>
+          PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+          PREFIX owl: <http://www.w3.org/2002/07/owl#>
+          SELECT ?focus (CONCAT('also current: ', STR(?other)) AS ?detail) WHERE {
+            ?focus a ht:BitemporalAssertion ; rdf:subject ?s ; rdf:predicate ?p ; rdf:object ?o ; ht:validFrom ?vf .
+            ?other a ht:BitemporalAssertion ; rdf:subject ?s ; rdf:predicate ?p ; rdf:object ?o2 ; ht:validFrom ?vf .
+            ?p a owl:FunctionalProperty .
+            FILTER(?focus != ?other && ?o != ?o2)
+            FILTER NOT EXISTS { ?focus ht:supersededAt ?x1 }
+            FILTER NOT EXISTS { ?other ht:supersededAt ?x2 }
+          }
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: (patient_bk, valid_from) with more than one current version
+        language: sql
+        key_columns: [patient_bk, valid_from]
+        schedule: both
+        sql: SELECT patient_bk, valid_from, COUNT(*) AS current_versions FROM {{ ref('hist_dim_patient') }} WHERE superseded_at IS NULL GROUP BY patient_bk, valid_from HAVING COUNT(*) > 1
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/time/supersededAt
+    remediation:
+      action: auto_fix
+      fix_class: timestamp_repair
+      hint: Close every duplicate except the one with the latest recorded_at by setting superseded_at to that recorded_at and changeKind new-version, under a DQRemediation activity; then raise a platform incident because the sink idempotency key (hc-idempotency-key) was not honoured.
+      policy_ref: https://policy.healix.example.org/platform/bitemporal-contract
+    version: 1.0.0
+    status: active
+    tags: [bitemporal, tkg-c4, templated-bitemporal]
+    tests:
+      - {fixture: fixtures/g9/hist-rows-duplicate-current.sql, expect: fail, plane: warehouse}
+
+  - id: DQR-CONSISTENCY-TEMPORAL-003
+    name: Transaction-time ordering and retraction closure (C4, C10)
+    description: TKG-01 §9 clauses C4 and C10. When supersededAt is present it must be on or after recordedAt (a belief cannot end before it started), and an assertion marked changeKind retraction must have its transaction time closed (supersededAt set) while keeping its valid time (never physically deleted, TKG-TIME-008). Either violation makes AsOf queries return retracted or never-believed facts.
+    dimension: consistency
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/time/BitemporalAssertion
+        as_of: batch
+        sparql: |
+          PREFIX ht: <https://ontology.healix.example.org/time/>
+          SELECT ?focus ?detail WHERE {
+            {
+              ?focus a ht:BitemporalAssertion ; ht:recordedAt ?rec ; ht:supersededAt ?sup .
+              FILTER(?sup < ?rec)
+              BIND('supersededAt before recordedAt' AS ?detail)
+            } UNION {
+              ?focus a ht:BitemporalAssertion ; ht:changeKind ht:ChangeKind_retraction .
+              FILTER NOT EXISTS { ?focus ht:supersededAt ?x }
+              BIND('retraction still current' AS ?detail)
+            }
+          }
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: one row per version (hist_sk)
+        language: sql
+        key_columns: [hist_sk, patient_bk]
+        schedule: on_load
+        sql: SELECT hist_sk, patient_bk FROM {{ ref('hist_dim_patient') }} WHERE (superseded_at IS NOT NULL AND superseded_at < recorded_at) OR (change_kind = 'retraction' AND superseded_at IS NULL)
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/time/retractedBy
+    remediation:
+      action: source_fix
+      hint: Retractions are published on hc.kg.retraction.v1 and must close transaction time in both projections; replay the retraction event for the affected business keys. A supersededAt earlier than recordedAt indicates clock regression in the sink and is a platform incident.
+      policy_ref: https://policy.healix.example.org/platform/bitemporal-contract
+    version: 1.0.0
+    status: active
+    tags: [bitemporal, tkg-c4, tkg-c10, templated-bitemporal]
+
+  # --------------------------------------------------------------------------------------------------------------
+  # Provenance (C5)
+  # --------------------------------------------------------------------------------------------------------------
+  - id: DQR-COMPLETENESS-PROV-001
+    name: Provenance activity reference present on every fact (C5)
+    description: TKG-01 §9 clause C5 and CONVENTIONS §4. Every assertion carries prov:wasGeneratedBy pointing at a PROV-O activity IRI and every bitemporal EDW row has a non-null, non-empty prov_activity_iri. Facts without provenance cannot be traced to a load batch, mapping version or agent action and are excluded from certified datasets (DQ-04). Complements DQR-LINEAGE-RECORD-001, which checks the hc-prov-activity header on the canonical stream before the sinks.
+    dimension: completeness
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    cde: [prov_activity_iri]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/time/BitemporalAssertion
+        as_of: batch
+        sparql: |
+          PREFIX ht: <https://ontology.healix.example.org/time/>
+          PREFIX prov: <http://www.w3.org/ns/prov#>
+          SELECT ?focus ('prov:wasGeneratedBy missing or not an IRI' AS ?detail) WHERE {
+            ?focus a ht:BitemporalAssertion .
+            FILTER NOT EXISTS { ?focus prov:wasGeneratedBy ?act . FILTER(isIRI(?act)) }
+          }
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: one row per version (hist_sk)
+        language: sql
+        key_columns: [hist_sk, patient_bk]
+        schedule: on_load
+        sql: SELECT hist_sk, patient_bk FROM {{ ref('hist_dim_patient') }} WHERE prov_activity_iri IS NULL OR TRIM(prov_activity_iri) = ''
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/shape/BitemporalAssertionShape
+    remediation:
+      action: source_fix
+      hint: The producing processor did not stamp hc-prov-activity or the loader dropped it; the KG sink must reject the batch (TKG-TIME-001) and the EDW loader must fail the load. Re-run the batch with a registered fact_lineage_activity row.
+      policy_ref: https://policy.healix.example.org/platform/provenance
+    version: 1.0.0
+    status: active
+    tags: [provenance, tkg-c5, templated-bitemporal, cde]
+    tests:
+      - {fixture: fixtures/g9/assertion-well-formed.trig, expect: pass, plane: graph}
+      - {fixture: fixtures/g9/assertion-missing-provenance.trig, expect: fail, plane: graph}
+      - {fixture: fixtures/g9/hist-row-missing-prov.sql, expect: fail, plane: warehouse}
+
+  - id: DQR-INTEGRITY-PROV-002
+    name: Provenance activity resolves to a registered lineage activity (C5)
+    description: The prov_activity_iri on every bitemporal row must resolve to a row of edw_g9_governance.fact_lineage_activity, and in the graph the object of prov:wasGeneratedBy must be a typed prov:Activity. A dangling activity reference means the lineage of the fact is unrecoverable even though the column is populated (EDW-G9 requirement that every load batch references a lineage activity).
+    dimension: integrity
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/time/BitemporalAssertion
+        as_of: batch
+        sparql: |
+          PREFIX ht: <https://ontology.healix.example.org/time/>
+          PREFIX prov: <http://www.w3.org/ns/prov#>
+          SELECT ?focus (CONCAT('unresolved activity ', STR(?act)) AS ?detail) WHERE {
+            ?focus a ht:BitemporalAssertion ; prov:wasGeneratedBy ?act .
+            FILTER NOT EXISTS { ?act a prov:Activity }
+          }
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: one row per version (hist_sk)
+        language: sql
+        key_columns: [hist_sk, patient_bk]
+        schedule: on_load
+        sql: SELECT h.hist_sk, h.patient_bk FROM {{ ref('hist_dim_patient') }} h LEFT JOIN {{ ref('fact_lineage_activity') }} la ON la.prov_activity_iri = h.prov_activity_iri WHERE h.prov_activity_iri IS NOT NULL AND la.prov_activity_iri IS NULL
+    severity: major
+    threshold: {metric: pass_rate, min: 0.9999, window: P1D}
+    owner: steward.dq_lead
+    derivation: policy
+    derived_from: https://policy.healix.example.org/platform/provenance
+    remediation:
+      action: auto_fix
+      fix_class: reference_resolution
+      hint: Register the missing activity from the OpenLineage run (hc.ops.lineage.openlineage.v1) into fact_lineage_activity and the governance graph; if no run exists the batch was loaded outside the orchestrator and must be investigated as an incident.
+      policy_ref: https://policy.healix.example.org/platform/provenance
+    version: 1.0.0
+    status: active
+    tags: [provenance, tkg-c5, templated-bitemporal]
+
+  # --------------------------------------------------------------------------------------------------------------
+  # Dual projection: KG current view and KG vs EDW reconciliation (TKG-STORE-007, TKG-04 §7.2, ADR-07)
+  # --------------------------------------------------------------------------------------------------------------
+  - id: DQR-CONSISTENCY-KG-001
+    name: KG current-view graphs agree with the batch graphs (TKG-STORE-007)
+    description: The materialised Current view graphs (graph/current/<Gn>) are derived from the batch graphs and must be rebuilt and reconciled nightly. A base triple is in drift when it is current in the batch graphs (no supersededAt, validTo absent or in the future) but missing from the current view, or present in the current view without a current assertion backing it. Any drift row opens a DQ issue; the current view is never patched by hand but rebuilt.
+    dimension: consistency
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/time/BitemporalAssertion
+        as_of: current
+        sparql: |
+          PREFIX ht: <https://ontology.healix.example.org/time/>
+          PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+          SELECT ?focus ?detail WHERE {
+            {
+              ?focus a ht:BitemporalAssertion ; rdf:subject ?s ; rdf:predicate ?p ; rdf:object ?o .
+              FILTER NOT EXISTS { ?focus ht:supersededAt ?sup }
+              FILTER NOT EXISTS { ?focus ht:validTo ?vt . FILTER(?vt <= NOW()) }
+              FILTER NOT EXISTS { GRAPH ?cg { ?s ?p ?o } FILTER(STRSTARTS(STR(?cg), 'https://ontology.healix.example.org/graph/current/')) }
+              BIND('current assertion missing from current view' AS ?detail)
+            } UNION {
+              GRAPH ?cg { ?s ?p ?o }
+              FILTER(STRSTARTS(STR(?cg), 'https://ontology.healix.example.org/graph/current/'))
+              FILTER NOT EXISTS {
+                ?a a ht:BitemporalAssertion ; rdf:subject ?s ; rdf:predicate ?p ; rdf:object ?o .
+                FILTER NOT EXISTS { ?a ht:supersededAt ?sup2 }
+                FILTER NOT EXISTS { ?a ht:validTo ?vt2 . FILTER(?vt2 <= NOW()) }
+              }
+              BIND(IRI(CONCAT('urn:healix:kg:current-view-orphan:', MD5(CONCAT(STR(?s), STR(?p), STR(?o))))) AS ?focus)
+              BIND(CONCAT('triple in current view without current assertion: ', STR(?s), ' ', STR(?p)) AS ?detail)
+            }
+          }
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: policy
+    derived_from: https://policy.healix.example.org/platform/dual-projection-reconciliation
+    remediation:
+      action: steward
+      hint: Data platform rebuilds graph/current/<Gn> from the batch graphs (TKG-02 §4) and re-runs the rule; persistent drift after a rebuild indicates a sink writing base triples outside the assertion path and is a platform incident.
+      policy_ref: https://policy.healix.example.org/platform/dual-projection-reconciliation
+    version: 1.0.0
+    status: active
+    tags: [platform, reconciliation, tkg-store-007]
+
+  - id: DQR-CONSISTENCY-KG-EDW-001
+    name: KG and EDW projections reconcile per group, entity type and recorded day (TKG-04 §7.2)
+    description: ADR-07 dual projection. Nightly (02:00 UTC) and on demand, for each (group, entity type, recorded day) the reconciler compares the knowledge graph and the EDW on five checks with tolerance zero or equality - current fact count, assertion count recorded on the day, content hash over (businessKey, predicate, objectCanonical, validFrom, validTo), ER link count and retraction count - and publishes the outcome to hc.ops.kg-edw-reconciliation.v1, landed in edw_g9_governance.fact_kg_edw_reconciliation and asserted as G9 DQ Result facts. Every mismatching check is a failing row carrying up to 1,000 differing business keys as issue detail (DQ-RULE-008). DQR-CONSISTENCY-XSYS-010 is the intraday as-of entity-count check; this rule is the full nightly reconciliation that module 08 opens issues against.
+    dimension: consistency
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: warehouse
+        table: edw_g9_governance.fact_kg_edw_reconciliation
+        grain: group_code, entity_type, recorded_day, check_cd
+        language: sql
+        key_columns: [group_code, entity_type, recorded_day, check_cd]
+        schedule: daily
+        sql: |
+          SELECT group_code, entity_type, recorded_day, check_cd, kg_value, edw_value, differing_bk_count
+          FROM {{ ref('fact_kg_edw_reconciliation') }}
+          WHERE recorded_day >= {{ window_start }}
+            AND check_cd IN ('current_count', 'recorded_count', 'content_hash', 'er_link_count', 'retraction_count')
+            AND (match_flag = 'N' OR kg_value IS NULL OR edw_value IS NULL OR kg_value <> edw_value)
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/governance/KgEdwReconciliation
+        as_of: current
+        sparql: |
+          PREFIX gov: <https://ontology.healix.example.org/governance/>
+          SELECT ?focus (CONCAT(STR(?check), ': kg=', STR(?kg), ' edw=', STR(?edw)) AS ?detail) WHERE {
+            ?focus a gov:KgEdwReconciliation ; gov:group ?g ; gov:entityType ?e ; gov:recordedDay ?d ; gov:check ?check ; gov:kgValue ?kg ; gov:edwValue ?edw .
+            FILTER(STR(?kg) != STR(?edw))
+          }
+    severity: critical
+    threshold: {metric: fail_count, max: 0, window: P1D}
+    owner: steward.dq_lead
+    derivation: policy
+    derived_from: https://policy.healix.example.org/platform/dual-projection-reconciliation
+    remediation:
+      action: steward
+      hint: Assigned to the data-platform steward with the differing business keys attached. A mismatch is never auto-fixed by copying one projection into the other; find the root cause in the canonical stream (both projections must be re-derivable from hc.dq.passed.<domain>.v1) and replay the affected partition into the lagging sink.
+      policy_ref: https://policy.healix.example.org/platform/dual-projection-reconciliation
+    version: 1.0.0
+    status: active
+    tags: [platform, reconciliation, adr-07]
+    tests:
+      - {fixture: fixtures/g9/kg-edw-reconciliation-all-match.sql, expect: pass, plane: warehouse}
+      - {fixture: fixtures/g9/kg-edw-reconciliation-hash-mismatch.sql, expect: fail, plane: warehouse}
+
+  # --------------------------------------------------------------------------------------------------------------
+  # Timeliness of the bitemporal block (C3, C7, TKG-01 §5.1 fallback)
+  # --------------------------------------------------------------------------------------------------------------
+  - id: DQR-TIMELINESS-TEMPORAL-001
+    name: Fact recorded within budget of its event time (C3, C7)
+    description: TKG-01 §9 clauses C3 and C7 - recordedAt minus eventTime is the end-to-end latency from the producing record to the projection. Budget is 30 minutes for every source class (ARC-NFR-001 allows 5 s source-to-canonical for HL7 v2/CDC and 15 min for BICC batch extracts, plus DQ evaluation and sink commit); 99 % of versions recorded in the hour must be inside it. Breaches are reported per instantiated table so a lagging sink or group is visible on the scorecard.
+    dimension: timeliness
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: warehouse
+        table: edw_g1_party.hist_dim_patient
+        grain: one row per version (hist_sk)
+        language: sql
+        key_columns: [hist_sk, patient_bk]
+        schedule: both
+        sql: SELECT hist_sk, patient_bk FROM {{ ref('hist_dim_patient') }} WHERE event_time >= {{ window_start }} AND recorded_at > event_time + INTERVAL '30' MINUTE
+    severity: major
+    threshold: {metric: pass_rate, min: 0.99, window: PT1H}
+    owner: steward.dq_lead
+    derivation: policy
+    derived_from: https://policy.healix.example.org/sla/projection-latency
+    remediation:
+      action: steward
+      hint: Compare against the OPS-03 latency SLIs per hop (connector, canonicaliser, DQ evaluator, temporal splitter, sink); the hop that breaches owns the fix. A recurring breach for one group reopens the parallelism or partition-count decision for that domain.
+      policy_ref: https://policy.healix.example.org/sla/projection-latency
+    version: 1.0.0
+    status: active
+    tags: [sla, tkg-c3, tkg-c7, templated-bitemporal]
+
+  - id: DQR-TIMELINESS-TEMPORAL-002
+    name: Valid time derived from a fallback source (approximate precision)
+    description: TKG-01 §5.1. When a resource has no explicit valid-time element the splitter falls back, in order, to Provenance.recorded, meta.lastUpdated, hc-source-time and hc-event-time, and must stamp healix-time:validTimePrecision approximate and raise a DQ observation. Each such assertion is a failing focus node; the aggregate rate per resource type tells the ontology and mapping teams where an explicit validTimeSource mapping is still missing. The rule never quarantines - the fact is usable, its valid time is merely coarse.
+    dimension: timeliness
+    group: G9
+    domain: governance
+    source_systems: [platform]
+    targets:
+      - plane: graph
+        language: sparql
+        target_class: https://ontology.healix.example.org/time/BitemporalAssertion
+        as_of: batch
+        sparql: |
+          PREFIX ht: <https://ontology.healix.example.org/time/>
+          PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+          SELECT ?focus (CONCAT('approximate valid time on ', STR(?p)) AS ?detail) WHERE {
+            ?focus a ht:BitemporalAssertion ; ht:validTimePrecision ht:Precision_approximate ; rdf:predicate ?p .
+          }
+    severity: minor
+    threshold: {metric: pass_rate, min: 0.98, window: P1D}
+    owner: steward.dq_lead
+    derivation: ontology
+    derived_from: https://ontology.healix.example.org/time/validTimePrecision
+    remediation:
+      action: steward
+      hint: agent.source_mapper proposes an explicit validTimeSource mapping for the resource type and predicate (TKG-01 §5 table); once released, the affected assertions are re-derived as corrections with exact precision.
+      policy_ref: https://policy.healix.example.org/platform/bitemporal-contract
+    version: 1.0.0
+    status: active
+    tags: [bitemporal, tkg-c1, fallback]

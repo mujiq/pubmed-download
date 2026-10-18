@@ -490,15 +490,20 @@ platform-generated; it is the only group that references every other group's tab
 | `dim_source_system` (view) | alias | View over G8 `edw_g8_reference.dim_source_system` for local joins; the conformed table is owned by G8 (ARC-01 §4) | — | `05-conformed-dimensions.md` §10 |
 | `dim_source_interface` | dim (SCD2) | One row per interface/topic feeding the platform | SRC | Kafka topic, connector, format (HL7 v2/FHIR/CDC/X12/file) |
 | `dim_data_element` | dim (SCD2) | One row per registered data element (source field or EDW column) with ontology IRI and PHI class | SRC | mirror of module 03 registry + this module's data dictionary |
-| `dim_dq_rule` | dim (SCD2) | One row per DQ rule version (`DQR-<DIMENSION>-<DOMAIN>-<NNN>` from module 09) | — | dimension (completeness, conformity, …), severity, threshold, SHACL shape IRI, derived-from ontology constraint IRI |
-| `dim_dq_dimension` | dim | One row per DQ dimension (completeness, conformity, consistency, timeliness, uniqueness, accuracy, validity) | — | — |
+| `dim_dq_rule` | dim (SCD2) | One row per DQ rule version (`DQR-<DIMENSION>-<DOMAIN>-<NNN>`, `rule_version`, `pack_version` from module 09 DQ-02) | — | dimension, group (G1–G9/XSYS), domain, target planes and authoritative plane, severity (blocker/critical/major/minor), threshold `{metric,min,max,window}`, CDE flag, derivation, derived-from IRI, remediation action, owner → `dim_data_steward`, status (draft/review/active/tuning/deprecated/retired) |
+| `dim_data_steward` | dim (SCD2) | One row per steward version (`steward_bk` = rule-pack `owner`): humans and agents (DQ-01 §6, DQ-FW-008) | SRC (owned source) | role, group, escalation steward; `pii:workforce` attributes |
+| `ref_dq_weight` | ref | One row per (severity, CDE flag, formula version): `w_sev`, `w_cde` of the composite DQ index (DQ-04 §2.1) | — | versioned so historical scorecards reproduce (DQ-SCORE-007) |
+| `dim_dq_certification` | dim (SCD2) | One row per certification state of a group / schema / data product: `is_certified_flag`, band, DQI (DQ-SCORE-009) | — | certified by → `dim_data_steward` |
+| `dim_dq_dimension` | dim | One row per module-09 DQ dimension (completeness, validity, accuracy, consistency, uniqueness, timeliness, integrity, temporal, lineage, semantic — DQ-01 §2) | — | — |
 | `dim_pipeline` | dim (SCD2) | One row per pipeline / agent workflow version | — | — |
 | `dim_agent` | dim (SCD2) | One row per agent id × version × model (`agent.<role>`) | — | module 10 roster |
 | `dim_policy` | dim (SCD2) | One row per access/PHI policy version | — | module 11 |
 | `dim_consent_directive_type`, `dim_issue_status`, `dim_issue_severity`, `dim_audit_action` | dims | value-set bound | CODE |
-| `fact_dq_result` | T | One row per DQ rule × evaluated record/batch × evaluation time (contract from module 09) | SRC, DATE, TIME | `dim_dq_rule`, target `table_name`/`column_name`, `record_bk`, outcome (pass/fail/warn), measured value, threshold, `dq_run_id` |
-| `fact_dq_score_daily` | P | One row per table (or subject area) × DQ dimension × day: pass rate, record counts, composite index | DATE | derived; feeds scorecards |
-| `fact_dq_issue` | A | One row per DQ issue opened → triaged → remediated → closed | DATE | `dim_dq_rule`, `dim_issue_status`, `dim_issue_severity`, `dim_agent` (opener, remediator) |
+| `fact_dq_result` | T | One row per `hc.dq.result.v1` record: rule version × plane × subject (record / focus node / row) or aggregate window × evaluation time (module 09 DQ-03 §6.1; field-for-field mapping in `ddl/g9_governance.sql`) | SRC (evaluated data), DATE, TIME | `dim_dq_rule` + `dq_rule_bk`/`dq_rule_version`/`pack_version`, `plane_code`, `outcome_code` (pass/fail/error/pending), `grain_code`, `severity_code`, subject (`subject_resource_type`, hashed `subject_bk`, named graph, target table/column), `facility_code`, `detail_text`, `context_json`, aggregate counts and window, quarantine/issue links, `is_backfill_flag`; 90-day record-grain retention |
+| `agg_dq_result_day` | P | One row per (rule id, rule version, plane, source system, facility, day): passed/failed/errored/pending/denominator, pass rate, latency p95, breach flag (module 09 DQ-04 §6, 7-year retention) | SRC, DATE | roll-up of `fact_dq_result`; recomputation supersedes bitemporally (DQ-SCORE-007) |
+| `fact_dq_score_daily` | P | One row per table (or subject area) × DQ dimension × day: pass rate, record counts, composite index | DATE | derived from `agg_dq_result_day` × `ref_dq_weight`; feeds scorecards |
+| `fact_dq_profile` | P | One row per profiling baseline version: (rule target, source system, facility, window) with null rate, distinct count, quantiles, string lengths, top values, inter-arrival, PSI (module 09 DQ-01 §4.3, DQ-FW-009) | SRC, DATE | cited by profiling-derived rules via `baseline_ref` |
+| `fact_dq_issue` | A (bitemporal) | One row per `hc.dq.issue.v1` state version: every workflow transition (detected → acknowledged → auto_fixing / steward_review / source_requested → escalated → verifying → resolved / accepted → reopened, DQ-05 §3) appends a version and supersedes the prior one (DQ-REM-009) | SRC (failing data), DATE, TIME | `dim_dq_rule`, owner → `dim_data_steward`, severity, SLA due/status, subjects (hashed), quarantine ids, plane agreement, reconciliation link (EDW-REC-002) |
 | `fact_lineage_activity` | T | One row per PROV-O activity (load, transform, merge, DDL migration, agent action) with `prov_activity_iri` as business key | SRC, DATE, TIME | `dim_pipeline`, `dim_agent`, inputs/outputs via bridge |
 | `bridge_lineage_activity_entity` | bridge | One row per activity × entity (table/topic/file/graph) × role (used/generated) | — | OpenLineage dataset URN |
 | `fact_load_batch` | A | One row per load batch into any EDW table (topic offsets range, row counts, checksum) | SRC, DATE, TIME | referenced by every loaded row's `load_batch_id` |
@@ -510,8 +515,10 @@ platform-generated; it is the only group that references every other group's tab
 
 **Requirements**
 
-> **EDW-G9-001** (P0, test) — `fact_dq_result` MUST implement the module-09 result contract field-for-field; the
-> module-09 schema is authoritative and this table MUST be regenerated when it changes.
+> **EDW-G9-001** (P0, test) — `fact_dq_result` and `fact_dq_issue` MUST implement the module-09 `hc.dq.result.v1` and
+> `hc.dq.issue.v1` contracts field-for-field, and `agg_dq_result_day`, `fact_dq_profile`, `dim_data_steward`,
+> `ref_dq_weight` and `dim_dq_certification` MUST carry the attributes module 09 (DQ-01, DQ-03, DQ-04) reads from them;
+> the module-09 schemas are authoritative and these tables MUST be regenerated when they change.
 
 > **EDW-G9-002** (P0, test) — Every row in every presentation table MUST carry a `load_batch_id` that exists in
 > `fact_load_batch`, and every `fact_load_batch` MUST reference a `fact_lineage_activity` via `prov_activity_iri`.
@@ -519,11 +526,12 @@ platform-generated; it is the only group that references every other group's tab
 > **EDW-G9-003** (P0, test) — `fact_schema_change` MUST contain one row per applied migration file with its SHA-256
 > checksum; a migration whose checksum differs from the recorded one MUST abort (`04-physical-model-and-ddl.md` §5).
 
-> **EDW-G9-004** (P0, inspection) — `fact_audit_event` MUST record every read of a column tagged `phi_direct` or
-> `phi_sensitive` outside the Data Platform service accounts (module 11 `GOV-PHI-*`).
+> **EDW-G9-004** (P0, inspection) — `fact_audit_event` MUST record every read of a column tagged `phi:direct` or
+> `phi:sensitive-category` (any sub-tag) outside the Data Platform service accounts (module 11 `GOV-PHI-*`).
 
-> **EDW-G9-005** (P1, test) — `fact_dq_score_daily` MUST be computable per subject-area group so the composite DQ index
-> KPI (VIS-00 §8) is reportable by `G1`–`G9`.
+> **EDW-G9-005** (P1, test) — `fact_dq_score_daily` MUST be computable per subject-area group from `agg_dq_result_day`
+> and `ref_dq_weight` with the module-09 formula (DQ-04 §2.1) so the composite DQ index KPI (VIS-00 §8) is reportable by
+> `G1`–`G9`.
 
 ---
 

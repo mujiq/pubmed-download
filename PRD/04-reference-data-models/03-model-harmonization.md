@@ -261,18 +261,17 @@ attributes:
     ontology_property_iri: https://ontology.healix.example.org/clinical/encounterClass
     binding: { value_set: https://ontology.healix.example.org/scheme/encounter-class, strength: required }
     fhir_element: Encounter.class
-    phi: false
+    phi_class: phi:clinical             # module 11 tag (hc-phi-class value, GOV-01 §3)
   - name: periodStart
     physical: period_start_ts
     datatype: timestamp
     ontology_property_iri: https://ontology.healix.example.org/clinical/periodStart
     fhir_element: Encounter.period.start
-    phi: true
-    phi_category: date-of-service
+    phi_class: phi:quasi                # date of service = HIPAA identifier 3 (GOV-01 §2)
 lineage:
   sources:
-    - { system: cerner.millennium, object: ENCOUNTER, fields: [ENCNTR_ID, ENCNTR_TYPE_CD, REG_DT_TM, DISCH_DT_TM], cardinality: "1:1", std_topic: hc.std.cerner.encounter.cdc.v1 }
-    - { system: cerner.millennium.hl7, object: "ADT^A01..A08", fields: [PV1-19, PV1-2, PV1-44, PV1-45], cardinality: "n:1", std_topic: hc.std.cerner.adt.hl7v2.v1 }
+    - { system: cerner.millennium, object: ENCOUNTER, fields: [ENCNTR_ID, ENCNTR_TYPE_CD, REG_DT_TM, DISCH_DT_TM], cardinality: "1:1", std_topic: hc.std.cerner.cdc.encounter.typed.v1 }
+    - { system: cerner.millennium.hl7, object: "ADT^A01..A08", fields: [PV1-19, PV1-2, PV1-44, PV1-45], cardinality: "n:1", std_topic: hc.std.cerner.adt.hl7v2-parsed.v1 }
   canonical_topic: hc.canonical.clinical.encounter.fhir.v1
 presentation:                           # hints only; module 05 decides (RDM-HAR-004)
   role: fact
@@ -294,7 +293,7 @@ divergences: [DIV-UDMH-003]
 | `canonical`, `lineage.sources` (≥ 1) | yes | FHIR/HEALIX-ERP profile; source ids from module 03, `std_topic` from module 07 (RDM-HAR-009) |
 | `keys.business_key` | yes | Same key mints KG IRIs and EDW `*_bk` columns (RDM-HAR-015) |
 | `attributes[].binding` | when `datatype: concept` | Value set served by the Terminology Service (RDM-UDMH-009) |
-| `attributes[].phi` | yes | Feeds module 11 classification |
+| `attributes[].phi_class` | yes | Module 11 tag (`hc-phi-class` value, GOV-01 §3); the entity inherits the most restrictive attribute tag |
 | `physical.teradata.primary_index` | yes for non-`stg_*` | RDM-HCDM-004 |
 | `presentation`, `dq_hints`, `divergences` | optional | Hints only; `DIV-UDMH-NNN` / `DIV-HCDM-NNN` ids |
 

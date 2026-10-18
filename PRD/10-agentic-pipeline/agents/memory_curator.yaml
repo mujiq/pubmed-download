@@ -1,0 +1,93 @@
+manifest_version: 0.1.0
+id: agent.memory_curator
+role: Memory Curator
+mission: >-
+  Consolidate episodic agent memory (Mem0 preferences/episodes and the Graphiti temporal memory graph) into
+  durable playbooks and semantic insights, expire and prune stale or low-value memories, and enforce the
+  absolute rule that no PHI ever enters agent memory. Feeds graduation statistics and precedent retrieval.
+pipeline_stage: []
+owns_modules: ["14"]
+autonomy_level: L3
+autonomy_ceiling: L3
+model:
+  ref: "${MODEL_REASONING}"
+  recommended_default: claude-sonnet-5-5
+  fallback_ref: "${MODEL_MAPPING}"
+  temperature: 0.0
+  max_output_tokens: 8192
+  structured_output: true
+tools:
+  - server: memory-api
+    operations: [read_episode, write_insight, consolidate, expire, prune, list_scope, redact]
+    permission: apply
+    phi_access: none
+  - server: lineage
+    operations: [emit_run_event]
+    permission: apply
+    phi_access: none
+  - server: cr-engine
+    operations: [get_cr, list_crs, propose]
+    permission: propose
+    phi_access: none
+  - server: ticketing
+    operations: [create_issue, update_issue]
+    permission: apply
+    phi_access: none
+triggers:
+  - kind: schedule
+    cron: "17 3 * * *"
+    description: Nightly consolidation of the prior day's episodes into playbooks and insights; expiry sweep.
+  - kind: event
+    topic: hc.ops.memory.write.v1
+    event_type: episode_batch_threshold
+    description: Episode volume for a scope crossed the consolidation threshold.
+  - kind: manual
+inputs:
+  - Episodic memories (Mem0) and Graphiti temporal memory edges per agent/steward scope
+  - Resolved incidents and their healing actions (for playbook learning)
+  - Change-request outcomes and evaluator scores (for precedent insights)
+  - Memory retention and PHI policy (module 11, module 14)
+outputs:
+  - artefact: Consolidated playbooks and semantic insights
+    cr_type: null
+    destination: memory-api
+  - artefact: Proposed playbook promotions (new healing/curation playbooks)
+    cr_type: dq_rule
+    destination: cr-engine
+  - artefact: Memory hygiene report (expired, pruned, redacted counts)
+    cr_type: null
+    destination: hc.ops.agent.evaluation.v1
+risk_classes: [low]
+evaluation:
+  rubric_ids: [RUB-MEM-01, RUB-PHI-01, RUB-EVD-01]
+  auto_approve_threshold: 0.85
+  human_agreement_target: 0.90
+  golden_sets: [labelled-memory-consolidation-v1]
+budgets:
+  tokens_per_run: 60000
+  runs_per_day: 48
+  daily_token_cap: 4000000
+  max_tool_calls_per_run: 200
+  wall_clock_minutes_per_run: 20
+  max_concurrent_runs: 2
+  max_open_change_requests: 10
+escalation:
+  to: [Agent Operator, Privacy & Security Officer]
+  sla_hours: 4
+  on_low_score: Hold consolidation output in review state; do not write to semantic memory.
+  on_budget_exhausted: Defer non-critical consolidation to the next window; keep expiry running.
+  on_tool_failure: Alert Agent Operator if memory-api unreachable > 2 windows.
+  on_conflict: Prefer the higher-confidence insight; keep both with provenance when confidence is tied.
+memory:
+  working: true
+  episodic: true
+  semantic_write: true
+  procedural: true
+  phi_retention: none
+  episodic_retention_days: 2555
+graduation:
+  next_level: none
+  criteria: [L3 is the ceiling; the curator writes memory and proposes playbooks but cannot apply ontology, schema or DQ changes directly.]
+  demotion_triggers:
+    - "Any confirmed PHI leak into memory (immediate demotion to L1 and privacy review)."
+    - "Insight precision on labelled set < 0.80 for 2 consecutive weeks."

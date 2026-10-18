@@ -48,7 +48,7 @@ mapping_spec:
     interface_id: cerner-cdc-core
     pattern: cdc_log
     containers: [ENCOUNTER, ENCNTR_ALIAS, ENCNTR_LOC_HIST, ENCNTR_PRSNL_RELTN]
-    std_subject: hc.std.cerner.encounter.cdc.v1-value       # Schema Registry subject of the input
+    std_subject: hc.std.cerner.cdc.encounter.typed.v1-value  # Schema Registry subject of the input (topics.yaml)
   target:
     kind: fhir                                             # fhir | healix-erp
     resource: Encounter
@@ -90,7 +90,7 @@ mapping_spec:
         - { fn: code_value_lookup, args: { by: cdf_meaning } }
         - { fn: translate, args: { concept_map: "$binding.concept_map" } }
       null_rule: { when_null: fail, reason: "class is required by US Core" }
-      phi_class: PHI
+      phi_class: phi:clinical                                 # module 11 tag (GOV-01 §3)
       dq_rules: [DQR-CONFORMANCE-ENCOUNTER-003, DQR-COMPLETENESS-ENCOUNTER-001]
       evidence:
         rationale: "cs 69 is the encounter class axis; cs 71 holds finer local types mapped to Encounter.type"
@@ -125,7 +125,7 @@ mapping_spec:
 | `binding` | yes if coded | `source_code_system` must be a registered `CodeSystem`; `concept_map` must exist in the terminology service; `unmapped_policy` mandatory |
 | `transform` | no | Ordered list of functions from the library (§2.2); no inline code |
 | `null_rule` | yes | `when_null: fail | omit | default | data_absent_reason`; `data_absent_reason` emits the FHIR extension |
-| `phi_class` | yes | Must be ≥ the registry element's class (may escalate, never downgrade) |
+| `phi_class` | yes | Module 11 tag (`hc-phi-class` value, GOV-01 §3); must be ≥ the registry element's class (may escalate, never downgrade) |
 | `dq_rules` | no | Rule ids this element participates in; `agent.dq_author` may add |
 | `evidence` | yes | Rationale, golden cases, confidence ∈ [0,1]; confidence < 0.8 forces human review |
 
@@ -133,7 +133,7 @@ mapping_spec:
 
 | Function | Purpose | Notes |
 |----------|---------|-------|
-| `code_value_lookup(by)` | Resolve Cerner `CODE_VALUE` to `cdf_meaning`/`display` | Cerner only; cached from `hc.std.reference.cerner-code-value.cdc.v1` |
+| `code_value_lookup(by)` | Resolve Cerner `CODE_VALUE` to `cdf_meaning`/`display` | Cerner only; cached from `hc.std.cerner.cdc.code_value.typed.v1` |
 | `lookup_value(lookup_type)` | Resolve Oracle Fusion lookup code to meaning | Fusion only |
 | `nomenclature_resolve()` | Expand `NOMENCLATURE_ID` to source and standard codings | Emits asserted/derived flags |
 | `translate(concept_map, reverse?)` | Terminology Service `$translate` | Records equivalence; unmapped per policy |
@@ -168,7 +168,7 @@ stateDiagram-v2
 | Propose | `agent.source_mapper` | registry elements, profiles, ontology properties, existing ConceptMaps, sample `std` records, prior versions | spec `draft` with evidence and confidence per element; typed change request (module 10) |
 | Evaluate | `agent.evaluator` | golden records (source payload ↔ expected canonical), FHIR validator, SHACL shapes, regression suite from previous version, PHI classification diff | evaluation report: element pass rate, required-element pass rate, validator pass rate, value-set translate rate, regressions, PHI impact |
 | Guard | `agent.privacy_guardian` | spec diff | veto if any element lowers `phi_class`, adds a sensitive element to a non-restricted topic, or emits clear sensitive identifiers |
-| Approve | steward (human) or auto | report, risk class | **Auto-approve** only when: risk class = low (no identifier, no PHI-SENSITIVE, no required-element change), all thresholds met, confidence ≥ 0.9 on every changed element. Otherwise steward approval |
+| Approve | steward (human) or auto | report, risk class | **Auto-approve** only when: risk class = low (no identifier, no `phi:sensitive-category/*`, no required-element change), all thresholds met, confidence ≥ 0.9 on every changed element. Otherwise steward approval |
 | Release | `agent.release_manager` | approved spec | compiled job, Git tag, changelog, lineage registration (OpenLineage job + PROV-O activity) |
 | Monitor | `agent.dq_monitor` | canonical + DQ streams | unmapped-code rate, validator failures, drift → new proposal |
 
@@ -180,12 +180,12 @@ High always requires steward plus privacy sign-off.
 
 | Metric | Definition | Target (first release) | Published to |
 |--------|-----------|------------------------|--------------|
-| Element coverage | mapped registry elements / in-scope registry elements per interface | ≥ 90 % overall; 100 % of `criticality = critical` | G9 `fact_mapping_coverage`, `hc.dq.governance.mapping-coverage.v1` |
+| Element coverage | mapped registry elements / in-scope registry elements per interface | ≥ 90 % overall; 100 % of `criticality = critical` | G9 `fact_mapping_coverage`, `hc.dq.scorecard.v1` (scope = interface) |
 | Required-element coverage | profile `min ≥ 1` elements with a mapping / all required elements | 100 % | same |
 | Ontology binding coverage | elements with `ontology_property` / mapped elements | ≥ 95 % (goal G-01) | same |
-| Value-set translate rate | `$translate` successes / coded values processed, per binding | ≥ 99 % required bindings; ≥ 95 % extensible | `hc.dq.*` |
+| Value-set translate rate | `$translate` successes / coded values processed, per binding | ≥ 99 % required bindings; ≥ 95 % extensible | `hc.dq.result.v1` |
 | Golden pass rate | golden cases producing expected canonical (deep-equal after canonical ordering) | ≥ 99.5 %; 100 % for required elements | evaluation report |
-| Validator pass rate | FHIR validator (profiles) pass on canonical output | ≥ 99.5 % (goal G-02) | `hc.dq.*` |
+| Validator pass rate | FHIR validator (profiles) pass on canonical output | ≥ 99.5 % (goal G-02) | `hc.dq.result.v1` |
 | Round-trip fidelity | canonical → HL7 v2 / source projection comparison for key fields | ≥ 99 % | evaluation report |
 | Mapping staleness | days since last evaluation of a released spec | ≤ 30 | G9 |
 | Unmapped-code backlog | distinct unmapped codes awaiting vocabulary CR, by age | 0 older than 14 days for required bindings | G9 |
@@ -209,7 +209,7 @@ Header, identity and temporal blocks are shown in §2. Representative elements:
                  concept_map: https://ontology.healix.example.org/fhir/ConceptMap/cerner-cs71-to-healix-encounter-type, strength: extensible, unmapped_policy: passthrough_extension }
       transform: [ { fn: code_value_lookup, args: { by: cdf_meaning } }, { fn: translate, args: { concept_map: "$binding.concept_map" } } ]
       null_rule: { when_null: omit }
-      phi_class: PHI
+      phi_class: phi:clinical
     - id: e050                                   # derived status: rule table over several source columns
       source: [ENCOUNTER.ACTIVE_IND, ENCOUNTER.DISCH_DT_TM, ENCOUNTER.ENCNTR_STATUS_CD]
       std_field: encounter_status
@@ -221,7 +221,7 @@ Header, identity and temporal blocks are shown in §2. Representative elements:
                                             "ACTIVE_IND=0": entered-in-error, "ENCNTR_STATUS_CD.cdf_meaning=='PREADMIT'": planned } } }
       null_rule: { when_null: fail }
       dq_rules: [DQR-CONSISTENCY-ENCOUNTER-STATUS-001]
-      phi_class: PHI
+      phi_class: phi:clinical
 ```
 
 ### 5.2 Oracle Fusion AP invoice → FHIR Invoice (BICC)
@@ -233,7 +233,7 @@ mapping_spec:
   status: approved
   source: { source_id: oracle-fusion-prod, interface_id: fusion-bicc-financials, pattern: bicc_extract,
             containers: [InvoicePVO, InvoiceLinePVO, InvoiceDistributionPVO, SupplierPVO],      # illustrative PVO names
-            std_subject: hc.std.fusion.ap-invoice.bicc.v1-value }
+            std_subject: hc.std.fusion.ap.invoice.typed.v1-value }
   target: { kind: fhir, resource: Invoice, profiles: [https://ontology.healix.example.org/fhir/StructureDefinition/healix-invoice-payable],
             topic: hc.canonical.finance.invoice.fhir.v1, group: G3 }
   identity:
@@ -248,22 +248,22 @@ mapping_spec:
         binding: { source_code_system: "urn:healix:cs:fusion:lookup|INVOICE TYPE", target_value_set: https://ontology.healix.example.org/fhir/ValueSet/healix-invoice-type,
                    concept_map: https://ontology.healix.example.org/fhir/ConceptMap/fusion-invoice-type-to-healix, strength: required, unmapped_policy: quarantine },
         transform: [ { fn: lookup_value, args: { lookup_type: "INVOICE TYPE" } }, { fn: translate, args: { concept_map: "$binding.concept_map" } } ],
-        null_rule: { when_null: fail }, phi_class: FINANCIAL }
+        null_rule: { when_null: fail }, phi_class: confidential:financial }
     - { id: e020, source: InvoicePVO.ApprovalStatus, std_field: approval_status, fhir_path: Invoice.status, semantic_type: coded, cardinality: "1..1",
         transform: [ { fn: map_table, args: { table: { APPROVED: issued, "NEEDS REAPPROVAL": draft, CANCELLED: cancelled, INITIATED: draft, PAID: balanced } } } ],
-        null_rule: { when_null: default, default: draft }, phi_class: FINANCIAL }
+        null_rule: { when_null: default, default: draft }, phi_class: confidential:financial }
     - { id: e030, source: SupplierPVO.VendorId, std_field: supplier_id, fhir_path: Invoice.participant.actor, semantic_type: reference, cardinality: "1..1",
         transform: [ { fn: lookup_reference, args: { registry: canonical.party.organization, key_system: urn:healix:id:fusion:supplier-id } } ],
-        null_rule: { when_null: fail }, phi_class: OPERATIONAL, notes: "participant.role = v3-ParticipationType|PRF (supplier)" }
+        null_rule: { when_null: fail }, phi_class: confidential:operational, notes: "participant.role = v3-ParticipationType|PRF (supplier)" }
     - { id: e041, source: InvoiceLinePVO.Amount, std_field: line_amount, fhir_path: "Invoice.lineItem.priceComponent.where(type='base').amount", semantic_type: money, cardinality: "1..1",
-        transform: [ { fn: money, args: { amount: "InvoiceLinePVO.Amount", currency: "InvoicePVO.InvoiceCurrencyCode" } } ], null_rule: { when_null: fail }, phi_class: FINANCIAL }
+        transform: [ { fn: money, args: { amount: "InvoiceLinePVO.Amount", currency: "InvoicePVO.InvoiceCurrencyCode" } } ], null_rule: { when_null: fail }, phi_class: confidential:financial }
     - { id: e050, source: InvoiceDistributionPVO.DistCodeCombinationId, std_field: gl_ccid, semantic_type: coded, cardinality: "1..*",
         fhir_path: "Invoice.lineItem.extension('https://ontology.healix.example.org/fhir/StructureDefinition/healix-gl-account').value",
         binding: { source_code_system: "urn:healix:cs:fusion:gl-code-combination", target_value_set: "urn:healix:vs:fusion:gl-code-combination:enabled", strength: required, unmapped_policy: quarantine },
-        transform: [ { fn: validate_code, args: { value_set: "$binding.target_value_set" } } ], null_rule: { when_null: fail }, phi_class: FINANCIAL }
+        transform: [ { fn: validate_code, args: { value_set: "$binding.target_value_set" } } ], null_rule: { when_null: fail }, phi_class: confidential:financial }
     - { id: e060, source: InvoicePVO.InvoiceAmount, std_field: total_gross, fhir_path: Invoice.totalGross, semantic_type: money, cardinality: "1..1",
         transform: [ { fn: money, args: { amount: "InvoicePVO.InvoiceAmount", currency: "InvoicePVO.InvoiceCurrencyCode" } } ], null_rule: { when_null: fail },
-        phi_class: FINANCIAL, dq_rules: [DQR-CONSISTENCY-INVOICE-001] }       # sum(lines) + tax == totalGross
+        phi_class: confidential:financial, dq_rules: [DQR-CONSISTENCY-INVOICE-001] }       # sum(lines) + tax == totalGross
   tests: { golden_set: golden/fusion/ap-invoice/v1/, thresholds: { element_pass_rate: 0.995, required_element_pass_rate: 1.0, validator_pass_rate: 0.995 } }
 ```
 
@@ -274,7 +274,7 @@ mapping_spec:
   mapping_id: map.lis.oru-r01.hl7v2.fhir-observation
   version: 2.1.0
   status: approved
-  source: { source_id: lis-prod, interface_id: lis-oru-hl7v2, pattern: hl7v2_mllp, containers: [MSH, PID, PV1, ORC, OBR, OBX, NTE, SPM], std_subject: hc.std.lis.oru.hl7v2.v1-value }
+  source: { source_id: lis-prod, interface_id: lis-oru-hl7v2, pattern: hl7v2_mllp, containers: [MSH, PID, PV1, ORC, OBR, OBX, NTE, SPM], std_subject: hc.std.lis.oru.hl7v2-parsed.v1-value }
   target: { kind: fhir, resource: Observation, profiles: [http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab],
             topic: hc.canonical.clinical.observation.fhir.v1, group: G2,
             fan_out: "one Observation per OBX; one DiagnosticReport per OBR (map.lis.oru-r01.hl7v2.fhir-diagnosticreport)" }
@@ -289,26 +289,26 @@ mapping_spec:
   elements:
     - { id: e010, source: "PID-3[*]", std_field: patient_identifiers, fhir_path: Observation.subject, semantic_type: reference, cardinality: "1..1",
         transform: [ { fn: parse_hl7_cx }, { fn: lookup_reference, args: { registry: canonical.party.patient, key_system: "{assigning_authority_uri(CX.4)}", prefer_type: MR } } ],
-        null_rule: { when_null: fail }, phi_class: PHI }
+        null_rule: { when_null: fail }, phi_class: phi:direct }
     - { id: e020, source: "OBX-3", std_field: observation_code, fhir_path: Observation.code, ontology_property: https://ontology.healix.example.org/clinical/observationCode,
         semantic_type: coded, cardinality: "1..1",
         binding: { source_code_system: urn:healix:cs:lis:test-code, target_value_set: http://hl7.org/fhir/ValueSet/observation-codes,      # LOINC
                    concept_map: https://ontology.healix.example.org/fhir/ConceptMap/lis-test-code-to-loinc, strength: extensible, unmapped_policy: passthrough_extension },
         transform: [ { fn: translate, args: { concept_map: "$binding.concept_map" } } ],
-        notes: "If OBX-3.3 == 'LN' use the LOINC directly and keep OBX-3.4-6 as the local alternate coding", null_rule: { when_null: fail }, phi_class: PHI }
+        notes: "If OBX-3.3 == 'LN' use the LOINC directly and keep OBX-3.4-6 as the local alternate coding", null_rule: { when_null: fail }, phi_class: phi:clinical }
     - { id: e030, source: "OBX-5", std_field: observation_value, fhir_path: "Observation.value[x]", semantic_type: "quantity | coded | text (by OBX-2)", cardinality: "0..1",
         transform: [ { fn: map_table, args: { by: "OBX-2", table: { NM: valueQuantity, SN: valueQuantity_structured_numeric, CE: valueCodeableConcept, CWE: valueCodeableConcept,
                                                                      ST: valueString, TX: valueString, FT: valueString, DT: valueDateTime, TS: valueDateTime } } },
                      { fn: ucum_normalize, args: { unit: "OBX-6", when: "OBX-2 in [NM, SN]" } } ],
-        null_rule: { when_null: data_absent_reason, reason: "OBX-11 == 'X' → not-performed; else unknown" }, phi_class: PHI }
+        null_rule: { when_null: data_absent_reason, reason: "OBX-11 == 'X' → not-performed; else unknown" }, phi_class: phi:clinical }
     - { id: e040, source: "OBX-11", std_field: result_status, fhir_path: Observation.status, semantic_type: coded, cardinality: "1..1",
         binding: { source_code_system: http://terminology.hl7.org/CodeSystem/v2-0085, target_value_set: http://hl7.org/fhir/ValueSet/observation-status,
                    concept_map: http://hl7.org/fhir/uv/v2mappings/ConceptMap/observation-status-v2-to-fhir, strength: required, unmapped_policy: quarantine },   # v2-to-FHIR IG
         transform: [ { fn: translate, args: { concept_map: "$binding.concept_map" } } ], null_rule: { when_null: fail },
-        dq_rules: [DQR-CONSISTENCY-RESULT-STATUS-002], phi_class: PHI }
+        dq_rules: [DQR-CONSISTENCY-RESULT-STATUS-002], phi_class: phi:clinical }
     - { id: e070, source: "SPM-2", std_field: specimen_id, fhir_path: Observation.specimen, semantic_type: reference, cardinality: "0..1",
         transform: [ { fn: lookup_reference, args: { registry: canonical.clinical.specimen, key_system: urn:healix:id:lis:specimen-id } } ],
-        null_rule: { when_null: omit }, notes: "Specimen.type (SPM-4) bound to SNOMED CT specimen hierarchy via lis-specimen-type-to-snomed", phi_class: PHI }
+        null_rule: { when_null: omit }, notes: "Specimen.type (SPM-4) bound to SNOMED CT specimen hierarchy via lis-specimen-type-to-snomed", phi_class: phi:direct }
   tests: { golden_set: golden/lis/oru/v2/, thresholds: { element_pass_rate: 0.995, required_element_pass_rate: 1.0, validator_pass_rate: 0.995 } }
 ```
 
@@ -377,7 +377,7 @@ cell must have either an approved spec or an explicit `not_in_release` note in t
 > `null_rule` branch.
 
 > **SRC-MAP-011** (P1, test) — Coverage metrics in §4 MUST be computed daily per interface and published to
-> `hc.dq.governance.mapping-coverage.v1` and `edw_g9_governance.fact_mapping_coverage`.
+> `hc.dq.scorecard.v1` (scope = interface) and `edw_g9_governance.fact_mapping_coverage`.
 
 > **SRC-MAP-012** (P1, test) — Unmapped codes encountered in production MUST be aggregated per binding and MUST open
 > a vocabulary change request within 24 h; backlog older than 14 days for required bindings breaches the SLO.

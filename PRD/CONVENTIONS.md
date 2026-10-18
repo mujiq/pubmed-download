@@ -46,8 +46,12 @@ Each requirement uses RFC 2119 keywords (**MUST**, **SHOULD**, **MAY**) and carr
 
 Format:
 
-> **ONT-CV-004** (P0, test) — The vocabulary service MUST reject a new preferred label that collides
+> ONT-CV-004 (P0, test) — The vocabulary service MUST reject a new preferred label that collides
 > case-insensitively with an existing preferred label in the same concept scheme.
+
+(The ID above is shown unbolded because it is only an illustration of the format; the normative requirement lives in
+`02-ontology-pipeline/02-controlled-vocabularies.md`. In module documents the ID is always bold, which is how the linter
+indexes it.)
 
 ## 3. Naming
 

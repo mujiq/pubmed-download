@@ -136,7 +136,7 @@ A data element exists in five representations. Lineage MUST be navigable in both
 
 ```mermaid
 flowchart LR
-  A[Source element<br/>V500.ENCOUNTER.REG_DT_TM<br/>PV1-44] --> B[std field<br/>hc.std.cerner.adt.hl7v2.v1<br/>PV1.44.1]
+  A[Source element<br/>V500.ENCOUNTER.REG_DT_TM<br/>PV1-44] --> B[std field<br/>hc.std.cerner.adt.hl7v2-parsed.v1<br/>PV1.44.1]
   B --> C[FHIR path<br/>Encounter.period.start<br/>hc.canonical.clinical.encounter.fhir.v1]
   C --> D[KG property<br/>healix-clinical:encounterStart<br/>graph/cerner/…]
   C --> E[EDW column<br/>edw_g2_clinical.fact_encounter.admit_dt]
@@ -224,7 +224,8 @@ Deletion is executed by the module 12 retention jobs and itself produces an `Aud
 `lineage_coverage = |{targets with a complete path to ≥ 1 source element}| / |{targets}|`, computed nightly for two
 target sets: (a) EDW columns in `fact_*`/`dim_*` tables excluding surrogate keys and audit columns, and (b) KG data
 and object properties with instances. A path is complete when every hop in §4 has a `columnLineage` edge with a
-resolvable plan version. Results are published to `hc.dq.governance.lineage-coverage.v1` and shown on the governance
+resolvable plan version. Results are published as DQ results on `hc.dq.result.v1` under the rule family
+`DQR-COMPLETENESS-GOVERNANCE-*` (module 09), rolled into `hc.dq.scorecard.v1`, and shown on the governance
 dashboard (OPS-03). Targets: ≥ 95 % at first release, 100 % for `phi:direct` columns and properties at all times.
 
 ## 8. Requirements

@@ -6,7 +6,8 @@ version: 0.1.0
 status: draft
 owners: [Ontology Governance Board, Enterprise Ontology Team, Data Platform]
 depends_on: [ONT-00, ARC-01, AGT-03, GOV-01]
-last_updated: 2026-10-17---
+last_updated: 2026-10-17
+---
 # Ontology Governance, Registry API and Versioning
 
 ## 1. Purpose
@@ -48,14 +49,15 @@ policy, and the quality metrics that gate releases.
 | `GET /change-requests/{id}` | CR status | — | CR, evaluator report, reviewers, decision, applied version |
 | `POST /change-requests/{id}/decision` | Approve / reject / request-changes | `decision`, `comment`, reviewer identity (OIDC) | Updated CR |
 | `GET /diff` | Diff two versions | `from`, `to` (versionIRIs), `scope` (`scheme|module|shapes|all`), `format` (`json|markdown|turtle`) | Added/removed/changed axioms, concepts, labels, mappings; breaking-change flags |
-| `POST /releases` | Cut a release | Body: `scope`, `versionIRI`, `notes`; caller MUST be `agent.release_manager` or Board member | Release record; triggers Git tag, signing, store load, TS sync, `hc.ops.registry.release.v1` event |
+| `POST /releases` | Cut a release | Body: `scope`, `versionIRI`, `notes`; caller MUST be `agent.release_manager` or Board member | Release record; triggers Git tag, signing, store load, TS sync, registry release event (see below) |
 | `GET /releases` | List releases | `scope`, `since` | Release records with changelog links |
 | `GET /metrics` | Quality metrics (§7) | `scope`, `version` | Metric values and thresholds |
 | `GET /health`, `GET /openapi.json` | Operational | — | — |
 
-Registry events: every applied CR and release is published to `hc.ops.registry.change.v1` and
-`hc.ops.registry.release.v1` (Avro, Schema Registry `FULL` compatibility) so modules 05, 06, 08 and 09 can react
-(regenerate R2RML, re-sync the Terminology Service, re-derive DQ rules).
+Registry events: every applied CR is published as a CR lifecycle event on `hc.ops.agent.changerequest.v1` (the module 07
+catalog topic for typed change requests), and every release on `hc.ops.registry.release.v1` (module 07 catalog §6.6: compacted,
+keyed by version IRI, Avro, Schema Registry `FULL` compatibility) so modules 05, 06, 08 and 09 can react (regenerate R2RML, re-sync the Terminology Service, re-derive DQ
+rules).
 
 ## 3. Change request types
 
@@ -200,7 +202,7 @@ module 13 scorecard. Thresholds are release gates.
 | **ONT-GOV-004** | P0 | test | Auto-apply MUST occur only when evaluator score ≥ the configured threshold, `riskClass = low`, the CR type permits it (§3) and `phiImpact = false`; all four conditions MUST be logged with the decision. |
 | **ONT-GOV-005** | P0 | test | `CR-OWL-*` and `CR-SHACL-SHAPE` MUST never be auto-applied and MUST record Lead Ontologist approval identity (OIDC subject) before application. |
 | **ONT-GOV-006** | P0 | test | `GET /concepts/resolve` MUST answer in ≤ 50 ms p95 for cached released versions and MUST return a structured `CR-CV-ADD` hint for unknown codes. |
-| **ONT-GOV-007** | P0 | inspection | Every applied CR and every release MUST be published to `hc.ops.registry.change.v1` / `hc.ops.registry.release.v1` with the diff reference and version IRI. |
+| **ONT-GOV-007** | P0 | inspection | Every applied CR MUST be published to `hc.ops.agent.changerequest.v1` and every release to the registry release topic `hc.ops.registry.release.v1` (see §2) with the diff reference and version IRI. |
 | **ONT-GOV-008** | P1 | test | `GET /diff` MUST classify every change as breaking or non-breaking per §5 and MUST list affected consumers derived from `edwBinding`, `fhirPath`, derived shapes and DQ rule links. |
 | **ONT-GOV-009** | P1 | test | Reads MUST filter SNOMED CT and CPT bindings for callers lacking the corresponding licence claim and MUST return `healix:bindingStatus = bound-licensed-hidden` in their place. |
 | **ONT-GOV-010** | P1 | test | The registry MUST serve scheme and mapping projections as FHIR R4 `CodeSystem`, `ValueSet` and `ConceptMap` that validate against the FHIR R4 schema, and the Terminology Service (06) MUST be re-synced within 15 min of a release. |

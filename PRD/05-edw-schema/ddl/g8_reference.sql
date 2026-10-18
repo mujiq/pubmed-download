@@ -8,7 +8,7 @@
 -- Specs:  01-subject-area-groups.md §G8 · 05-conformed-dimensions.md §5, §9, §10
 -- Dialect: portable ANSI; Teradata hints as "-- TD:" comments.
 -- Ontology base IRI: https://ontology.healix.example.org/
--- Column comment format: '<phi_class> | <ontology_property_iri>' (EDW-DICT-003)
+-- Column comment format: '<phi_class> | <ontology_property_iri>' (EDW-DICT-003); phi_class values are the module-11 taxonomy (01-hipaa-phi-and-privacy.md §3)
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -50,9 +50,9 @@ CREATE TABLE edw_g8_reference.dim_source_system (
 -- TD: CREATE SET TABLE edw_g8_reference.dim_source_system, FALLBACK (...) UNIQUE PRIMARY INDEX (source_system_sk)
 CREATE UNIQUE INDEX ux_dim_source_system_bk ON edw_g8_reference.dim_source_system (source_system_bk, valid_from);
 COMMENT ON TABLE edw_g8_reference.dim_source_system IS 'https://ontology.healix.example.org/governance/SourceSystem';
-COMMENT ON COLUMN edw_g8_reference.dim_source_system.source_system_bk IS 'none | https://ontology.healix.example.org/governance/sourceSystemIdentifier';
-COMMENT ON COLUMN edw_g8_reference.dim_source_system.default_timezone IS 'none | https://ontology.healix.example.org/governance/defaultTimeZone';
-COMMENT ON COLUMN edw_g8_reference.dim_source_system.registry_iri IS 'none | https://ontology.healix.example.org/governance/sourceRegistryEntry';
+COMMENT ON COLUMN edw_g8_reference.dim_source_system.source_system_bk IS 'internal | https://ontology.healix.example.org/governance/sourceSystemIdentifier';
+COMMENT ON COLUMN edw_g8_reference.dim_source_system.default_timezone IS 'internal | https://ontology.healix.example.org/governance/defaultTimeZone';
+COMMENT ON COLUMN edw_g8_reference.dim_source_system.registry_iri IS 'internal | https://ontology.healix.example.org/governance/sourceRegistryEntry';
 
 INSERT INTO edw_g8_reference.dim_source_system
     (source_system_sk, source_system_bk, source_system_code, source_system_name, system_category_code, environment_code,
@@ -113,8 +113,8 @@ CREATE TABLE edw_g8_reference.dim_date (
 -- TD: COLLECT STATISTICS COLUMN (date_sk), COLUMN (calendar_date), COLUMN (fiscal_year, fiscal_period) ON edw_g8_reference.dim_date;
 CREATE UNIQUE INDEX ux_dim_date_calendar ON edw_g8_reference.dim_date (calendar_date);
 COMMENT ON TABLE edw_g8_reference.dim_date IS 'https://ontology.healix.example.org/reference/CalendarDate';
-COMMENT ON COLUMN edw_g8_reference.dim_date.calendar_date IS 'none | https://ontology.healix.example.org/reference/calendarDate';
-COMMENT ON COLUMN edw_g8_reference.dim_date.fiscal_period IS 'none | https://ontology.healix.example.org/reference/fiscalPeriod';
+COMMENT ON COLUMN edw_g8_reference.dim_date.calendar_date IS 'public | https://ontology.healix.example.org/reference/calendarDate';
+COMMENT ON COLUMN edw_g8_reference.dim_date.fiscal_period IS 'internal | https://ontology.healix.example.org/reference/fiscalPeriod';
 
 INSERT INTO edw_g8_reference.dim_date
     (date_sk, calendar_date, day_name, month_name, source_system_sk, load_batch_id, record_hash, recorded_at, prov_activity_iri)
@@ -149,7 +149,7 @@ CREATE TABLE edw_g8_reference.dim_time (
 );
 -- TD: UNIQUE PRIMARY INDEX (time_sk)
 COMMENT ON TABLE edw_g8_reference.dim_time IS 'https://ontology.healix.example.org/reference/TimeOfDay';
-COMMENT ON COLUMN edw_g8_reference.dim_time.shift_code IS 'none | https://ontology.healix.example.org/reference/shiftCode';
+COMMENT ON COLUMN edw_g8_reference.dim_time.shift_code IS 'internal | https://ontology.healix.example.org/reference/shiftCode';
 
 INSERT INTO edw_g8_reference.dim_time
     (time_sk, shift_code, source_system_sk, load_batch_id, record_hash, recorded_at, prov_activity_iri)
@@ -187,7 +187,7 @@ CREATE TABLE edw_g8_reference.ref_code_system (
 -- TD: UNIQUE PRIMARY INDEX (code_system_version_sk)
 CREATE UNIQUE INDEX ux_ref_code_system_bk ON edw_g8_reference.ref_code_system (code_system_bk);
 COMMENT ON TABLE edw_g8_reference.ref_code_system IS 'https://ontology.healix.example.org/reference/CodeSystemVersion';
-COMMENT ON COLUMN edw_g8_reference.ref_code_system.code_system_uri IS 'none | https://ontology.healix.example.org/reference/codeSystemUri';
+COMMENT ON COLUMN edw_g8_reference.ref_code_system.code_system_uri IS 'public | https://ontology.healix.example.org/reference/codeSystemUri';
 
 -- ---------------------------------------------------------------------------
 -- dim_code (conformed): one row per (code_system_uri, code); code_sk is stable
@@ -209,7 +209,7 @@ CREATE TABLE edw_g8_reference.dim_code (
     effective_to            DATE,
     is_abstract_flag        CHAR(1)       NOT NULL DEFAULT 'N',
     parent_code_sk          BIGINT,                   -- primary parent; closure in ref_concept_hierarchy
-    sensitive_category_code VARCHAR(30),              -- healix:scheme/sensitive-categories (drives phi_sensitive)
+    sensitive_category_code VARCHAR(30),              -- healix:scheme/sensitive-categories (drives the phi:sensitive-category/* tag, module 11 §3)
     latest_version_sk       BIGINT,                   -- ref_code_system row of the latest release seen
     source_system_sk        INTEGER       NOT NULL,
     load_batch_id           BIGINT        NOT NULL,
@@ -230,10 +230,10 @@ CREATE TABLE edw_g8_reference.dim_code (
 CREATE UNIQUE INDEX ux_dim_code_bk ON edw_g8_reference.dim_code (code_bk);
 CREATE INDEX ix_dim_code_system_code ON edw_g8_reference.dim_code (code_system_uri, code);
 COMMENT ON TABLE edw_g8_reference.dim_code IS 'http://www.w3.org/2004/02/skos/core#Concept';
-COMMENT ON COLUMN edw_g8_reference.dim_code.code IS 'none | http://www.w3.org/2004/02/skos/core#notation';
-COMMENT ON COLUMN edw_g8_reference.dim_code.preferred_label IS 'none | http://www.w3.org/2004/02/skos/core#prefLabel';
-COMMENT ON COLUMN edw_g8_reference.dim_code.concept_iri IS 'none | https://ontology.healix.example.org/reference/conceptIri';
-COMMENT ON COLUMN edw_g8_reference.dim_code.sensitive_category_code IS 'none | https://ontology.healix.example.org/governance/sensitiveCategory';
+COMMENT ON COLUMN edw_g8_reference.dim_code.code IS 'public | http://www.w3.org/2004/02/skos/core#notation';
+COMMENT ON COLUMN edw_g8_reference.dim_code.preferred_label IS 'public | http://www.w3.org/2004/02/skos/core#prefLabel';
+COMMENT ON COLUMN edw_g8_reference.dim_code.concept_iri IS 'public | https://ontology.healix.example.org/reference/conceptIri';
+COMMENT ON COLUMN edw_g8_reference.dim_code.sensitive_category_code IS 'internal | https://ontology.healix.example.org/governance/sensitiveCategory';
 
 INSERT INTO edw_g8_reference.dim_code
     (code_sk, code_bk, code_system_uri, code_system_name, code, display, concept_status, source_system_sk,
@@ -424,7 +424,7 @@ CREATE TABLE edw_g8_reference.ref_concept_map_element (
 -- TD: PRIMARY INDEX (source_code_sk)
 CREATE INDEX ix_ref_cme_map_source ON edw_g8_reference.ref_concept_map_element (concept_map_version_sk, source_code_sk);
 COMMENT ON TABLE edw_g8_reference.ref_concept_map_element IS 'http://www.w3.org/2004/02/skos/core#mappingRelation';
-COMMENT ON COLUMN edw_g8_reference.ref_concept_map_element.equivalence_code IS 'none | https://ontology.healix.example.org/reference/mappingEquivalence';
+COMMENT ON COLUMN edw_g8_reference.ref_concept_map_element.equivalence_code IS 'internal | https://ontology.healix.example.org/reference/mappingEquivalence';
 
 -- ---------------------------------------------------------------------------
 -- dim_ucum_unit
@@ -455,7 +455,7 @@ CREATE TABLE edw_g8_reference.dim_ucum_unit (
 -- TD: UNIQUE PRIMARY INDEX (ucum_unit_sk)
 CREATE UNIQUE INDEX ux_dim_ucum_code ON edw_g8_reference.dim_ucum_unit (ucum_code);
 COMMENT ON TABLE edw_g8_reference.dim_ucum_unit IS 'https://ontology.healix.example.org/reference/UcumUnit';
-COMMENT ON COLUMN edw_g8_reference.dim_ucum_unit.ucum_code IS 'none | https://ontology.healix.example.org/reference/ucumCode';
+COMMENT ON COLUMN edw_g8_reference.dim_ucum_unit.ucum_code IS 'public | https://ontology.healix.example.org/reference/ucumCode';
 
 INSERT INTO edw_g8_reference.dim_ucum_unit
     (ucum_unit_sk, ucum_code, ucum_display, code_sk, source_system_sk, load_batch_id, record_hash, recorded_at, prov_activity_iri)
@@ -504,7 +504,7 @@ CREATE TABLE edw_g8_reference.dim_geography (
 -- TD: UNIQUE PRIMARY INDEX (geography_sk)
 CREATE UNIQUE INDEX ux_dim_geography_bk ON edw_g8_reference.dim_geography (geography_bk, valid_from);
 COMMENT ON TABLE edw_g8_reference.dim_geography IS 'https://ontology.healix.example.org/reference/GeographicArea';
-COMMENT ON COLUMN edw_g8_reference.dim_geography.postal_code IS 'phi_quasi | https://ontology.healix.example.org/reference/postalCode';
+COMMENT ON COLUMN edw_g8_reference.dim_geography.postal_code IS 'phi:quasi | https://ontology.healix.example.org/reference/postalCode';
 
 INSERT INTO edw_g8_reference.dim_geography
     (geography_sk, geography_bk, geography_level_code, valid_from, is_current_flag, source_system_sk, load_batch_id,

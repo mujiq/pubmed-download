@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ontology.healix.example.org/schema/streaming/topics-catalog/0.1.0",
+  "$id": "https://ontology.healix.example.org/schema/streaming/topics-catalog/0.2.0",
   "title": "HEALIX Kafka Topic Catalog",
   "description": "Schema for PRD/07-streaming-platform/topics.yaml. Every topic on every cluster MUST be declared here; GitOps creates topics from this file only.",
   "type": "object",
@@ -73,7 +73,14 @@
       "type": "string",
       "enum": ["BACKWARD", "BACKWARD_TRANSITIVE", "FORWARD", "FORWARD_TRANSITIVE", "FULL", "FULL_TRANSITIVE", "NONE"]
     },
-    "phiClass": { "type": "string", "enum": ["phi", "phi-limited", "de-identified", "pii", "non-phi"] },
+    "phiClass": {
+      "type": "string",
+      "description": "Module 11 data-classification taxonomy (11-governance-security-compliance/01-hipaa-phi-and-privacy.md section 3); identical to the legal values of the hc-phi-class record header. A topic carries the most restrictive class of its records.",
+      "enum": ["phi:direct", "phi:quasi", "phi:clinical", "phi:sensitive-category", "phi:sensitive-category/sud",
+               "phi:sensitive-category/hiv", "phi:sensitive-category/mental-health", "phi:sensitive-category/reproductive",
+               "phi:sensitive-category/genetic", "pii:workforce", "confidential:financial", "confidential:operational",
+               "internal", "public", "deidentified:safe-harbor", "deidentified:expert", "pseudonymised"]
+    },
     "keyFormat": { "type": "string", "enum": ["string", "avro"] },
     "valueFormat": { "type": "string", "enum": ["avro", "avro-envelope", "fhir-json", "fhir-ext-json", "json", "protobuf"] },
     "layer": { "type": "string", "enum": ["raw", "std", "canonical", "dq", "kg", "edw", "ops"] },
@@ -96,7 +103,8 @@
         "name": {
           "type": "string",
           "pattern": "^hc\\.(raw|std|canonical|dq|kg|edw|ops)(\\.[a-z0-9][a-z0-9_-]*){1,5}\\.v[1-9][0-9]*$",
-          "maxLength": 128
+          "maxLength": 128,
+          "description": "hc.<layer>.<domain>[.<subdomain>].<entity>.<event-or-format>.v<N>; words inside a segment are joined with '-' (kg-edw-reconciliation, break-glass) or '_' when mirroring a source identifier"
         },
         "layer": { "$ref": "#/$defs/layer" },
         "domain": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },

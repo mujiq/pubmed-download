@@ -85,7 +85,7 @@ the measurable criteria; the stage owner confirms the judgement criteria.
 
 | Stage | Exit criteria |
 |-------|---------------|
-| 0 | 100 % of in-scope sources registered with steward and PHI class; ≥ 95 % of elements profiled; no element with `phi_class = unknown`; lineage to physical object recorded for every element |
+| 0 | 100 % of in-scope sources registered with steward and PHI class; ≥ 95 % of elements profiled; no element without a Table 3-A `phi_class` (GOV-01 §3 forbids `unknown`); lineage to physical object recorded for every element |
 | 1 | Every concept has exactly one `skos:prefLabel` per language, a `skos:definition`, a `skos:notation` where a source code exists, and `skos:inScheme`; zero label collisions; ≥ 90 % of concepts with a clinical/financial external binding mapped or explicitly marked `local-only` |
 | 2 | Every non-top concept has ≥ 1 `skos:broader`; zero cycles; zero orphans; polyhierarchy justified by facet; depth within guideline; SNOMED CT / FHIR family alignment report accepted |
 | 3 | All `skos:related` pairs are non-hierarchical and symmetric; every `exactMatch` passes bidirectional validation; mapping confidence recorded; relation-type candidate list reviewed |

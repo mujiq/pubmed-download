@@ -152,8 +152,8 @@ with a SPARQL target and, where the pattern is record-local, a FHIRPath back-por
 
 - Each warehouse target compiles to a dbt-style **test model** `dq_<rule_id_lower>` in schema `edw_g9_governance`,
   materialised as a view returning failing rows plus `rule_id`, `rule_version`, `evaluated_at`.
-- A **runner** (Airflow DAG `dq_warehouse_<group>`) executes after each group's load batch completes (trigger: EDW load
-  lineage event on `hc.edw.<group>.load.completed.v1`), and daily at 02:00 facility-local for reconciliation rules.
+- A **runner** (Airflow DAG `dq_warehouse_<group>`) executes after each group's load batch completes (trigger: the OpenLineage
+  `COMPLETE` RunEvent of the group's EDW load job on `hc.ops.lineage.openlineage.v1`), and daily at 02:00 facility-local for reconciliation rules.
   For each rule it records the failing-row count, the denominator (`SELECT COUNT(*)` of the target at the same grain)
   and streams one aggregate `hc.dq.result.v1` record plus one detail record per failing key (capped at 10,000 keys;
   the remainder is summarised).

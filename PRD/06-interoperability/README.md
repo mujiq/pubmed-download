@@ -100,7 +100,7 @@ flowchart LR
   end
 
   CAN[(hc.canonical.<domain>.<resource>.fhir.v1)]
-  DQQ[(hc.dq.<domain>.<resource>.quarantine.v1)]
+  DQQ[(hc.dq.quarantine.<domain>.v1)]
 
   subgraph OUT[Outbound · module 06]
     V2OUT[HL7 v2 generator · ADT / ORU / SIU / DFT / MDM]
@@ -141,10 +141,10 @@ Layer responsibilities, aligned to `CONVENTIONS.md` §3 Kafka layers:
 | Layer | Content | Owner of the contract | Example topic |
 |-------|---------|------------------------|---------------|
 | `raw` | Byte-exact source payload + headers (`hc-source-system`, `hc-source-time`, `hc-event-time`, `hc-message-control-id`) | 07 | `hc.raw.cerner.adt.hl7v2.v1` |
-| `std` | Parsed, typed, schema-registered (Avro) segment/row/transaction model; structural validation only | 03 / 07 | `hc.std.cerner.adt.hl7v2.v1`, `hc.std.clearinghouse.837p.x12.v1` |
+| `std` | Parsed, typed, schema-registered (Avro) segment/row/transaction model; structural validation only. Outbound HL7 v2 generated from canonical also lives here, under domain `outbound` | 03 / 07 (outbound: 06 / 07) | `hc.std.cerner.adt.hl7v2-parsed.v1`, `hc.std.clearinghouse.x12.837-parsed.v1`, `hc.std.outbound.adt.hl7v2.v1` |
 | `canonical` | Validated FHIR R4 resources conforming to HEALIX profiles, FHIR JSON with JSON Schema | **06** | `hc.canonical.clinical.encounter.fhir.v1` |
-| `dq` | Validation and DQ outcomes; quarantine | 09 (06 defines interop error taxonomy) | `hc.dq.clinical.encounter.quarantine.v1` |
-| `ops` | Outbound interop streams for legacy consumers | 06 / 07 | `hc.ops.outbound.adt.hl7v2.v1` |
+| `dq` | Validation and DQ outcomes; one quarantine topic per domain (`hc.dq.quarantine.<domain>.v1`); typed issues on `hc.dq.issue.v1` | 09 (06 defines interop error taxonomy) | `hc.dq.quarantine.clinical.v1` |
+| `ops` | Operational telemetry for interop, including ACK/NAK outcomes returned by legacy consumers of outbound HL7 v2 | 07 | `hc.ops.outbound.hl7v2.ack.v1` |
 
 ## 4. Conformance strategy
 
@@ -212,7 +212,7 @@ The authoritative text of each requirement lives in the document that defines it
 | IOP-TS-001 | The Terminology Service exposes `$lookup`, `$validate-code`, `$expand`, `$translate`, `$closure` per FHIR R4. |
 | IOP-TS-010 | No local code reaches `canonical` without a ConceptMap-governed translation or an explicit `unmapped` marker. |
 | IOP-VAL-001 | Four-stage validation (structural, profile, terminology, business-rule) gates publication to `canonical`. |
-| IOP-VAL-012 | Failed records route to `hc.dq.<domain>.<resource>.quarantine.v1` with a typed error from the taxonomy. |
+| IOP-VAL-012 | Failed records route to `hc.dq.quarantine.<domain>.v1` with a typed error from the taxonomy. |
 
 ## 7. Interfaces with other modules
 

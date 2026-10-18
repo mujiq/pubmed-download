@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>HEALIX Console — Lineage Explorer</title>
+  <meta name="description" content="Lineage explorer: trace a source element through mapping spec, Kafka topic, ConceptMap, KG property and EDW column — forwards and backwards — with a bitemporal lineage ribbon and a concept-neighbourhood graph canvas plus its synchronised list twin. Opens only from an object. Synthetic data only.">
+  <link rel="stylesheet" href="assets/app.css">
+  <style>
+    /* ================================================================
+       lineage-explorer.html — page-local layout only.
+       Every colour comes from the app.css design tokens; the temporal
+       axes use the reserved --time-valid / --time-known tokens (via the
+       shared as-of control and timeline only). This page is NOT a Home:
+       without ?from it shows a resolver, never a canvas (brief §0, AC-09).
+       Reflows to one column at 390px with a 16px gutter, no horizontal
+       page scroll. All page JS is inline (app.js is never edited).
+       ================================================================ */
+    #le-root { max-width: var(--content-max); }
+    .le-entry { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap;
+      padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-card);
+      background: var(--bg-sunken); margin-bottom: var(--sp-3); font-size: var(--fs-dense); }
+    .le-entry__from { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--fg); }
+
+    .le-modes { position: sticky; top: var(--topbar-h); z-index: 15; background: var(--bg-canvas);
+      padding-top: var(--sp-1); margin-bottom: var(--sp-3); }
+
+    /* resolver (landing refusal) */
+    .le-resolver { max-width: 720px; margin: var(--sp-8) auto; }
+    .le-resolver__box { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+    .le-resolver__box input { flex: 1 1 260px; min-width: 0; }
+    .le-examples { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-3); margin-top: var(--sp-4); }
+    .le-example { text-align: left; display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
+    .le-example:hover { border-color: var(--accent); }
+    .le-example__id { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--fg-muted); word-break: break-all; }
+
+    /* toolbar above ribbon / graph */
+    .le-toolbar { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+    .le-toolbar__spacer { flex: 1 1 auto; }
+
+    /* ribbon: clickable hops, flow arrows, placeholders */
+    .le-ribbon .hx-lineage-ribbon__col h4 { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+    .le-ribbon .hx-lineage-ribbon__hop { gap: 4px; }
+    .le-hop { width: 100%; text-align: left; cursor: pointer; background: var(--bg-surface);
+      border: 1px solid var(--border); border-radius: var(--r-ctl); padding: var(--sp-2); display: flex;
+      flex-direction: column; gap: 4px; font-size: var(--fs-caption); min-width: 0; }
+    .le-hop:hover { border-color: var(--accent); }
+    .le-hop[aria-current="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .le-hop--dashed { border-style: dashed; }
+    .le-hop--notasserted { opacity: .85; border-style: dotted; background: var(--bg-sunken); }
+    .le-hop__label { font-weight: 600; color: var(--fg); overflow-wrap: anywhere; }
+    .le-hop__obj { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--fg-muted); overflow-wrap: anywhere; }
+    .le-hop__meta { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+    .le-hop__changed { color: var(--time-known); font-weight: 600; }
+    .le-colflow { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--fg-faint); }
+
+    /* graph wrap + legend */
+    .le-graph { display: grid; grid-template-columns: 2fr minmax(240px, 1fr); gap: var(--sp-3); align-items: start; }
+    .le-graph--twin-hidden { grid-template-columns: 1fr; }
+    .le-graph--twin-hidden .le-twin { display: none; }
+    .le-twin { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+    .le-twin h3 { font-size: var(--fs-caption); text-transform: uppercase; letter-spacing: .04em; color: var(--fg-muted); }
+    .le-legend { display: flex; gap: var(--sp-4); flex-wrap: wrap; font-size: var(--fs-micro); margin-top: var(--sp-2); color: var(--fg-muted); }
+    .le-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .le-legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--border-strong); }
+    .le-legend i.inferred { border-top-style: dashed; }
+    .le-legend i.faded { opacity: .3; }
+    .le-legend b.swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+    .le-legend b.phi { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--phi-direct); display: inline-block; }
+
+    /* inspector detail */
+    .le-kv { display: grid; grid-template-columns: auto 1fr; gap: 4px var(--sp-3); font-size: var(--fs-dense); }
+    .le-kv dt { color: var(--fg-muted); white-space: nowrap; }
+    .le-kv dd { margin: 0; font-family: var(--font-mono); font-size: var(--fs-caption); overflow-wrap: anywhere; }
+    .le-path-list { list-style: none; margin: var(--sp-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+    .le-path-list li { font-family: var(--font-mono); font-size: var(--fs-caption); padding: 2px 0; }
+    .le-path-list li::before { content: "↳ "; color: var(--fg-faint); }
+    .le-path-list li:first-child::before { content: "● "; color: var(--accent); }
+
+    @media (max-width: 1023px) {
+      .le-graph, .le-graph--twin-hidden { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 767px) {
+      .le-modes { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <a class="sr-skip" href="#le-root">Skip to lineage content</a>
+  <main id="hx-main">
+    <nav class="le-modes" id="le-modes" aria-label="Lineage views"></nav>
+    <div id="le-root" tabindex="-1"></div>
+  </main>
+
+  <!-- Synthetic-data fallback so the page renders over file:// (README §How to open).
+       Served over http, HX.data.load fetches data/lineage.json (the same content). -->
+  <script type="application/json" id="hx-data-lineage">
+{"traces":[{"id":"trace-cs72-inpatient","label":"Cerner cs72 INPATIENT \u2192 EDW dim_encounter_class.code","from":"cerner-millennium-prod/CODE_VALUE.cs72.INPATIENT","concept":"encounter-class/inpatient","hops":[{"column":"Source","object":"element:cerner-millennium-prod/CODE_VALUE.cs72","label":"CODE_VALUE cs72 \u00b7 INPATIENT","version":null,"phiClass":"non-phi","validFrom":"2026-06-01T00:00:00Z","recordedAt":"2026-06-01T02:00:00Z","provActivity":"prov:inventory-run-01H9"},{"column":"std","object":"mapspec:cerner-encounter-cdc@v3#e010","label":"Mapping spec cerner-encounter-cdc row e010","version":"v3","transform":"PV1-2 / ENCNTR_CLASS_CD \u2192 Encounter.class","confidence":0.98,"golden":["gc-enc-0001","gc-enc-0042"],"validFrom":"2026-09-01T00:00:00Z","recordedAt":"2026-09-01T00:10:00Z","provActivity":"prov:mapspec-apply-01J1AA"},{"column":"Canonical","object":"topic:hc.canonical.clinical.encounter.fhir.v1","label":"Topic hc.canonical.clinical.encounter.fhir.v1","version":"schema v4","validFrom":"2026-08-01T00:00:00Z","recordedAt":"2026-08-01T00:00:00Z","provActivity":"prov:schema-register-01HX"},{"column":"Canonical","object":"conceptmap:cerner-cs72-to-healix-encounter-class","label":"ConceptMap cerner-cs72 \u2192 encounter-class","version":"1.4.0","edgeStyle":"dashed","validFrom":"2026-10-10T02:20:00Z","recordedAt":"2026-10-10T02:20:00Z","provActivity":"prov:cr-apply-CR-20261010-01J2BB"},{"column":"KG","object":"property:clinical/hasEncounterClass","label":"KG property clinical:hasEncounterClass","version":"v2026.10.0","assertions":212904,"validFrom":"2026-10-01T02:00:00Z","recordedAt":"2026-10-01T02:00:00Z","provActivity":"prov:release-v2026.10.0"},{"column":"EDW","object":"column:edw_g2_clinical.dim_encounter_class.code","label":"edw_g2_clinical.dim_encounter_class.code","version":"migration 2026.09.0-002","validFrom":"2026-09-01T00:00:00Z","recordedAt":"2026-09-01T03:00:00Z","provActivity":"prov:migration-2026.09.0-002"}],"dqBadges":{"Canonical":["DQR-VALIDITY-ENCOUNTER-004"],"EDW":["DQR-CONSISTENCY-ENCOUNTER-002"]},"asOfVariants":[{"before":"2026-09-01T00:00:00Z","hopOverrides":{"1":{"version":"v2","transform":"PV1-2 \u2192 Encounter.class (no CDC fallback)"},"3":{"version":"1.3.0"},"5":{"object":"column:edw_g2_clinical.dim_encounter_class.encntr_class_cd","label":"edw_g2_clinical.dim_encounter_class.encntr_class_cd","version":"migration 2026.07.0-001"}}},{"before":"2026-10-10T02:20:00Z","hopOverrides":{"3":{"version":"1.3.0"}}}],"coverage":100},{"id":"trace-cs71-observation-unit","label":"Cerner cs71 309308 \u2192 EDW dim_encounter_class.code","from":"cerner-millennium-prod/CODE_VALUE.cs71.309308","concept":"encounter-class/observation-unit","hops":[{"column":"Source","object":"element:cerner-millennium-prod/CODE_VALUE.cs71","label":"CODE_VALUE cs71 \u00b7 309308 Observation Unit","version":null,"phiClass":"non-phi","validFrom":"2026-09-01T00:00:00Z","recordedAt":"2026-09-01T00:00:00Z","provActivity":"prov:inventory-run-01J1"},{"column":"std","object":"mapspec:cerner-encounter-cdc@v3#e010","label":"Mapping spec cerner-encounter-cdc row e010","version":"v3","transform":"PV1-3.6 location class \u2192 Encounter.class when PV1-2 = O","confidence":0.91,"golden":["gc-enc-0042"],"validFrom":"2026-09-01T00:00:00Z","recordedAt":"2026-09-01T00:10:00Z","provActivity":"prov:mapspec-apply-01J1AA"},{"column":"Canonical","object":"topic:hc.canonical.clinical.encounter.fhir.v1","label":"Topic hc.canonical.clinical.encounter.fhir.v1","version":"schema v4","validFrom":"2026-08-01T00:00:00Z","recordedAt":"2026-08-01T00:00:00Z","provActivity":"prov:schema-register-01HX"},{"column":"Canonical","object":"conceptmap:cerner-cs71-to-healix-encounter-class","label":"ConceptMap cerner-cs71 \u2192 encounter-class","version":"v4","edgeStyle":"dashed","validFrom":"2026-10-16T09:14:00Z","recordedAt":"2026-10-16T09:14:00Z","provActivity":"prov:cr-apply-CR-20261016-01J8XY"},{"column":"KG","object":"property:clinical/hasEncounterClass","label":"KG property clinical:hasEncounterClass","version":"v2026.11.0 (candidate)","assertions":1902,"validFrom":"2026-09-18T00:00:00Z","recordedAt":"2026-09-18T03:02:41Z","provActivity":"prov:cr-apply-CR-20260918-01J7AB"},{"column":"EDW","object":"column:edw_g2_clinical.dim_encounter_class.code","label":"edw_g2_clinical.dim_encounter_class.code","version":"migration 2026.11.0-003 (pending)","validFrom":"2026-10-19T02:00:00Z","recordedAt":null,"provActivity":null}],"dqBadges":{"Canonical":["DQR-VALIDITY-ENCOUNTER-004"]},"asOfVariants":[{"before":"2026-10-16T09:14:00Z","hopOverrides":{"3":{"version":"v3","gap":"no entry for 309308"}}}],"coverage":83}],"graphs":[{"id":"neigh-observation-unit","label":"Neighbourhood of observation-unit","focus":"encounter-class/observation-unit","nodes":[{"id":"encounter-class/observation-unit","type":"concept","group":"G2","phi":"non-phi","label":"Observation unit encounter"},{"id":"encounter-class/hospital-encounter","type":"concept","group":"G2","label":"Hospital encounter"},{"id":"encounter-class/inpatient","type":"concept","group":"G2","label":"Inpatient encounter"},{"id":"encounter-class/emergency","type":"concept","group":"G2","label":"Emergency department encounter"},{"id":"encounter-class/observation-stay","type":"concept","group":"G2","label":"Observation stay"},{"id":"bed-type/observation-bed","type":"concept","group":"G4","label":"Observation bed"},{"id":"sct:448951000","type":"external","label":"SNOMED 448951000"},{"id":"element:cerner-millennium-prod/CODE_VALUE.cs71.309308","type":"element","group":"G2","label":"CODE_VALUE 71^309308"},{"id":"column:edw_g2_clinical.dim_encounter_class.code","type":"column","group":"G2","label":"dim_encounter_class.code"},{"id":"rule:DQR-VALIDITY-ENCOUNTER-004","type":"rule","group":"G2","label":"DQR-VALIDITY-ENCOUNTER-004"},{"id":"class:clinical/ObservationUnitEncounter","type":"class","group":"G2","label":"clinical:ObservationUnitEncounter"},{"id":"valueset:healix-encounter-class","type":"valueset","group":"G8","label":"healix-encounter-class 1.4.0"}],"edges":[{"from":"encounter-class/observation-unit","to":"encounter-class/hospital-encounter","kind":"broader","inferred":false,"validFrom":"2026-10-17T00:00:00Z","pending":true,"cr":"CR-20261017-01J9ZK"},{"from":"encounter-class/inpatient","to":"encounter-class/hospital-encounter","kind":"broader","inferred":false,"validFrom":"2026-06-01T00:00:00Z"},{"from":"encounter-class/emergency","to":"encounter-class/hospital-encounter","kind":"broader","inferred":false,"validFrom":"2026-06-01T00:00:00Z"},{"from":"encounter-class/observation-stay","to":"encounter-class/hospital-encounter","kind":"broader","inferred":false,"validFrom":"2026-07-01T00:00:00Z"},{"from":"encounter-class/observation-unit","to":"bed-type/observation-bed","kind":"locatedIn","inferred":false,"validFrom":"2026-10-05T00:00:00Z"},{"from":"encounter-class/observation-unit","to":"sct:448951000","kind":"exactMatch","inferred":false,"validFrom":"2026-09-18T00:00:00Z"},{"from":"element:cerner-millennium-prod/CODE_VALUE.cs71.309308","to":"encounter-class/observation-unit","kind":"boundTo","inferred":false,"validFrom":"2026-09-18T00:00:00Z"},{"from":"encounter-class/observation-unit","to":"column:edw_g2_clinical.dim_encounter_class.code","kind":"materialisedIn","inferred":false,"validFrom":"2026-09-18T00:00:00Z"},{"from":"rule:DQR-VALIDITY-ENCOUNTER-004","to":"valueset:healix-encounter-class","kind":"derivedFrom","inferred":false,"validFrom":"2026-06-01T00:00:00Z"},{"from":"encounter-class/observation-unit","to":"valueset:healix-encounter-class","kind":"memberOf","inferred":false,"validFrom":"2026-10-10T02:20:00Z"},{"from":"class:clinical/ObservationUnitEncounter","to":"encounter-class/observation-unit","kind":"skosExactMatch","inferred":false,"validFrom":"2026-10-16T12:00:00Z","pending":true,"cr":"CR-20261016-01J8MM"},{"from":"encounter-class/observation-unit","to":"encounter-class/inpatient","kind":"disjointWith","inferred":true,"validFrom":"2026-10-16T12:06:00Z","inferredBy":"ELK"}]},{"id":"lineage-cerner-encounter","label":"Lineage: Cerner encounter class \u2192 EDW","nodes":[{"id":"element:cerner-millennium-prod/CODE_VALUE.cs72.INPATIENT","type":"element","label":"cs72 INPATIENT","group":"G2","phi":"non-phi","layer":"source"},{"id":"element:cerner-millennium-prod/CODE_VALUE.cs72.EMERGENCY","type":"element","label":"cs72 EMERGENCY","group":"G2","phi":"non-phi","layer":"source"},{"id":"element:cerner-millennium-prod/CODE_VALUE.cs72.OUTPATIENT","type":"element","label":"cs72 OUTPATIENT","group":"G2","phi":"non-phi","layer":"source"},{"id":"element:cerner-millennium-prod/CODE_VALUE.cs72.DAYCASE","type":"element","label":"cs72 DAYCASE","group":"G2","phi":"non-phi","layer":"source"},{"id":"element:cerner-millennium-prod/CODE_VALUE.cs72.VIRTUAL","type":"element","label":"cs72 VIRTUAL","group":"G2","phi":"non-phi","layer":"source"},{"id":"element:cerner-millennium-prod/CODE_VALUE.cs71.309308","type":"element","label":"cs71 309308 Observation Unit","group":"G2","phi":"non-phi","layer":"source"},{"id":"element:cerner-millennium-prod/ENCOUNTER.ENCNTR_CLASS_CD","type":"element","label":"ENCOUNTER.ENCNTR_CLASS_CD","group":"G2","phi":"non-phi","layer":"source"},{"id":"element:cerner-millennium-prod/PERSON.NAME_FULL_FORMATTED","type":"element","label":"PERSON.NAME_FULL_FORMATTED","group":"G1","phi":"phi:direct","layer":"source"},{"id":"element:cerner-millennium-prod/ENCOUNTER.DISCH_DISPOSITION_CD","type":"element","label":"ENCOUNTER.DISCH_DISPOSITION_CD","group":"G2","phi":"non-phi","layer":"source"},{"id":"hl7:PV1-2","type":"hl7field","label":"PV1-2 Patient class","group":"G2","phi":"non-phi","layer":"std"},{"id":"hl7:PV1-3","type":"hl7field","label":"PV1-3 Assigned location","group":"G2","phi":"non-phi","layer":"std"},{"id":"hl7:PID-5","type":"hl7field","label":"PID-5 Patient name","group":"G1","phi":"phi:direct","layer":"std"},{"id":"hl7:PV1-36","type":"hl7field","label":"PV1-36 Discharge disposition","group":"G2","phi":"non-phi","layer":"std"},{"id":"mapspec:cerner-encounter-cdc@v3#e010","type":"mapspec","label":"mapspec e010 Encounter.class","group":"G2","phi":null,"layer":"std"},{"id":"mapspec:cerner-encounter-cdc@v3#e014","type":"mapspec","label":"mapspec e014 dischargeDisposition","group":"G2","phi":null,"layer":"std"},{"id":"mapspec:cerner-patient-cdc@v2#p002","type":"mapspec","label":"mapspec p002 Patient.name","group":"G1","phi":"phi:direct","layer":"std"},{"id":"fhir:Encounter.class","type":"fhirpath","label":"Encounter.class","group":"G2","phi":"non-phi","layer":"canonical"},{"id":"fhir:Encounter.hospitalization.dischargeDisposition","type":"fhirpath","label":"Encounter.hospitalization.dischargeDisposition","group":"G2","phi":"non-phi","layer":"canonical"},{"id":"fhir:Patient.name","type":"fhirpath","label":"Patient.name","group":"G1","phi":"phi:direct","layer":"canonical"},{"id":"fhir:Encounter.location.location","type":"fhirpath","label":"Encounter.location.location","group":"G2","phi":"non-phi","layer":"canonical"},{"id":"topic:hc.canonical.clinical.encounter.fhir.v1","type":"topic","label":"hc.canonical.clinical.encounter.fhir.v1","group":"G2","phi":"phi:clinical","layer":"canonical"},{"id":"topic:hc.canonical.party.patient.fhir.v1","type":"topic","label":"hc.canonical.party.patient.fhir.v1","group":"G1","phi":"phi:direct","layer":"canonical"},{"id":"topic:hc.kg.assertion.v1","type":"topic","label":"hc.kg.assertion.v1","group":"G9","phi":"phi:clinical","layer":"kg"},{"id":"conceptmap:cerner-cs72-to-healix-encounter-class","type":"conceptmap","label":"ConceptMap cs72 \u2192 encounter-class","group":"G8","phi":null,"layer":"canonical"},{"id":"conceptmap:cerner-cs71-to-healix-encounter-class","type":"conceptmap","label":"ConceptMap cs71 \u2192 encounter-class","group":"G8","phi":null,"layer":"canonical"},{"id":"valueset:healix-encounter-class","type":"valueset","label":"healix-encounter-class 1.4.0","group":"G8","phi":null,"layer":"canonical"},{"id":"encounter-class/hospital-encounter","type":"concept","label":"Hospital encounter","group":"G2","phi":"non-phi","layer":"kg"},{"id":"encounter-class/inpatient","type":"concept","label":"Inpatient encounter","group":"G2","phi":"non-phi","layer":"kg"},{"id":"encounter-class/emergency","type":"concept","label":"Emergency department encounter","group":"G2","phi":"non-phi","layer":"kg"},{"id":"encounter-class/observation-unit","type":"concept","label":"Observation unit encounter","group":"G2","phi":"non-phi","layer":"kg"},{"id":"encounter-class/outpatient","type":"concept","label":"Outpatient encounter","group":"G2","phi":"non-phi","layer":"kg"},{"id":"encounter-class/day-case","type":"concept","label":"Day case encounter","group":"G2","phi":"non-phi","layer":"kg"},{"id":"property:clinical/hasEncounterClass","type":"property","label":"clinical:hasEncounterClass","group":"G2","phi":null,"layer":"kg"},{"id":"property:clinical/hasDischargeDisposition","type":"property","label":"clinical:hasDischargeDisposition","group":"G2","phi":null,"layer":"kg"},{"id":"property:party/hasName","type":"property","label":"party:hasName","group":"G1","phi":"phi:direct","layer":"kg"},{"id":"class:clinical/Encounter","type":"class","label":"clinical:Encounter","group":"G2","phi":null,"layer":"kg"},{"id":"column:edw_g2_clinical.dim_encounter_class.code","type":"column","label":"dim_encounter_class.code","group":"G2","phi":"non-phi","layer":"edw"},{"id":"column:edw_g2_clinical.fact_encounter.encounter_class_sk","type":"column","label":"fact_encounter.encounter_class_sk","group":"G2","phi":"non-phi","layer":"edw"},{"id":"column:edw_g2_clinical.fact_encounter.discharge_disposition_cd","type":"column","label":"fact_encounter.discharge_disposition_cd","group":"G2","phi":"non-phi","layer":"edw"},{"id":"column:edw_g1_party.dim_patient.name_token","type":"column","label":"dim_patient.name_token","group":"G1","phi":"phi:direct","layer":"edw"},{"id":"column:edw_g2_clinical.fact_encounter.facility_location_sk","type":"column","label":"fact_encounter.facility_location_sk","group":"G2","phi":"non-phi","layer":"edw"},{"id":"column:edw_g2_clinical.dim_encounter_class.display","type":"column","label":"dim_encounter_class.display","group":"G2","phi":"non-phi","layer":"edw"},{"id":"rule:DQR-VALIDITY-ENCOUNTER-004","type":"rule","label":"DQR-VALIDITY-ENCOUNTER-004","group":"G2","phi":null,"layer":"dq"},{"id":"rule:DQR-CONSISTENCY-ENCOUNTER-002","type":"rule","label":"DQR-CONSISTENCY-ENCOUNTER-002","group":"G2","phi":null,"layer":"dq"},{"id":"shape:clinical/EncounterShape","type":"shape","label":"clinical/EncounterShape","group":"G2","phi":null,"layer":"kg"},{"id":"consumer:vw_encounter_class_hierarchy","type":"consumer","label":"persona view vw_encounter_class_hierarchy","group":"G2","phi":null,"layer":"edw"},{"id":"consumer:kpi/semantic-coverage","type":"consumer","label":"KPI semantic-coverage","group":"G9","phi":null,"layer":"ops"}],"edges":[{"from":"element:cerner-millennium-prod/CODE_VALUE.cs72.INPATIENT","to":"hl7:PV1-2","kind":"carriedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/CODE_VALUE.cs72.INPATIENT","to":"element:cerner-millennium-prod/ENCOUNTER.ENCNTR_CLASS_CD","kind":"valueOf","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/CODE_VALUE.cs72.EMERGENCY","to":"hl7:PV1-2","kind":"carriedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/CODE_VALUE.cs72.EMERGENCY","to":"element:cerner-millennium-prod/ENCOUNTER.ENCNTR_CLASS_CD","kind":"valueOf","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/CODE_VALUE.cs72.OUTPATIENT","to":"hl7:PV1-2","kind":"carriedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/CODE_VALUE.cs72.OUTPATIENT","to":"element:cerner-millennium-prod/ENCOUNTER.ENCNTR_CLASS_CD","kind":"valueOf","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/CODE_VALUE.cs72.DAYCASE","to":"hl7:PV1-2","kind":"carriedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/CODE_VALUE.cs72.DAYCASE","to":"element:cerner-millennium-prod/ENCOUNTER.ENCNTR_CLASS_CD","kind":"valueOf","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/CODE_VALUE.cs72.VIRTUAL","to":"hl7:PV1-2","kind":"carriedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/CODE_VALUE.cs72.VIRTUAL","to":"element:cerner-millennium-prod/ENCOUNTER.ENCNTR_CLASS_CD","kind":"valueOf","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/CODE_VALUE.cs71.309308","to":"hl7:PV1-3","kind":"carriedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/PERSON.NAME_FULL_FORMATTED","to":"hl7:PID-5","kind":"carriedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/ENCOUNTER.DISCH_DISPOSITION_CD","to":"hl7:PV1-36","kind":"carriedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"hl7:PV1-2","to":"mapspec:cerner-encounter-cdc@v3#e010","kind":"mappedBy","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"hl7:PV1-3","to":"mapspec:cerner-encounter-cdc@v3#e010","kind":"mappedBy","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"element:cerner-millennium-prod/ENCOUNTER.ENCNTR_CLASS_CD","to":"mapspec:cerner-encounter-cdc@v3#e010","kind":"mappedBy","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"hl7:PV1-36","to":"mapspec:cerner-encounter-cdc@v3#e014","kind":"mappedBy","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"hl7:PID-5","to":"mapspec:cerner-patient-cdc@v2#p002","kind":"mappedBy","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"mapspec:cerner-encounter-cdc@v3#e010","to":"fhir:Encounter.class","kind":"produces","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"mapspec:cerner-encounter-cdc@v3#e014","to":"fhir:Encounter.hospitalization.dischargeDisposition","kind":"produces","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"mapspec:cerner-patient-cdc@v2#p002","to":"fhir:Patient.name","kind":"produces","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"hl7:PV1-3","to":"fhir:Encounter.location.location","kind":"produces","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"fhir:Encounter.class","to":"topic:hc.canonical.clinical.encounter.fhir.v1","kind":"publishedOn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"fhir:Encounter.hospitalization.dischargeDisposition","to":"topic:hc.canonical.clinical.encounter.fhir.v1","kind":"publishedOn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"fhir:Encounter.location.location","to":"topic:hc.canonical.clinical.encounter.fhir.v1","kind":"publishedOn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"fhir:Patient.name","to":"topic:hc.canonical.party.patient.fhir.v1","kind":"publishedOn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"mapspec:cerner-encounter-cdc@v3#e010","to":"conceptmap:cerner-cs72-to-healix-encounter-class","kind":"translatesWith","inferred":false,"validFrom":"2026-09-01T00:00:00Z","style":"dashed"},{"from":"mapspec:cerner-encounter-cdc@v3#e010","to":"conceptmap:cerner-cs71-to-healix-encounter-class","kind":"translatesWith","inferred":false,"validFrom":"2026-10-16T09:14:00Z","style":"dashed"},{"from":"conceptmap:cerner-cs72-to-healix-encounter-class","to":"encounter-class/inpatient","kind":"mapsTo","inferred":false,"validFrom":"2026-09-01T00:00:00Z","style":"dashed"},{"from":"conceptmap:cerner-cs72-to-healix-encounter-class","to":"encounter-class/emergency","kind":"mapsTo","inferred":false,"validFrom":"2026-09-01T00:00:00Z","style":"dashed"},{"from":"conceptmap:cerner-cs72-to-healix-encounter-class","to":"encounter-class/outpatient","kind":"mapsTo","inferred":false,"validFrom":"2026-09-01T00:00:00Z","style":"dashed"},{"from":"conceptmap:cerner-cs72-to-healix-encounter-class","to":"encounter-class/day-case","kind":"mapsTo","inferred":false,"validFrom":"2026-09-01T00:00:00Z","style":"dashed"},{"from":"conceptmap:cerner-cs71-to-healix-encounter-class","to":"encounter-class/observation-unit","kind":"mapsTo","inferred":false,"validFrom":"2026-10-16T09:14:00Z","style":"dashed"},{"from":"encounter-class/inpatient","to":"encounter-class/hospital-encounter","kind":"broader","inferred":false,"validFrom":"2026-06-01T00:00:00Z","pending":false},{"from":"encounter-class/emergency","to":"encounter-class/hospital-encounter","kind":"broader","inferred":false,"validFrom":"2026-06-01T00:00:00Z","pending":false},{"from":"encounter-class/observation-unit","to":"encounter-class/hospital-encounter","kind":"broader","inferred":false,"validFrom":"2026-10-17T00:00:00Z","pending":true},{"from":"encounter-class/day-case","to":"encounter-class/outpatient","kind":"broader","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"encounter-class/day-case","to":"encounter-class/hospital-encounter","kind":"broader","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"encounter-class/hospital-encounter","to":"valueset:healix-encounter-class","kind":"memberOf","inferred":false,"validFrom":"2026-06-01T00:00:00Z"},{"from":"encounter-class/hospital-encounter","to":"property:clinical/hasEncounterClass","kind":"rangeOf","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"encounter-class/inpatient","to":"valueset:healix-encounter-class","kind":"memberOf","inferred":false,"validFrom":"2026-06-01T00:00:00Z"},{"from":"encounter-class/inpatient","to":"property:clinical/hasEncounterClass","kind":"rangeOf","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"encounter-class/emergency","to":"valueset:healix-encounter-class","kind":"memberOf","inferred":false,"validFrom":"2026-06-01T00:00:00Z"},{"from":"encounter-class/emergency","to":"property:clinical/hasEncounterClass","kind":"rangeOf","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"encounter-class/observation-unit","to":"valueset:healix-encounter-class","kind":"memberOf","inferred":false,"validFrom":"2026-10-10T02:20:00Z"},{"from":"encounter-class/observation-unit","to":"property:clinical/hasEncounterClass","kind":"rangeOf","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"encounter-class/outpatient","to":"valueset:healix-encounter-class","kind":"memberOf","inferred":false,"validFrom":"2026-06-01T00:00:00Z"},{"from":"encounter-class/outpatient","to":"property:clinical/hasEncounterClass","kind":"rangeOf","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"encounter-class/day-case","to":"valueset:healix-encounter-class","kind":"memberOf","inferred":false,"validFrom":"2026-06-01T00:00:00Z"},{"from":"encounter-class/day-case","to":"property:clinical/hasEncounterClass","kind":"rangeOf","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"fhir:Encounter.class","to":"property:clinical/hasEncounterClass","kind":"liftedTo","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"fhir:Encounter.hospitalization.dischargeDisposition","to":"property:clinical/hasDischargeDisposition","kind":"liftedTo","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"fhir:Patient.name","to":"property:party/hasName","kind":"liftedTo","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"property:clinical/hasEncounterClass","to":"class:clinical/Encounter","kind":"domain","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"property:clinical/hasDischargeDisposition","to":"class:clinical/Encounter","kind":"domain","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"class:clinical/Encounter","to":"shape:clinical/EncounterShape","kind":"constrainedBy","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"property:clinical/hasEncounterClass","to":"topic:hc.kg.assertion.v1","kind":"assertedOn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"property:party/hasName","to":"topic:hc.kg.assertion.v1","kind":"assertedOn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"property:clinical/hasEncounterClass","to":"column:edw_g2_clinical.dim_encounter_class.code","kind":"materialisedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"property:clinical/hasEncounterClass","to":"column:edw_g2_clinical.fact_encounter.encounter_class_sk","kind":"materialisedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"property:clinical/hasDischargeDisposition","to":"column:edw_g2_clinical.fact_encounter.discharge_disposition_cd","kind":"materialisedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z","gap":"Unbound (pending CR-CV-BIND)"},{"from":"property:party/hasName","to":"column:edw_g1_party.dim_patient.name_token","kind":"materialisedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z","transform":"tokenise(hmac)"},{"from":"fhir:Encounter.location.location","to":"column:edw_g2_clinical.fact_encounter.facility_location_sk","kind":"materialisedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"encounter-class/hospital-encounter","to":"column:edw_g2_clinical.dim_encounter_class.display","kind":"materialisedIn","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"valueset:healix-encounter-class","to":"rule:DQR-VALIDITY-ENCOUNTER-004","kind":"derives","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"shape:clinical/EncounterShape","to":"rule:DQR-CONSISTENCY-ENCOUNTER-002","kind":"derives","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"rule:DQR-VALIDITY-ENCOUNTER-004","to":"topic:hc.canonical.clinical.encounter.fhir.v1","kind":"evaluates","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"rule:DQR-VALIDITY-ENCOUNTER-004","to":"column:edw_g2_clinical.fact_encounter.encounter_class_sk","kind":"evaluates","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"rule:DQR-CONSISTENCY-ENCOUNTER-002","to":"column:edw_g2_clinical.fact_encounter.encounter_class_sk","kind":"evaluates","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"column:edw_g2_clinical.dim_encounter_class.code","to":"consumer:vw_encounter_class_hierarchy","kind":"consumedBy","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"column:edw_g2_clinical.fact_encounter.encounter_class_sk","to":"consumer:vw_encounter_class_hierarchy","kind":"consumedBy","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"column:edw_g2_clinical.fact_encounter.discharge_disposition_cd","to":"consumer:kpi/semantic-coverage","kind":"consumedBy","inferred":false,"validFrom":"2026-09-01T00:00:00Z"},{"from":"encounter-class/observation-unit","to":"encounter-class/inpatient","kind":"disjointWith","inferred":true,"validFrom":"2026-10-16T12:06:00Z","inferredBy":"ELK"}],"layers":["source","std","canonical","dq","kg","edw","ops"]}],"coverage":{"overall":96.1,"phiDirect":100,"byGroup":{"G1":100,"G2":97,"G3":95,"G4":93,"G5":88,"G6":96,"G7":90,"G8":100,"G9":100}}}
+  </script>
+
+  <script src="assets/app.js"></script>
+  <script>
+  /* ====================================================================
+     lineage-explorer.html — page-local controller (no app.js edits).
+
+     Builds the Lineage Explorer on top of the shared HX runtime:
+       · entry banner naming the object we were opened from;
+       · a landing REFUSAL (no ?from ⇒ a resolver field, never a canvas);
+       · a bitemporal Lineage ribbon (five columns Source · std · Canonical ·
+         KG · EDW) with version chips AT TRACE TIME (as-of variants applied),
+         dashed terminology hops with a ConceptMap chip, DQ badges per column,
+         Upstream/Downstream toggle (same component), "not yet asserted"
+         placeholders, and Copy trace as Markdown;
+       · a concept-neighbourhood graph canvas (HX.graph: cap 150, clustering,
+         group fill, PHI border, inferred ELK edges) with a synchronised list
+         twin (v toggles), plus focus-depth, a shortest-path finder and a
+         "Propose relation" CR draft.
+
+     All state is in memory for the session (AC-17: no result payloads are
+     persisted; only viewer prefs via the HX store).
+     ==================================================================== */
+  (function () {
+    "use strict";
+    var E = HX.util.el, I = HX.icon, CLEAR = HX.util.clear, TC = HX.util.titleCase;
+
+    HX.mount({ page: "lineage-explorer", area: "gov", title: "Lineage Explorer" });
+
+    var modesEl = document.getElementById("le-modes");
+    var root = document.getElementById("le-root");
+
+    var D = { traces: [], graphs: [], coverage: null };
+    var IX = {
+      traceById: {}, traceByFrom: {}, traceByConcept: {},
+      graphById: {}, graphByFocus: {}, nodeToGraph: {}
+    };
+    var loaded = false;
+
+    // session-only overlay: proposed relations create CR drafts in memory
+    var MEM = { proposedRelations: [] };
+
+    // view state (reset when ?from changes, unless user toggled)
+    var VIEW = { from: null, mode: null, userMode: false, twinHidden: false, depth: 2,
+                 ribbonDir: "downstream", focus: null, pathNodes: null, sel: [] };
+
+    /* ---------------------------------------------------------------- icons */
+    // family → short descriptor for the legend / list twin
+    var FAMILY = {
+      element: "Source element", hl7field: "HL7 field", mapspec: "Mapping spec",
+      fhirpath: "FHIRPath", topic: "Kafka topic", conceptmap: "ConceptMap",
+      valueset: "Value set", concept: "Concept", property: "KG property",
+      class: "OWL class", shape: "SHACL shape", rule: "DQ rule",
+      column: "EDW column", consumer: "Consumer", external: "External code"
+    };
+
+    /* ---------------------------------------------------------------- routing */
+    function hashParts() {
+      var h = location.hash.slice(1);
+      var qi = h.indexOf("?");
+      var route = (qi < 0 ? h : h.slice(0, qi)) || "/lineage";
+      var params = {};
+      if (qi >= 0) h.slice(qi + 1).split("&").forEach(function (p) {
+        var eq = p.indexOf("="); if (eq < 0) return;
+        params[p.slice(0, eq)] = decodeURIComponent(p.slice(eq + 1) || "");
+      });
+      return { route: route, params: params };
+    }
+
+    /* ------------------------------------------------------------ resolution */
+    // Strip a family prefix ("element:", "column:", …) when matching a trace.from.
+    function stripPrefix(id) { return String(id || "").replace(/^[a-z]+:/, ""); }
+
+    function resolveFrom(from) {
+      from = String(from || "").trim();
+      var bare = stripPrefix(from);
+      var trace = IX.traceById[from] || IX.traceByFrom[from] || IX.traceByFrom[bare] ||
+                  IX.traceByConcept[from] || IX.traceByConcept[bare] || null;
+
+      // find a graph + focus node for the Neighbourhood mode
+      var graph = null, focus = null;
+      if (IX.graphByFocus[from]) { graph = IX.graphByFocus[from]; focus = from; }
+      else if (IX.graphByFocus[bare]) { graph = IX.graphByFocus[bare]; focus = bare; }
+      else if (IX.nodeToGraph[from]) { graph = IX.graphById[IX.nodeToGraph[from]]; focus = from; }
+      else if (IX.nodeToGraph[bare]) { graph = IX.graphById[IX.nodeToGraph[bare]]; focus = bare; }
+
+      if (trace && !graph) {
+        // prefer a neighbourhood graph focused on the trace's concept, else the
+        // big lineage graph focused on the trace's source element node.
+        if (IX.graphByFocus[trace.concept]) { graph = IX.graphByFocus[trace.concept]; focus = trace.concept; }
+        else {
+          var elNode = "element:" + trace.from;
+          if (IX.nodeToGraph[elNode]) { graph = IX.graphById[IX.nodeToGraph[elNode]]; focus = elNode; }
+          else if (IX.nodeToGraph[trace.concept]) { graph = IX.graphById[IX.nodeToGraph[trace.concept]]; focus = trace.concept; }
+        }
+      }
+      return { from: from, trace: trace, graph: graph, focus: focus };
+    }
+
+    /* object-id → canonical route (for hop/node navigation, flow 2) */
+    function routeForObject(objId) {
+      var s = String(objId || "");
+      var ci = s.indexOf(":");
+      var fam = ci > 0 ? s.slice(0, ci) : null;
+      var rest = ci > 0 ? s.slice(ci + 1) : s;
+      switch (fam) {
+        case "element": return "/element/" + rest;
+        case "column": {
+          var parts = rest.split("."); // edw_g2_clinical.dim_encounter_class.code
+          if (parts.length >= 3) return "/column/" + parts[0] + "/" + parts[1] + "/" + parts.slice(2).join(".");
+          return "/table/" + parts[0] + "/" + (parts[1] || "");
+        }
+        case "topic": return "/topic/" + rest;
+        case "mapspec": return "/mapspec/" + rest;
+        case "conceptmap": return "/conceptmap/" + rest;
+        case "valueset": return "/valueset/" + rest;
+        case "property": return "/property/" + rest;
+        case "class": return "/class/" + rest;
+        case "shape": return "/shape/" + rest;
+        case "rule": return "/rule/" + rest;
+        case "fhir": case "hl7": return null; // no canonical page in this prototype
+        case "consumer": return null;
+        case "sct": case "loinc": case "cpt": return null; // external codes
+        default:
+          // bare concept id "encounter-class/inpatient"
+          if (/\//.test(s) && !/^https?:/.test(s)) return "/concept/" + s;
+          return null;
+      }
+    }
+
+    /* ---------------------------------------------------- as-of variant apply */
+    // Apply trace.asOfVariants whose `before` boundary is still in the future
+    // relative to the current valid-time (asOf). Sorted ascending so the state
+    // nearest to asOf wins last. Returns a deep-ish copy of hops with overrides.
+    function hopsAtAsOf(trace) {
+      var asOf = HX.asof.get().asOf;
+      var hops = (trace.hops || []).map(function (h) { return Object.assign({}, h); });
+      var changed = {};
+      if (asOf && Array.isArray(trace.asOfVariants)) {
+        var tAsOf = Date.parse(asOf);
+        trace.asOfVariants
+          .filter(function (v) { return v.before && Date.parse(v.before) > tAsOf; })
+          .sort(function (a, b) { return Date.parse(a.before) - Date.parse(b.before); })
+          .forEach(function (v) {
+            Object.keys(v.hopOverrides || {}).forEach(function (idx) {
+              var i = +idx;
+              if (hops[i]) { hops[i] = Object.assign({}, hops[i], v.hopOverrides[idx]); changed[i] = true; }
+            });
+          });
+      }
+      return { hops: hops, changed: changed };
+    }
+
+    // Is this hop "not yet asserted" at the current known-time?
+    function notYetAsserted(hop) {
+      if (!hop.recordedAt) return true; // pending / future migration
+      var asKnownAt = HX.asof.get().asKnownAt;
+      if (asKnownAt && Date.parse(hop.recordedAt) > Date.parse(asKnownAt)) return true;
+      return false;
+    }
+
+    /* ================================================================ RENDER */
+    function render() {
+      if (!loaded) return;
+      var hp = hashParts();
+      var from = hp.params.from || null;
+      if (from !== VIEW.from) { VIEW.from = from; VIEW.userMode = false; VIEW.focus = null; VIEW.pathNodes = null; VIEW.sel = []; }
+
+      renderModes();
+
+      if (!from) { renderResolver(); return; }
+
+      var res = resolveFrom(from);
+      if (!res.trace && !res.graph) { renderEmpty(res); return; }
+
+      // decide default mode
+      var primary = res.trace ? "ribbon" : "neighbourhood";
+      if (!VIEW.userMode) VIEW.mode = primary;
+      if (VIEW.mode === "ribbon" && !res.trace) VIEW.mode = "neighbourhood";
+      if (VIEW.mode === "neighbourhood" && !res.graph) VIEW.mode = "ribbon";
+
+      renderModes(res);
+      CLEAR(root);
+      root.appendChild(entryBanner(res));
+      if (VIEW.mode === "ribbon") renderRibbon(res);
+      else renderNeighbourhood(res);
+    }
+
+    /* ----------------------------------------------------- mode switch tabs */
+    function renderModes(res) {
+      CLEAR(modesEl);
+      var tabs = E("div", { class: "hx-tabs", role: "tablist", "aria-label": "Lineage view mode" });
+      var hasTrace = res && res.trace, hasGraph = res && res.graph;
+      function tab(id, label, enabled) {
+        var active = VIEW.mode === id;
+        var btn = E("button", {
+          class: "hx-tab" + (active ? " is-active" : ""), role: "tab",
+          "aria-selected": active ? "true" : "false",
+          "aria-disabled": enabled ? null : "true"
+        }, [label]);
+        if (!enabled) { btn.disabled = true; btn.title = "Open from an object that has this view"; }
+        else btn.addEventListener("click", function () { VIEW.mode = id; VIEW.userMode = true; render(); });
+        return btn;
+      }
+      tabs.appendChild(tab("ribbon", "Lineage ribbon", !res || hasTrace));
+      tabs.appendChild(tab("neighbourhood", "Neighbourhood", !res || hasGraph));
+      // Pipeline map lives in interop-monitor.html — a link, not an embedded mode (brief §0).
+      var pm = E("button", { class: "hx-tab", title: "Opens the SRE pipeline map in Interop Monitor" },
+        [I("lineage"), "Pipeline map ↗"]);
+      pm.addEventListener("click", function () { HX.nav("/ops/map"); });
+      tabs.appendChild(pm);
+      modesEl.appendChild(tabs);
+    }
+
+    /* -------------------------------------------------------- entry banner */
+    function entryBanner(res) {
+      var b = E("div", { class: "le-entry", role: "status" }, [
+        I("info"),
+        E("span", {}, ["Opened from "]),
+        E("span", { class: "le-entry__from", text: res.from })
+      ]);
+      // offer the complementary view
+      if (res.trace && res.graph) {
+        var other = VIEW.mode === "ribbon"
+          ? { label: "See neighbourhood graph", mode: "neighbourhood" }
+          : { label: "See lineage ribbon", mode: "ribbon" };
+        var sw = E("button", { class: "hx-btn hx-btn--sm" }, [other.label]);
+        sw.addEventListener("click", function () { VIEW.mode = other.mode; VIEW.userMode = true; render(); });
+        b.appendChild(E("span", { class: "le-toolbar__spacer" }));
+        b.appendChild(sw);
+      }
+      var change = E("button", { class: "hx-btn hx-btn--sm hx-btn--ghost" }, [I("search"), "Open a different object"]);
+      change.addEventListener("click", function () { HX.nav("/lineage"); });
+      b.appendChild(change);
+      return b;
+    }
+
+    /* ======================================================= LANDING REFUSAL */
+    // Without ?from the explorer is NOT a Home and NOT a canvas: it is a resolver
+    // that routes any id/code/IRI to its object, from which lineage opens. (AC-09)
+    function renderResolver() {
+      CLEAR(root);
+      var wrap = E("div", { class: "le-resolver hx-stack" });
+      wrap.appendChild(E("div", { class: "hx-empty" }, [
+        I("lineage"),
+        E("h2", { text: "Lineage opens from an object" }),
+        E("p", { class: "hx-muted", text: "The graph canvas is never a landing page. Resolve any object below — an IRI, a Cerner code, a CR / DQR / topic / EDW name — then open its lineage. This keeps every trace anchored to a canonical page as-of the time you are viewing." })
+      ]));
+
+      var box = E("div", { class: "le-resolver__box" });
+      var input = E("input", {
+        type: "text", "aria-label": "Resolve an object",
+        placeholder: "e.g. 72^INPATIENT · cs71 309308 · encounter-class/inpatient · edw_g2_clinical.fact_encounter · DQR-VALIDITY-ENCOUNTER-004"
+      });
+      var resolveMsg = E("div", { class: "hx-caption hx-muted", "aria-live": "polite" });
+      function doResolve() {
+        var q = input.value.trim(); if (!q) return;
+        var r = HX.nav.resolve(q);
+        if (r && r.route) {
+          // If it resolves to a lineage-bearing object, open lineage directly;
+          // otherwise route to the object's canonical page (it carries an
+          // "Open lineage" affordance there).
+          var from = routeToLineageFrom(r.route, q);
+          if (from) { HX.nav("/lineage", { from: from }); }
+          else { CLEAR(resolveMsg); resolveMsg.appendChild(document.createTextNode("Resolved to " + r.route + " — opening object page")); HX.nav(r.route); }
+        } else {
+          CLEAR(resolveMsg);
+          resolveMsg.appendChild(E("span", { class: "hx-chip hx-chip--warn", text: "no object" }));
+          resolveMsg.appendChild(document.createTextNode(" Unknown — propose it with a CR-CV-ADD."));
+        }
+      }
+      var go = E("button", { class: "hx-btn hx-btn--primary" }, [I("search"), "Resolve"]);
+      go.addEventListener("click", doResolve);
+      input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); doResolve(); } });
+      box.appendChild(input); box.appendChild(go);
+      wrap.appendChild(box);
+      wrap.appendChild(resolveMsg);
+      wrap.appendChild(E("div", { class: "hx-caption hx-muted", text: "Tip: the command palette (Ctrl/Cmd-K) Resolve mode does the same from anywhere." }));
+
+      // worked-example entry points drawn from the synthetic data
+      wrap.appendChild(E("h3", { class: "hx-caption", style: "text-transform:uppercase;letter-spacing:.04em;margin-top:var(--sp-6)", text: "Open lineage for…" }));
+      var ex = E("div", { class: "le-examples" });
+      D.traces.forEach(function (t) {
+        ex.appendChild(exampleCard(t.label || t.id, t.from, "ribbon trace · coverage " + (t.coverage != null ? t.coverage + "%" : "?"), "/lineage", { from: t.from }));
+      });
+      D.graphs.forEach(function (g) {
+        var focus = g.focus || (g.nodes[0] && g.nodes[0].id);
+        ex.appendChild(exampleCard(g.label || g.id, focus, (g.nodes.length) + " nodes · neighbourhood graph", "/lineage", { from: focus }));
+      });
+      wrap.appendChild(ex);
+      root.appendChild(wrap);
+    }
+    function routeToLineageFrom(route, q) {
+      // map a resolved concept/column/element/topic route back to a lineage "from"
+      var m;
+      if ((m = route.match(/^\/concept\/(.+)$/))) return m[1];
+      if ((m = route.match(/^\/column\/([^/]+)\/([^/]+)\/(.+)$/))) return "column:" + m[1] + "." + m[2] + "." + m[3];
+      if ((m = route.match(/^\/element\/(.+)$/))) return m[1];
+      if ((m = route.match(/^\/topic\/(.+)$/))) return "topic:" + m[1];
+      // fall back: try the raw query against the trace/graph index
+      var res = resolveFrom(q);
+      if (res.trace || res.graph) return res.from;
+      return null;
+    }
+    function exampleCard(title, from, meta, route, params) {
+      var c = E("button", { class: "hx-card le-example" }, [
+        E("span", { class: "hx-row" }, [I("lineage"), E("strong", { text: title })]),
+        E("span", { class: "le-example__id", text: from }),
+        E("span", { class: "hx-caption hx-muted", text: meta })
+      ]);
+      c.addEventListener("click", function () { HX.nav(route, params); });
+      return c;
+    }
+
+    /* ---------------------------------------------------------- empty state */
+    function renderEmpty(res) {
+      CLEAR(root);
+      root.appendChild(entryBanner(res));
+      var e = E("div", { class: "hx-empty" }, [
+        I("warn"),
+        E("h2", { text: "No lineage edges recorded for this object" }),
+        E("p", { class: "hx-muted", text: "This is a lineage-coverage gap. Lineage is built from mapping specs and binding CRs; propose a mapping so this object becomes traceable." })
+      ]);
+      var cr = E("button", { class: "hx-btn hx-btn--primary" }, [I("review"), "Propose mapping CR"]);
+      cr.addEventListener("click", function () {
+        var draft = "CR-MAP-DRAFT-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+        HX.toast("Draft " + draft + " created (mapping spec).", {
+          kind: "ok",
+          undo: function () { HX.toast("Draft discarded", { kind: "neutral", timeout: 2500 }); }
+        });
+        HX.audit.write({ type: "CR_DRAFT_CREATED", crType: "mapping", object: res.from });
+      });
+      e.appendChild(cr);
+      root.appendChild(e);
+    }
+
+    /* ============================================================= RIBBON */
+    function renderRibbon(res) {
+      var trace = res.trace;
+      var applied = hopsAtAsOf(trace);
+      var hops = applied.hops, changed = applied.changed;
+      var dir = VIEW.ribbonDir;
+
+      // toolbar
+      var bar = E("div", { class: "le-toolbar" });
+      var asOfMode = HX.asof.get().mode;
+      bar.appendChild(HX.chip(dir === "downstream" ? "info" : "neutral",
+        dir === "downstream" ? "Downstream → source to warehouse" : "← Upstream · warehouse to source",
+        { glyph: dir === "downstream" ? "→" : "←" }));
+      var flip = E("button", { class: "hx-btn hx-btn--sm" }, [I("lineage"), dir === "downstream" ? "Reverse (upstream)" : "Reverse (downstream)"]);
+      flip.addEventListener("click", function () { VIEW.ribbonDir = dir === "downstream" ? "upstream" : "downstream"; render(); });
+      bar.appendChild(flip);
+      bar.appendChild(E("span", { class: "hx-version-chip", text: "coverage " + (trace.coverage != null ? trace.coverage + "%" : "?") }));
+      if (asOfMode !== "Current") bar.appendChild(HX.chip("pending", "versions at " + asOfMode, { title: "Hop versions shown as they stood at the viewed time" }));
+      bar.appendChild(E("span", { class: "le-toolbar__spacer" }));
+      var copy = E("button", { class: "hx-btn hx-btn--sm" }, [I("copy"), "Copy trace as Markdown"]);
+      copy.addEventListener("click", function () {
+        var md = traceToMarkdown(trace, hops, dir);
+        try { navigator.clipboard.writeText(md); HX.toast("Trace copied as Markdown", { kind: "ok", timeout: 2500 }); }
+        catch (e) { HX.toast("Clipboard unavailable — see inspector", { kind: "warn", timeout: 3000 }); showMarkdown(md); }
+      });
+      bar.appendChild(copy);
+      var asofBtn = E("button", { class: "hx-btn hx-btn--sm" }, [I("clock"), "Set as-of (t)"]);
+      asofBtn.addEventListener("click", function () { HX.asof.open(); });
+      bar.appendChild(asofBtn);
+      root.appendChild(bar);
+
+      // ribbon (reuse the shared .hx-lineage-ribbon styles, built page-local for
+      // version-at-trace-time, clickable hops, placeholders and as-of changes)
+      var COLUMNS = ["Source", "std", "Canonical", "KG", "EDW"];
+      var order = dir === "upstream" ? COLUMNS.slice().reverse() : COLUMNS.slice();
+      var byCol = {}; COLUMNS.forEach(function (c) { byCol[c] = []; });
+      hops.forEach(function (h, i) { (byCol[h.column] || (byCol[h.column] = [])).push(Object.assign({ _i: i }, h)); });
+
+      var rib = E("div", { class: "hx-lineage-ribbon le-ribbon" });
+      rib.appendChild(E("div", { class: "hx-lineage-ribbon__head" }, [
+        HX.chip("info", "Lineage ribbon"),
+        E("span", { class: "hx-caption hx-muted", text: trace.label || trace.id })
+      ]));
+      var cols = E("div", { class: "hx-lineage-ribbon__cols" });
+      order.forEach(function (c, ci) {
+        var col = E("div", { class: "hx-lineage-ribbon__col" });
+        var arrow = dir === "upstream" ? (ci < order.length - 1 ? "←" : "") : (ci < order.length - 1 ? "→" : "");
+        col.appendChild(E("h4", {}, [E("span", { text: c }), E("span", { class: "le-colflow", text: arrow })]));
+        (byCol[c] || []).forEach(function (h) { col.appendChild(hopEl(h, c, changed[h._i], trace)); });
+        if (!(byCol[c] || []).length) col.appendChild(E("span", { class: "hx-chip hx-chip--gap", text: "no hop" }));
+        // DQ badges for this column
+        if (trace.dqBadges && trace.dqBadges[c]) trace.dqBadges[c].forEach(function (b) {
+          var badge = HX.chip("warn", b, { button: true, title: "DQ rule evaluating this column" });
+          badge.addEventListener("click", function () { HX.nav("/rule/" + b); });
+          col.appendChild(badge);
+        });
+        cols.appendChild(col);
+      });
+      rib.appendChild(cols);
+      root.appendChild(rib);
+
+      // helper note
+      root.appendChild(E("p", { class: "hx-caption hx-muted", style: "margin-top:var(--sp-3)" }, [
+        "Click a hop to inspect its transform, versions and provenance. Click a hop's object (or a DQ badge) to open its canonical page — the as-of you are viewing travels with you."
+      ]));
+
+      // open the first/source hop in the inspector by default
+      var firstHop = (byCol[order[0]] || [])[0];
+      if (firstHop) showHop(firstHop, trace);
+    }
+
+    function hopEl(h, col, isChanged, trace) {
+      var nya = notYetAsserted(h);
+      var btn = E("button", {
+        class: "le-hop" + (h.edgeStyle === "dashed" ? " le-hop--dashed" : "") + (nya ? " le-hop--notasserted" : ""),
+        "aria-label": col + " hop: " + (h.label || h.object)
+      });
+      btn.appendChild(E("span", { class: "le-hop__label", text: h.label || h.object }));
+      btn.appendChild(E("span", { class: "le-hop__obj", text: h.object }));
+      var meta = E("span", { class: "le-hop__meta" });
+      if (h.version) meta.appendChild(E("span", { class: "hx-version-chip" + (isChanged ? " le-hop__changed" : ""), title: isChanged ? "Version differs at the viewed time" : "Version at trace time", text: h.version }));
+      if (isChanged) meta.appendChild(E("span", { class: "le-hop__changed", title: "This hop changed by the time you returned to now", text: "↺ changed" }));
+      if (h.edgeStyle === "dashed") meta.appendChild(E("span", { class: "hx-chip hx-chip--neutral", text: "ConceptMap" }));
+      if (h.phiClass && h.phiClass !== "non-phi") meta.appendChild(HX.phiChip(h.phiClass));
+      if (h.confidence != null) meta.appendChild(E("span", { class: "hx-confidence hx-caption", text: "conf " + h.confidence }));
+      if (h.gap) meta.appendChild(E("span", { class: "hx-chip hx-chip--gap", text: h.gap }));
+      if (nya) meta.appendChild(E("span", { class: "hx-chip hx-chip--pending", text: "not yet asserted" }));
+      btn.appendChild(meta);
+      btn.addEventListener("click", function (e) {
+        // Shift-click opens the object's page; plain click inspects the hop.
+        if (e.shiftKey) { var r = routeForObject(h.object); if (r) { HX.nav(r); return; } }
+        showHop(h, trace);
+        var all = root.querySelectorAll(".le-hop"); for (var i = 0; i < all.length; i++) all[i].setAttribute("aria-current", "false");
+        btn.setAttribute("aria-current", "true");
+      });
+      return btn;
+    }
+
+    function traceToMarkdown(trace, hops, dir) {
+      var lines = ["# Lineage trace — " + (trace.label || trace.id),
+                   "", "Direction: " + dir + " · as-of: " + (HX.asof.get().asOf || "now") + " · as-known: " + (HX.asof.get().asKnownAt || "now"), ""];
+      var seq = dir === "upstream" ? hops.slice().reverse() : hops;
+      seq.forEach(function (h, i) {
+        lines.push((i + 1) + ". **" + h.column + "** `" + h.object + "`" +
+          (h.version ? " _(" + h.version + ")_" : "") +
+          (h.transform ? " — " + h.transform : "") +
+          (h.confidence != null ? " · conf " + h.confidence : ""));
+      });
+      if (trace.dqBadges) Object.keys(trace.dqBadges).forEach(function (c) {
+        lines.push("", "DQ at **" + c + "**: " + trace.dqBadges[c].join(", "));
+      });
+      return lines.join("\n");
+    }
+    function showMarkdown(md) {
+      HX.inspector.open(E("pre", { class: "hx-mono hx-caption", style: "white-space:pre-wrap", text: md }), "Trace (Markdown)");
+    }
+
+    function showHop(h, trace) {
+      var body = E("div", { class: "hx-stack" });
+      body.appendChild(E("div", { class: "hx-row" }, [HX.chip("info", h.column + " hop"), h.edgeStyle === "dashed" ? E("span", { class: "hx-chip hx-chip--neutral", text: "terminology hop" }) : null]));
+      body.appendChild(E("strong", { text: h.label || h.object }));
+      var kv = E("dl", { class: "le-kv" });
+      function row(k, v) { if (v == null || v === "") return; kv.appendChild(E("dt", { text: k })); kv.appendChild(E("dd", { text: String(v) })); }
+      row("Object", h.object);
+      row("Version", h.version);
+      row("Transform", h.transform);
+      row("Confidence", h.confidence);
+      row("Assertions", h.assertions != null ? Number(h.assertions).toLocaleString() : null);
+      kv.appendChild(E("dt", { text: "Valid from" }));
+      kv.appendChild(E("dd", { text: h.validFrom ? HX.format.time(h.validFrom, "valid") : "—" }));
+      kv.appendChild(E("dt", { text: "Recorded at" }));
+      kv.appendChild(E("dd", { text: h.recordedAt ? HX.format.time(h.recordedAt, "known") : "not yet recorded" }));
+      row("Prov activity", h.provActivity);
+      row("Gap", h.gap);
+      body.appendChild(kv);
+      if (Array.isArray(h.golden) && h.golden.length) {
+        body.appendChild(E("div", { class: "hx-caption hx-muted", text: "Golden tests" }));
+        var gl = E("div", { class: "hx-row" });
+        h.golden.forEach(function (g) { gl.appendChild(HX.chip("pass", g)); });
+        body.appendChild(gl);
+      }
+      if (notYetAsserted(h)) body.appendChild(E("div", { class: "hx-placeholder--not-asserted hx-caption", text: "Not yet asserted at the viewed known-time — this hop is pending or was recorded later." }));
+      var r = routeForObject(h.object);
+      if (r) {
+        var open = E("button", { class: "hx-btn hx-btn--sm hx-btn--primary" }, [I("chevron"), "Open " + (FAMILY[(h.object.indexOf(":") > 0 ? h.object.split(":")[0] : "concept")] || "object")]);
+        open.addEventListener("click", function () { HX.nav(r); });
+        body.appendChild(open);
+      } else {
+        body.appendChild(E("div", { class: "hx-caption hx-muted", text: "No separate canonical page in this prototype." }));
+      }
+      HX.inspector.open(body, "Hop · " + h.column);
+    }
+
+    /* ======================================================= NEIGHBOURHOOD */
+    function renderNeighbourhood(res) {
+      var graph = res.graph;
+      var focus = VIEW.focus || res.focus || (graph.nodes[0] && graph.nodes[0].id);
+      VIEW.focus = focus;
+
+      // toolbar
+      var bar = E("div", { class: "le-toolbar" });
+      bar.appendChild(HX.chip("info", "Focus: " + shortLabel(graph, focus)));
+      // depth control (non-drag alternative to zoom; keyboard-operable select)
+      var depthWrap = E("label", { class: "hx-row hx-caption" }, [E("span", { text: "Hops" })]);
+      var depthSel = E("select", { "aria-label": "Neighbourhood hop depth" },
+        ["1", "2", "3", "All"].map(function (d) { return E("option", { value: d, text: d }); }));
+      depthSel.value = VIEW.depth === Infinity ? "All" : String(VIEW.depth);
+      depthSel.addEventListener("change", function () { VIEW.depth = depthSel.value === "All" ? Infinity : +depthSel.value; VIEW.pathNodes = null; render(); });
+      depthWrap.appendChild(depthSel);
+      bar.appendChild(depthWrap);
+      var twinBtn = E("button", { class: "hx-btn hx-btn--sm", "aria-pressed": VIEW.twinHidden ? "false" : "true" }, [I("rail"), VIEW.twinHidden ? "Show list twin (v)" : "Hide list twin (v)"]);
+      twinBtn.addEventListener("click", toggleTwin);
+      bar.appendChild(twinBtn);
+      if (VIEW.pathNodes) {
+        var clearPath = E("button", { class: "hx-btn hx-btn--sm" }, [I("close"), "Clear path"]);
+        clearPath.addEventListener("click", function () { VIEW.pathNodes = null; render(); });
+        bar.appendChild(clearPath);
+      }
+      bar.appendChild(E("span", { class: "le-toolbar__spacer" }));
+      var asofBtn = E("button", { class: "hx-btn hx-btn--sm" }, [I("clock"), "Set as-of (t)"]);
+      asofBtn.addEventListener("click", function () { HX.asof.open(); });
+      bar.appendChild(asofBtn);
+      root.appendChild(bar);
+
+      // compute the visible subgraph: focus + depth hops (or an explicit path)
+      var vis = VIEW.pathNodes
+        ? subgraphForNodes(graph, VIEW.pathNodes)
+        : subgraphAround(graph, focus, VIEW.depth);
+
+      var wrap = E("div", { class: "le-graph" + (VIEW.twinHidden ? " le-graph--twin-hidden" : "") });
+      var canvasHost = E("div", {});
+      var twin = E("div", { class: "le-twin" });
+      twin.appendChild(E("h3", { text: "List twin · " + vis.nodes.length + " nodes (" + (graph.nodes.length) + " total)" }));
+      var twinList = E("div", {});
+      twin.appendChild(twinList);
+      wrap.appendChild(canvasHost);
+      wrap.appendChild(twin);
+      root.appendChild(wrap);
+
+      // render through the shared HX.graph (cap 150, clustering, group fill, PHI
+      // border, inferred edges, synchronised selection with the list twin).
+      var asOf = HX.asof.get().asOf;
+      var ctl = HX.graph(canvasHost, vis.nodes, vis.edges, {
+        cap: 150, twinEl: twinList, asOf: asOf, mode: "neighbourhood",
+        label: "Neighbourhood of " + shortLabel(graph, focus),
+        onSelect: function (n) { onNodeSelect(n, graph, vis); }
+      });
+      VIEW._graphCtl = ctl;
+
+      // legend
+      wrap.appendChild(E("div", { class: "le-legend" }, [
+        E("span", {}, [E("b", { class: "swatch", style: "background:var(--g2)" }), "group fill + letter"]),
+        E("span", {}, [E("b", { class: "phi" }), "PHI border"]),
+        E("span", {}, [E("i", {}), "asserted edge"]),
+        E("span", {}, [E("i", { class: "inferred" }), "inferred by ELK"]),
+        E("span", {}, [E("i", { class: "faded" }), "outside the viewed time"])
+      ]));
+
+      // inferred / pending note
+      var inferred = vis.edges.filter(function (e) { return e.inferred; }).length;
+      var pending = vis.edges.filter(function (e) { return e.pending; }).length;
+      var notes = [];
+      if (inferred) notes.push(inferred + " inferred (ELK) edge" + (inferred === 1 ? "" : "s"));
+      if (pending) notes.push(pending + " pending edge" + (pending === 1 ? "" : "s") + " from open CRs");
+      if (notes.length) root.appendChild(E("p", { class: "hx-caption hx-muted", style: "margin-top:var(--sp-2)", text: notes.join(" · ") + ". Agent-proposed edges are shown as data until approved." }));
+
+      // keyboard: v toggles the twin
+      HX.keys.bind({ v: function () { toggleTwin(); return true; } });
+
+      // initial inspector: focus node details + path-finder affordance
+      var fnode = graph.nodes.filter(function (n) { return n.id === focus; })[0];
+      if (fnode) onNodeSelect(fnode, graph, vis, true);
+    }
+
+    function toggleTwin() {
+      VIEW.twinHidden = !VIEW.twinHidden;
+      var w = root.querySelector(".le-graph");
+      if (w) w.classList.toggle("le-graph--twin-hidden", VIEW.twinHidden);
+      var btn = root.querySelector('.le-toolbar [aria-pressed]');
+      if (btn) { btn.setAttribute("aria-pressed", VIEW.twinHidden ? "false" : "true"); CLEAR(btn); btn.appendChild(I("rail")); btn.appendChild(document.createTextNode(VIEW.twinHidden ? "Show list twin (v)" : "Hide list twin (v)")); }
+      HX.live(VIEW.twinHidden ? "List twin hidden" : "List twin shown", "polite");
+    }
+
+    function onNodeSelect(n, graph, vis, isFocusInit) {
+      // selection model: keep last two distinct nodes for path / propose-relation
+      if (!isFocusInit) {
+        VIEW.sel = VIEW.sel.filter(function (x) { return x !== n.id; });
+        VIEW.sel.push(n.id);
+        if (VIEW.sel.length > 2) VIEW.sel.shift();
+      }
+      var body = E("div", { class: "hx-stack" });
+      body.appendChild(E("div", { class: "hx-row" }, [
+        HX.chip("neutral", FAMILY[n.type] || n.type || "node"),
+        n.group ? HX.groupChip(n.group) : null,
+        (n.phi && n.phi !== "non-phi") ? HX.phiChip(n.phi) : null
+      ]));
+      body.appendChild(E("strong", { text: n.label || n.id }));
+      body.appendChild(E("div", { class: "le-hop__obj", text: n.id }));
+
+      // adjacency summary (from the full graph, not just the visible subgraph)
+      var adj = adjacency(graph);
+      var nbrs = (adj[n.id] || []);
+      body.appendChild(E("div", { class: "hx-caption hx-muted", text: nbrs.length + " neighbour" + (nbrs.length === 1 ? "" : "s") }));
+      var edgeKinds = {};
+      (graph.edges || []).forEach(function (e) { if (e.from === n.id || e.to === n.id) edgeKinds[e.kind] = (edgeKinds[e.kind] || 0) + 1; });
+      var ek = E("div", { class: "hx-row" });
+      Object.keys(edgeKinds).forEach(function (k) { ek.appendChild(HX.chip("neutral", k + " ×" + edgeKinds[k])); });
+      if (ek.childNodes.length) body.appendChild(ek);
+
+      var actions = E("div", { class: "hx-row", style: "margin-top:var(--sp-2)" });
+      var focusBtn = E("button", { class: "hx-btn hx-btn--sm" }, [I("lineage"), "Focus here"]);
+      focusBtn.addEventListener("click", function () { VIEW.focus = n.id; VIEW.pathNodes = null; render(); });
+      actions.appendChild(focusBtn);
+      var r = routeForObject(n.id);
+      if (r) {
+        var openBtn = E("button", { class: "hx-btn hx-btn--sm hx-btn--primary" }, [I("chevron"), "Open page"]);
+        openBtn.addEventListener("click", function () { HX.nav(r); });
+        actions.appendChild(openBtn);
+      }
+      body.appendChild(actions);
+
+      // two-node actions: shortest path + propose relation
+      if (VIEW.sel.length === 2) {
+        var a = VIEW.sel[0], b = VIEW.sel[1];
+        body.appendChild(E("hr", { style: "border:0;border-top:1px solid var(--border)" }));
+        body.appendChild(E("div", { class: "hx-caption", text: "Two nodes selected:" }));
+        body.appendChild(E("div", { class: "le-hop__obj", text: a + "  ↔  " + b }));
+        var pathBtn = E("button", { class: "hx-btn hx-btn--sm" }, [I("lineage"), "Find shortest path"]);
+        pathBtn.addEventListener("click", function () {
+          var path = shortestPath(graph, a, b);
+          if (!path) { HX.toast("No path between these nodes", { kind: "warn", timeout: 3000 }); return; }
+          VIEW.pathNodes = path; render();
+          HX.live("Path of " + path.length + " nodes highlighted", "polite");
+        });
+        var relBtn = E("button", { class: "hx-btn hx-btn--sm" }, [I("review"), "Propose relation (CR draft)"]);
+        relBtn.addEventListener("click", function () {
+          var draft = "CR-REL-DRAFT-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+          MEM.proposedRelations.push({ from: a, to: b, cr: draft });
+          HX.audit.write({ type: "CR_DRAFT_CREATED", crType: "relation", from: a, to: b });
+          HX.toast("Draft " + draft + " — propose relation " + shortId(a) + " → " + shortId(b), {
+            kind: "ok",
+            undo: function () { MEM.proposedRelations.pop(); HX.toast("Relation draft discarded", { kind: "neutral", timeout: 2500 }); }
+          });
+        });
+        body.appendChild(E("div", { class: "hx-row" }, [pathBtn, relBtn]));
+      } else {
+        body.appendChild(E("div", { class: "hx-caption hx-muted", text: "Select a second node to find a path or propose a relation." }));
+      }
+
+      // if a path is active, list it
+      if (VIEW.pathNodes) {
+        body.appendChild(E("div", { class: "hx-caption", style: "margin-top:var(--sp-2)", text: "Shortest path" }));
+        var ul = E("ul", { class: "le-path-list" });
+        VIEW.pathNodes.forEach(function (id) { ul.appendChild(E("li", { text: shortLabel(graph, id) })); });
+        body.appendChild(ul);
+      }
+
+      HX.inspector.open(body, "Node");
+    }
+
+    function shortLabel(graph, id) {
+      var n = (graph.nodes || []).filter(function (x) { return x.id === id; })[0];
+      return n ? (n.label || n.id) : shortId(id);
+    }
+    function shortId(id) { return String(id).split(":").pop().split("/").pop(); }
+
+    /* ---- graph algorithms (adjacency, focus subgraph, BFS path) ----------- */
+    function adjacency(graph) {
+      if (graph._adj) return graph._adj;
+      var adj = {};
+      (graph.edges || []).forEach(function (e) {
+        (adj[e.from] = adj[e.from] || []).push(e.to);
+        (adj[e.to] = adj[e.to] || []).push(e.from);
+      });
+      graph._adj = adj; return adj;
+    }
+    function subgraphAround(graph, focus, depth) {
+      if (depth === Infinity) return { nodes: graph.nodes.slice(), edges: graph.edges.slice() };
+      var adj = adjacency(graph);
+      var seen = {}; seen[focus] = 0;
+      var frontier = [focus];
+      for (var d = 0; d < depth; d++) {
+        var next = [];
+        frontier.forEach(function (id) {
+          (adj[id] || []).forEach(function (nb) { if (!(nb in seen)) { seen[nb] = d + 1; next.push(nb); } });
+        });
+        frontier = next;
+        if (!frontier.length) break;
+      }
+      return subgraphForNodes(graph, Object.keys(seen));
+    }
+    function subgraphForNodes(graph, nodeIds) {
+      var set = {}; nodeIds.forEach(function (id) { set[id] = true; });
+      var nodes = graph.nodes.filter(function (n) { return set[n.id]; });
+      var edges = graph.edges.filter(function (e) { return set[e.from] && set[e.to]; });
+      return { nodes: nodes, edges: edges };
+    }
+    function shortestPath(graph, a, b) {
+      var adj = adjacency(graph);
+      var prev = {}; prev[a] = null; var q = [a];
+      while (q.length) {
+        var cur = q.shift();
+        if (cur === b) break;
+        (adj[cur] || []).forEach(function (nb) { if (!(nb in prev)) { prev[nb] = cur; q.push(nb); } });
+      }
+      if (!(b in prev)) return null;
+      var path = [], c = b;
+      while (c != null) { path.unshift(c); c = prev[c]; }
+      return path;
+    }
+
+    /* ---------------------------------------------------------- indexes */
+    function buildIndexes() {
+      D.traces.forEach(function (t) {
+        IX.traceById[t.id] = t;
+        if (t.from) IX.traceByFrom[t.from] = t;
+        if (t.concept) IX.traceByConcept[t.concept] = t;
+      });
+      D.graphs.forEach(function (g) {
+        IX.graphById[g.id] = g;
+        if (g.focus) IX.graphByFocus[g.focus] = g;
+        (g.nodes || []).forEach(function (n) { if (!(n.id in IX.nodeToGraph)) IX.nodeToGraph[n.id] = g.id; });
+      });
+    }
+
+    /* ---------------------------------------------------------- palette */
+    HX.palette.register(function (q) {
+      if (!loaded || !q) return null;
+      var n = q.toLowerCase(); var items = [];
+      D.traces.filter(function (t) { return (t.id + " " + (t.label || "") + " " + t.from).toLowerCase().indexOf(n) >= 0; })
+        .slice(0, 4).forEach(function (t) {
+          items.push({ label: t.label || t.id, id: t.from, route: "/lineage", chips: ["lineage"], action: function () { HX.nav("/lineage", { from: t.from }); } });
+        });
+      D.graphs.forEach(function (g) {
+        (g.nodes || []).filter(function (nd) { return (nd.id + " " + (nd.label || "")).toLowerCase().indexOf(n) >= 0; })
+          .slice(0, 4).forEach(function (nd) {
+            items.push({ label: nd.label || nd.id, id: FAMILY[nd.type] || nd.type, route: "/lineage", chips: [nd.group || "", nd.type || ""].filter(Boolean), action: function () { HX.nav("/lineage", { from: nd.id }); } });
+          });
+      });
+      return items.length ? { group: "Lineage", items: items.slice(0, 8) } : null;
+    });
+
+    /* ---------------------------------------------------------- lifecycle */
+    window.addEventListener("hashchange", render);
+    HX.asof.on(function () { render(); }); // ribbon version overrides + edge fading react to as-of
+
+    // boot: loading skeletons, then data (inline over file://, fetch over http)
+    root.appendChild(E("div", { class: "hx-stack" }, [
+      E("div", { class: "hx-skeleton", style: "height:56px" }),
+      E("div", { class: "hx-skeleton", style: "height:240px" })
+    ]));
+    HX.data.load("lineage").then(function (d) {
+      D.traces = d.traces || []; D.graphs = d.graphs || []; D.coverage = d.coverage || null;
+      loaded = true; buildIndexes(); render();
+    }).catch(function (e) {
+      loaded = true; console.warn("Lineage data load issue:", e); render();
+    });
+  })();
+  </script>
+</body>
+</html>

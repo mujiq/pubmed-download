@@ -53,19 +53,19 @@ flowchart LR
 
 ## 2. Source connector catalog
 
-| Connector id | Technology | Sources | Target topics | Delivery | PHI |
+| Connector id | Technology | Sources | Target topics | Delivery | `phi_class` |
 |--------------|-----------|---------|---------------|----------|-----|
-| `connect.debezium-millennium` | Debezium Oracle (LogMiner) | Millennium Oracle read-only replica | `hc.raw.cerner.cdc.<table>.avro.v1` | exactly-once (Connect EOS) | phi |
-| `connect.mllp-cerner` | HAPI HL7 v2 MLLP source | Cerner outbound interfaces (ADT, ORM, ORU, SIU, MDM, DFT, RDE, VXU, MFN) | `hc.raw.cerner.<type>.hl7v2.v1` | at-least-once + ACK after durable produce | phi |
-| `connect.mllp-lis`, `-ris`, `-pharmacy`, `-hie` | HAPI HL7 v2 MLLP source | Peripheral HL7 feeds | `hc.raw.<source>.<type>.hl7v2.v1` | as above | phi |
-| `connect.fhir-subscription-bridge` | Custom (FHIR R4 Subscription rest-hook receiver) | Patient portal, partner FHIR servers | `hc.raw.portal.*.fhir-json.v1` | at-least-once | phi |
-| `connect.fhir-bulk-poller` | Custom (`$export` client) | Millennium FHIR R4 APIs | `hc.raw.cerner.fhir.bulk.ndjson.v1` | at-least-once, idempotent by `versionId` | phi |
-| `connect.bicc-poller` | Custom (OCI Object Storage / UCM client) | Oracle Fusion BICC extracts (ERP, HCM, SCM PVOs) | `hc.raw.fusion.<module>.<pvo>.bicc.v1` | at-least-once, idempotent by manifest | pii / non-phi |
-| `connect.x12-sftp-as2` | Custom (SFTP + AS2 listener, X12 envelope splitter) | Clearinghouse (837/835/277), payers (271/278) | `hc.raw.clearinghouse.x12.<set>.v1`, `hc.raw.payer.x12.<set>.v1` | at-least-once, idempotent by `ISA13` | phi |
-| `connect.hie-ihe-xds` | Custom (IHE XDS.b consumer / Direct receiver) | HIE | `hc.raw.hie.ccda.v1` | at-least-once | phi |
-| `connect.pacs-dicomweb-poller` | Custom (QIDO-RS) | PACS/VNA | `hc.raw.pacs.study.dicom-json.v1` | at-least-once | phi |
-| `connect.device-gateway` | MQTT/HTTPS source | Device integration gateway | `hc.raw.devices.observation.json.v1` | at-least-once | phi |
-| `connect.sftp-file` | SFTP file source (CSV/Parquet) | Payer rosters, credentialing, timekeeping | `hc.raw.<source>.<entity>.csv.v1` | at-least-once, idempotent by file checksum | phi / pii |
+| `connect.debezium-millennium` | Debezium Oracle (LogMiner) | Millennium Oracle read-only replica | `hc.raw.cerner.cdc.<table>.avro.v1` | exactly-once (Connect EOS) | phi:direct (PRSNL pii:workforce; ORGANIZATION, CODE_VALUE internal) |
+| `connect.mllp-cerner` | HAPI HL7 v2 MLLP source | Cerner outbound interfaces (ADT, ORM, ORU, SIU, MDM, DFT, RDE, VXU, MFN) | `hc.raw.cerner.<type>.hl7v2.v1` | at-least-once + ACK after durable produce | phi:direct (MFN internal) |
+| `connect.mllp-lis`, `-ris`, `-pharmacy`, `-hie` | HAPI HL7 v2 MLLP source | Peripheral HL7 feeds | `hc.raw.<source>.<type>.hl7v2.v1` | as above | phi:direct |
+| `connect.fhir-subscription-bridge` | Custom (FHIR R4 Subscription rest-hook receiver) | Patient portal, partner FHIR servers | `hc.raw.portal.*.fhir-json.v1` | at-least-once | phi:direct |
+| `connect.fhir-bulk-poller` | Custom (`$export` client) | Millennium FHIR R4 APIs | `hc.raw.cerner.fhir.bulk.ndjson.v1` | at-least-once, idempotent by `versionId` | phi:direct |
+| `connect.bicc-poller` | Custom (OCI Object Storage / UCM client) | Oracle Fusion BICC extracts (ERP, HCM, SCM PVOs) | `hc.raw.fusion.<module>.<pvo>.bicc.v1` | at-least-once, idempotent by manifest | pii:workforce (HCM worker/assignment), confidential:financial (GL, AP, PO, item, supplier, FA), confidential:operational (on-hand), internal (positions) |
+| `connect.x12-sftp-as2` | Custom (SFTP + AS2 listener, X12 envelope splitter) | Clearinghouse (837/835/277), payers (271/278) | `hc.raw.clearinghouse.x12.<set>.v1`, `hc.raw.payer.x12.<set>.v1` | at-least-once, idempotent by `ISA13` | phi:direct |
+| `connect.hie-ihe-xds` | Custom (IHE XDS.b consumer / Direct receiver) | HIE | `hc.raw.hie.ccda.v1` | at-least-once | phi:direct |
+| `connect.pacs-dicomweb-poller` | Custom (QIDO-RS) | PACS/VNA | `hc.raw.pacs.study.dicom-json.v1` | at-least-once | phi:direct |
+| `connect.device-gateway` | MQTT/HTTPS source | Device integration gateway | `hc.raw.devices.observation.json.v1` | at-least-once | phi:direct |
+| `connect.sftp-file` | SFTP file source (CSV/Parquet) | Payer rosters, credentialing, timekeeping | `hc.raw.<source>.<entity>.csv.v1` | at-least-once, idempotent by file checksum | phi:direct (payer rosters), pii:workforce (credentialing, timekeeping) |
 
 ### 2.1 Debezium Oracle (LogMiner) for the Millennium replica
 
@@ -85,7 +85,7 @@ flowchart LR
 | `ALLERGY`, `REACTION` | Allergies | `cdc.allergy` | |
 | `PRSNL`, `PRSNL_ALIAS` | Practitioners | `cdc.prsnl` | |
 | `ORGANIZATION` | Organizations | `cdc.organization` | |
-| `CODE_VALUE`, `CODE_SET`, `CODE_VALUE_ALIAS` | Reference data | `cdc.code_value` | non-PHI |
+| `CODE_VALUE`, `CODE_SET`, `CODE_VALUE_ALIAS` | Reference data | `cdc.code_value` | `internal` |
 
 - **Snapshot strategy**: `snapshot.mode=initial` once per table group; thereafter **incremental snapshots** triggered via
   the Debezium signal table (`HEALIX_DBZ_SIGNAL`) with `incremental.snapshot.chunk.size=4096`, so a re-snapshot of one
@@ -183,8 +183,8 @@ retention is a replay buffer, not the archive.
 | Sink target unavailable | Task pauses with lag alert (STR-OPS-006); no DLQ |
 | DLQ record remediation | `agent.remediator` or an engineer replays from the DLQ through `hc.ops.replay.request.v1`; DLQ records are archived and retained 30 days on Kafka |
 
-DLQ topics are `phi` class; their consumers are limited to `agent.dq_monitor`, `agent.source_mapper`, `sre.oncall` and
-the archive sink.
+DLQ topics are `phi:direct` class (they carry original record bytes); their consumers are limited to `agent.dq_monitor`,
+`agent.source_mapper`, `sre.oncall` and the archive sink.
 
 ## 5. Exactly-once and idempotency configuration
 
@@ -212,7 +212,7 @@ the archive sink.
 | Connector/task status (`RUNNING`/`FAILED`/`PAUSED`) | Connect REST + JMX | `FAILED` > 2 min → page; auto-restart up to 3× (STR-OPS-010) |
 | Source lag: Debezium `MilliSecondsBehindSource`; MLLP queue depth at sender; BICC manifest age; bulk `$export` watermark age | Connector metrics | > 60 s CDC, > 15 min BICC, > 24 h bulk → alert |
 | MLLP ACK outcome rates (`AA`/`AE`/`AR`) per channel | Connector metrics + `hc.ops.outbound.hl7v2.ack.v1` for outbound | `AE`+`AR` > 0.1 % over 5 min → alert |
-| DLQ production rate per connector | `hc.ops.dlq.connect.v1` | > 0 for `phi` connectors → issue; > 10/min → page |
+| DLQ production rate per connector | `hc.ops.dlq.connect.v1` | > 0 for connectors feeding `phi:*` topics → issue; > 10/min → page |
 | Sink commit latency and rows/s | Sink metrics | p95 > 60 s → alert |
 | Lineage completeness (RunEvents per task per checkpoint) | `hc.ops.lineage.openlineage.v1` | missing COMPLETE → issue |
 
@@ -272,7 +272,7 @@ All metrics flow to the module 12 observability stack; alert routing is to the o
 > `recorded_at`, storing `hc-idempotency-key` on every row so that re-delivered records produce no duplicate rows.
 
 > **STR-CDC-017** (P0, inspection) — The archive sink MUST write `raw` and `canonical` topics to object storage with
-> deterministic file names partitioned by topic and date, encrypted with the `phi` key where applicable, retained for
+> deterministic file names partitioned by topic and date, encrypted with the PHI key class for `phi:*` topics, retained for
 > 7 years; `hc.ops.audit.v1` MUST be written to an immutable (WORM) bucket within 60 seconds.
 
 > **STR-CDC-018** (P0, test) — Every sink connector MUST configure `errors.tolerance=all` with the dead-letter topic
@@ -303,7 +303,7 @@ All metrics flow to the module 12 observability stack; alert routing is to the o
 > **STR-OPS-008** (P1, test) — BICC extract freshness MUST be monitored per PVO; a PVO whose latest completed manifest
 > is older than twice its schedule interval MUST raise an issue to the Oracle Fusion integration team.
 
-> **STR-OPS-009** (P0, test) — Any dead-letter write from a `phi` connector MUST create an issue within one minute, and
+> **STR-OPS-009** (P0, test) — Any dead-letter write from a connector feeding `phi:*` topics MUST create an issue within one minute, and
 > a DLQ rate above 10 records per minute MUST page Platform SRE.
 
 > **STR-OPS-010** (P1, test) — Failed connector tasks MUST be restarted automatically up to three times within ten

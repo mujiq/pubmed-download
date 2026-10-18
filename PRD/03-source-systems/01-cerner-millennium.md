@@ -88,16 +88,16 @@ mirrored copy per facility. Z-segments (`ZPV`, `ZCH`, `ZOR`, `ZEI`) are site-spe
 | ADT | A08 | Update patient / visit information | all | Patient, Encounter, Coverage merge-update | same |
 | ADT | A11 / A13 | Cancel admit / cancel discharge | EVN-4 | Encounter status reversal | same |
 | ADT | A31 | Update person information (demographics only) | PID, PD1, NK1 | Patient | same |
-| ADT | A40 | Merge patient (MRG) | MRG-1 | Patient.link (replaced-by), EMPI merge event | `hc.raw.cerner.adt.hl7v2.v1` → `hc.std.party.person-merge.v1` |
+| ADT | A40 | Merge patient (MRG) | MRG-1 | Patient.link (replaced-by), EMPI merge event | `hc.raw.cerner.adt.hl7v2.v1` (merge evidence flows via `hc.std.cerner.adt.hl7v2-parsed.v1` to entity resolution, module 08; resulting link events on `hc.kg.er.link.v1`) |
 | SIU | S12–S15, S17, S26 | New / rescheduled / modified / cancelled / deleted / no-show appointment | SCH, PID, PV1, RGS, AIS, AIG, AIL, AIP | Appointment, Slot | `hc.raw.cerner.siu.hl7v2.v1` |
 | ORM / OMP | O01 / O09 | Order copy (new, cancel, discontinue, status change) | ORC, OBR, RXO, NTE | ServiceRequest, MedicationRequest | `hc.raw.cerner.orm.hl7v2.v1` |
 | ORU | R01 | Result (lab, micro, rad report, vitals, documents in OBX-5 ED/TX) | OBR, OBX, NTE, SPM | Observation, DiagnosticReport, Specimen | `hc.raw.cerner.oru.hl7v2.v1` |
 | DFT | P03 | Charge / financial transaction (post, credit) | FT1, PR1, DG1 | ChargeItem | `hc.raw.cerner.dft.hl7v2.v1` |
-| BAR | P01 / P05 | Add / update account | PV1, GT1, IN1 | Account, Coverage | `hc.raw.cerner.bar.hl7v2.v1` |
+| BAR | P01 / P05 | Add / update account | PV1, GT1, IN1 | Account, Coverage | `hc.raw.cerner.bar.hl7v2.v1` (**proposed** — not yet in `07-streaming-platform/topics.yaml`; requires a topic CR before activation) |
 | MDM | T02 | Document notification with content | TXA, OBX | DocumentReference (+ Binary) | `hc.raw.cerner.mdm.hl7v2.v1` |
 | RDE | O11 | Pharmacy order | RXE, RXR, RXC | MedicationRequest | `hc.raw.cerner.rde.hl7v2.v1` |
-| RDS | O13 | Pharmacy dispense | RXD | MedicationDispense | `hc.raw.cerner.rds.hl7v2.v1` |
-| RAS | O17 | Medication administration | RXA, RXR | MedicationAdministration | `hc.raw.cerner.ras.hl7v2.v1` |
+| RDS | O13 | Pharmacy dispense | RXD | MedicationDispense | `hc.raw.pharmacy.rds.hl7v2.v1` (catalog pharmacy-domain dispense topic shared with ADC feeds; `hc-source-id` distinguishes Millennium PharmNet) |
+| RAS | O17 | Medication administration | RXA, RXR | MedicationAdministration | `hc.raw.cerner.rde.hl7v2.v1` (catalog topic shared by RDE^O11 and RAS^O17) |
 | VXU | V04 | Immunization record | RXA, RXR, OBX (CVX, lot) | Immunization | `hc.raw.cerner.vxu.hl7v2.v1` |
 | MFN | M02 / M05 | Staff / location master file (if enabled) | MFI, MFE, STF, LOC | Practitioner, Location | `hc.raw.cerner.mfn.hl7v2.v1` |
 
@@ -157,7 +157,7 @@ Platform treatment:
   `CODE_VALUE` as `code`, `DISPLAY` as display, `CDF_MEANING` as a `property`, effective dates as `period`.
 - `CDF_MEANING` is used as the **preferred mapping anchor** (it is stable across sites and upgrades); `DISPLAY` is
   secondary; the raw numeric is never mapped directly.
-- New or changed `CODE_VALUE` rows arrive via CDC and are routed to `hc.std.reference.cerner-code-value.cdc.v1`,
+- New or changed `CODE_VALUE` rows arrive via CDC and are routed to `hc.std.cerner.cdc.code_value.typed.v1`,
   where `agent.vocabulary_curator` (Stage 1) creates candidate SKOS concepts with `skos:prefLabel = DISPLAY`,
   `skos:notation = CODE_VALUE`, `skos:note = DEFINITION`, and `agent.terminology_steward` proposes `ConceptMap`
   entries to the enterprise value set (for example cs 71 → `v3-ActEncounterCode` plus local Encounter.type).
@@ -182,7 +182,7 @@ ontology class membership (`healix:Condition` vs `healix:Procedure`).
 ### 4.4 CDC processing rules
 
 - Debezium Oracle connector on the replica with `snapshot.mode=initial`, per-table topics
-  `hc.raw.cerner.<table>.cdc.v1` (Avro, Debezium envelope with `before`/`after`/`source.scn`).
+  `hc.raw.cerner.cdc.<table>.avro.v1` (pattern: one catalog topic per table; Avro, Debezium envelope with `before`/`after`/`source.scn`).
 - Soft deletes (`ACTIVE_IND=0`, `END_EFFECTIVE_DT_TM < now`) are emitted as logical deletes in `std`; physical
   deletes are rare but honoured.
 - `CLINICAL_EVENT` versioning: a modified result inserts a new row and expires the old one via `VALID_UNTIL_DT_TM`;
@@ -214,15 +214,18 @@ reviewed by the site's Millennium team, run in the operations job scheduler, and
 
 ## 7. PHI classification per domain
 
+Classification values are module 11 tags (`hc-phi-class`, GOV-01 §3). A feed or table inherits the most restrictive
+tag of its elements; sub-tags of `phi:sensitive-category/*` are applied per record by `security_label()` (SRC-04 §2.2).
+
 | Domain | Classification | Notable sensitive elements | Minimisation rule |
 |--------|---------------|----------------------------|-------------------|
-| Registration / ADT | PHI | Name, DOB, SSN (PERSON_ALIAS), address, phone, NK1, GT1, IN1 member ids | SSN hashed at `std`; never in canonical except as `Patient.identifier` with masked value in non-prod |
-| Clinical results / documents | PHI-SENSITIVE (subsets) | Behavioural health, HIV, genetics, substance use, reproductive health (42 CFR Part 2, state law) | Confidentiality tags from `CLINICAL_EVENT.CONFID_LEVEL_CD` and event-set membership → FHIR `meta.security` |
-| Pharmacy | PHI-SENSITIVE (controlled substances, psychiatric meds) | Drug names imply condition | Same security labels; DEA numbers in PRSNL_ALIAS are PII-restricted |
-| Scheduling | PHI | Appointment reason, location | — |
-| Charges | PHI + FINANCIAL | Amounts, payer, diagnosis on FT1 | Finance consumers receive de-identified charge streams unless RCM role |
-| Personnel / Org / Location | PII (PRSNL), OPERATIONAL | Provider NPI, DEA, home contact | Home contact excluded from canonical Practitioner |
-| Code sets / Nomenclature | PUBLIC/OPERATIONAL | none | freely replicated to non-prod |
+| Registration / ADT | `phi:direct` | Name, DOB (`phi:quasi`), SSN (PERSON_ALIAS), address, phone, NK1, GT1, IN1 member ids | SSN hashed at `std`; never in canonical except as `Patient.identifier` with masked value in non-prod |
+| Clinical results / documents | `phi:clinical`; subsets `phi:sensitive-category/{mental-health,hiv,genetic,sud,reproductive}` | Behavioural health, HIV, genetics, substance use, reproductive health (42 CFR Part 2, state law) | Confidentiality tags from `CLINICAL_EVENT.CONFID_LEVEL_CD` and event-set membership → FHIR `meta.security`; psychotherapy notes excluded (GOV-PHI-006) |
+| Pharmacy | `phi:clinical`; `phi:sensitive-category/sud` (MAT, controlled substances), `phi:sensitive-category/mental-health` (psychiatric meds) | Drug names imply condition | Same security labels; DEA numbers in PRSNL_ALIAS are `pii:workforce` |
+| Scheduling | `phi:direct` (PID on SIU); appointment dates `phi:quasi` | Appointment reason, location | — |
+| Charges | `phi:direct` (FIN/account numbers on FT1) + `phi:clinical` (diagnosis, procedure); GL postings aggregated away from the patient are `confidential:financial` | Amounts, payer, diagnosis on FT1 | Finance consumers receive `deidentified:safe-harbor` or `pseudonymised` charge streams unless RCM role (`HPAYMT`) |
+| Personnel / Org / Location | `pii:workforce` (PRSNL), `internal` (ORGANIZATION, LOCATION) | Provider NPI, DEA, home contact | Home contact excluded from canonical Practitioner |
+| Code sets / Nomenclature | `internal` (local code sets); `public` (standard vocabularies) | none | freely replicated to non-prod |
 
 ## 8. Volume and latency assumptions (mid-size, 5-hospital system; illustrative)
 
@@ -264,7 +267,7 @@ reviewed by the site's Millennium team, run in the operations job scheduler, and
 | G6 Population Health | Immunization, SDOH observations (PowerForms), problem lists feeding registries | derived |
 | G7 Research | Consent (research) events, cohort source | derived |
 | G8 Reference | CODE_VALUE code systems, NOMENCLATURE, ORDER_CATALOG, BILL_ITEM (CDM) | `hc.canonical.reference.codesystem.fhir.v1`, `hc.canonical.reference.conceptmap.fhir.v1` |
-| G9 Governance | Source registry entries, DQ results, lineage for every Cerner interface | `hc.dq.cerner.*` |
+| G9 Governance | Source registry entries, DQ results, lineage for every Cerner interface | `hc.dq.result.v1`, `hc.dq.issue.v1` (filtered by `source_system`), `hc.ops.lineage.openlineage.v1` |
 
 ## 11. Requirements
 
@@ -287,7 +290,7 @@ reviewed by the site's Millennium team, run in the operations job scheduler, and
 > `DISPLAY` second; direct mapping of numeric `CODE_VALUE` keys is rejected by the mapping linter.
 
 > **SRC-CER-007** (P1, test) — New or changed `CODE_VALUE` and `NOMENCLATURE` rows MUST reach
-> `hc.std.reference.cerner-code-value.cdc.v1` within one hour and generate Stage 1 candidate concepts.
+> `hc.std.cerner.cdc.code_value.typed.v1` within one hour and generate Stage 1 candidate concepts.
 
 > **SRC-CER-008** (P0, test) — Diagnoses, problems, procedures and allergies MUST carry the original
 > `NOMENCLATURE_ID` coding plus all standard codings derivable from `SOURCE_VOCABULARY_CD`, with asserted/derived
@@ -317,7 +320,7 @@ reviewed by the site's Millennium team, run in the operations job scheduler, and
 > **SRC-CER-016** (P0, test) — Encounter identifiers MUST be qualified with assigning authority derived from
 > `ALIAS_POOL_CD`; an unqualified FIN NBR is a `std` validation failure.
 
-> **SRC-CER-017** (P0, test) — Elements marked PHI-SENSITIVE (confidentiality level, sensitive event sets, Part 2
+> **SRC-CER-017** (P0, test) — Elements tagged `phi:sensitive-category/*` (confidentiality level, sensitive event sets, Part 2
 > locations) MUST carry FHIR `meta.security` labels before publication to `canonical`.
 
 > **SRC-CER-018** (P0, inspection) — SSN and driver licence aliases MUST be hashed (keyed HMAC) at `std`; clear

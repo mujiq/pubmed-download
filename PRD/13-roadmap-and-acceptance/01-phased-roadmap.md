@@ -38,6 +38,8 @@ flowchart LR
 | Sources added | Terminology feeds, Oracle Fusion reference data (BICC) | Cerner ADT, ORU, ORM, scheduling (SIU), LIS results | Oracle Fusion ERP (GL, AP/AR, FA, Projects), SCM (Items, PO, Inventory, Receipts), RCM/clearinghouse X12 837/835/270/271/278, Cerner charges | Oracle Fusion HCM, credentialing, timekeeping, HIE C-CDA inbound, payer files, research systems | Partner outbound FHIR/HL7 v2, device gateways at scale, portal |
 | Ontology Pipeline stages | Stage 0 for Cerner & Fusion (inventory) | Stages 0–2 for G1/G2 | Stages 3–4 for G1/G2; Stages 0–2 for G3/G4 | Stages 3–5 for G3/G4; Stages 0–5 for G5–G7; Stage 5 across all | Continuous curation |
 | Agent autonomy ceiling | L1 | L2 | L2 (L3 for inventory/dq_monitor/kg_builder) | L3 for most | L3/L4 per policy, auto-approval expansion |
+| Memory & self-improvement (module 14) | Memory API + write-gate, Mem0 and Graphiti deployed per environment, write log and module 14 `ops` topics in `topics.yaml`, C1/C3 caches; every playbook `shadow` | M1 memory live for L2 agents; C1–C3 caches; self-healer `shadow` → `assisted` for ingestion faults; memory audit begins | First `autonomous` playbooks (ingestion/platform classes); C2 semantic cache; consolidation at L3; improvement canaries in `uat` only | Improvement canaries in `prod`; playbook learning from resolved incidents (depth ≤ 2); monthly memory-influence report | Steady-state recursive learning under MEM-06; quarterly memory-lift ablation and kill-switch drills |
+| Adversarial review (module 15) | Findings register, severity scale and threat model opened; legacy outlier inventory | Red-team of the thin slice; gate at M1 and M1.5 | Red-team of finance/X12 flows and SoD; gate at M2 | Red-team of HCM, research and Part 2 flows; re-identification attempts; gate at M3 | Annual red-team and pen-test; partner egress adversarial tests; gate at M4 and every `prod` release |
 | KPI focus | Platform SLOs | Latency, FHIR validation, bitemporality | DQ coverage, reconciliation | Semantic coverage, conformed dimensions | Autonomy rate, partner conformance |
 
 ## 2. Phase 0 — Foundations
@@ -62,7 +64,9 @@ data in `dev`/`test`.
 | 09 Data Quality | DQ engine deployed; rule-pack schema; DQ result topic `hc.dq.result.v1`; scorecard skeleton | Domain rule packs |
 | 10 Agentic Pipeline | Agent runtime, MCP tool servers for registry/terminology/git, change-request schema, `agent.orchestrator`, `agent.inventory`, `agent.evaluator` at L1; evaluation harness | Domain agents acting on real data |
 | 11 Governance | PHI classification scheme, topic-level ACL model, audit event schema, OpenLineage collector, non-prod masking standard, stewardship RACI | Steward onboarding for G1–G7 |
-| 12 Platform & Ops | `dev`/`test`/`uat`/`prod` environments, CI/CD with artefact validation (YAML schema, SQL parse, SHACL, reasoner), observability stack, SLO definitions, backup | DR drill at full scale |
+| 12 Platform & Ops | `dev`/`test`/`uat`/`prod` environments, CI/CD with artefact validation (YAML schema, SQL parse, SHACL, reasoner), observability stack, SLO definitions, backup; memory stack components C26–C29 provisioned per environment | DR drill at full scale |
+| 14 Memory & Self-Improvement | Memory API (MCP `memory`) with write-gate and PHI firewall; `hc.ops.memory.write.v1` and the other five module 14 `ops` topics registered in `topics.yaml`; Mem0 (pgvector, `enable_graph: false`) and Graphiti (Neo4j 5.x) deployed per environment; Redis cache cluster with `cache-policy.yaml` C1/C3 namespaces; `memory-schema.yaml`, `cache-policy.yaml`, `playbook.schema.json` linted in CI; seven seed playbooks in `shadow`; honeytoken probes | C2 semantic cache; consolidation; `agent.improver`; any `assisted`/`autonomous` healing |
+| 15 Adversarial Review | Findings register schema and severity scale (`critical`/`high`/`medium`/`low`, SLA per severity); threat model and red-team plan for the thin slice; legacy/tech-debt outlier inventory (interface engine, Millennium replica lag, BICC PVO gaps) | Red-team execution against real data flows |
 
 ### 2.3 Deliverables
 
@@ -74,6 +78,8 @@ data in `dev`/`test`.
 6. Agent change-request schema, evaluator rubric v0, evaluation harness with ≥ 100 seeded test cases.
 7. Governance baseline: PHI classification policy, ACL matrix, audit schema, masking standard, stewardship charter.
 8. Conventions linter enforcing CONVENTIONS.md on every pull request.
+9. Module 14 memory stack in `dev`/`test`: write-gate rejecting PHI honeytokens, Mem0/Graphiti rebuilt from the write log, cache bypass chaos test passed, all playbooks `shadow`.
+10. Module 15 findings register live with threat model v0 and the legacy outlier inventory; adversarial review gate procedure approved by the DGC.
 
 ### 2.4 Entry criteria
 
@@ -92,6 +98,8 @@ data in `dev`/`test`.
 | E0-5 | Source Registry holds 100 % of in-scope Phase 1 interfaces with steward assigned | RMP-ACC-030 |
 | E0-6 | Agent evaluation harness runs end-to-end on seeded cases with `agent.evaluator` producing scored verdicts | RMP-ACC-100 |
 | E0-7 | PHI policy, ACL matrix and audit schema approved by Privacy & Security Officer | RMP-ACC-110 |
+| E0-8 | Memory write-gate rejects 100 % of PHI honeytokens; Mem0 and Graphiti rebuilt from `hc.ops.memory.write.v1` in `test` with record counts ±0; every playbook `shadow` | RMP-ACC-130, RMP-ACC-131, RMP-ACC-135 |
+| E0-9 | Adversarial review gate defined: findings register live, severity scale and SLAs approved by DGC, thin-slice threat model recorded | RMP-ACC-140 |
 
 ### 2.6 Dependencies
 
@@ -127,6 +135,8 @@ Procurement (licences, cloud), Identity (OIDC tenant), Network (MLLP ingress fro
 | **RMP-PH0-008** | P1 | inspection | The G1–G9 group definitions in ARC-01 §4 MUST be ratified by the architecture board and frozen for Phase 1. |
 | **RMP-PH0-009** | P0 | inspection | Licences for IBM UDMH, Teradata HCDM, SNOMED CT and CPT MUST be confirmed in writing before any licensed content is accessed by agents or staff. |
 | **RMP-PH0-010** | P1 | test | `edw_g8_reference` and `edw_g9_governance` schemas MUST be deployed with the Date/Time, Code and Source System conformed dimensions populated. |
+| **RMP-PH0-011** | P0 | test | The module 14 memory stack (Memory API with write-gate, Mem0, Graphiti, Redis caches, write log) MUST be deployed per environment in Phase 0 with the PHI firewall active, and MUST contain no value classified above `internal` (GOV-01 §3 Table 3-A) at any time; every healing playbook MUST be in `shadow` status at gate M0. |
+| **RMP-PH0-012** | P1 | inspection | The module 15 findings register, severity scale and adversarial review gate procedure MUST be approved by the DGC before gate M0, and a threat model for the thin vertical slice MUST be recorded. |
 
 ## 3. Phase 1 — Clinical core
 
@@ -142,7 +152,7 @@ Pipeline.
 | Layer | Slice content |
 |-------|---------------|
 | Source | Cerner ADT (A01, A02, A03, A04, A08, A11, A13, A40 merge) from one facility over MLLP |
-| Raw / Std | `hc.raw.cerner.adt.hl7v2.v1` (unchanged message + headers), `hc.std.cerner.adt.v1` (parsed segments PID, PV1, PV2, MRG, NK1, IN1) |
+| Raw / Std | `hc.raw.cerner.adt.hl7v2.v1` (unchanged message + headers), `hc.std.cerner.adt.hl7v2-parsed.v1` (parsed segments PID, PV1, PV2, MRG, NK1, IN1) |
 | Canonical | `hc.canonical.party.patient.fhir.v1` (US Core Patient), `hc.canonical.clinical.encounter.fhir.v1` (US Core Encounter), `hc.canonical.party.location.fhir.v1` |
 | Terminology | PV1-2 patient class → `v2-0004` → enterprise encounter-class value set; PID-8 sex → `v2-0001`; CODE_VALUE sets for admit source/type bound via `urn:healix:cerner:code-set:<n>` → SNOMED/HL7 v3 |
 | Ontology | Stage 0 inventory of ADT segments; Stage 1 controlled vocabulary for encounter class, admit source, discharge disposition, patient identifier types; Stage 2 taxonomy for encounter class and location hierarchy |
@@ -169,7 +179,9 @@ Slice exit (**M1**): shadow-mode in `prod` for ≥ 2 weeks with FHIR validation 
 | 09 | DQ stream plane: rule derivation from SHACL/ontology constraints, profiling, thresholds for G1/G2 critical data elements; scorecards; quarantine + remediation tickets | Cross-system reconciliation DQ |
 | 10 | Domain agents at L2 for low-risk classes (label edits, synonym additions, DQ threshold tuning); evaluator rubrics for mapping and vocabulary; HITL review UI; memory of accepted/rejected proposals | L3 for domain agents |
 | 11 | PHI tagging of every canonical element; steward onboarding for G1/G2; audit and lineage live; minimum-necessary enforcement for agent tool calls | Research consent flows |
-| 12 | Production go-live of slice; SLO dashboards; on-call; first DR drill (partial) | Full DR drill |
+| 12 | Production go-live of slice; SLO dashboards; on-call; first DR drill (partial); S23–S25 memory/cache/healing SLOs live | Full DR drill |
+| 14 | M1 memory in `prod` (Mem0 preferences/decisions, Graphiti episodes) feeding the `steward_preferences` and `precedent` retrieval profiles of L2 agents; C1/C2/C3 caches for terminology lookups and mapping suggestions with TS re-validation; `agent.self_healer` in `shadow` then `assisted` for ingestion fault classes (MLLP sequence gap, CDC lag, schema drift) with the chaos suite; `agent.memory_curator` consolidation in `shadow`; memory audit ≥ 200 records/month | `autonomous` playbooks; `agent.improver` beyond offline evaluation in `test`; C4 recall cache tuning |
+| 15 | Red-team of the thin slice before M1 (PHI exfiltration via agent tools, header-guard and ACL bypass, prompt injection into memory and CRs, MLLP replay/duplicate injection, consent-gate bypass); adversarial review gate applied at M1 and M1.5; legacy outliers (Cloverleaf-fronted ADT quirks, Millennium replica lag) logged with owner and remediation date | Finance and workforce attack surfaces |
 
 ### 3.4 Deliverables
 
@@ -198,6 +210,8 @@ Gate M0 passed; Cerner MLLP feed and replica CDC authorised in `prod`; G1/G2 ste
 | E1-7 | KG↔EDW reconciliation variance ≤ 0.1 % of business keys nightly for 14 consecutive nights | RMP-ACC-050 |
 | E1-8 | Evaluator–human agreement κ ≥ 0.85 on ≥ 300 adjudicated proposals; zero unreviewed PHI-affecting changes | RMP-ACC-100..103 |
 | E1-9 | Audit completeness 100 %; lineage coverage 100 % raw→EDW/KG; PHI access exceptions resolved < 24 h | RMP-ACC-110..112 |
+| E1-10 | Memory and caches: zero PHI findings (scanner + honeytokens) for 30 days; memory-lift ablation shows κ and CR acceptance with memory ≥ without; S23/S24 met in `uat`; chaos suite passes for every `assisted` playbook | RMP-ACC-130, RMP-ACC-132..134, RMP-ACC-137 |
+| E1-11 | Adversarial review gate: red-team re-test of the slice completed; zero open `critical`; zero `high` without approved, dated mitigation | RMP-ACC-140..142 |
 
 ### 3.7 Dependencies
 
@@ -227,6 +241,8 @@ Phase 0 squads plus: Clinical Integration squad (HL7 v2 engineers ×3, Cerner Mi
 | **RMP-PH1-010** | P0 | test | Every Phase 1 topic, table and named graph MUST carry a PHI classification and ACL before it receives production data. |
 | **RMP-PH1-011** | P1 | test | A golden HL7 v2 corpus of ≥ 5,000 de-identified messages covering every in-scope trigger event MUST be maintained as the regression suite for mappings. |
 | **RMP-PH1-012** | P1 | demo | Additional Cerner facilities MUST be onboarded by configuration (facility, MLLP endpoint, CODE_VALUE set mapping) without code changes to canonicalisation jobs. |
+| **RMP-PH1-013** | P0 | test | Throughout Phase 1 every healing playbook MUST remain in `shadow` or `assisted` status; no autonomous healing action SHALL execute in `prod`, and `agent.improver` MUST NOT run canaries outside `test`. |
+| **RMP-PH1-014** | P0 | inspection | The module 15 adversarial review gate MUST be passed before the thin slice enters `prod` shadow mode (M1) and again at M1.5. |
 
 ## 4. Phase 2 — Finance & Supply
 
@@ -251,7 +267,9 @@ Cycle & Finance and G4 Supply Chain & Operations. Promote G1/G2 vocabularies thr
 | 09 | Cross-system reconciliation rule family (`DQR-CONSISTENCY-RECON-*`), financial completeness/accuracy rules, late-arriving-data handling in DQ windows | — |
 | 10 | `agent.inventory`, `agent.dq_monitor`, `agent.kg_builder` to L3; L2 widened to `mapping-add-low-risk`, `valueset-member-add`, `dq-rule-add-non-critical`; evaluator rubrics for axioms | L3 for curator/mapper |
 | 11 | Financial data classification (PCI-adjacent fields), supplier confidentiality, SoD for finance stewards; 42 CFR Part 2 flags carried into claims | — |
-| 12 | Capacity expansion; full DR drill (RPO ≤ 15 min, RTO ≤ 4 h); cost monitoring | — |
+| 12 | Capacity expansion; full DR drill (RPO ≤ 15 min, RTO ≤ 4 h) including memory rebuild from the write log; cost monitoring | — |
+| 14 | First `autonomous` playbooks for ingestion and platform fault classes after ≥ 10 shadow/assisted matches with ≥ 90 % agreement; C2 semantic cache for classification and mapping suggestions; `agent.memory_curator` consolidation (sleep cycle) at L3; `agent.improver` offline optimisation with canaries in `uat` only; canary rollback drill | Canaries in `prod`; playbook learning |
+| 15 | Red-team of finance and X12 flows (`confidential:financial` exposure, SoD bypass for finance stewards, X12 injection); scale and legacy outlier review (BICC PVO gaps, LogMiner stalls, clearinghouse SFTP); gate at M2 | — |
 
 ### 4.3 Deliverables
 
@@ -277,6 +295,8 @@ Gate M1.5 passed; BICC extracts and REST APIs authorised; clearinghouse SFTP/AS2
 | E2-5 | Conformed dims Payer, Item, Cost Center used by ≥ 2 fact groups | RMP-ACC-051 |
 | E2-6 | ≥ 50 % of eligible low-risk changes auto-approved; rollback rate ≤ 2 %; κ ≥ 0.85 | RMP-ACC-100..104 |
 | E2-7 | DR drill meets RPO ≤ 15 min, RTO ≤ 4 h | RMP-ACC-122 |
+| E2-8 | ≥ 50 % of registered fault classes have a post-shadow playbook; ≥ 90 % of autonomous-scope incidents healed within MTTR with 0 blast-radius breaches; canary rollback drill ≤ 5 min in `uat`; memory rebuild drill current | RMP-ACC-131, RMP-ACC-134..136 |
+| E2-9 | Adversarial review gate at M2: zero open `critical`; zero unmitigated `high`; legacy outliers remediated or scheduled | RMP-ACC-140..143 |
 
 ### 4.6 Dependencies
 
@@ -295,7 +315,7 @@ Phase 1 squads re-pointed: Clinical Integration squad becomes Enterprise Integra
 | ID | Priority | Verification | Requirement |
 |----|----------|--------------|-------------|
 | **RMP-PH2-001** | P0 | test | Oracle Fusion ERP and SCM entities in scope MUST be canonicalised to FHIR R4 resources where a resource fits and to governed HEALIX-ERP extension profiles where none fits, published on `hc.canonical.finance.*` and `hc.canonical.supply.*`. |
-| **RMP-PH2-002** | P0 | test | X12 837, 835, 270, 271 and 278 transactions MUST be parsed to `hc.std.x12.*` and mapped to FHIR Claim, ClaimResponse, CoverageEligibilityRequest/Response and PaymentReconciliation consistent with CARIN BB and Da Vinci PAS conventions. |
+| **RMP-PH2-002** | P0 | test | X12 837, 835, 270, 271 and 278 transactions MUST be parsed to `hc.std.clearinghouse.x12.*` (837, 835, 277) and `hc.std.payer.x12.*` (270/271, 278) and mapped to FHIR Claim, ClaimResponse, CoverageEligibilityRequest/Response and PaymentReconciliation consistent with CARIN BB and Da Vinci PAS conventions. |
 | **RMP-PH2-003** | P0 | test | Stage 3 thesaurus relations for G1/G2 MUST be promoted to OWL object properties only when they have been unchanged for one full release cycle and have a human-approved domain and range. |
 | **RMP-PH2-004** | P0 | test | Ontology release `v1.0-g1g2` MUST be OWL DL consistent under at least one reasoner and MUST ship SHACL shapes for every HEALIX canonical profile element of G1/G2. |
 | **RMP-PH2-005** | P0 | test | Cross-system reconciliation DQ rules MUST link Cerner charges, 837 claim lines, 835 remittance lines and Fusion GL postings by business key and report unmatched items within one business day. |
@@ -304,6 +324,8 @@ Phase 1 squads re-pointed: Clinical Integration squad becomes Enterprise Integra
 | **RMP-PH2-008** | P1 | test | Conformed dimensions Payer, Item and Cost Center MUST be owned by G1/G8 and consumed by at least two fact groups. |
 | **RMP-PH2-009** | P0 | inspection | Financially sensitive fields (bank accounts, tax identifiers, payment card references) MUST be classified and masked under module 11 policy before Phase 2 production load. |
 | **RMP-PH2-010** | P1 | demo | A full disaster-recovery drill MUST be executed in Phase 2 and meet ARC-NFR-007. |
+| **RMP-PH2-011** | P1 | test | A healing playbook MAY be promoted to `autonomous` in Phase 2 only for ingestion and platform fault classes whose actions have blast-radius class `observe`, `restart`, `reconfigure`, `reroute` or `replay`, after ≥ 10 consecutive shadow/assisted matches with ≥ 90 % agreement and an approved `playbook` CR. |
+| **RMP-PH2-012** | P0 | test | Improvement canaries MUST run in `uat` only during Phase 2, and a canary rollback drill (≤ 5 min, cache purge ≤ 60 s) MUST pass before any `prod` canary is enabled in Phase 3. |
 
 ## 5. Phase 3 — Workforce, Population Health, Research
 
@@ -329,6 +351,8 @@ to L3.
 | 10 | L3 for `agent.vocabulary_curator`, `agent.taxonomist`, `agent.thesaurus_editor`, `agent.source_mapper`, `agent.terminology_steward`, `agent.dq_author`, `agent.remediator`, `agent.interop_engineer`, `agent.release_manager`; L2 for `agent.ontologist` on non-PHI-affecting axiom classes; L1 for `agent.schema_architect` | L4 beyond privacy guardian |
 | 11 | Research consent and 42 CFR Part 2 segmentation; de-identification service (Safe Harbor + expert determination hooks); workforce data privacy (HR confidentiality) | — |
 | 12 | Multi-region option; cost per canonical resource reporting | — |
+| 14 | Improvement canaries in `prod` (5 % → 25 % → promoted) for prompts, exemplars and retrieval profiles of L3 agents; playbook learning from resolved incidents (recursion depth ≤ 2, ledger entries); memory-influenced vs non-influenced acceptance reported monthly to the DGC; Graphiti consolidation and utility decay | Medium-risk policy classes in canaries |
+| 15 | Red-team of HCM, research and Part 2 flows (`pii:workforce` exposure, de-identification re-identification attempts, Part 2 consent bypass, memory poisoning via steward feedback); findings backlog burn-down (`high` ≤ 30 days); gate at M3 | — |
 
 ### 5.3 Deliverables
 
@@ -354,6 +378,8 @@ Gate M2 passed; HCM BICC/REST access; HIE participation agreement for C-CDA; IRB
 | E3-5 | 100 % of KG assertions bitemporal with PROV-O, including derived facts (G-05) | RMP-ACC-080 |
 | E3-6 | ≥ 65 % auto-approval; κ ≥ 0.85; rollback ≤ 2 %; zero unreviewed PHI-affecting changes | RMP-ACC-100..104 |
 | E3-7 | Research projection passes de-identification review | RMP-ACC-113 |
+| E3-8 | Improvement loop: rollback rate of promoted candidates < 10 % per quarter; 0 held-out leakage; ≥ 80 % of fault classes have a post-shadow playbook; memory-influence report published monthly | RMP-ACC-132, RMP-ACC-135, RMP-ACC-136 |
+| E3-9 | Adversarial review gate at M3 passed, including re-identification and memory-poisoning scenarios | RMP-ACC-140..143 |
 
 ### 5.6 Dependencies
 
@@ -379,6 +405,8 @@ Steady state ≈ 30 FTE with mix shifting from integration engineering to stewar
 | **RMP-PH3-006** | P1 | inspection | Agents listed in §5.2 (module 10 row) MAY be promoted to L3 only after two consecutive release cycles meeting RMP-ACC-100..104. |
 | **RMP-PH3-007** | P0 | inspection | `agent.ontologist` MAY operate at L2 only for axiom classes tagged `non-phi-affecting` and `non-disjointness`; all other axioms remain human-approved. |
 | **RMP-PH3-008** | P1 | test | Workforce data MUST be segmented so that HR-confidential attributes are visible only to roles authorised under module 11 policy. |
+| **RMP-PH3-009** | P0 | test | Improvement canaries MAY run in `prod` from Phase 3 only through `agent_policy`/`playbook`/`dq_rule` CRs that passed offline evaluation, with at most one active canary per agent and three platform-wide, and rollback ≤ 5 min on any trigger (MEM-IMP-001/004/006). |
+| **RMP-PH3-010** | P1 | inspection | The module 15 red-team for Phase 3 MUST include de-identification re-identification attempts against the research projection and memory-poisoning attempts through steward feedback, with results in the findings register before gate M3. |
 
 ## 6. Phase 4 — Autonomy & scale
 
@@ -401,6 +429,8 @@ profile track so the canonical model can version forward without breaking consum
 | 10 | Auto-approval expansion to medium-risk classes under evaluator confidence; `agent.privacy_guardian` L4 veto audited; agent cost/latency SLOs |
 | 11 | Partner data-sharing agreements encoded as policy; TEFCA/QHIN readiness assessment |
 | 12 | Capacity for ×3 headroom; chaos testing; cost optimisation |
+| 14 | Steady-state recursive learning under MEM-06 trust tiers and separation of duties; quarterly memory-lift ablation and kill-switch drills; fixed-point list review; playbook coverage of new fault classes via `policy` CRs |
+| 15 | Annual red-team and penetration test; adversarial tests of partner-facing egress and consent filters; production-readiness sign-off per `prod` release; findings register trend reported to the DGC |
 
 ### 6.3 Deliverables
 
@@ -411,7 +441,7 @@ profile track so the canonical model can version forward without breaking consum
 
 ### 6.4 Entry / exit criteria
 
-Entry: gate M3. Exit (**M4**): RMP-ACC-100..104 at Phase 4 thresholds, RMP-ACC-064 (partner conformance), RMP-ACC-071 (headroom), RMP-ACC-065 (R5 track).
+Entry: gate M3. Exit (**M4**): RMP-ACC-100..104 at Phase 4 thresholds, RMP-ACC-064 (partner conformance), RMP-ACC-071 (headroom), RMP-ACC-065 (R5 track), RMP-ACC-130..137 (memory, cache, healing and improvement loop at steady state) and the adversarial review gate RMP-ACC-140..143 including partner egress scenarios.
 
 ### 6.5 Dependencies
 
@@ -435,6 +465,8 @@ Partner agreements; FHIR R5 maturity of US Core successors; organisational appet
 | **RMP-PH4-004** | P1 | inspection | The FHIR R5 profile track MUST publish a gap analysis per canonical resource and MUST NOT replace R4 `canonical.*.fhir.v1` topics; R5 is introduced as a parallel versioned topic/profile set. |
 | **RMP-PH4-005** | P1 | test | The platform MUST demonstrate sustained throughput ≥ 5,000 canonical resources/s with ×3 headroom in a load test. |
 | **RMP-PH4-006** | P2 | demo | Egress MUST enforce partner-specific consent and data-sharing policy at the topic filter before any record leaves the platform. |
+| **RMP-PH4-007** | P1 | analysis | From M4 the memory-lift ablation and kill-switch drill MUST be executed quarterly and the recursion-depth histogram published monthly (MEM-GOV-038); any ablation showing memory-enabled κ below memory-disabled κ MUST trigger an autonomy review. |
+| **RMP-PH4-008** | P1 | inspection | An annual red-team and penetration test under module 15, including partner egress and consent filters, MUST be completed with zero open `critical` findings before each annual production failover (OPS-04 §9). |
 
 ## 7. Cross-phase workstreams
 
@@ -447,6 +479,8 @@ Partner agreements; FHIR R5 maturity of US Core successors; organisational appet
 | Reconciliation KG↔EDW | Phases 1–4 | Nightly; variance trend reviewed weekly |
 | Golden datasets and synthetic bundles | Phases 0–4 | Extended with every new interface; versioned in Git |
 | Risk register review | Every phase | Monthly (RMP-03) |
+| Memory and self-improvement governance (module 14) | Phases 0–4 | Monthly DGC report (MEM-GOV-038); quarterly memory rebuild, canary rollback and kill-switch drills; memory audit ≥ 200 records/month |
+| Adversarial review (module 15) | Every phase | Gate at every milestone (M0–M4) and every `prod` release (RMP-02 §4 items 26–27); findings register reviewed monthly; `critical` fixed before promotion, `high` mitigated with date |
 
 ## 8. Duration and sizing assumptions (consolidated)
 
@@ -481,7 +515,12 @@ Partner agreements; FHIR R5 maturity of US Core successors; organisational appet
 | `agent.privacy_guardian` | L4 | L4 | L4 | L4 | L4 |
 | `agent.evaluator` | active | active | active | active | active |
 | `agent.release_manager` | L1 | L2 | L2 | L3 | L3 |
+| `agent.memory_curator` | L1 (shadow consolidation) | L2 | L3 | L3 | L3 |
+| `agent.self_healer` | — (playbooks `shadow`) | L1→L2 (`shadow` → `assisted`) | L3 (`autonomous` for ingestion/platform classes) | L3 | L3 |
+| `agent.improver` | — | L1 (offline evaluation in `test`) | L1 (canaries in `uat`) | L1 (canaries in `prod`) | L1 |
 
 Promotion rule (all phases): two consecutive release cycles with κ ≥ 0.85 for the agent's change classes, rollback
 rate ≤ 2 % and no PHI incident attributable to the agent. Demotion is immediate on any PHI incident or on rollback
-rate > 5 % in one cycle.
+rate > 5 % in one cycle. `agent.improver` stays at L1 by design (ADR-09): it proposes candidates and the canary
+controller, not the agent, promotes or rolls back; healing playbooks graduate individually (`shadow → assisted →
+autonomous`, MEM-04 §8) and a circuit-breaker trip or any memory PHI finding demotes the playbook or agent immediately.

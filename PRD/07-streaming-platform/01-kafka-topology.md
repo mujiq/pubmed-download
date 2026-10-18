@@ -119,12 +119,12 @@ Authorisation is **deny by default** (`allow.everyone.if.no.acl.found=false`) wi
 | `connect.<source>` | `hc.raw.<source-domain>.` prefix only; `hc.ops.dlq.connect.v1`; `hc.ops.lineage.openlineage.v1`; `hc.ops.connector.` | — | — | one principal per connector |
 | `proc.parser` | `hc.std.` | `hc.raw.` | `proc.parser.` | |
 | `proc.canonicaliser`, `proc.enricher` | `hc.canonical.` | `hc.std.`, `hc.canonical.*-snapshot`, `hc.canonical.reference.` | `proc.canonicaliser.`, `proc.enricher.` | |
-| `proc.dq-evaluator` | `hc.dq.` | `hc.canonical.`, `hc.dq.rule-activation.v1` | `proc.dq-evaluator.` | |
-| `proc.temporal-splitter` | `hc.kg.` | `hc.canonical.`, `hc.dq.result.v1` | `proc.temporal-splitter.` | |
+| `proc.dq-evaluator` | `hc.dq.` | `hc.canonical.`, `hc.dq.rule-activation.v1`, `hc.ops.dq.rulepack.v1` | `proc.dq-evaluator.` | |
+| `proc.temporal-splitter` | `hc.kg.` | `hc.canonical.`, `hc.dq.passed.`, `hc.dq.result.v1`, `hc.kg.er.link.v1` | `proc.temporal-splitter.` | |
 | `proc.edw-projector` | `hc.edw.` | `hc.canonical.`, `hc.dq.` | `proc.edw-projector.` | |
 | `proc.hl7v2-outbound` | `hc.std.outbound.` | `hc.canonical.clinical.`, `hc.canonical.party.`, `hc.ops.outbound.` | `proc.hl7v2-outbound.` | |
 | `sink.<name>` | `hc.ops.` (lineage, audit, dlq, kg load receipts) | the layer it sinks (`hc.kg.`, `hc.edw.`, `hc.dq.`, `hc.raw.`+`hc.canonical.` for archive) | `sink.<name>.` | |
-| `agent.<role>` | `hc.ops.agent.`, `hc.ops.replay.request.v1`, `hc.dq.issue.v1` (`dq_monitor`) | `hc.ops.`, `hc.dq.`, `hc.canonical.reference.` | `agent.<role>.` | no `raw`/`std` access |
+| `agent.<role>` | `hc.ops.agent.`, `hc.ops.heal.` (`self_healer`), `hc.ops.replay.request.v1`, `hc.dq.issue.v1` (`dq_monitor`), `hc.kg.er.link.v1` (`entity_resolver`) | `hc.ops.`, `hc.dq.` (metadata topics; quarantine/passed only for `remediator`), `hc.canonical.reference.` | `agent.<role>.` | no `raw`/`std` access |
 | `svc.*` (terminology publisher, lineage) | as catalogued | as catalogued | `svc.<name>.` | |
 
 Every ACL is generated from `topics.yaml` (`producers`, `consumers`) by the GitOps pipeline; a principal not listed in
@@ -132,25 +132,33 @@ the catalog has no access. Transactional-id ACLs are granted per processor with 
 
 ### 3.3 Topic-level PHI classification
 
-Each topic's `phi_class` (from module 11's scheme) drives controls:
+Each topic's `phi_class` is a tag from the module 11 data-classification taxonomy (GOV-01 §3, SKOS scheme
+`<base>scheme/data-classification`) and is the **most restrictive** class of any record the topic may carry. It drives
+the controls below; the module 11 default handling applies in addition.
 
-| `phi_class` | Meaning | Extra controls |
-|-------------|---------|----------------|
-| `phi` | Identifiable PHI (HIPAA 18 identifiers present) | ACL grant requires `agent.privacy_guardian` approval; no mirroring to non-prod; archive encrypted with PHI key; consumer apps must present `phi-reader` role claim |
-| `phi-limited` | Limited data set (dates/ZIP3 permitted, direct identifiers removed) or PHI by reference only | As `phi` except non-prod mirroring allowed after masking |
-| `de-identified` | Safe-harbor or expert-determination de-identified | Standard controls |
-| `pii` | Workforce/personal data that is not PHI (GDPR/CCPA scope) | HR data steward approval |
-| `non-phi` | Reference, ERP finance/supply, platform metadata | Standard controls |
+| `phi_class` | Meaning (GOV-01 §3) | Extra controls |
+|-------------|---------------------|----------------|
+| `phi:direct` | Directly identifies an individual (HIPAA identifiers 1–2, 4–18): MRN, name, SSN, member and account numbers; all `raw`/`std` patient feeds, Patient/Account/Coverage/Claim resources, DLQs, `kg.*` | ACL grant requires `agent.privacy_guardian` approval; no mirroring to non-prod (masking mirror only); archive and tiered storage encrypted with the PHI key class; consumer apps must present the `phi-reader` role claim and a purpose of use |
+| `phi:sensitive-category` and `/sud`, `/hiv`, `/mental-health`, `/reproductive`, `/genetic` | Specially protected categories (42 CFR Part 2, HIV, psychotherapy notes, reproductive, genetic) | As `phi:direct` plus consent gate (`hc-consent-ref`, `hc-part2-flag`) and segmented consumers; no topic in the initial catalog is classed here — segmentation is per record via `hc-phi-class`/`hc-phi-tags` and module 11 row-level policy |
+| `phi:clinical` | Health information about an identifiable individual that is not itself an identifier (canonical clinical resources keyed by `patient_bk`) | As `phi:direct` for ACL approval, mirroring and encryption; may feed `deidentified:*` outputs only through module 11 transforms |
+| `phi:quasi` | Quasi-identifiers or PHI by reference only (dates, ZIP3, business keys in DQ results, audit and reconciliation records) | ACL approval by `agent.privacy_guardian`; non-prod mirroring allowed after masking; k-anonymity check before any release |
+| `pseudonymised` | PHI replaced by reversible tokens from the token vault (non-prod data, agent working sets) | Still PHI under HIPAA: same ACL approval; vault access restricted; never co-located with the token map |
+| `pii:workforce` | Personal data about employees/contractors (HCM, credentialing, timekeeping, practitioner records) | HR data steward approval; GDPR overlay for EU/UK staff (GOV-01 §9); masked in non-prod |
+| `confidential:financial` | Commercially sensitive non-personal financial and contract data (GL, AP, PO, supplier, item pricing, fixed assets) | Finance role claim; standard encryption |
+| `confidential:operational` | Internal operational data with no personal content (on-hand balances, slots, supply requests) | Standard controls |
+| `internal` | Non-sensitive platform metadata (lineage, change requests, decisions, checkpoints, rule packs, source reference data) | Any authenticated principal catalogued as consumer |
+| `public` | Approved for external publication (published value sets, organisation directory) | Standard controls; may be exposed through the public FHIR terminology endpoints |
+| `deidentified:safe-harbor`, `deidentified:expert` | Output of a certified Safe Harbor or Expert Determination transform (module 11 §6) | Standard controls; re-identification prohibited by policy and DSA; only module 11 de-identification processors may produce to such topics (STR-PROC-017) |
 
 The classification is also carried on every record as header `hc-phi-class` (STR-03) so that interceptors can refuse a
 produce whose header class is more sensitive than the topic's class.
 
 ### 3.4 Encryption and masking
 
-- At rest: broker volumes and tiered-storage buckets encrypted with KMS keys per environment; separate key for `phi`
-  tier buckets; keys rotated annually, re-wrapped on demand.
+- At rest: broker volumes and tiered-storage buckets encrypted with KMS keys per environment; separate PHI key class
+  for `phi:*` and `pseudonymised` tier buckets; keys rotated annually, re-wrapped on demand.
 - Non-production: `uat` receives data only through the masking mirror (module 11 masking rules) — never a raw
-  mirror of `phi` topics.
+  mirror of `phi:*`, `pseudonymised` or `pii:workforce` topics.
 - Optional (OQ-07-04): client-side field-level encryption for direct identifiers in `hc.canonical.party.patient.*`.
 
 ## 4. Retention and compaction policy
@@ -161,10 +169,10 @@ produce whose header class is more sensitive than the topic's class.
 | `std` | `delete`, 14 days | Re-canonicalise after a mapping fix without re-parsing |
 | `canonical` event topics | `delete`, 90 days | DQ re-evaluation, EDW/KG reconciliation windows |
 | `canonical` snapshot topics (`*-snapshot.v1`) and `reference.*` | `compact`; `min.compaction.lag.ms=86400000`; `delete.retention.ms=604800000`; tombstone on merge/delete | Infinite current state for late joiners and enrichment lookups |
-| `dq` | `delete`, **90 days** (`scorecard`, `rule-activation` compacted) | Trend analysis, audit of quarantine decisions |
-| `kg` | `delete`, 30 days | Reload window for the graph store |
+| `dq` | `delete`, **90 days** (`scorecard`, `rule-activation` compacted; `passed.<domain>` and `quarantine.<domain>` 90 d) | Trend analysis, audit of quarantine decisions; re-sink of passed records |
+| `kg` | `delete`, 30 days (`dlq`, `er.link` included) | Reload window for the graph store |
 | `edw` | `delete`, 14 days | Re-apply to the warehouse after a failed load |
-| `ops` | `delete`, **7 days**; exceptions: `audit`, `dlq.*`, `agent.*`, `replay`, `schema`, `connector.*` 30 days | Operational; audit is sunk to immutable storage within 60 s and retained 6 years there (module 11) |
+| `ops` | `delete`, **7 days**; exceptions: `audit`, `audit.break-glass`, `dlq.*`, `agent.changerequest`, `agent.evaluation`, `heal.*`, `replay`, `schema`, `connector.*` 30 days; `kg-edw-reconciliation` 90 days; `agent.decision` 7 years; `dq.rulepack`, `agent.memory.episode`, `agent.policy.release` compacted | Operational; audit is sunk to immutable storage within 60 s and retained 6 years there (module 11); the decision log is the agents' episodic memory (module 10/14) |
 
 Timestamps use `message.timestamp.type=CreateTime`; `message.timestamp.difference.max.ms` is unlimited for `raw`
 (replays and backfills carry historical timestamps) and 7 days elsewhere.
@@ -242,11 +250,13 @@ never hashed by producers (the default murmur2 partitioner hashes the serialised
 > producers/consumers; a principal MUST NOT hold WRITE on a layer it does not produce or READ on PHI topics it is not
 > catalogued to consume.
 
-> **STR-TOP-008** (P0, test) — Every topic MUST carry a `phi_class`; granting READ on a `phi` or `phi-limited` topic
-> MUST be approved by `agent.privacy_guardian` (or its human delegate) and recorded in `hc.ops.audit.v1`.
+> **STR-TOP-008** (P0, test) — Every topic MUST carry a `phi_class` drawn from the module 11 taxonomy (GOV-01 §3);
+> granting READ on a topic classed `phi:*` or `pseudonymised` MUST be approved by `agent.privacy_guardian` (or its
+> human delegate), on a `pii:workforce` topic by the HR data steward, and every grant MUST be recorded in `hc.ops.audit.v1`.
 
 > **STR-TOP-009** (P0, test) — Retention MUST follow §4: `raw` ≥ 30 days, `dq` ≥ 90 days, `ops` 7 days (listed
-> exceptions 30 days), canonical snapshot topics compacted with `min.compaction.lag.ms` ≥ 24 h.
+> exceptions 30 days, 90 days or 7 years as catalogued), canonical snapshot topics and the listed `ops` control topics
+> compacted with `min.compaction.lag.ms` ≥ 24 h.
 
 > **STR-TOP-010** (P1, test) — Compacted topics MUST emit a tombstone for every merge, delete or key retirement, and
 > producers to compacted topics MUST publish the full current state (no partial deltas).
@@ -261,8 +271,8 @@ never hashed by producers (the default murmur2 partitioner hashes the serialised
 > MUST be performed by creating the next topic version and migrating producers and consumers.
 
 > **STR-TOP-014** (P0, inspection) — All broker storage and tiered-storage buckets MUST be encrypted at rest with
-> environment-specific KMS keys and a separate key for `phi` data; `uat` MUST receive `phi` data only through the
-> masking mirror.
+> environment-specific KMS keys and a separate PHI key class for `phi:*` and `pseudonymised` data; `uat` MUST receive
+> such data only through the masking mirror.
 
 > **STR-TOP-015** (P1, test) — Produce and fetch quotas MUST be configured per principal so that no single connector,
 > processor or agent can consume more than 25 % of a broker's network capacity.

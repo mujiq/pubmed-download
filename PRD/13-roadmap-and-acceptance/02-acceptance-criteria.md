@@ -25,8 +25,9 @@ flowchart LR
   G03[G-03 DQ at ingestion] --> M09[09 DQ] & M07
   G04[G-04 EDW groups] --> M05 & M04
   G05[G-05 Bitemporal KG] --> M08[08 TKG] & M11[11 Governance]
-  G06[G-06 Autonomy] --> M10[10 Agents] & M11
-  NFR[ARC-NFR-001..007] --> M07 & M12[12 Ops] & M08 & M05
+  G06[G-06 Autonomy] --> M10[10 Agents] & M11 & M14[14 Memory & Self-Improvement]
+  NFR[ARC-NFR-001..007] --> M07 & M12[12 Ops] & M08 & M05 & M14
+  M15[15 Adversarial review gate] -. gates every milestone and prod release .-> M10 & M11 & M12 & M14
 ```
 
 | Goal | First-release measure | Acceptance IDs |
@@ -36,7 +37,8 @@ flowchart LR
 | G-03 | DQ coverage ≥ 90 % of CDEs; MTTD < 15 min | RMP-ACC-090, 091 |
 | G-04 | All G1–G9 populated; conformed dims shared by ≥ 2 groups | RMP-ACC-050, 051 |
 | G-05 | 100 % KG assertions bitemporal with PROV-O | RMP-ACC-080, 081 |
-| G-06 | ≥ 80 % auto-approval; zero unreviewed PHI-affecting changes | RMP-ACC-100..104, 111 |
+| G-06 | ≥ 80 % auto-approval; zero unreviewed PHI-affecting changes | RMP-ACC-100..104, 111, 130..137 |
+| Release gate (all goals) | Zero open `critical` and zero unmitigated `high` adversarial findings at every milestone and `prod` release | RMP-ACC-140..143 |
 
 ## 2. Acceptance by module
 
@@ -179,6 +181,37 @@ evidence artefact attached to the release record.
 | Retention | ARC-NFR-005 | `raw` ≥ 30 d; compacted `canonical` indefinitely; audit per policy | Config audit | Report |
 | Observability | — | Every pipeline stage emits metrics, logs, traces with correlation to `prov_activity_iri` | Inspection | Report |
 | Capacity | ARC-NFR-002 | ×3 headroom proven | Load test | Report |
+| Memory stack recoverability | ARC-NFR-007 | Mem0/Graphiti rebuilt from `hc.ops.memory.write.v1` ≤ 4 h with record counts ±0; Redis cold start with bypass ≤ 50 ms and ARC-NFR-001 unaffected | Quarterly rebuild drill; cold-start chaos test (OPS-04 §9) | Drill report |
+
+### 2.12 Module 14 — Agent Memory, Caching & Self-Improvement
+
+| Criterion | Goal / ADR | Threshold | Test approach | Evidence |
+|-----------|------------|-----------|---------------|----------|
+| No PHI in memory or caches | ADR-08, G-06 | 0 values above `internal` (GOV-01 §3 Table 3-A) in any memory tier M0–M4 or cache tier C0–C4; write-gate rejects 100 % of PHI honeytokens and injection seeds; scanner zero findings for 30 days before each gate | Memory PHI scanner + honeytoken probes; adversarial episode set | Scanner and probe report |
+| Write-gate and sole-writer | ADR-08 | 100 % of writes pass the write-gate and are acknowledged on `hc.ops.memory.write.v1` before materialisation; 0 components other than the Memory API hold write credentials to Mem0/Graphiti | Credential inventory; write-path test | Audit report |
+| Rebuild from write log | ARC-NFR-007 | Mem0 and Graphiti rebuilt ≤ 4 h with record counts ±0 and identical `record_id` sets; drill ≤ 1 quarter old | Rebuild drill (OPS-04 §9) | Drill report |
+| Bitemporal alignment | G-05 | 100 % of Graphiti edges map `valid_at/invalid_at/created_at/expired_at` to TKG-01 §4 terms; as-of (valid and as-known) fixtures pass | MEM-GRA fixture suite | Fixture report |
+| Memory SLO (S23) | — | Write availability 99.9 %; recall p95 ≤ 200 ms; Graphiti hybrid recall p95 ≤ 500 ms; episode recallable ≤ 60 s p95; `memory_quarantine_total` = 0 | SLO engine over 28 days in `uat` then `prod` | SLO report |
+| Memory lift | G-06 | Evaluator–human κ and CR acceptance with memory enabled ≥ without memory (ablation); memory-influenced vs non-influenced acceptance published monthly | Ablation run per release cycle | Ablation report |
+| Cache correctness and SLO (S24) | ARC-NFR-001 | Invalidation lag p95 ≤ 60 s; bypass-on-failure ≤ 0.1 % of calls; semantic-cache divergence ≤ 0.5 % on 1 % shadow recompute; 100 % of C2 mapping hits re-validated against the Terminology Service; no cache entry ever used as evidence for a memory write or CR | Cache chaos and shadow-recompute tests; CI lint | Cache report |
+| Healing safety | ADR-09 | Chaos suite passes for every playbook: detect ≤ MTTD, heal ≤ MTTR, blast-radius budget never exceeded, 0 autonomous `schema`/`data_mutation` actions, kill switch halts runs ≤ 30 s, recursion depth ≤ 2 | Chaos and fault-injection suite (MEM-04 §10) | Chaos report |
+| Playbook graduation and coverage | ADR-09 | `autonomous` only after ≥ 10 consecutive shadow/assisted matches with ≥ 90 % agreement and an approved `playbook` CR; post-shadow playbooks for ≥ 50 % of fault classes by M2 and ≥ 80 % by M3; 100 % of fault classes with a detection rule | Playbook register audit | Register snapshot |
+| Improvement loop safety | ADR-09, G-06 | 0 prompt/policy/threshold changes in `prod` outside an evaluated CR + canary; rollback ≤ 5 min on any trigger; rollback rate of promoted candidates < 10 % per quarter per agent; 0 held-out test-split reads by `agent.improver` | Canary rollback drill; audit join | Drill and audit report |
+| Recursive-learning governance | ADR-09 | Trust tiers and separation-of-duties matrix enforced (0 violations); fixed-point list unchanged by automated CRs; monthly DGC report published | SoD tests; CR audit | DGC report |
+
+### 2.13 Module 15 — Adversarial Review gate
+
+The adversarial review gate applies at every milestone (M0–M4) and every `prod` release in addition to the module
+tables above; it is a release gate, not a module-population measure.
+
+| Criterion | Goal | Threshold | Test approach | Evidence |
+|-----------|------|-----------|---------------|----------|
+| Findings register | All | Register live from M0; every finding has severity (`critical`/`high`/`medium`/`low`), owner, due date, status and the module/requirement it affects | Inspection | Register export |
+| Red-team re-test | All | A red-team re-test covering the release scope executed before each gate: PHI exfiltration via agent tools, header-guard and ACL bypass, prompt injection into memory and CRs, replay/duplicate injection, consent-gate bypass, de-identification re-identification, memory poisoning | Red-team runbook execution | Red-team report |
+| Open findings | All | 0 open `critical`; 0 `high` without an approved, dated mitigation plan; `critical` fixed (not mitigated) before promotion; residual `high` risk accepted in writing by the DGC | Register audit at gate | Signed gate record |
+| Remediation SLA | — | `critical` fixed before promotion; `high` ≤ 30 days; `medium` ≤ 90 days; overdue findings reported to the DGC monthly | Register metrics | Monthly report |
+| Legacy / tech-debt outliers | — | Every outlier identified (interface-engine quirks, replica lag, BICC PVO gaps, clearinghouse transports) logged with owner, remediation date and the module 14 fault class or playbook covering it | Inspection | Outlier log |
+| Cross-check with evaluation seeds | G-06 | 100 % of red-team scenarios involving agent proposals are also present as adversarial seeds in the module 10 evaluation suite (RMP-ACC-104) | Seed catalogue diff | Diff report |
 
 ## 3. Test approach
 
@@ -194,6 +227,9 @@ evidence artefact attached to the release record.
 | Competency-question suite | Registered CQs with SPARQL and expected answers | Semantics squad | `02-ontology-pipeline/tests/` |
 | Agent evaluation set | ≥ 300 adjudicated proposals per cycle per class; seeded adversarial cases (hallucinated code, PHI in label, circular hierarchy) | Agents squad | `10-agentic-pipeline/evals/` |
 | Performance harness | Load generator producing synthetic bundles at configurable rate; chaos injection | Platform squad | `12-platform-and-operations/perf/` |
+| Memory honeytoken and adversarial episode set | Synthetic PHI honeytokens (every GOV-01 §2 identifier class), prompt-injection episodes, forbidden entity types, cross-scope and cross-environment probes | Agents squad + Privacy | `14-memory-and-self-improvement/tests/` (planned) |
+| Healing chaos and fault-injection suite | ≥ 1 chaos test per playbook trigger (MLLP kill, MSH-13 gap, LogMiner stall, Redis/Mem0/Graphiti outage, kill switch mid-run); canary rollback drill with injected −0.03 regression | Platform + Agents squads | `14-memory-and-self-improvement/healing-playbooks/` (`chaos_tests[]`) |
+| Red-team runbook and findings register | Attack scenarios per release scope, severity scale, remediation log, legacy/tech-debt outlier inventory | Adversarial review lead (module 15) | `15-adversarial-review/` |
 
 ### 3.2 Test types
 
@@ -208,6 +244,8 @@ evidence artefact attached to the release record.
 | Performance tests | Latency (NFR-001), throughput and headroom (NFR-002), exactly-once under failure (NFR-004), replay (NFR-005), DR (NFR-007) | Load generator, chaos tooling | Phase gates; quarterly thereafter |
 | Security tests | Encryption, ACL, masking scans; penetration test; tool-call audit sampling | Scanners, pen-test vendor | Phase gates; annual pen-test |
 | Reconciliation | KG↔EDW nightly; cross-system financial reconciliation | Reconciliation jobs | Nightly |
+| Memory and healing chaos | Honeytoken and injection probes against the write-gate; Mem0/Graphiti/Redis outage; playbook chaos tests; rebuild from write log; kill switch; canary rollback | Chaos tooling, memory probes, Temporal test harness | Every playbook or policy change; quarterly drills; phase gates |
+| Adversarial review (red team) | Scenario-driven attack of the release scope across agents, memory, streaming, access control and de-identification; findings triaged into the module 15 register | Red-team runbook, pen-test vendor annually | Every milestone and `prod` release; annual pen-test |
 
 ### 3.3 Agent evaluation suite — method
 
@@ -258,6 +296,11 @@ Each item must have evidence linked in the release record. Items marked **P0** b
 | 20 | Release notes and changelog published by `agent.release_manager`, human-reviewed | P1 | Release manager |
 | 21 | Risk register reviewed; no open risk with score ≥ 15 without approved mitigation | P1 | PMO |
 | 22 | Hypercare plan (2 weeks) agreed with stewards and SRE | P1 | PMO |
+| 23 | Module 14: no value above `internal` in any memory or cache tier — memory PHI scanner and honeytoken probes zero findings for 30 days; write-gate, sole-writer credential inventory and Redis ACL tests green | P0 | Privacy & Security Officer + Agent operator |
+| 24 | Module 14: Mem0/Graphiti rebuild-from-write-log drill ≤ 1 quarter old; Redis cold-start bypass test passed; S23–S25 dashboards and alerts (`MemoryQuarantineNonZero`, `HealingCircuitOpen`, `CanaryRollback`) live | P0 | SRE |
+| 25 | Module 14: every healing playbook in the release carries graduation evidence for its `status` (shadow → assisted → autonomous), chaos tests passing, kill-switch drill ≤ 30 s; canary rollback drill ≤ 5 min current before any `prod` improvement candidate | P0 | Agent operator + Autonomy board |
+| 26 | Module 15 adversarial review gate: red-team re-test of the release scope completed; findings register shows zero open `critical` and zero `high` without an approved, dated mitigation; residual risk accepted by the DGC | P0 | Adversarial review lead + DGC |
+| 27 | Module 15: legacy/tech-debt outliers touched by the release logged with owner, remediation date and covering playbook or fault class | P1 | Architecture |
 
 ## 5. Requirements
 
@@ -310,3 +353,15 @@ Each item must have evidence linked in the release record. Items marked **P0** b
 | **RMP-ACC-121** | P0 | test | CI MUST reject any unsigned release or unversioned artefact (ARC-NFR-006). |
 | **RMP-ACC-122** | P1 | demo | A DR drill MUST demonstrate RPO ≤ 15 min and RTO ≤ 4 h (ARC-NFR-007) before gate M2 and annually thereafter. |
 | **RMP-ACC-123** | P1 | analysis | Monthly SLO reports MUST show availability ≥ 99.9 % for the ingestion/canonical plane and ≥ 99.5 % for KG/EDW query. |
+| **RMP-ACC-130** | P0 | test | No memory tier (M0–M4 as used by agents) and no cache tier (C0–C4) SHALL contain any value classified above `internal` in GOV-01 §3 Table 3-A; the memory PHI scanner and honeytoken probes MUST report zero findings for 30 consecutive days before each gate, and the write-gate MUST reject 100 % of honeytoken and injection seeds (MEM-ARCH-025, MEM-CACHE-001). |
+| **RMP-ACC-131** | P0 | test | Mem0 and Graphiti MUST be rebuilt from `hc.ops.memory.write.v1` within 4 h with record counts ±0 and identical `record_id` sets in a drill no older than one quarter at every gate (MEM-ARCH-008, MEM-ARCH-039). |
+| **RMP-ACC-132** | P1 | analysis | Memory-lift ablation MUST show evaluator–human agreement κ and CR acceptance with memory enabled ≥ those with memory disabled, and the memory-influenced vs non-influenced acceptance comparison MUST be published monthly (MEM-GOV-038). |
+| **RMP-ACC-133** | P1 | test | Cache SLO S24 MUST be met: invalidation lag p95 ≤ 60 s, bypass-on-failure ≤ 0.1 % of calls, semantic-cache divergence ≤ 0.5 %, every C2 mapping hit re-validated against the Terminology Service, and no cache entry used as evidence for a memory write or change request (MEM-CACHE-003, 009, 030). |
+| **RMP-ACC-134** | P0 | test | The chaos and fault-injection suite MUST pass for every playbook in a release: detection ≤ MTTD and healing ≤ MTTR of its fault class, blast-radius budget never exceeded, zero autonomous `schema`/`data_mutation` actions, kill switch halting runs ≤ 30 s and recursion depth ≤ 2 (MEM-HEAL-001, 002, 007, 009). |
+| **RMP-ACC-135** | P0 | inspection | A playbook MAY be `autonomous` only after ≥ 10 consecutive shadow or assisted matches with ≥ 90 % agreement and an approved `playbook` CR; by M2 ≥ 50 % and by M3 ≥ 80 % of registered fault classes MUST have a post-shadow playbook and 100 % MUST have a detection rule (MEM-HEAL-051, 052). |
+| **RMP-ACC-136** | P0 | test | Every prompt, policy, threshold or playbook-parameter change MUST reach `prod` only through an `agent_policy`, `playbook` or `dq_rule` CR that passed offline evaluation and a canary; rollback MUST complete ≤ 5 min on any trigger; the rollback rate of promoted candidates MUST be < 10 % per quarter per agent; `agent.improver` MUST show zero reads of the held-out test split (MEM-IMP-001, 004, 005, 015). |
+| **RMP-ACC-137** | P1 | test | Memory SLO S23 MUST be met over 28 days in `uat` before module 14 agents leave `shadow` and continuously in `prod`: write availability 99.9 %, recall p95 ≤ 200 ms, Graphiti hybrid recall p95 ≤ 500 ms, episode recallable ≤ 60 s p95, `memory_quarantine_total` = 0 (MEM-ARCH-012, 040). |
+| **RMP-ACC-140** | P0 | inspection | A module 15 findings register MUST exist from gate M0 with severity (`critical`/`high`/`medium`/`low`), owner, due date, status and affected requirement for every finding, and MUST be reviewed at every milestone gate and `prod` release. |
+| **RMP-ACC-141** | P0 | test | Before every milestone gate and `prod` release a red-team re-test covering the release scope MUST be executed and its findings registered; the scenario set MUST include PHI exfiltration via agent tools, header-guard and ACL bypass, prompt injection into memory and change requests, replay/duplicate injection, consent-gate bypass, de-identification re-identification and memory poisoning. |
+| **RMP-ACC-142** | P0 | inspection | Zero `critical` findings SHALL be open and zero `high` findings SHALL lack an approved, dated mitigation plan at any gate or `prod` promotion; `critical` findings MUST be fixed, not mitigated, before promotion, and residual `high` risk MUST be accepted in writing by the DGC. |
+| **RMP-ACC-143** | P1 | inspection | Legacy and technical-debt outliers identified by module 15 MUST be logged with owner, remediation date and the module 14 fault class or playbook that covers them; `high` findings MUST be remediated within 30 days and `medium` within 90 days. |

@@ -1,0 +1,709 @@
+# playbook_id: PBK-SEM-001
+# module: 14-memory-and-self-improvement
+# artefact: healing playbook (validated by healing-playbooks/playbook.schema.json; rules MEM-HEAL-036…050 in 04-self-healing.md)
+# status: shadow — recommend-only until graduated via a `playbook` CR (MEM-HEAL-012, MEM-HEAL-037, MEM-HEAL-044)
+#
+# Heals a surge of unmapped local codes — typically a burst of new Cerner Millennium `CODE_VALUE` / `NOMENCLATURE`
+# rows (SRC-CER-007) after a code-set load, a facility go-live or a Millennium code upgrade, or Oracle Fusion
+# `FND_LOOKUP_VALUES` additions (IOP-TS-008) — that drives the Terminology Service `$translate` miss rate up and
+# floods `agent.terminology_steward` with one event per record. "Heal the pipe, never the data": this playbook may
+# refresh HEALIX's own C3 terminology cache for a stale release, make sure affected records are tagged `unmapped`
+# and routed to quarantine *with a reason* (IOP-TS-010), aggregate the unmapped codes into one `value_set` CR per
+# code system per hour for the steward, and de-duplicate the resulting DQ issues. It never guesses a mapping, never
+# defaults to a parent code, never writes a ConceptMap or ValueSet (only governed CRs do, DQ-REM-004 / IOP-TS-009),
+# never sends anything into Millennium or Fusion (SRC-CER-024), never writes `canonical`/`kg`/`edw` (GOV-ACC-011) and
+# never alters a coded value on a record (DQ-REM-005).
+#
+# No tier of memory (M0–M4 as used by this module) and no cache tier (C0–C4) may hold content whose `hc-phi-class` is
+# anything but `non-phi`/`internal` (steward preferences: `pii:workforce` with consent flag). This includes the C0
+# provider prompt cache: pseudonymised PHI is not permitted. Everything this playbook records (incident, symptoms,
+# lessons, CR payload, ticket packet, `code_surge_signature`) is therefore G8 reference metadata and aggregates only:
+# code-system IRIs, code-set ids, code values with their reference `CDF_MEANING`/`DISPLAY` strings (tagged
+# `untrusted`), usage counts (k-anonymity n ≥ 11), release ids, topic/partition/offset pointers. No record body,
+# PERSON_ID, encounter or result value is ever read, logged or memorised.
+
+id: PBK-SEM-001
+name: Unmapped local-code surge — C3 refresh, quarantine-with-reason, aggregated value_set CR to the terminology steward
+version: 0.1.0
+status: shadow
+owners:
+  - G8 Terminology Steward
+  - Stream & semantic engineering
+  - Agent Platform
+fault_classes:
+  - FLT-SEM-002   # unmapped-code surge (P0): new CODE_VALUE / NOMENCLATURE / FND_LOOKUP_VALUES rows, local codes
+  - FLT-SEM-001   # terminology release lag (P1): TS release pending or C3 pinned version ≠ TS release manifest
+severity_default: S3           # OPS-00 §7 SEV3 (single code system degraded, records quarantined not lost); S2 when a `clinical-critical` value set is affected across ≥ 2 facilities (see decision_tree)
+risk_class: medium
+autonomy_required: L3          # ARC-01 §5 autonomy level of agent.self_healer (not the healing ladder)
+mttd_target_s: 600
+mttr_target_s: 3600
+
+scope:
+  environments: [dev, test, uat, prod]
+  source_systems: [cerner-millennium, oracle-fusion-cloud]   # Cerner CODE_VALUE/NOMENCLATURE first; Fusion FND_LOOKUP_VALUES via the same TS local CodeSystem path (IOP-TS-008)
+  interfaces:
+    - terminology-service.gateway          # IOP-04 §1 HEALIX TS gateway (cache · release pin · audit)
+    - connect.debezium-millennium          # STR-04 §2 CDC connector that feeds hc.std.reference.cerner-code-value.cdc.v1 (SRC-CER-007)
+  groups: [G8, G2, G3, G4, G5]             # reference & terminology (owner) plus the consuming clinical, orders, pharmacy/LIS and charge groups
+  facilities: ["*"]                        # one code system at a time; facility is a label, never a partition of the fix
+
+# -----------------------------------------------------------------------------------------------------------------
+# Triggers — all are per code system (the local `CodeSystem` IRI, i.e. one Cerner code set or one Fusion lookup
+# type) and per environment. The healing engine (Temporal) evaluates them from module 12 signals and the C3
+# `ts.translate` miss counter (cache-policy.yaml namespace `ts.translate.miss_signal`); the self_healer never polls
+# the TS or the sources itself.
+# -----------------------------------------------------------------------------------------------------------------
+triggers:
+  - signal: ts.translate_miss_rate_sigma
+    description: "$translate `unmatched` share per local code system exceeds the 7-day hour-of-day baseline by more than 3σ (FLT-SEM-002 detection rule, MEM-04 §2)"
+    source_module: 14-memory-and-self-improvement
+    metric: healix.cache.c3.translate_miss_ratio{namespace="ts.translate",code_system}
+    comparator: ">"
+    threshold: "baseline_7d_hour_of_day(code_system) + 3 * stddev_7d(code_system)"
+    window_s: 600
+    min_occurrences: 1
+    for_s: 300
+    fault_class: FLT-SEM-002
+  - signal: ts.translate_miss_absolute
+    description: "More than 50 distinct `unmatched` $translate results per hour for one local code system, regardless of baseline (catches brand-new code sets with no baseline)"
+    source_module: 06-interoperability
+    metric: healix.ts.translate_unmatched_distinct_codes_total{code_system}
+    comparator: ">"
+    threshold: 50
+    window_s: 3600
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-SEM-002
+  - signal: cerner.code_value_burst
+    description: "Burst of new or changed CODE_VALUE / NOMENCLATURE rows for one CODE_SET on the reference CDC topic (SRC-CER-007) — leading indicator of the miss surge that follows within one pipeline cycle (IOP-TS-011)"
+    source_module: 03-source-systems
+    topic: hc.std.reference.cerner-code-value.cdc.v1
+    metric: healix.std.reference.code_value_rows_total{source="cerner-millennium",code_set,op=~"c|u"}
+    comparator: ">"
+    threshold: "max(200, baseline_7d(code_set) + 3 * stddev_7d(code_set))"
+    window_s: 3600
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-SEM-002
+  - signal: ts.release_lag
+    description: "Terminology release pending or stale: TS release-event age exceeds the adoption window of IOP-04 §6 (DQR-TIMELINESS-TERMINOLOGY-002), or the C3 pinned release id differs from the TS release manifest for > 1 h (MEM-CACHE-006)"
+    source_module: 12-platform-and-operations
+    metric: healix.ts.release_manifest_age_seconds{code_system} or healix.cache.c3.pinned_release_mismatch{namespace=~"ts.translate|ts.validate_code"}
+    comparator: ">"
+    threshold: "adoption_window_s(code_system) or 3600"
+    window_s: 3600
+    min_occurrences: 1
+    for_s: 600
+    fault_class: FLT-SEM-001
+
+dedupe_key: "${env}|${trigger.labels.code_system}"          # one incident per code system; facilities and value sets are labels on it
+correlation_window_s: 3600                                   # matches the one-CR-per-code-system-per-hour aggregation in A3
+
+# -----------------------------------------------------------------------------------------------------------------
+# Preconditions — any failure either skips the run (recommend-only annotation) or escalates straight to humans.
+# -----------------------------------------------------------------------------------------------------------------
+preconditions:
+  - check: terminology_service_available
+    tool: {server: observability, operation: query_sli}
+    params: {sli: S20, window_s: 300}
+    expect: "availability >= 0.999 and p95_ms <= 50"
+    on_fail: escalate                 # TS down/slow is FLT-SEM-003 (manual, module 12 runbook) — a miss surge during an outage is not an unmapped surge
+  - check: code_system_registered
+    tool: {server: terminology-service, operation: lookup}
+    params: {system: "${trigger.labels.code_system}", code: "__codesystem_metadata__", property: [status, effectivePeriod, source]}
+    expect: "result.status in ['active','draft'] and result.source in ['cerner-millennium','oracle-fusion-cloud']"
+    on_fail: escalate                 # IOP-TS-008: unknown local CodeSystem → agent.inventory / steward, not a healing action
+  - check: not_in_change_freeze_window
+    tool: {server: observability, operation: freeze_calendar_check}
+    params: {scope: ["release", "terminology-release", "millennium-code-upgrade", "fusion-quarterly-update"]}
+    expect: "frozen == false"
+    on_fail: skip                     # MEM-HEAL-010: observe/annotate only during freeze windows (a code upgrade is the usual cause — the steward sees the recommendation)
+  - check: no_kill_switch
+    tool: {server: cr-engine, operation: kill_switch_status}
+    params: {scopes: ["platform", "environment:${env}", "agent:agent.self_healer", "cr_type:value_set", "module14:healing", "playbook:PBK-SEM-001"]}
+    expect: "all_released == true"
+    on_fail: skip
+  - check: steward_agent_not_budget_exhausted
+    tool: {server: observability, operation: query_metric}
+    params: {query: "healix.agent.budget_remaining_ratio{agent='agent.terminology_steward',budget='daily_token_cap'}"}
+    expect: "value > 0.10"
+    on_fail: escalate                 # PBK-AGT-001 owns budget pressure (AGT-001▶SEM-001 in the conflict matrix); a CR would only queue
+  - check: c3_not_oscillating
+    tool: {server: cache, operation: stats}
+    params: {namespace: ts.translate}
+    expect: "purges_last_hour < 2"    # MEM-HEAL-011 oscillation guard: a second purge within the hour means A1 is not the fix
+    on_fail: escalate
+
+# -----------------------------------------------------------------------------------------------------------------
+# Diagnosis — read-only (MEM-HEAL-045). Produces symptoms/hypotheses recorded on the incident and in Graphiti.
+# -----------------------------------------------------------------------------------------------------------------
+diagnosis:
+  - step: release_manifest
+    tool: {server: terminology-service, operation: get_release_manifest}
+    params: {environment: "${env}", include_pending: true}
+    read_only: true
+    timeout_s: 15
+    record_as: release_state         # pinned release id (IOP-TS-014), latest loaded release, pending `sync_release` jobs, per-code-system versions
+  - step: c3_version_state
+    tool: {server: cache, operation: stats}
+    params: {namespace: ts.translate, group_by: [code_system, conceptmap_version, stale]}
+    read_only: true
+    timeout_s: 10
+    record_as: cache_state           # C3 pinned tag vs release_state; `stale=true` share (MEM-CACHE-016); hit ratio vs 0.95 target
+  - step: miss_distribution
+    tool: {server: observability, operation: query_metric}
+    params:
+      query: >-
+        topk(50, sum by (code) (increase(healix.ts.translate_unmatched_total{code_system='${trigger.labels.code_system}'}[1h]))),
+        count(count by (code) (increase(healix.ts.translate_unmatched_total{code_system='${trigger.labels.code_system}'}[1h]) > 0))
+    read_only: true
+    timeout_s: 15
+    record_as: miss_profile          # distinct_codes, top codes by usage count, concentration (single code vs set); codes are reference data, counts suppressed below 11
+  - step: new_code_rows
+    tool: {server: kafka-admin, operation: sample_records}
+    params:
+      topic: hc.std.reference.cerner-code-value.cdc.v1
+      partition_key_prefix: "${trigger.labels.code_set}|"
+      window_s: 3600
+      fields: [headers.hc-source-time, headers.hc-op, key.code_set, key.code_value, value.cdf_meaning, value.display, value.active_ind, value.begin_effective_dt_tm, offset]   # reference rows only (G8, non-phi); CDF_MEANING anchors mapping per SRC-CER-006
+      limit: 500
+    read_only: true
+    timeout_s: 30
+    record_as: new_codes             # how many of the missing codes are genuinely new rows vs long-standing codes that lost their map (regression → FLT-SEM-005 hand-off)
+  - step: golden_lookup_check
+    tool: {server: terminology-service, operation: validate_code}
+    params: {fixture: "golden-lookups/${trigger.labels.code_system}.json", sample: 20, release: "${release_state.pinned_release_id}", compare_with_cache: true}
+    read_only: true
+    timeout_s: 20
+    record_as: hypothesis            # golden codes failing against TS origin or diverging from C3 → cache poisoning/corruption, not a surge (MEM-CACHE-018 path)
+  - step: target_value_set_policy
+    tool: {server: terminology-service, operation: expand}
+    params: {value_set: "${trigger.labels.target_value_set}", count: 0, include_metadata: [unmappedPolicy, clinical-critical, binding_strength, bound_profiles]}
+    read_only: true
+    timeout_s: 10
+    record_as: value_set_meta        # `quarantine` vs `passthrough` policy (IOP-TS-010); clinical-critical ⇒ human steward must approve (IOP-TS-012) and severity S2
+  - step: open_value_set_crs
+    tool: {server: cr-engine, operation: list_change_requests}
+    params: {cr_type: value_set, state: [proposed, evaluated, approved], filter: {code_system: "${trigger.labels.code_system}", created_after: "-PT1H"}}
+    read_only: true
+    timeout_s: 10
+    record_as: existing_crs          # A3 must not open a second CR for the same code system within the hour; it appends evidence instead
+  - step: dq_issue_backlog
+    tool: {server: dq-engine, operation: list_issues}
+    params: {rule_id: "DQR-CONFORMANCE-UNMAPPED-CODE-*", filter: {code_system: "${trigger.labels.code_system}"}, status: open, window_s: 3600, aggregate_only: true}
+    read_only: true
+    timeout_s: 15
+    record_as: symptom               # issue count, distinct codes, facilities affected, quarantine topics touched (hc.dq.quarantine.<domain>.v1) — counts only
+  - step: quarantine_growth
+    tool: {server: kafka-admin, operation: consumer_lag}
+    params: {topic_pattern: "hc.dq.quarantine.*.v1", filter: {hc-dq-reason: "unmapped", code_system: "${trigger.labels.code_system}"}, window_s: 3600}
+    read_only: true
+    timeout_s: 15
+    record_as: symptom               # records parked per IOP-TS-010; they are replayed automatically when the ConceptMap element is released (IOP-TS-013)
+  - step: upstream_change_context
+    tool: {server: observability, operation: query_events}
+    params: {sources: ["freeze-calendar", "hc.ops.schema.change.v1", "hc.ops.agent.changerequest.v1"], filter: {kind: ["millennium-code-upgrade", "facility-go-live", "nomenclature-load", "fusion-quarterly-update", "mapping-release"]}, window_s: 172800}
+    read_only: true
+    timeout_s: 15
+    record_as: hypothesis            # a code upgrade or go-live 0–48 h before the surge is the expected root cause; a mapping release is FLT-SEM-005
+  - step: playbook_memory
+    tool: {server: memory, operation: search_playbooks}
+    params:
+      symptoms: ["translate_miss_surge", "new_code_set_values", "stale_c3_release", "release_lag"]
+      scope: {kind: source, id: "${trigger.labels.source_system}", code_system: "${trigger.labels.code_system}"}
+    read_only: true
+    timeout_s: 5
+    record_as: prior_outcomes        # MEM-02 `playbook_match` / `incident_triage` profiles; prior `code_surge_signature` records (hour-of-day, cause); degraded → continue from Git (MEM-HEAL-014)
+
+# -----------------------------------------------------------------------------------------------------------------
+# Decision tree — maps diagnosis to the ordered action list (≤ 5 actions per incident, limits.max_actions_per_incident).
+# Only autonomous_allowed actions execute when the playbook is `autonomous`; in `shadow` every branch is recorded as
+# a recommendation and compared with the human's.
+# -----------------------------------------------------------------------------------------------------------------
+decision_tree:
+  - when: "golden_lookup_check.origin_failures > 0 or golden_lookup_check.cache_divergence > 0"
+    then_actions: [A1-refresh-c3-release, A6-steward-ticket]                      # corruption/poisoning path: purge + re-warm the namespace, incident to humans (MEM-CACHE-018); no CR built on bad lookups
+  - when: "cache_state.pinned_release_id != release_state.pinned_release_id or cache_state.stale_share > 0.05"
+    then_actions: [A1-refresh-c3-release, A2-quarantine-with-reason, A4-dedupe-dq-issues, A5-record-surge-signature]   # FLT-SEM-001: C3 lagging the TS release pointer — misses are cache misses, not unmapped codes
+  - when: "release_state.pending_release_for(code_system) == true and new_codes.codes_present_in_pending_release_ratio >= 0.8"
+    then_actions: [A2-quarantine-with-reason, A4-dedupe-dq-issues, A5-record-surge-signature, A6-steward-ticket]        # FLT-SEM-001: the codes exist in a release that is loaded but not promoted (IOP-TS-024 regression pending) — no CR; TS release owner decides
+  - when: "new_codes.new_row_ratio < 0.2 and upstream_change_context.has('mapping-release')"
+    then_actions: [A2-quarantine-with-reason, A6-steward-ticket]                                                        # long-standing codes lost their map after a mapping deploy → FLT-SEM-005 hand-off (manual), never re-map here
+  - when: "value_set_meta.clinical_critical == true and dq_issue_backlog.facilities_affected >= 2"
+    then_actions: [A0-raise-severity, A2-quarantine-with-reason, A3-aggregate-value-set-cr, A4-dedupe-dq-issues, A6-steward-ticket]   # S2; CR risk medium, human steward gate (IOP-TS-012)
+  - when: "miss_profile.distinct_codes <= 3 and miss_profile.top_code_share >= 0.8"
+    then_actions: [A2-quarantine-with-reason, A3-aggregate-value-set-cr, A4-dedupe-dq-issues, A5-record-surge-signature]   # single new code (e.g. one new order catalog item) — smallest CR, fastest steward turnaround
+  - when: "miss_profile.distinct_codes > 500"
+    then_actions: [A2-quarantine-with-reason, A3-aggregate-value-set-cr, A4-dedupe-dq-issues, A5-record-surge-signature, A6-steward-ticket]   # whole code set loaded (go-live / NOMENCLATURE import): CR carries the aggregate, ticket asks G8 for a batch mapping plan
+  - when: "default"
+    then_actions: [A2-quarantine-with-reason, A3-aggregate-value-set-cr, A4-dedupe-dq-issues, A5-record-surge-signature]
+
+# -----------------------------------------------------------------------------------------------------------------
+# Actions — every action carries blast_radius_class + budget + compensation/idempotency (MEM-HEAL-038).
+# Ladder: L0 observe · L1 safe automatic · L3 propose CR/ticket. No L2 here: nothing mutates data; no mapping is
+# ever chosen by this playbook (the steward and the `value_set` CR gates do that — IOP-TS-009/012, DQ-REM-004).
+# -----------------------------------------------------------------------------------------------------------------
+actions:
+  - id: A0-raise-severity
+    ladder_level: L0
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 1, scope_expr: "incident == '${incident.id}'", time_box_s: 60}
+    requires_dry_run: false
+    tool: {server: memory, operation: record_incident, permission: propose}
+    params: {incident_id: "${incident.id}", severity: S2, reason: "unmapped surge on a clinical-critical value set across >= 2 facilities"}
+    idempotency_key_recipe: "sha256(${incident.id}|A0|S2)"
+    timeout_s: 10
+    retries: 1
+    verify: {probe: "incident.severity", expect: "S2", within_s: 10}
+    on_failure: continue
+    compensating_action: {tool: {server: memory, operation: correct}, params: {memory_id: "${incident.id}", change_kind: correction, new_content: {severity: S3}}}
+
+  - id: A1-refresh-c3-release
+    ladder_level: L1
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "cache_namespace in ['ts.translate','ts.validate_code'] and tag.code_system == '${trigger.labels.code_system}' and env == '${env}'", time_box_s: 900}   # one code system's entries in one C3 namespace pair; the namespace is the cache's table-equivalent
+    requires_dry_run: false
+    tool: {server: cache, operation: invalidate, permission: apply}
+    params:
+      namespace: [ts.translate, ts.validate_code]
+      tags: {conceptmap_version: "${cache_state.pinned_release_id}", code_system: "${trigger.labels.code_system}"}
+      event: "PBK-SEM-001:${incident.id}"                      # fan-out on hc.ops.cache.invalidate.v1 (MEM-CACHE-006, ≤ 60 s propagation)
+      then_warm:
+        tool: {server: cache, operation: warm}
+        params: {namespace: [ts.translate, ts.validate_code], release: "${release_state.pinned_release_id}", code_system: "${trigger.labels.code_system}", source: "hc.canonical.reference.conceptmap.fhir.v1"}   # pre-warm from the TS release snapshot (IOP-TS-020/021), never from agent memory
+      serve_stale_during_warm: true                             # MEM-CACHE-016 stale-serve ≤ 24 h with stale=true; DQ marks dependent results `suspect`
+    idempotency_key_recipe: "sha256(${incident.id}|A1|${trigger.labels.code_system}|${release_state.pinned_release_id})"
+    timeout_s: 300
+    retries: 1
+    verify:
+      probe: "healix.cache.c3.pinned_release_mismatch{namespace=~'ts.translate|ts.validate_code',code_system='${trigger.labels.code_system}'} and healix.cache.c3.hit_ratio{namespace='ts.translate',code_system='${trigger.labels.code_system}'}"
+      expect: "mismatch == 0 and hit_ratio >= 0.95 and golden_lookups_pass == 20/20"
+      within_s: 600
+    on_failure: escalate
+    rollback:
+      tool: {server: cache, operation: warm}
+      params: {namespace: [ts.translate, ts.validate_code], release: "${cache_state.pinned_release_id}", code_system: "${trigger.labels.code_system}", reason: "A1 verify failed — re-pin previous release snapshot"}   # cache content is derived state; re-warming the prior release is a full compensation
+
+  - id: A2-quarantine-with-reason
+    ladder_level: L1
+    blast_radius_class: reroute
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 100000, scope_expr: "layer == 'std' and coding.system == '${trigger.labels.code_system}' and translate_result == 'unmatched'", time_box_s: 3600}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: processor.set_unmapped_handling, permission: apply}
+    params:
+      processor: std.canonicalise                                # the HL7 v2 / CDC → FHIR mapping processors (IOP-02 §coded fields)
+      code_system: "${trigger.labels.code_system}"
+      handling: quarantine_with_reason                           # IOP-TS-010 `quarantine`: tag `unmapped`, header hc-dq-reason=unmapped:<code_system>:<code>, route to hc.dq.quarantine.<domain>.v1
+      forbid: [passthrough_default, parent_code_fallback, nearest_match]   # "never guess": no approved-default or parent-code substitution is created here (agent catalog §9 failure modes)
+      reason_code: "PBK-SEM-001:${incident.id}"
+      expires_after_s: 3600                                      # auto-reverts to the value set's declared unmappedPolicy; records already quarantined stay until IOP-TS-013 replay
+      dq_flag: {header: hc-dq-status, rule_ids: ["DQR-CONFORMANCE-UNMAPPED-CODE-${trigger.labels.code_system_slug}"], severity: non-blocking}   # DQ-FW-007: non-blocking flag travels with the record where policy is passthrough
+    idempotency_key_recipe: "sha256(${incident.id}|A2|${trigger.labels.code_system}|${floor(now/3600)})"
+    timeout_s: 60
+    retries: 1
+    verify:
+      probe: "healix.std.unmapped_routed_total{code_system='${trigger.labels.code_system}',handling='quarantine_with_reason'} and healix.canonical.unmapped_without_tag_total{code_system='${trigger.labels.code_system}'}"
+      expect: "routed_rate > 0 and untagged_delta == 0"          # every unmatched record is either quarantined or carries the `unmapped` tag — none reaches canonical silently (IOP-TS-010)
+      within_s: 300
+    on_failure: escalate
+    compensating_action:
+      tool: {server: playbook-runner, operation: processor.set_unmapped_handling}
+      params: {processor: std.canonicalise, code_system: "${trigger.labels.code_system}", handling: value_set_policy, reason_code: "PBK-SEM-001:${incident.id}:rollback"}   # restore declared policy; quarantined records are never deleted or re-coded (DQ-PIPE-014, DQ-REM-005)
+
+  - id: A3-aggregate-value-set-cr
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 1, scope_expr: "cr_type == 'value_set' and code_system == '${trigger.labels.code_system}' and hour_bucket == floor(now/3600)", time_box_s: 3600}   # exactly one CR per code system per hour
+    requires_dry_run: false
+    tool: {server: cr-engine, operation: propose, permission: propose}
+    params:
+      cr_type: value_set
+      title: "Unmapped local codes — ${trigger.labels.code_system} — ${miss_profile.distinct_codes} codes, hour ${floor(now/3600)}"
+      proposer: agent.self_healer
+      assigned_to: agent.terminology_steward                     # owner of ConceptMap/ValueSet changes (ARC-01 §5 L2; agent catalog §9)
+      risk_class: "${value_set_meta.clinical_critical ? 'medium' : 'low'}"
+      append_to_existing: "${existing_crs.open_cr_id}"           # if a CR for this code system is already open in the hour, append evidence instead of creating a second one
+      payload:
+        code_system: "${trigger.labels.code_system}"
+        source_system: "${trigger.labels.source_system}"
+        target_value_set: "${trigger.labels.target_value_set}"
+        pinned_release_id: "${release_state.pinned_release_id}"
+        unmapped_codes:                                          # reference data only: code, CDF_MEANING / DISPLAY (untrusted: true per AGT-04 §1), usage count (n ≥ 11, else bucket "<11"), first_seen
+          from: "${miss_profile.top_codes}"
+          enrich_with: "${new_codes.rows}"
+          fields: [code, cdf_meaning, display, active_ind, begin_effective_dt_tm, usage_count_bucket, first_seen, facilities_count]
+          untrusted_fields: [cdf_meaning, display]
+          k_anonymity_min: 11
+        mapping_constraints:
+          allowed_equivalence: [equivalent, equal]               # DQ-REM-004: re-mapping fixes only via governed ConceptMaps with `equivalent`/`equal`
+          anchor_on: [CDF_MEANING, DISPLAY]                      # SRC-CER-006: never map numeric CODE_VALUE keys directly
+          no_default_target: true                                # the playbook proposes candidates for review, never a chosen target
+          evaluator_auto_approve_only_if: "not clinical-critical and score >= terminology_steward.threshold"   # IOP-TS-012
+        expected_effect: "ConceptMap release → IOP-TS-013 automatic replay of quarantined records from std; C3 invalidation via conceptmap_version tag (MEM-CACHE-006)"
+      evidence:
+        sources:
+          - {kind: incident_id, ref: "${incident.id}"}
+          - {kind: topic, ref: "hc.std.reference.cerner-code-value.cdc.v1", offsets: "${new_codes.offset_range}"}
+          - {kind: topic, ref: "hc.dq.issue.v1", filter: "code_system=${trigger.labels.code_system}"}
+          - {kind: memory_record, ref: "${prior_outcomes.record_ids}"}   # requested AGT-03 extension (README §6); omitted while the extension is pending
+      gates_required: [evaluation, privacy_review]
+      automated_checks: [phi_scan, prompt_injection_scan, idempotency_check]   # AGT-03 §4; display strings are an injection surface and are quoted as untrusted
+    idempotency_key_recipe: "sha256(${env}|A3|value_set|${trigger.labels.code_system}|${floor(now/3600)})"
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "cr-engine.get_change_request", expect: "state in ['proposed','evaluated'] and assigned_to == 'agent.terminology_steward' and count(open value_set CRs for code_system in hour) == 1", within_s: 120}
+    on_failure: escalate
+    emits_cr: {cr_type: value_set, risk_class: low, gates_required: [evaluation, privacy_review]}   # medium when clinical-critical (human steward approves — IOP-TS-012, AGT-03 §4)
+    compensating_action:
+      tool: {server: cr-engine, operation: withdraw}
+      params: {cr_id: "${A3.cr_id}", reason: "healing run rolled back — evidence superseded"}
+
+  - id: A4-dedupe-dq-issues
+    ladder_level: L1
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 50000, scope_expr: "topic == 'hc.dq.issue.v1' and reason == 'unmapped' and code_system == '${trigger.labels.code_system}'", time_box_s: 900}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: dq.aggregate_issues, permission: apply}
+    params:
+      parent_issue:
+        rule_id: "DQR-CONFORMANCE-UNMAPPED-CODE-${trigger.labels.code_system_slug}"
+        dimension: conformance
+        code_system: "${trigger.labels.code_system}"
+        linked_cr_id: "${A3.cr_id}"
+        linked_incident: "${incident.id}"
+        severity: non-blocking                                   # DQ-FW-007: minor/major conformance failures never block the record
+      children_filter: {reason: unmapped, code_system: "${trigger.labels.code_system}", window_s: 3600}
+      mode: link_children_keep_results                           # results and child issues are linked, never deleted (DQ-PIPE-014); scorecards still count them (DQ-SCORE-006)
+      notification_policy: parent_only                           # one steward notification per code system per hour instead of one per record
+    idempotency_key_recipe: "sha256(${incident.id}|A4|${trigger.labels.code_system}|${floor(now/3600)})"
+    timeout_s: 120
+    retries: 1
+    verify: {probe: "dq-engine.list_issues(parent='${A4.parent_issue_id}')", expect: "children_linked == dq_issue_backlog.count_in_window and results_deleted == 0 and notifications_sent_last_hour <= 1", within_s: 300}
+    on_failure: continue
+    compensating_action:
+      tool: {server: playbook-runner, operation: dq.unlink_issues}
+      params: {parent_issue_id: "${A4.parent_issue_id}", restore_notification_policy: true}
+
+  - id: A5-record-surge-signature
+    ladder_level: L0
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 1, scope_expr: "memory_class == 'code_surge_signature' and scope.id == '${trigger.labels.code_system}'", time_box_s: 60}
+    requires_dry_run: false
+    tool: {server: memory, operation: remember, permission: propose}
+    params:
+      scope: {kind: source, id: "${trigger.labels.source_system}", env: "${env}"}
+      memory_class: code_surge_signature                         # memory-schema.yaml: tier M2 (Graphiti), 180 d, trust floor T0, promotable_to source_quirk
+      content:
+        json:
+          code_system_iri: "${trigger.labels.code_system}"
+          code_set: "${trigger.labels.code_set}"
+          distinct_codes_bucket: "${bucket(miss_profile.distinct_codes, [11, 50, 200, 500, 2000])}"
+          hour_of_day_histogram: "${miss_profile.hour_of_day_histogram}"
+          days_since_upstream_change: "${upstream_change_context.days_since}"
+          upstream_change_kind: "${upstream_change_context.kind}"
+          release_lag_s: "${release_state.lag_s}"
+          c3_stale_share: "${cache_state.stale_share}"
+          resolved_by: "${run.successful_action_id}"
+          cr_id: "${A3.cr_id}"
+      entities:
+        - {type: CodeSystem, id: "${trigger.labels.code_system}"}
+        - {type: SourceSystem, id: "${trigger.labels.source_system}"}
+        - {type: Incident, id: "${incident.id}"}
+        - {type: ChangeRequest, id: "${A3.cr_id}"}
+      relations:
+        - {edge_type: EXHIBITED_SYMPTOM, from: "${incident.id}", to: "translate_miss_surge", fact: "miss ratio ${miss_profile.ratio} vs baseline ${miss_profile.baseline}"}
+        - {edge_type: OBSERVED_ON, from: "${incident.id}", to: "${trigger.labels.code_system}", fact: "surge of ${bucket(miss_profile.distinct_codes)} codes"}
+      confidence: 0.6
+      trust_tier: T1
+      evidence_refs: [{kind: incident_id, ref: "${incident.id}"}, {kind: topic, ref: "hc.std.reference.cerner-code-value.cdc.v1"}]
+      untrusted_text: false                                      # structured JSON only; no display strings in memory
+    idempotency_key_recipe: "sha256(${incident.id}|A5|${trigger.labels.code_system})"
+    timeout_s: 10
+    retries: 1
+    verify: {probe: "memory.lineage(${A5.record_id})", expect: "status == 'active' and phi_scan.result == 'clean'", within_s: 30}
+    on_failure: continue
+    compensating_action: {tool: {server: memory, operation: retract}, params: {memory_id: "${A5.record_id}", reason: "healing run rolled back"}}
+
+  - id: A6-steward-ticket
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 1, scope_expr: "ticket.incident == '${incident.id}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: ticketing, operation: create_issue, permission: apply}
+    params:
+      template: ticket_template                                  # PHI-free packet (see escalation.ticket_template)
+      assignee_role: terminology-steward-g8
+      cc_roles: [stream-semantic-engineering, "group-steward:${trigger.labels.group}"]
+      link_cr_id: "${A3.cr_id}"
+      link_incident: "${incident.id}"
+    idempotency_key_recipe: "sha256(${incident.id}|A6|${trigger.labels.code_system})"
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "ticketing.get_issue", expect: "status in ['open','acknowledged'] and linked_incident == '${incident.id}'", within_s: 120}
+    on_failure: escalate
+    compensating_action:
+      tool: {server: ticketing, operation: update_issue}
+      params: {issue_id: "${A6.issue_id}", status: "cancelled", reason: "healing run rolled back"}
+
+# -----------------------------------------------------------------------------------------------------------------
+# Verification — success is measured on the same signals that triggered the incident (window ≥ 3× detection window).
+# -----------------------------------------------------------------------------------------------------------------
+verification:
+  probes:
+    - {id: V1-miss-rate-recovering, metric: "healix.cache.c3.translate_miss_ratio{namespace='ts.translate',code_system='${trigger.labels.code_system}'}", expect: "< 1.5 * baseline_7d_hour_of_day(code_system) for 1800s"}
+    - {id: V2-no-silent-unmapped, metric: "healix.canonical.unmapped_without_tag_total{code_system='${trigger.labels.code_system}'}", expect: "delta == 0"}                     # IOP-TS-010
+    - {id: V3-one-cr-per-hour, probe: "cr-engine.list_change_requests(cr_type=value_set, code_system=${trigger.labels.code_system}, window=1h)", expect: "count <= 1 and state != 'rejected'"}
+    - {id: V4-c3-healthy, metric: "healix.cache.c3.hit_ratio{namespace='ts.translate',code_system='${trigger.labels.code_system}'} and pinned_release_mismatch", expect: "hit_ratio >= 0.95 and mismatch == 0"}   # MEM-CACHE-006/016
+    - {id: V5-ts-slo, sli: S20, expect: "availability >= 0.999 and p95_ms <= 50 over the verification window"}
+    - {id: V6-dq-noise-contained, metric: "healix.dq.steward_notifications_total{code_system='${trigger.labels.code_system}'}", expect: "<= 1 per hour; results_deleted == 0"}   # DQ-FW-007, DQ-PIPE-014
+    - {id: V7-quarantine-bounded, topic: "hc.dq.quarantine.*.v1", expect: "growth_rate(code_system) <= records/action budget and no record older than 24h without a linked CR"}
+  duration_s: 1800
+  success_criteria: "V1..V7 all true for the full duration; otherwise verifying → rolled_back (compensations in reverse order) → escalated. Full resolution (miss rate back to baseline) arrives only when the steward's value_set CR is released and IOP-TS-013 replays the quarantine — that is the CR's lifecycle, outside this incident."
+
+# -----------------------------------------------------------------------------------------------------------------
+# Limits — FIXED-POINT PROTECTED (MEM-HEAL-042/048): changed only by a `policy`-class CR from DGC / Privacy Office.
+# -----------------------------------------------------------------------------------------------------------------
+limits:
+  max_runs_per_hour: 4
+  cooldown_s: 900
+  max_actions_per_incident: 5
+  max_concurrent_per_target: 1
+  circuit_breaker: {consecutive_failures: 3, open_for_s: 86400, page: true}
+  change_freeze_calendar_ref: OPS-02/freeze-calendar            # release windows, terminology releases, Millennium code upgrades, Fusion quarterly update
+  recursion:
+    max_depth: 2
+    may_trigger: [PBK-DQ-001]        # `corr` in the conflict matrix: an unmapped surge may legitimately co-occur with a DQ storm; PBK-DQ-001 may never re-trigger PBK-SEM-001 (MEM-HEAL-009)
+  per_action_overrides:
+    A1-refresh-c3-release: {max_runs_per_day: 4}
+    A2-quarantine-with-reason: {max_records_per_action: 100000, max_code_systems_concurrent: 1}
+    A3-aggregate-value-set-cr: {max_crs_per_code_system_per_hour: 1, max_crs_per_day: 24}
+    A4-dedupe-dq-issues: {max_records_per_action: 50000}
+
+# -----------------------------------------------------------------------------------------------------------------
+# Guards — FIXED-POINT PROTECTED (MEM-HEAL-042/043).
+# -----------------------------------------------------------------------------------------------------------------
+guards:
+  kill_switch_paths:
+    - cr-engine.kill_switch.platform
+    - cr-engine.kill_switch.environment.${env}
+    - cr-engine.kill_switch.agent.agent.self_healer
+    - cr-engine.kill_switch.cr_type.value_set
+    - module14.kill_switch.healing
+    - module14.kill_switch.playbook.PBK-SEM-001
+  phi_ceiling: none
+  data_mutation: none
+  requires_dry_run_in: [test]
+  forbidden_targets:
+    - cerner-millennium                # SRC-CER-024: no HL7 v2, FHIR write or CCL into Millennium (CODE_VALUE tables included)
+    - oracle-fusion-cloud              # read-only: FND_LOOKUP_VALUES are never edited from HEALIX
+    - terminology-service.publish_value_set       # ConceptMap/ValueSet writes only by release_manager from an applied CR (AGT-04 §1, IOP-TS-009)
+    - terminology-service.publish_concept_map
+    - "hc.canonical.*"
+    - "hc.kg.*"
+    - "hc.edw.*"                       # GOV-ACC-011: agents never write canonical/kg/edw directly
+  forbidden_params: [record_body, default_target_code, parent_code_fallback, PID, OBX-5, PERSON_ID, ENCNTR_ID, PERSON_NUMBER]   # never read, logged, memorised or used to "guess" a mapping
+
+suppression:
+  notifications_only: true
+  max_s: 3600                          # MEM-HEAL-006: steward notifications collapse to one parent issue; detection and evaluation never suppressed; visible on the incident
+
+conflicts_with:
+  - PBK-ING-001                        # ING-001▶SEM-001 (MEM-A3 §7): while PBK-ING-001 replays a facility's raw topic, SEM-001 waits — the replay re-translates and would inflate the miss count
+  - PBK-AGT-001                        # AGT-001▶SEM-001: budget pressure on agent.terminology_steward is fixed first, otherwise the value_set CR only queues
+  # PBK-DQ-001 is `corr`: both may run; the second links CAUSED_BY/CONTRADICTED_BY to the first (MEM-02 §4) rather than acting twice
+
+escalation:
+  to:
+    - terminology-steward-g8           # GOV-04 §4 Terminology Steward (G8) / G8 Terminology Manager — owns value sets, concept maps, licences
+    - stream-semantic-engineering      # OPS-03 §4.3 Stream & semantic engineering (terminology, ontology registry, connectors)
+    - platform-sre-primary             # OPS-03 §4.3 first responder when severity is raised to S2
+  after_s: 3600
+  sla_minutes: {S1: 15, S2: 30, S3: 240, S4: 1440}   # OPS-00 §7 severities, aligned with DQ-SCORE-006
+  ticket_template: |
+    [HEALIX self-healer] Unmapped local-code surge — ${env} — code system ${trigger.labels.code_system}
+    Incident: ${incident.id}  Fault class: ${incident.fault_class}  Severity: ${incident.severity}
+    Source: ${trigger.labels.source_system}  Code set / lookup type: ${trigger.labels.code_set}  Target value set: ${trigger.labels.target_value_set} (clinical-critical: ${value_set_meta.clinical_critical})
+    Miss ratio (10 min): ${miss_profile.ratio}  Baseline: ${miss_profile.baseline}  Distinct unmapped codes: ${miss_profile.distinct_codes}  Top-code share: ${miss_profile.top_code_share}
+    New CODE_VALUE rows in last hour: ${new_codes.count}  Offsets: ${new_codes.offset_range}  Upstream change: ${upstream_change_context.kind} (${upstream_change_context.days_since} d ago)
+    TS pinned release: ${release_state.pinned_release_id}  Pending release: ${release_state.pending_release_id}  C3 stale share: ${cache_state.stale_share}
+    Records quarantined (reason unmapped, this hour): ${quarantine_growth.count}  DQ child issues linked under parent ${A4.parent_issue_id}: ${dq_issue_backlog.count_in_window}
+    value_set CR: ${A3.cr_id} (one per code system per hour; candidates anchored on CDF_MEANING/DISPLAY; equivalence equivalent/equal only — DQ-REM-004)
+    Actions attempted: ${run.actions_summary}  Verification: ${run.verification_summary}
+    Required from G8 Terminology Steward: review the CR; approve, remap or retire codes; ConceptMap release triggers automatic replay of quarantined records (IOP-TS-013).
+    This ticket contains code-system identifiers, code values with reference display strings and counts only; no patient, encounter, result or worker content (hc-phi-class: non-phi).
+  page: false                          # S3 default; page=true is forced by the engine when severity is raised to S2 by A0
+  on_failure: page
+
+learning:
+  memory_classes_written: [incident, root_cause, observation, code_surge_signature, playbook_step, source_quirk]
+  lesson_template: >-
+    On ${env} code system ${trigger.labels.code_system} (${trigger.labels.source_system}) a ${incident.fault_class} with
+    ${bucket(miss_profile.distinct_codes)} distinct unmapped codes, ${upstream_change_context.days_since} d after a
+    ${upstream_change_context.kind}, was ${incident.outcome} by ${run.successful_action_id} in ${run.duration_s}s;
+    C3 stale share at detection ${cache_state.stale_share}; release lag ${release_state.lag_s}s; hour-of-day ${incident.hour}.
+  record_episode: true                 # Graphiti JSON episode: Incident -EXHIBITED_SYMPTOM-> Symptom, -OBSERVED_ON-> CodeSystem, -RESOLVED_BY-> Action, -PRODUCED_OUTCOME-> Outcome; ChangeRequest -APPLIES_TO-> CodeSystem
+  emit_reflexion: true                 # masked (GOV-LIN-015), trust T1, untrusted_text: true; never promotes without a CR
+  candidate_for_tuning:                # MEM-HEAL-050: thresholds/windows/timeouts only — never limits/guards/blast_radius
+    - triggers[ts.translate_miss_rate_sigma].threshold
+    - triggers[ts.translate_miss_rate_sigma].for_s
+    - triggers[ts.translate_miss_absolute].threshold
+    - triggers[cerner.code_value_burst].threshold
+    - triggers[ts.release_lag].for_s
+    - correlation_window_s
+    - decision_tree[single-code].miss_profile.top_code_share
+    - decision_tree[whole-code-set].miss_profile.distinct_codes
+    - actions[A1-refresh-c3-release].verify.within_s
+    - actions[A2-quarantine-with-reason].params.expires_after_s
+    - verification.duration_s
+  learned_from:
+    description: >-
+      Seed authored from the IOP-04 Terminology Service contract (unmappedPolicy, release pinning, automatic replay),
+      the Cerner CODE_VALUE / NOMENCLATURE CDC design (SRC-01 §3, SRC-CER-006/007) and typical Fortune-100 estate
+      behaviour: Millennium code upgrades and facility go-lives load whole code sets overnight, NOMENCLATURE imports
+      add thousands of local terms, Oracle Fusion quarterly updates add lookup values, and ICD-10-CM (Oct 1) / CPT
+      (Jan 1) / LOINC (Feb/Aug) releases arrive before the TS pointer is flipped. No production incidents yet;
+      `compiled_from_incidents` fills as the curator mines Graphiti incident communities (MEM-04 §9).
+    signatures_to_learn:
+      - "surge size vs hours since a Millennium code upgrade or facility go-live (freeze-calendar events) per code set"
+      - "annual release-calendar misses (ICD-10-CM Oct 1, CPT Jan 1, LOINC Feb/Aug, RxNorm monthly) that present as FLT-SEM-001 rather than FLT-SEM-002"
+      - "single-code surges from new order-catalog or charge items vs whole-set surges from NOMENCLATURE loads"
+      - "code systems whose misses are concentrated in one facility (local build) vs enterprise-wide (vendor release)"
+      - "false surges caused by C3 release mismatch after a TS release (A1 only) vs genuine unmapped codes (A2–A4)"
+  graduation: {shadow_matches_required: 10, min_agreement: 0.9, harmful_recommendations_allowed: 0}
+
+references:
+  requirements:
+    - SRC-CER-006     # anchor Cerner code translation on CDF_MEANING then DISPLAY; never map numeric CODE_VALUE keys
+    - SRC-CER-007     # new/changed CODE_VALUE and NOMENCLATURE rows reach hc.std.reference.cerner-code-value.cdc.v1 ≤ 1 h
+    - SRC-CER-024     # read-only integration — never write into Millennium
+    - IOP-TS-001      # TS operations $lookup/$validate-code/$expand/$translate
+    - IOP-TS-008      # Cerner CODE_VALUE sets and Fusion FND_LOOKUP_VALUES as local CodeSystems
+    - IOP-TS-009      # ConceptMap required per bound local code set; equivalence + evidence comment
+    - IOP-TS-010      # no local code reaches canonical without governed translation or unmappedPolicy handling
+    - IOP-TS-011      # new local codes auto-registered and surfaced to agent.terminology_steward with usage counts
+    - IOP-TS-012      # auto-approve only when not clinical-critical and evaluator ≥ threshold
+    - IOP-TS-013      # released ConceptMap element replays quarantined records from std
+    - IOP-TS-014      # per-environment pinned TS release id
+    - IOP-TS-021      # caches key on release id; negative results expire ≤ 10 min
+    - IOP-TS-023      # stale cache ≤ 24 h during TS outage, Provenance ts-degraded
+    - DQ-FW-007       # minor/major/critical failures never block the record; hc-dq-status header travels with it
+    - DQ-REM-004      # code re-mapping only via governed ConceptMaps with equivalent/equal, version in provenance
+    - DQ-REM-005      # never alter clinical/financial values
+    - DQ-PIPE-014     # never delete DQ results
+    - DQ-SCORE-006    # scorecard/SLA alignment of issue severities
+    - GOV-ACC-011     # no direct writes to canonical/kg/edw
+    - GOV-LIN-015     # masked agent transcripts
+    - ARC-NFR-001     # p95 source → canonical ≤ 5 s (quarantine keeps the pipe flowing)
+    - MEM-CACHE-006   # release events invalidate tagged entries ≤ 60 s via hc.ops.cache.invalidate.v1
+    - MEM-CACHE-016   # C3 stale-serve ≤ 24 h with stale=true; DQ marks results suspect
+    - MEM-CACHE-018   # hourly golden lookups; mismatch ⇒ purge namespace + incident
+    - MEM-HEAL-001
+    - MEM-HEAL-002
+    - MEM-HEAL-003
+    - MEM-HEAL-006
+    - MEM-HEAL-008
+    - MEM-HEAL-009
+    - MEM-HEAL-010
+    - MEM-HEAL-011
+    - MEM-HEAL-012
+    - MEM-HEAL-014
+    - MEM-HEAL-036
+    - MEM-HEAL-037
+    - MEM-HEAL-038
+    - MEM-HEAL-040
+    - MEM-HEAL-041
+    - MEM-HEAL-042
+    - MEM-HEAL-043
+    - MEM-HEAL-045
+    - MEM-HEAL-046
+    - MEM-HEAL-047
+    - MEM-HEAL-050
+  dq_rules:
+    - DQR-COMPLETENESS-VALUESET-001     # every bound ValueSet has an expansion ≤ 30 d old
+    - DQR-INTEGRITY-CONCEPTMAP-001      # every ConceptMap target exists in the target CodeSystem version
+    - DQR-TIMELINESS-TERMINOLOGY-002    # code system release loaded within 30 d of publication (FLT-SEM-001 signal)
+  runbooks:
+    - IOP-04 §5 local code mapping workflow (Observed → Proposed → Approved → Released → replay)
+    - IOP-04 §6 versioning of external terminology releases
+    - OPS-03 §4.2 DQDetectionSlow       # hand-off when the surge is really a DQ engine latency problem (S7)
+    - MEM-03 §5 C3 TS cache stale mode and golden lookups
+  slo_ids: [S4, S7, S20]
+  topics:
+    - hc.std.reference.cerner-code-value.cdc.v1
+    - hc.canonical.reference.codesystem.fhir.v1
+    - hc.canonical.reference.valueset.fhir.v1
+    - hc.canonical.reference.conceptmap.fhir.v1
+    - hc.dq.result.v1
+    - hc.dq.issue.v1
+    - hc.dq.quarantine.reference.v1     # and hc.dq.quarantine.<domain>.v1 of the consuming group (IOP-TS-010)
+    - hc.ops.agent.changerequest.v1
+    - hc.ops.cache.invalidate.v1
+    - hc.ops.healing.incident.event.v1
+    - hc.ops.healing.playbookrun.event.v1
+    - hc.ops.audit.v1
+  connector_manifest: connect.debezium-millennium
+
+chaos_tests:                           # MEM-HEAL-013/041: ≥ 1 per trigger; run in `test` against the TS fixture release and the CODE_VALUE CDC simulator
+  - id: CT1-new-code-set-load
+    trigger: cerner.code_value_burst
+    injection: "Simulator inserts 1,200 new CODE_VALUE rows for CODE_SET 200 (order catalog) with CDF_MEANING/DISPLAY and starts emitting ORM messages using 800 of them at 10 msg/s"
+    expected_mttd_s: 600
+    expected_mttr_s: 3600
+    blast_radius_assert: "exactly 1 value_set CR for the code system in the hour; 100 % of unmatched records quarantined or tagged `unmapped` (0 silent canonical writes); 0 ConceptMap writes; 0 messages to simulator (SRC-CER-024); records quarantined ≤ 100,000"
+  - id: CT2-single-code-surge
+    trigger: ts.translate_miss_absolute
+    injection: "One new NOMENCLATURE_ID appears on 60 distinct ORU messages per hour from a single facility"
+    expected_mttd_s: 600
+    expected_mttr_s: 1800
+    blast_radius_assert: "single-code branch selected; CR payload lists ≤ 3 codes with usage bucket (n ≥ 11); 1 parent DQ issue, ≤ 1 steward notification in the hour; no A6 ticket"
+  - id: CT3-stale-c3-after-release
+    trigger: ts.release_lag
+    injection: "Replay a LOINC release on the TS fixture and flip the TS release pointer while the C3 ts.translate namespace stays pinned to the previous conceptmap_version"
+    expected_mttd_s: 3600
+    expected_mttr_s: 900
+    blast_radius_assert: "A1 purges/re-warms only ts.translate + ts.validate_code entries tagged with the previous release for the one code system; propagation ≤ 60 s; no value_set CR opened (misses were cache misses); miss rate < 1.5× baseline within 15 min"
+  - id: CT4-golden-lookup-poisoning
+    trigger: ts.translate_miss_rate_sigma
+    injection: "Corrupt 5 % of cached $translate entries for one code system in C3 so golden lookups diverge from the TS origin"
+    expected_mttd_s: 600
+    expected_mttr_s: 900
+    blast_radius_assert: "corruption branch: A1 purge + re-warm of one namespace pair for one code system, A6 ticket; no CR built on poisoned lookups; incident opened within 5 min (MEM-CACHE-018)"
+  - id: CT5-ts-outage-not-a-surge
+    trigger: ts.translate_miss_rate_sigma
+    injection: "Take the TS fixture down for 10 min so every $translate on cache miss fails while C3 serves stale"
+    expected_mttd_s: 600
+    expected_mttr_s: 0                 # expected outcome is escalated (FLT-SEM-003 manual), not healed
+    blast_radius_assert: "precondition terminology_service_available fails → escalated with reason code; 0 actions executed; 0 CRs; C3 keeps serving stale=true and DQ marks results suspect (MEM-CACHE-016)"
+  - id: CT6-clinical-critical-multi-facility
+    trigger: ts.translate_miss_rate_sigma
+    injection: "Introduce 40 new local codes bound to a value set flagged clinical-critical (e.g. allergy severity) across 3 simulated facilities"
+    expected_mttd_s: 600
+    expected_mttr_s: 3600
+    blast_radius_assert: "A0 raises severity to S2 and the engine forces page=true; CR risk_class medium with human steward gate (IOP-TS-012); 5 actions max; no auto-approval path offered"
+  - id: CT7-freeze-and-oscillation
+    trigger: cerner.code_value_burst
+    injection: "Millennium code-upgrade freeze window active; C3 was purged twice in the previous hour by another run"
+    expected_mttd_s: 600
+    expected_mttr_s: 0                 # expected outcome is skipped/escalated with recommendation only
+    blast_radius_assert: "0 actions executed (freeze guard skip + c3_not_oscillating escalate); recommendation recorded on the incident; suppression ≤ 3600 s notifications-only"
+
+phi: none
+
+change_request:
+  type: playbook
+  risk_class: medium                   # ladder L1 + L3 only; would be `high` if any L2 action were added (MEM-04 §8)
+
+provenance:
+  created_by: agent.self_healer        # drafted from the MEM-04 fault taxonomy (FLT-SEM-001/002); reviewed by G8 Terminology Steward, Stream & semantic engineering and Privacy & Security Office
+  compiled_from_incidents: []
+  approved_cr_id: null                 # required before status may leave `shadow` (MEM-HEAL-044)
+  created_at: "2026-10-17T00:00:00Z"
+  schema_ref: healing-playbooks/playbook.schema.json

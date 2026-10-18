@@ -50,6 +50,10 @@ flowchart TB
       WF[Workflow engine x3 + DB]
       AGR{{Agent runtime · autoscaled task pods}}
       MCP[MCP servers x2 each]
+      MEMAPI[Memory API · write-gate x3]
+      MEM0[(Mem0 · PostgreSQL+pgvector HA)]
+      GRA[(Graphiti · Neo4j 5.x causal cluster x3)]
+      RC[(Redis Cluster · C1/C2/C4 · 3 AZ)]
     end
     subgraph ZC[Consumer zone · namespace hc-consume]
       FAC[FHIR facade x3]
@@ -69,6 +73,7 @@ flowchart TB
     KAFB[(Kafka mirror)]
     KGB[(Graph replica)]
     EDWB[(EDW replica)]
+    MEMB[(pgvector replica · Neo4j backup set)]
     OBJB[(Object storage replica)]
   end
   IDP[/Enterprise IdP · KMS · SIEM/]:::ext
@@ -80,6 +85,11 @@ flowchart TB
   KAF -->|MirrorMaker 2| KAFB
   KG -->|replication| KGB
   EDWC -->|replication| EDWB
+  MEM0 -->|streaming replica| MEMB
+  GRA -->|online backup every 15 min| OBJ
+  MEMAPI --> MEM0 & GRA
+  MEMAPI -.->|hc.ops.memory.write.v1| KAF
+  AGR --> MCP --> MEMAPI & RC
   OBJ --> OBJB
   FLK --> OBJ
   IDP -.-> ZS & ZP & ZC & ZM
@@ -92,11 +102,11 @@ flowchart TB
 |--------|----------|
 | Clusters | One cluster per environment per region (`dev`, `test` share a non-prod cluster with namespace isolation; `uat` and `prod` have dedicated clusters). `prod` has a warm-standby cluster in the secondary region. |
 | Namespaces | `hc-connect`, `hc-stream`, `hc-semantic`, `hc-store`, `hc-agent`, `hc-consume`, `hc-mgmt`; each namespace maps to one zone and one `NetworkPolicy` set |
-| Node pools | `general` (control services), `kafka` (local NVMe, dedicated), `flink` (memory-optimised), `graph` (memory + NVMe), `agent` (burstable, no PHI volumes), `gpu` (optional, local inference) |
+| Node pools | `general` (control services), `kafka` (local NVMe, dedicated), `flink` (memory-optimised), `graph` (memory + NVMe), `agent` (burstable, no PHI volumes), `memory` (memory + NVMe for Neo4j, pgvector and Redis of the module 14 memory stack; no PHI volumes), `gpu` (optional, local inference) |
 | Availability zones | Every stateful set spread across 3 AZs with topology spread constraints; pod anti-affinity per component |
 | Ingress | Internal load balancers only; no public ingress to any zone; consumer zone reachable from corporate network via IdP-authenticated gateway |
 | Service mesh | mTLS via mesh (Istio/Linkerd) or SPIRE-issued certs; `STRICT` mode in all namespaces |
-| Operators | Strimzi (Kafka), Flink Kubernetes Operator, graph-store vendor operator or StatefulSet, Vault injector, OTel Operator, Argo CD |
+| Operators | Strimzi (Kafka), Flink Kubernetes Operator, graph-store vendor operator or StatefulSet, Vault injector, OTel Operator, Argo CD, CloudNativePG (Mem0 pgvector), Neo4j Helm/operator (Graphiti), Redis operator (cache cluster) |
 
 ## 2. Network zones
 
@@ -109,6 +119,15 @@ flowchart TB
 
 Egress from `hc-agent` to the LLM provider passes an egress proxy with domain allowlist, TLS termination for DLP
 (detecting `phi:direct` patterns per GOV-ACC-018) and request logging. No other namespace has internet egress.
+
+The module 14 memory stack — Memory API (C26), Mem0 on pgvector/Qdrant (C26), Graphiti on Neo4j 5.x or FalkorDB (C27)
+and the Redis cache cluster (C28) — runs in `hc-agent` on the `memory` node pool, one instance of each per environment
+(MEM-01 §9). It holds no PHI by contract (ADR-08, MEM-CACHE-001; GOV-01 §3 ceiling `internal`) and its
+`NetworkPolicy` allows only: Kafka `hc.ops.*` topics (write log, healing, canary, policy and invalidation events), the
+Terminology Server (C2/C3 re-validation), Git (M3 playbooks and prompts), Vault, OTel collectors and — for Mem0
+embeddings — the LLM egress proxy under GOV-PHI-017 zero retention. It has no path to `raw`/`std`/`canonical` topics,
+the graph store, the EDW or the token vault; only the Memory API holds write credentials to Mem0, Graphiti and the write
+log (MEM-ARCH-002).
 
 ### 2.1 On-prem connectivity for Cerner Millennium
 
@@ -147,6 +166,11 @@ entities use the same path. Credentials are OAuth 2.0 client credentials stored 
 | MCP servers | 2+ replicas each behind gateway | Pod loss | Immediate |
 | Observability | Prometheus HA pair + long-term store; Loki/Tempo on object storage | Pod loss | Seconds; gaps ≤ scrape interval |
 | Object storage | Provider durability; versioning; cross-region replication | AZ loss | — |
+| Memory API / write-gate (C26) | 3 stateless replicas; every write appended to `hc.ops.memory.write.v1` and acknowledged before materialisation (MEM-ARCH-007); on store outage agents run memoryless and CRs carry `memory_degraded=true` (MEM-ARCH-034) | Pod loss; downstream store loss | Immediate; degraded mode detected ≤ 60 s |
+| Mem0 store (C26) | HA PostgreSQL + pgvector (CloudNativePG, synchronous replica, automated failover) or 3-node Qdrant; derived state rebuildable from the write log ≤ 4 h (MEM-ARCH-008) | DB primary loss | ≤ 60 s |
+| Graphiti graph (C27) | Neo4j 5.x causal cluster, 3 core members across 3 AZs, one database per environment (FalkorDB / Neptune swappable, MEM-GRA-001); online backup every 15 min; asynchronous episode ingestion buffers in the write log | Node loss | Seconds (leader election); backlog ≥ 10 min sets `graphiti: degraded` and healing falls back to the Git playbook index (MEM-ARCH-035) |
+| Redis cache (C28) | Redis Cluster across 3 AZs, 1 replica per shard, automatic failover ≤ 30 s; clients time out at 20 ms and bypass within 50 ms after 5 consecutive failures (MEM-CACHE-004) | Shard or whole-cluster loss | ≤ 30 s failover; pipeline latency unaffected (bypass) |
+| Healing / improvement controllers (C29) | Temporal workflows on the HA workflow engine; kill switch halts executing runs ≤ 30 s (MEM-HEAL-007); ≤ 3 concurrent healing actions platform-wide | Worker or pod loss | Temporal retry; in-flight actions idempotent (MEM-HEAL-003) |
 
 Every component declares a `PodDisruptionBudget` and a readiness probe that checks dependencies (e.g. a Connect
 worker is not ready until Kafka and Vault respond), so rolling upgrades never breach quorum.
@@ -167,6 +191,9 @@ worker is not ready until Kafka and Vault respond), so rolling upgrades never br
 | Private connectivity to Oracle Fusion | Interconnect (AWS–OCI) or VPN | Oracle Interconnect for Azure | Service Gateway / FastConnect | VPN |
 | Load balancer (internal, L4 for MLLP) | NLB internal | Internal Load Balancer | OCI LB (private) | MetalLB / F5 |
 | Observability long-term store | Mimir on S3 / AMP | Mimir on Blob / Azure Monitor | Mimir on Object Storage | Mimir |
+| Agent memory graph (Graphiti backend) | Neo4j 5.x on EKS (Helm/operator) or Amazon Neptune (swappable per MEM-GRA-001) | Neo4j on AKS | Neo4j on OKE | Neo4j or FalkorDB self-managed |
+| Agent memory vector store (Mem0) | CloudNativePG + pgvector on EKS or RDS PostgreSQL (pgvector) | CloudNativePG on AKS or Azure Database for PostgreSQL | CloudNativePG on OKE or OCI PostgreSQL | CloudNativePG / Qdrant |
+| Semantic cache (Redis) | Redis Cluster on EKS (operator) or ElastiCache (Redis-compatible with vector search) | Redis on AKS or Azure Managed Redis | Redis on OKE or OCI Cache | Self-managed Redis Cluster |
 
 Only HIPAA-eligible services are permitted (GOV-PHI-016); the provider BAA list is checked at `terraform plan` by a
 policy test. Vendor-specific services are used only behind the interfaces in ARC-01 §3 so the same Helm/Terraform
@@ -186,6 +213,7 @@ modules deploy to any column with a different values file.
 | KG assertions | ≈ 1.2 B triples/year added (RDF-star annotations ×3) | Module 08 |
 | EDW growth | ≈ 4 TB/year compressed, 10-year horizon | Module 05 |
 | Agent workload | ≈ 2,000 CRs/day; 50,000 tool calls/day; p95 CR cycle ≤ 30 min | Module 10 |
+| Agent memory and cache workload | ≈ 50,000 memory operations/day (`remember`/`recall`, 50 concurrent recalls at peak); ≈ 1 M cache lookups/day across C1–C4; ≈ 500 healing incidents/month in the chaos-sized estate | Module 14 (MEM-02 §2, MEM-03 §1, MEM-04 §2) |
 
 | Component | Sizing (prod, primary) | Headroom |
 |-----------|------------------------|----------|
@@ -197,6 +225,10 @@ modules deploy to any column with a different values file.
 | Agent runtime | 0–200 task pods (2 vCPU, 4 GB) autoscaled; model gateway 3 × (4 vCPU, 8 GB) | Burst 10× |
 | Object storage | 100 TB year 1 (checkpoints, backups, extracts) | Lifecycle to cold tier |
 | Observability | Prometheus/Mimir 3 × (8 vCPU, 32 GB), Loki/Tempo on object storage; 30 days hot metrics, 90 days logs | — |
+| Memory API (C26) | 3 × (2 vCPU, 4 GB) | 50 concurrent recalls at p95 targets (MEM-GRA-023) |
+| Mem0 / pgvector (C26) | PostgreSQL 3 × (4 vCPU, 16 GB, 500 GB NVMe) | ≈ 5 M records at year 1 (MEM-01 §8 retention) |
+| Graphiti / Neo4j (C27) | 3 × (8 vCPU, 64 GB, 1 TB NVMe) | Year-1 sizing of MEM-02 §2 with the 400-day hot window; ×3 episodes |
+| Redis cache (C28) | 6 shards × (4 vCPU, 16 GB) + 1 replica each | Hot-key ceiling 5,000 QPS/key (MEM-CACHE-011); 64 KB max entry |
 
 Non-prod: `dev`/`test` at 10 % of prod with synthetic data; `uat` at 50 % with de-identified data (OPS-02 §6).
 
@@ -259,6 +291,13 @@ Non-prod: `dev`/`test` at 10 % of prod with synthetic data; `uat` at 50 % with d
 > **OPS-DEP-020** (P2, analysis) — A warm-standby cluster in the secondary region SHOULD be kept at ≥ 50 % of primary
 > capacity to meet RTO (OPS-04).
 
+> **OPS-DEP-021** (P0, test) — The module 14 memory stack (Memory API, Mem0 on pgvector or Qdrant, Graphiti on Neo4j or
+> FalkorDB, Redis cache cluster) MUST be deployed once per environment in `hc-agent` on a node pool without PHI volumes,
+> with `NetworkPolicy` permitting only the paths in §2; only the Memory API MAY hold write credentials to the memory
+> stores and the write log (MEM-ARCH-002), Redis MUST run as a 3-AZ cluster with per-agent ACL users (MEM-CACHE-023),
+> and the connectivity test suite MUST prove that no path exists from these components to `raw`/`std`/`canonical`
+> topics, the graph store, the EDW or the token vault.
+
 ## 7. Traceability
 
 | Requirement | Verified by |
@@ -267,3 +306,4 @@ Non-prod: `dev`/`test` at 10 % of prod with synthetic data; `uat` at 50 % with d
 | OPS-DEP-004, 005, 006 | Connectivity acceptance test with Cerner interface team; failover drill |
 | OPS-DEP-007, 008, 009, 015 | Chaos tests (AZ drain, pod kill) in `uat`; recorded in G9 |
 | OPS-DEP-013, 014 | Terraform plan policy; multi-cloud deployment pipeline |
+| OPS-DEP-021 | Network connectivity test job for `hc-agent` memory stack; Redis ACL test; credential inventory check (MEM-ARCH-002); Neo4j/Redis AZ-drain chaos in `uat` |

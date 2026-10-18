@@ -1,0 +1,848 @@
+# playbook_id: PBK-DQ-001
+# module: 14-memory-and-self-improvement
+# artefact: healing playbook (validated by healing-playbooks/playbook.schema.json; rules MEM-HEAL-036…050 in 04-self-healing.md)
+# status: shadow — recommend-only until graduated via a `playbook` CR (MEM-HEAL-012, MEM-HEAL-037, MEM-HEAL-044)
+#
+# Heals a data-quality **rule storm**: a DQ rule (or a whole rule pack) suddenly failing on a large share of records —
+# ≥ 20 rules or ≥ 30 % of a topic's active rules breaching inside 10 minutes, a fail-rate jump > 50 percentage points
+# that shows up at ≥ 3 facilities at once, or more than 1,000 `hc.dq.issue.v1` issues in an hour (FLT-DQ-001) — and the
+# slower false-positive surge that follows seasonal volume shifts, a newly on-boarded hospital or a mis-set threshold
+# (FLT-DQ-002). In a Cerner Millennium / Oracle Fusion estate a storm is almost never thousands of genuinely bad records
+# appearing in ten minutes; it is a **rule or upstream defect surfacing as DQ**: a rule-pack release with a wrong
+# threshold or expression, an ontology or terminology release that re-derived rules (DQ-FW-011), a mapping deploy that
+# moved a field, a connector replay / CDC re-snapshot flooding one topic, a stalled KG or EDW sink, a Millennium domain
+# whose interface engine runs 5 s or more off NTP, or a Fusion quarterly update that renamed a column.
+#
+# "Heal the pipe, never the data": this playbook may aggregate issues under one parent, annotate results `suspect`,
+# suppress *notifications* only, freeze `agent.remediator` auto-fix and `agent.dq_author` auto-tuning for one rule
+# pack, re-activate the previous *immutable, already-released* rule version (DQ-FW-010) after a dry-run backtest, and
+# propose `dq_rule` CRs. It never deletes or rewrites a DQ result or a quarantined record (DQ-PIPE-014, DQ-REM-001),
+# never edits a rule body in place (DQ-FW-010 — only `agent.release_manager` publishes activation state), never alters
+# a clinical, medication or GL value (DQ-REM-005), never raises any budget or remediation cap (DQ-REM-010,
+# MEM-HEAL-015), never writes to Cerner, Fusion, `hc.canonical.*`, `hc.kg.*` or `hc.edw.*` (MEM-HEAL-008,
+# GOV-ACC-011), and never changes a `blocker` quarantine decision. Clinical-critical storms (G2 medication, allergy,
+# identity CDEs at `blocker`/`critical`) page a human immediately (ladder L4) while L1 actions continue in parallel.
+#
+# No tier of memory (M0–M4 as used by this module) and no cache tier (C0–C4) may hold content whose `hc-phi-class` is
+# anything but `non-phi`/`internal` (steward preferences: `pii:workforce` with consent flag). This includes the C0
+# provider prompt cache: pseudonymised PHI is not permitted. Everything this playbook reads and records is rule
+# metadata (rule id, version, pack version, dimension, severity, threshold), aggregate counts and rates per
+# rule/topic/facility code, release identifiers, topic/partition/offset pointers and incident/CR ids. It never opens a
+# failing record, a quarantine sample or an issue's hashed-key list (`open_quarantine_sample` is deliberately absent
+# from every step), and `guards.forbidden_params` names the record-body fields that must never appear in a parameter,
+# a ticket or a memory record.
+
+id: PBK-DQ-001
+name: DQ rule storm — rule-pack, release or upstream defect surfacing as mass DQ failures
+version: 0.1.0
+status: shadow
+owners:
+  - Data Quality Lead (DQ engineering)
+  - Group Data Stewards (G1–G9)
+  - Platform SRE
+  - Agent Platform
+fault_classes:
+  - FLT-DQ-001   # Rule storm (P0, ladder L1, SEV2, MTTD 600 s / MTTR 1,800 s)
+  - FLT-DQ-002   # Threshold drift / false-positive surge (P1, ladder L3, SEV3, MTTD 3,600 s / MTTR 86,400 s)
+severity_default: S2           # OPS-00 §7 SEV2 for FLT-DQ-001; S3 for FLT-DQ-002 (see decision_tree); S1 when a clinical-critical CDE storms (page)
+risk_class: medium             # highest autonomous ladder level is L1 (no L2 actions) — MEM-04 §8; `high` would be required if any L2 action were added
+autonomy_required: L3          # ARC-01 §5 autonomy level of agent.self_healer (not the healing ladder)
+mttd_target_s: 600
+mttr_target_s: 1800            # FLT-DQ-002 keeps its own 3,600 s / 86,400 s targets from MEM-04 §2 (steward-paced CR)
+
+scope:
+  environments: [dev, test, uat, prod]
+  source_systems: [cerner-millennium, oracle-fusion-cloud, peripheral]   # any source whose canonical topics carry DQ rules
+  interfaces: ["*"]            # storms are observed per DQ topic / rule pack, not per interface; upstream interface playbooks take precedence (README §7)
+  groups: [G1, G2, G3, G4, G5, G6, G7, G8, G9]
+  facilities: ["*"]            # multi-facility correlation is a *trigger*; actions are bounded per rule pack, never per facility's records
+
+# -----------------------------------------------------------------------------------------------------------------
+# Triggers — evaluated by the healing engine (Temporal) from `hc.dq.result.v1` / `hc.dq.issue.v1` aggregates that
+# `agent.dq_monitor` and the DQ bridge export to module 12 (OPS-03 S7/S8). `topic` label = the canonical/std topic the
+# rules evaluate (`hc.canonical.<domain>.<entity>.fhir.v1`); `rule_pack` label = pack id from `hc.ops.dq.rulepack.v1`
+# (e.g. `g2-clinical`); `facility` label = facility *code* only (never a name/address).
+# -----------------------------------------------------------------------------------------------------------------
+triggers:
+  - signal: dq.rules_breaching_count
+    description: >-
+      Number of distinct active rules on one topic whose windowed pass rate fell below `threshold.min` (DQ-04 §4.2 breach) within the last 10 minutes
+    source_module: 09-data-quality
+    topic: hc.dq.issue.v1
+    metric: healix.dq.rules_breaching{env,topic,rule_pack}
+    comparator: ">="
+    threshold: 20
+    window_s: 600
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-DQ-001
+  - signal: dq.rules_breaching_ratio
+    description: >-
+      Share of a topic's *active* rules (from the compacted `hc.dq.rule-activation.v1` state) breaching within 10 minutes — catches small packs where 20 rules is more than the pack holds
+    source_module: 09-data-quality
+    topic: hc.dq.issue.v1
+    metric: healix.dq.rules_breaching{env,topic,rule_pack} / healix.dq.rules_active{env,topic,rule_pack}
+    comparator: ">="
+    threshold: 0.30
+    window_s: 600
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-DQ-001
+  - signal: dq.fail_rate_jump_multi_facility
+    description: >-
+      A rule's fail rate (fail ÷ evaluated) jumps by more than 50 percentage points versus its 7-day baseline at ≥ 3 facility codes in the same window — a pattern that is a rule, release or shared-upstream defect, not three hospitals breaking at once
+    source_module: 09-data-quality
+    topic: hc.dq.result.v1
+    metric: count_by(facility)(healix.dq.fail_rate{env,rule_id} - healix.dq.fail_rate_baseline_7d{env,rule_id} > 0.50)
+    comparator: ">="
+    threshold: 3
+    window_s: 600
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-DQ-001
+  - signal: dq.issue_rate
+    description: >-
+      Issues opened on `hc.dq.issue.v1` for one topic in the trailing hour (any severity), 7-day baseline is typically < 50/h per topic
+    source_module: 09-data-quality
+    topic: hc.dq.issue.v1
+    metric: increase(healix.dq.issues_opened_total{env,topic}[1h])
+    comparator: ">"
+    threshold: 1000
+    window_s: 3600
+    min_occurrences: 1
+    for_s: 0
+    fault_class: FLT-DQ-001
+  - signal: dq.false_positive_surge
+    description: >-
+      Steward dismiss rate (issues closed `accepted` ÷ closed) for one rule exceeds 30 % over 7 days, or DQ-PIPE-011 drift issues on the rule's CDE coincide with a sustained breach — the rule or its threshold, not the data, has drifted (FLT-DQ-002; DQ-05 §7 feedback table)
+    source_module: 09-data-quality
+    topic: hc.dq.issue.v1
+    metric: healix.dq.issue_dismiss_ratio_7d{env,rule_id}
+    comparator: ">"
+    threshold: 0.30
+    window_s: 604800
+    min_occurrences: 1
+    for_s: 3600
+    fault_class: FLT-DQ-002
+
+dedupe_key: "${env}|${trigger.labels.topic}|${trigger.labels.rule_pack}|${trigger.fault_class}"
+correlation_window_s: 1800     # one release typically storms several topics of one group within minutes; each topic is its own incident, correlated by window id and linked CAUSED_BY to the first
+
+# -----------------------------------------------------------------------------------------------------------------
+# Preconditions — a storm that is really consumer lag (FLT-DQ-004), a stalled sink (FLT-SINK-*) or an ingestion
+# replay (FLT-ING-*) belongs to those classes/playbooks; README §7 gives them precedence on the same topic.
+# -----------------------------------------------------------------------------------------------------------------
+preconditions:
+  - check: rule_pack_resolvable
+    tool: {server: dq-engine, operation: list_rules}
+    params: {rule_pack: "${trigger.labels.rule_pack}", topic: "${trigger.labels.topic}", status: [active, tuning], fields: [rule_id, rule_version, dimension, severity, is_cde, group, owner, threshold]}
+    expect: "result.rules | length >= 1 and all(result.rules[].owner != null)"   # DQ-FW-004: rules without owners fail the pack linter; nothing to heal if the pack is unknown
+    on_fail: escalate
+  - check: dq_engine_not_lagging
+    tool: {server: observability, operation: query_metric}
+    params: {query: "max(healix.kafka.consumer_group_lag_seconds{group='proc.dq-evaluator',topic='${trigger.labels.topic}'})"}
+    expect: "value < 60"      # S6/S7: a lagging DQ consumer produces a burst of late results that *looks* like a storm — that is FLT-DQ-004 (manual runbook), not this playbook
+    on_fail: skip
+  - check: no_upstream_playbook_on_topic
+    tool: {server: observability, operation: list_healing_incidents}
+    params: {state: [executing, verifying], target_topic: "${trigger.labels.topic}", playbooks: [PBK-ING-001, PBK-ING-002, PBK-ING-003, PBK-SINK-001]}
+    expect: "result | length == 0"   # README §7: ING-001/002/003▶DQ-001 and SINK-001▶DQ-001 — wait in playbook_selected (engine-enforced; checked here to annotate the wait reason)
+    on_fail: skip
+  - check: not_in_change_freeze_window_or_observe_only
+    tool: {server: observability, operation: freeze_calendar_check}
+    params: {scope: ["release", "fusion-quarterly-update", "millennium-code-upgrade"]}
+    expect: "frozen == false"  # MEM-HEAL-010: inside a freeze only L0/L1 observe/restart run — A0/A1/A2 still run, A4 (re-activation) does not
+    on_fail: skip
+  - check: no_kill_switch
+    tool: {server: cr-engine, operation: kill_switch_status}
+    params: {scopes: ["platform", "environment:${env}", "agent:agent.self_healer", "cr_type:dq_rule", "module14:healing", "playbook:PBK-DQ-001"]}
+    expect: "all_released == true"
+    on_fail: skip
+  - check: pack_not_oscillating
+    tool: {server: observability, operation: query_metric}
+    params: {query: "increase(healix.dq.rule_activation_changes_total{rule_pack='${trigger.labels.rule_pack}',actor='agent.self_healer'}[1h])"}
+    expect: "value < 2"        # MEM-HEAL-011 oscillation guard: never flip activation of the same pack back and forth; a second flip within the hour escalates instead
+    on_fail: escalate
+
+# -----------------------------------------------------------------------------------------------------------------
+# Diagnosis — read-only (MEM-HEAL-045/019). Correlates the storm with rule activations, pack/ontology/terminology/
+# mapping releases, upstream healing incidents and clock skew, and backtests the previous rule version on *masked*
+# history to separate "rule defect" from "data defect". Aggregates and ids only; no record is ever opened.
+# -----------------------------------------------------------------------------------------------------------------
+diagnosis:
+  - step: breach_set
+    tool: {server: dq-engine, operation: list_results}
+    params:
+      topic: "${trigger.labels.topic}"
+      rule_pack: "${trigger.labels.rule_pack}"
+      window: "${trigger.window_s}s"
+      aggregate: [rule_id, rule_version, severity, dimension, is_cde, facility_code]   # counts per key only; no detail records, no keys
+      fields: [evaluated_count, fail_count, error_count, fail_rate, baseline_fail_rate_7d, first_fail_at]
+    read_only: true
+    timeout_s: 20
+    record_as: breach_set     # {rules[]: {rule_id, rule_version, severity, is_cde, fail_rate, baseline, facilities[]}, total_fail, total_error, facility_count}
+  - step: activation_history
+    tool: {server: kafka-admin, operation: sample_records}
+    params:
+      topic: hc.dq.rule-activation.v1
+      filter: {rule_id: "${breach_set.rules[].rule_id}"}
+      tail: 3                                     # current and previous activation states per rule (compacted; DQ-FW-010 versions are immutable)
+      fields: [rule_id, rule_version, pack_version, state, blocking_threshold, activated_at, actor]
+    read_only: true
+    timeout_s: 15
+    record_as: activation_history
+  - step: pack_release
+    tool: {server: kafka-admin, operation: sample_records}
+    params:
+      topic: hc.ops.dq.rulepack.v1
+      filter: {rule_pack: "${trigger.labels.rule_pack}"}
+      tail: 2
+      fields: [pack_version, released_at, cr_id, changed_rule_ids, backfill_requested]   # DQ-PIPE-013 backfills flag their results `backfill`
+    read_only: true
+    timeout_s: 15
+    record_as: pack_release   # {current, previous, released_within_window: bool, cr_id}
+  - step: semantic_releases
+    tool: {server: ontology-registry, operation: list_releases}
+    params: {since: "${incident.detected_at - 86400}", kinds: [ontology, value_set, concept_map, mapping_spec], groups: ["${breach_set.rules[].group}"]}
+    read_only: true
+    timeout_s: 15
+    record_as: semantic_releases   # ontology release re-derives rules (DQ-FW-011); terminology release changes $validate-code outcomes; mapping deploy moves fields
+  - step: terminology_release
+    tool: {server: terminology-service, operation: list_release_events}
+    params: {since: "${incident.detected_at - 86400}", code_systems: "${breach_set.rules[].value_set_code_systems}"}
+    read_only: true
+    timeout_s: 15
+    record_as: terminology_release   # IOP-04 release events; a stale C3 version would be PBK-SEM-001 (corr) territory
+  - step: upstream_incidents
+    tool: {server: observability, operation: list_healing_incidents}
+    params: {since: "${incident.detected_at - 7200}", target_topic: "${trigger.labels.topic}", fault_areas: [ING, SEM, SINK], states: [detected, triaged, diagnosed, playbook_selected, executing, verifying, resolved]}
+    read_only: true
+    timeout_s: 15
+    record_as: upstream_incidents   # a replay (PBK-ING-001), re-snapshot (PBK-ING-002), paused PVO (PBK-ING-003) or stalled sink (PBK-SINK-001) explains a DQ burst
+  - step: clock_skew
+    tool: {server: observability, operation: query_metric}
+    params: {query: "histogram_quantile(0.99, healix.ingest.source_event_time_skew_seconds_bucket{topic='${trigger.labels.topic}'}) and increase(healix.kg.dlq_total{reason='TEMPORAL_SKEW',topic='${trigger.labels.topic}'}[1h])"}
+    read_only: true
+    timeout_s: 15
+    record_as: clock_skew     # > 5 s on an interface engine or a mis-zoned Millennium domain makes timeliness/temporal rules storm (FLT-ING-016, TKG-TIME-012)
+  - step: volume_profile
+    tool: {server: observability, operation: query_metric}
+    params: {query: "rate(healix.canonical.records_total{topic='${trigger.labels.topic}'}[10m]) / healix.canonical.records_rate_baseline_7d{topic='${trigger.labels.topic}'} by (facility_code)"}
+    read_only: true
+    timeout_s: 15
+    record_as: volume_profile  # a 3× volume spike on one topic indicates a replay/backfill, not a data-quality collapse
+  - step: facility_distribution
+    tool: {server: dq-engine, operation: get_scorecard}
+    params: {group: "${breach_set.rules[0].group}", window: PT1H, by: facility_code, fields: [dqi, breach_count_by_severity, quarantine_rate]}
+    read_only: true
+    timeout_s: 15
+    record_as: facility_distribution   # concentrated on one facility ⇒ local source/interface problem; uniform ⇒ rule/release/platform defect
+  - step: remediator_activity
+    tool: {server: observability, operation: query_metric}
+    params: {query: "increase(healix.dq.auto_fix_total{rule_pack='${trigger.labels.rule_pack}'}[1h]) and healix.dq.auto_fix_cap_utilisation{rule_pack='${trigger.labels.rule_pack}'}"}
+    read_only: true
+    timeout_s: 10
+    record_as: remediator_activity     # DQ-REM-010 caps (5 %/rule/day, 1,000/issue); a storm must not be "healed" by mass auto-fix of good data
+  - step: dismiss_profile
+    tool: {server: dq-engine, operation: list_results}
+    params: {rule_id: "${breach_set.rules[].rule_id}", source: fact_dq_issue, window: P7D, aggregate: [rule_id, close_reason], fields: [count]}
+    read_only: true
+    timeout_s: 15
+    record_as: dismiss_profile   # accepted ÷ closed per rule (DQ-05 §7: > 5 % → tuning; > 30 % here = FLT-DQ-002)
+  - step: prior_version_backtest
+    tool: {server: dq-engine, operation: backtest_rule}
+    params:
+      rules: "${activation_history | previous_versions(breach_set.rules[].rule_id)}"   # the *previous released* immutable version of each storming rule
+      window: P7D
+      masked: true                                 # sandboxed on masked history (AGT-04 §2.8); the playbook sees pass rates only
+      compare_to: "${breach_set.rules[].rule_version}"
+      limit_rules: 20                              # AGT-04 §4 rate limit: backtest_rule ≤ 5 concurrent; the engine queues the rest
+    read_only: true
+    timeout_s: 300
+    record_as: backtest        # {per_rule: {prior_pass_rate, current_pass_rate, delta}, prior_within_baseline: bool}
+  - step: prior_outcomes
+    tool: {server: memory, operation: recall}
+    params:
+      scopes: ["healix.${env}.group.${breach_set.rules[0].group}", "healix.${env}.agent.agent.self_healer"]
+      query: "DQ rule storm on ${trigger.labels.topic} pack ${trigger.labels.rule_pack} after release; root cause and successful action"
+      retrieval_profile: incident_triage
+      filters: {classes: [incident, root_cause, outcome, drift_signature, evaluation_lesson], min_trust_tier: T1, min_confidence: 0.6}
+      top_k: 10
+      budget_tokens: 1500
+    read_only: true
+    timeout_s: 5
+    record_as: prior_outcomes  # untrusted block `[mem:<id> class conf trust from <evidence>]` (MEM-02 §7); record ids echoed in CR provenance (MEM-ARCH-006)
+
+# -----------------------------------------------------------------------------------------------------------------
+# Decision tree — first matching branch wins; A0 (record) and A1 (aggregate) run on every branch. "Clinical-critical"
+# = any storming rule with severity blocker/critical whose CDE is a G2 medication/allergy/identity element (DQ-01 §3).
+# -----------------------------------------------------------------------------------------------------------------
+decision_tree:
+  - when: "breach_set.rules[?severity in ['blocker','critical'] and is_cde == true and group == 'G2'] | length > 0"
+    then_actions: [A0-record-incident, A1-aggregate-issues, A2-mark-suspect-and-suppress-notifications, A3-freeze-auto-fix-and-auto-tuning, A7-page-clinical-critical]   # SEV1: humans first; L1 actions continue in parallel (MEM-04 §11); A4 only after the on-call acknowledges
+  - when: "upstream_incidents | length > 0 or volume_profile.max_ratio > 3.0"
+    then_actions: [A0-record-incident, A1-aggregate-issues, A2-mark-suspect-and-suppress-notifications]   # upstream replay / re-snapshot / sink stall: link CAUSED_BY, do not touch rules; the upstream playbook has precedence (README §7)
+  - when: "clock_skew.p99_s > 5 or clock_skew.temporal_skew_dlq_1h > 0"
+    then_actions: [A0-record-incident, A1-aggregate-issues, A2-mark-suspect-and-suppress-notifications, A6-ticket-steward-and-dq-lead]   # FLT-ING-016 is manual (MEM-04 §3): PHI-free host list to hospital IT; DQ timeliness results stay suspect until NTP is fixed
+  - when: "(pack_release.released_within_window == true or activation_history.changed_within_window == true) and backtest.prior_within_baseline == true"
+    then_actions: [A0-record-incident, A1-aggregate-issues, A2-mark-suspect-and-suppress-notifications, A3-freeze-auto-fix-and-auto-tuning, A4-reactivate-prior-rule-version, A5-propose-dq-rule-cr]   # rule-pack defect: the prior immutable version passes; roll activation back (DQ-FW-010) and send the fix to agent.dq_author
+  - when: "(semantic_releases | length > 0 or terminology_release | length > 0) and backtest.prior_within_baseline == true"
+    then_actions: [A0-record-incident, A1-aggregate-issues, A2-mark-suspect-and-suppress-notifications, A3-freeze-auto-fix-and-auto-tuning, A4-reactivate-prior-rule-version, A5-propose-dq-rule-cr]   # ontology/terminology/mapping release re-derived or invalidated rules (DQ-FW-011); CR carries the release IRI as evidence; PBK-SEM-001 runs `corr` if a value set is stale
+  - when: "trigger.fault_class == 'FLT-DQ-002' or dismiss_profile.max_dismiss_ratio > 0.30"
+    then_actions: [A0-record-incident, A1-aggregate-issues, A3-freeze-auto-fix-and-auto-tuning, A5-propose-dq-rule-cr]   # false-positive surge (S3): no suppression, no re-activation — steward-paced `dq_rule` CR with backtest evidence
+  - when: "facility_distribution.concentration == 'single_facility'"
+    then_actions: [A0-record-incident, A1-aggregate-issues, A2-mark-suspect-and-suppress-notifications, A6-ticket-steward-and-dq-lead]   # one hospital's source/interface changed — genuine upstream data defect; DQ-05 source_requested path with the group steward
+  - when: "true"
+    then_actions: [A0-record-incident, A1-aggregate-issues, A2-mark-suspect-and-suppress-notifications, A3-freeze-auto-fix-and-auto-tuning, A6-ticket-steward-and-dq-lead]   # unexplained multi-facility storm: contain, freeze mass auto-fix, hand to humans — never guess a rule change
+
+# -----------------------------------------------------------------------------------------------------------------
+# Actions — every action carries class + budget + (compensation or provable idempotency) — MEM-HEAL-038/046.
+# Budgets tighten the engine defaults: 1 rule pack per incident, ≤ 20 rules re-activated, ≤ 50,000 issues
+# aggregated, time_box_s ≤ 1,800. No action has class `schema` or `data_mutation` (MEM-HEAL-001); no action deletes
+# or rewrites a `hc.dq.result.v1` record, a `fact_dq_result` row or a quarantined record (DQ-PIPE-014, DQ-REM-001).
+# -----------------------------------------------------------------------------------------------------------------
+actions:
+  - id: A0-record-incident
+    ladder_level: L0
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "rule_pack == '${trigger.labels.rule_pack}'", time_box_s: 120}
+    requires_dry_run: false
+    tool: {server: memory, operation: record_incident, permission: propose}
+    params:
+      incident_id: "${incident.id}"
+      severity: "${decision.branch == 'clinical_critical' ? 'S1' : (trigger.fault_class == 'FLT-DQ-002' ? 'S3' : incident.severity)}"
+      annotations:
+        topic: "${trigger.labels.topic}"
+        rule_pack: "${trigger.labels.rule_pack}"
+        rules_breaching: "${breach_set.rules | length}"
+        rules_active: "${activation_history.active_count}"
+        total_fail: "${breach_set.total_fail}"
+        total_error: "${breach_set.total_error}"
+        facility_count: "${breach_set.facility_count}"
+        facility_concentration: "${facility_distribution.concentration}"
+        pack_release_in_window: "${pack_release.released_within_window}"
+        pack_release_cr: "${pack_release.cr_id}"
+        semantic_release_iris: "${semantic_releases[].version_iri}"
+        terminology_release_ids: "${terminology_release[].release_id}"
+        upstream_incident_ids: "${upstream_incidents[].incident_id}"   # Graphiti edge Incident -CAUSED_BY-> Incident (MEM-02 §4)
+        clock_skew_p99_s: "${clock_skew.p99_s}"
+        backtest_prior_within_baseline: "${backtest.prior_within_baseline}"
+        remediator_cap_utilisation: "${remediator_activity.cap_utilisation}"
+        hypothesis: "${decision.branch}"
+    idempotency_key_recipe: "sha256(${incident.id}|A0|${trigger.labels.topic}|${trigger.labels.rule_pack})"
+    timeout_s: 10
+    retries: 1
+    verify: {probe: "incident.annotations.hypothesis", expect: "present", within_s: 10}
+    on_failure: continue
+    compensating_action: {tool: {server: memory, operation: correct}, params: {memory_id: "${incident.id}", change_kind: correction, new_content: {annotations: null}}}
+
+  - id: A1-aggregate-issues
+    description: >-
+      Collapse the storm's open issues on this topic/pack under one parent issue so stewards receive one actionable item instead of thousands (DQ-04 §4.2 aggregate issue). Child issues keep their ids, states, bitemporal history and SLA clocks (DQ-REM-009, DQ-SCORE-006); only a `parent_issue_id` link is added. Nothing is closed, merged or deleted.
+    ladder_level: L1
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: records, max: 50000, scope_expr: "issue.topic == '${trigger.labels.topic}' and issue.rule_pack == '${trigger.labels.rule_pack}' and issue.opened_at >= incident.detected_at - 3600", time_box_s: 600}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: dq.aggregate_issues, permission: apply}
+    params:
+      topic: "${trigger.labels.topic}"
+      rule_pack: "${trigger.labels.rule_pack}"
+      since: "${incident.detected_at - 3600}"
+      parent:
+        title: "[rule storm] ${trigger.labels.rule_pack} on ${trigger.labels.topic} — ${breach_set.rules | length} rules, ${breach_set.total_fail} failures, ${breach_set.facility_count} facilities"
+        severity: "${breach_set.max_severity}"   # DQ-04 §4.2: parent carries the highest child severity; never escalated by this playbook
+        incident_id: "${incident.id}"
+        state: acknowledged                      # DQ-05 §3: acknowledgement by an agent starts the fix clock (DQ-SCORE-006)
+      child_state_unchanged: true
+      note: "Delegated by the engine to the module-09 issue API (DQ-03 §6.2 `hc.dq.issue.v1`); the self_healer holds no direct issue write. Child issues are linked, never closed."
+    idempotency_key_recipe: "sha256(${incident.id}|A1|${trigger.labels.topic}|${trigger.labels.rule_pack})"   # re-run links newly arrived children to the same parent; a second parent is never created
+    timeout_s: 120
+    retries: 2
+    verify:
+      probe: "hc.dq.issue.v1 where parent_issue_id == A1.parent_issue_id"
+      expect: "count >= breach_set.open_issue_count * 0.95 and parent.state == 'acknowledged' and children_closed_by_this_run == 0"
+      within_s: 300
+    on_failure: continue
+    rollback:
+      tool: {server: playbook-runner, operation: dq.unlink_issues}
+      params: {parent_issue_id: "${A1.parent_issue_id}", reason: "healing run rolled back", keep_parent_as_note: true}   # link removed; children untouched
+
+  - id: A2-mark-suspect-and-suppress-notifications
+    description: >-
+      Annotate the storm window's DQ results `suspect` and suppress *notifications* (steward pages, `#dq-<group>` chat posts, daily-digest entries, scorecard alerts) for this topic/pack for at most 60 minutes. Annotation is an additive flag record keyed by (rule_id, rule_version, window) carried as `hc-dq-status: fail-suspect`; results themselves, `fact_dq_result` rows and quarantine decisions are never rewritten or deleted (DQ-PIPE-014, DQ-REM-001). Detection, evaluation, quarantine routing, SLO burn accounting and the SLA clocks continue untouched (MEM-HEAL-006). The flag lets scorecards (DQ-04) and KG/EDW consumers discount the window exactly as `backfill` results are discounted (DQ-PIPE-013).
+    ladder_level: L1
+    blast_radius_class: reroute
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "rule_pack == '${trigger.labels.rule_pack}' and topic == '${trigger.labels.topic}' and window within [incident.detected_at - 600, now + 3600]", time_box_s: 3600}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: dq.annotate_results_and_suppress_notifications, permission: apply}
+    params:
+      topic: "${trigger.labels.topic}"
+      rule_pack: "${trigger.labels.rule_pack}"
+      rule_ids: "${breach_set.rules[].rule_id}"
+      window_from: "${incident.detected_at - 600}"
+      annotation: {flag: suspect, reason: "rule_storm", incident_id: "${incident.id}", additive_only: true}
+      suppression:
+        notifications_only: true
+        channels: [page, chat, digest, scorecard_alert]
+        exclude_severities: [blocker]            # blocker quarantine pages (DQ-04 §4.3) are never suppressed — patient-safety and identity CDEs
+        max_s: 3600
+        visible_on_incident: true
+      note: "Delegated to module-09 `agent.dq_monitor` annotation API; suppression is a notification-router rule in module 12, not a change to any rule, threshold or result."
+    idempotency_key_recipe: "sha256(${incident.id}|A2|${trigger.labels.topic}|${trigger.labels.rule_pack})"
+    timeout_s: 60
+    retries: 1
+    verify:
+      probe: "healix.dq.results_flagged_total{flag='suspect',incident='${incident.id}'} and healix.notify.suppressed_total{incident='${incident.id}'} and hc.dq.result.v1 record count for the window"
+      expect: "flagged > 0 and suppressed_channels == ['page','chat','digest','scorecard_alert'] and blocker_pages_suppressed == 0 and result_count_before == result_count_after"
+      within_s: 120
+    on_failure: continue
+    rollback:
+      tool: {server: playbook-runner, operation: dq.release_suppression_and_retract_annotation}
+      params: {incident_id: "${incident.id}", retract_flag: suspect, change_kind: retraction}   # flag records are closed in transaction time (superseded_at), never deleted (TKG-01 §6)
+
+  - id: A3-freeze-auto-fix-and-auto-tuning
+    description: >-
+      Put `agent.remediator` auto-fix (DQ-05 §2.1/§6) and `agent.dq_author` automatic threshold tuning (DQ-05 §7) into `propose_only` for this rule pack until the incident resolves (max 24 h). A storm must not be "healed" by auto-fixing thousands of records that were correct all along, nor by auto-widening a threshold to make the storm disappear; the DQ-REM-010 caps (5 %/rule/day, 1,000/issue) stay in force and are never raised by this playbook (MEM-HEAL-015). Already-running fixes finish; nothing is rolled back here (DQ-05 §6 rollback is the remediator's own activity).
+    ladder_level: L1
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: {unit: agent, max: 2, scope_expr: "agent in ['agent.remediator','agent.dq_author'] and rule_pack == '${trigger.labels.rule_pack}'", time_box_s: 1800}
+    requires_dry_run: false
+    tool: {server: playbook-runner, operation: remediation.set_auto_mode, permission: apply}
+    params:
+      rule_pack: "${trigger.labels.rule_pack}"
+      agents:
+        agent.remediator: {auto_fix: propose_only}
+        agent.dq_author: {auto_threshold_tuning: propose_only}
+      until: "${incident.id} resolved or 86400s"
+      reason: "rule_storm ${incident.id}"
+      snapshot_name: "pre-A3-${incident.id}"
+      note: "A runtime routing flag on the two agents' workflow for one pack (AGT-01 §3.6 escalation path), not a manifest, budget, autonomy-level or `limits` change (MEM-HEAL-015, MEM-GOV-002). Caps are untouched."
+    idempotency_key_recipe: "sha256(${incident.id}|A3|${trigger.labels.rule_pack})"
+    timeout_s: 30
+    retries: 1
+    verify:
+      probe: "healix.dq.auto_fix_total{rule_pack='${trigger.labels.rule_pack}'} rate and agent.remediator mode for the pack"
+      expect: "mode == 'propose_only' and increase(auto_fix_total[10m]) == 0 and auto_fix_cap_utilisation unchanged and budgets unchanged"
+      within_s: 600
+    on_failure: escalate
+    rollback:
+      tool: {server: playbook-runner, operation: remediation.restore_auto_mode}
+      params: {rule_pack: "${trigger.labels.rule_pack}", snapshot: "pre-A3-${incident.id}"}
+
+  - id: A4-reactivate-prior-rule-version
+    description: >-
+      Re-activate the *previous, already-released, immutable* version of each storming rule (DQ-FW-010) when the backtest shows that version within its 7-day baseline and the current one not — i.e. the new pack/derivation is the defect. Activation state is published on `hc.dq.rule-activation.v1` by `agent.release_manager` (its only producers are `ci.gitops` and `agent.release_manager`); the self_healer never edits a rule body, threshold or severity and never creates a rule version. The failing current version is moved to `suspended`, not retired, so the `dq_rule` CR (A5) can fix and re-release it; results produced under either version stay attributed to their `(rule_id, rule_version)` (DQ-FW-010, DQ-SCORE-007).
+    ladder_level: L1
+    blast_radius_class: reconfigure
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "rule_pack == '${trigger.labels.rule_pack}' and rules_reactivated <= 20 and all(prior_version.state_was == 'active' and prior_version.released_cr_id != null)", time_box_s: 900}
+    requires_dry_run: true            # the `prior_version_backtest` diagnosis step is the dry-run: prior version pass rate within baseline ± 2 pp for every rule in the set
+    tool: {server: playbook-runner, operation: dq.set_rule_activation, permission: apply}
+    params:
+      rule_pack: "${trigger.labels.rule_pack}"
+      changes: "${breach_set.rules | where(backtest.per_rule[rule_id].prior_within_baseline) | map({rule_id, from_version: rule_version, to_version: activation_history.previous_version[rule_id], current_state: suspended})}"
+      pack_version_pin: "${pack_release.previous.pack_version}"   # DQ-03 §2: planes hot-reload the compiled rule from `hc.ops.dq.rulepack.v1`; the previous compiled bundle is still present (compacted by rule_id)
+      backfill: false                 # DQ-PIPE-013 backfill is a pack-release concern decided in the CR, not here
+      reason: "rule_storm ${incident.id}; prior version within baseline (backtest ${backtest.run_id})"
+      note: "Delegated by the engine to agent.release_manager (AGT-04 §2: mutation only via the release path); agent.self_healer holds no producer right on hc.dq.rule-activation.v1."
+    idempotency_key_recipe: "sha256(${incident.id}|A4|${trigger.labels.rule_pack}|${sorted(A4.changes[].rule_id) | hash}|${pack_release.previous.pack_version})"
+    timeout_s: 180
+    retries: 1
+    verify:
+      probe: "hc.dq.rule-activation.v1 state per rule_id; healix.dq.fail_rate{rule_id} over the next 3 windows; hc.dq.result.v1 and fact_dq_result row counts"
+      expect: "all(changes[].to_version active and from_version suspended) and fail_rate <= baseline_fail_rate_7d + 0.05 for every re-activated rule and results_deleted == 0 and rule_bodies_changed == 0"
+      within_s: 1800
+    on_failure: compensate
+    rollback:
+      tool: {server: playbook-runner, operation: dq.set_rule_activation}
+      params: {rule_pack: "${trigger.labels.rule_pack}", changes: "${A4.changes | reverse_direction}", pack_version_pin: "${pack_release.current.pack_version}", reason: "healing run rolled back ${incident.id}"}
+
+  - id: A5-propose-dq-rule-cr
+    description: >-
+      Hand the defect to `agent.dq_author` as a `dq_rule` CR carrying the storm evidence (counts, backtest deltas, release ids, incident id, recalled memory ids). Risk `low` when the implied change is a threshold move of ≤ 5 % relative with unchanged expression/severity (DQ-01 §3 `minor`-style tuning), else `medium`; any rule whose CDE is `blocker`/`critical` forces `high` by the CR schema (AGT-03 risk rules) and therefore a human gate. The CR, not this playbook, decides the final rule text; DQ-05 §7 routes terminology/ontology/mapping root causes onward to the owning agents.
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "rule_pack == '${trigger.labels.rule_pack}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: cr-engine, operation: propose_cr, permission: propose}
+    params:
+      type: dq_rule                                      # AGT-03 crType (existing); `playbook`/`agent_policy` are module-14 requests and not used here
+      risk_class: "${proposed_change.relative_threshold_delta <= 0.05 and proposed_change.expression_unchanged and proposed_change.severity_unchanged ? 'low' : 'medium'}"
+      target: {kind: dq_rule_pack, rule_pack: "${trigger.labels.rule_pack}", rule_ids: "${breach_set.rules[].rule_id}", from_pack_version: "${pack_release.current.pack_version}"}
+      assignee: agent.dq_author
+      title: "Rule storm on ${trigger.labels.topic}: review ${breach_set.rules | length} rule(s) in ${trigger.labels.rule_pack} (${decision.branch})"
+      summary: "${breach_set.rules | length} rules breached in ${trigger.window_s}s across ${breach_set.facility_count} facilities (fail ${breach_set.total_fail}, error ${breach_set.total_error}). Pack release in window: ${pack_release.released_within_window} (${pack_release.cr_id}). Semantic releases: ${semantic_releases[].version_iri}. Backtest of prior versions within baseline: ${backtest.prior_within_baseline}. Prior versions re-activated: ${A4.changes | length}. Dismiss ratio 7d max: ${dismiss_profile.max_dismiss_ratio}. Aggregates and ids only."
+      evidence:
+        sources:
+          - {kind: dq_result, id: "${breach_set.aggregate_ref}"}            # aggregate reference, no record keys
+          - {kind: profiling_run, id: "${backtest.run_id}"}
+          - {kind: prior_cr, id: "${pack_release.cr_id}"}
+          - {kind: ticket, id: "${A1.parent_issue_id}"}
+          - {kind: memory_record, id: "${prior_outcomes.record_ids}"}   # requested `evidence.sources[].kind` extension (README §6); omitted while not landed
+      phi_fields_touched: []                             # rule metadata only
+      payload: {format: yaml, content_ref: "${breach_set | to_rule_review_stub(backtest, semantic_releases)}"}   # per rule: current vs prior version, pass rates, suggested disposition {revert, retune, re-derive, keep}; no expression rewritten by the healer
+      automated_checks_requested: [phi_scan, prompt_injection_scan, idempotency_check, dq_rule_backtest]
+      provenance: {recalled_memory_ids: "${prior_outcomes.record_ids}", memory_degraded: "${memory.degraded}", incident_id: "${incident.id}"}
+    idempotency_key_recipe: "sha256(PBK-DQ-001|A5|${trigger.labels.rule_pack}|${pack_release.current.pack_version}|${sorted(breach_set.rules[].rule_id) | hash})"   # same pack version + rule set ⇒ no-op (AGT-03 idempotency_check)
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "cr-engine.get_cr", expect: "state in ['proposed','evaluated','approved','auto_approved'] and linked_incident == '${incident.id}'", within_s: 120}
+    on_failure: escalate
+    compensating_action:
+      tool: {server: cr-engine, operation: withdraw_cr}
+      params: {cr_id: "${A5.cr_id}", reason: "healing run rolled back"}
+    emits_cr: {cr_type: dq_rule, risk_class: low, gates_required: [evaluator, group_steward]}   # medium/high add the human gate per AGT-03 §4 and DQ-01 §5
+
+  - id: A6-ticket-steward-and-dq-lead
+    description: >-
+      Open one PHI-free ticket to the group steward and the Data Quality Lead when the storm is a genuine upstream data defect (single facility, unexplained multi-facility, or clock skew) that the pipeline cannot fix: the DQ-05 `source_requested` path with the source owner, or an NTP fix on an interface engine (FLT-ING-016, manual).
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "rule_pack == '${trigger.labels.rule_pack}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: ticketing, operation: create_issue, permission: apply}
+    params:
+      queue: "${decision.branch == 'clock_skew' ? 'hospital-it-interfaces' : 'dq-stewardship'}"
+      assignees: ["group-steward:${breach_set.rules[0].group}", "data-quality-lead"]
+      cc: ["platform-sre-primary", "${decision.branch == 'single_facility' ? 'source-owner:' + facility_distribution.top_facility_code : 'stream-semantic-engineering'}"]
+      severity: "${incident.severity}"
+      title: "[HEALIX DQ] rule storm ${trigger.labels.rule_pack} on ${trigger.labels.topic} — ${decision.branch}"
+      body_template_ref: escalation.ticket_template
+      link_incident: "${incident.id}"
+      link_issue: "${A1.parent_issue_id}"
+      phi_scan: required                           # AGT-TOOL-014 / MEM-HEAL-033
+    idempotency_key_recipe: "sha256(${incident.id}|A6|${trigger.labels.rule_pack}|${decision.branch})"
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "ticketing.get_issue", expect: "state in ['open','acknowledged'] and phi_scan == 'clean' and linked_incident == '${incident.id}'", within_s: 120}
+    on_failure: escalate
+    compensating_action:
+      tool: {server: ticketing, operation: update_issue}
+      params: {issue_id: "${A6.ticket_id}", state: cancelled, comment: "healing run rolled back ${incident.id}"}
+
+  - id: A7-page-clinical-critical
+    description: >-
+      A storm on blocker/critical G2 medication, allergy or identity CDEs is SEV1 (OPS-00 §7; DQ-01 §3 blocker ⇒ page). Page the group steward on-call and Platform SRE within 60 s with a PHI-free packet (MEM-HEAL-032/033) while A1–A3 contain the noise. Re-activation (A4) on these rules runs only after the on-call acknowledges, because suspending a safety rule's current version is itself a clinical decision. The ladder step is L4 ("page human"); it is expressed as an action so the engine can budget, audit and chaos-test it.
+    ladder_level: L3
+    blast_radius_class: observe
+    autonomous_allowed: true
+    blast_radius: {unit: table, max: 1, scope_expr: "rule_pack == '${trigger.labels.rule_pack}'", time_box_s: 300}
+    requires_dry_run: false
+    tool: {server: ticketing, operation: create_and_page, permission: apply}
+    params:
+      rotation: ["group-steward-oncall:G2", "platform-sre-primary"]
+      severity: S1
+      title: "[HEALIX DQ SEV1] clinical-critical rule storm on ${trigger.labels.topic}"
+      body_template_ref: escalation.ticket_template
+      link_incident: "${incident.id}"
+      link_issue: "${A1.parent_issue_id}"
+      ack_gates: [A4-reactivate-prior-rule-version]   # A4 waits for acknowledgement on this branch
+      phi_scan: required
+    idempotency_key_recipe: "sha256(${incident.id}|A7|${trigger.labels.rule_pack})"
+    timeout_s: 60
+    retries: 2
+    verify: {probe: "ticket.state{incident='${incident.id}'}", expect: "paged == true and page_latency_s <= 60 and phi_scan == 'clean'", within_s: 120}
+    on_failure: escalate
+    compensating_action:
+      tool: {server: ticketing, operation: update_issue}
+      params: {issue_id: "${A7.ticket_id}", comment: "healing run rolled back ${incident.id}; page stands — human review still required", state: open}   # a page is never silently cancelled
+
+verification:
+  probes:
+    - {id: V1-fail-rate-back-to-baseline, metric: "healix.dq.fail_rate{rule_id in breach_set.rules[].rule_id}", expect: "<= baseline_fail_rate_7d + 0.05 for every storming rule over 3 consecutive windows (branches with A4); or unchanged and flagged suspect with a live ticket/CR (branches without A4)"}
+    - {id: V2-storm-stopped, metric: "healix.dq.rules_breaching{topic='${trigger.labels.topic}',rule_pack='${trigger.labels.rule_pack}'}", expect: "< 20 and < 0.30 × rules_active for the full duration"}
+    - {id: V3-issue-rate, metric: "increase(healix.dq.issues_opened_total{topic='${trigger.labels.topic}'}[1h])", expect: "< 1000 and new issues auto-linked to A1.parent_issue_id"}
+    - {id: V4-no-result-lost, metric: "count(hc.dq.result.v1) and count(fact_dq_result) for the window", expect: "monotonically non-decreasing; results_deleted == 0; quarantine topic retention untouched (DQ-PIPE-014)"}
+    - {id: V5-rule-bodies-immutable, tool: "dq-engine.list_rules", expect: "every (rule_id, rule_version) expression/threshold/severity hash unchanged by this run (DQ-FW-010); only activation state moved"}
+    - {id: V6-no-mass-auto-fix, metric: "increase(healix.dq.auto_fix_total{rule_pack='${trigger.labels.rule_pack}'}[1h])", expect: "== 0 while A3 is in force; DQ-REM-010 caps and all agent budgets unchanged"}
+    - {id: V7-suppression-bounded, metric: "healix.notify.suppression_active{incident='${incident.id}'}", expect: "released at <= 3600 s; blocker pages suppressed == 0; SLA clocks on child issues still running (DQ-SCORE-006)"}
+    - {id: V8-cr-or-ticket-live, tool: "cr-engine.get_cr / ticketing.get_issue", expect: "every emitted CR in a live state and every ticket acknowledged within escalation.sla_minutes"}
+    - {id: V9-other-packs-unaffected, metric: "healix.dq.rules_breaching{rule_pack!='${trigger.labels.rule_pack}'}", expect: "within ±10 % of 7-d baseline; no activation change outside the target pack"}
+    - {id: V10-scorecard-discounts-window, tool: "dq-engine.get_scorecard", expect: "group DQI for the window computed with `suspect` results excluded and marked as such (DQ-04 §3), band change explained on the scorecard"}
+  duration_s: 1800              # ≥ 3 × trigger window_s (600) — MEM-HEAL-022; FLT-DQ-002 branch verifies over 3 × 7 d via the CR's own backtest, not here
+  success_criteria: "V1 through V10 all true for the full duration; otherwise verifying → rolled_back (A4 reverse activation, A3 restore mode, A2 release suppression and retract flag, A1 unlink, A5/A6 withdraw/cancel; pages are never cancelled) → escalated"
+
+# -----------------------------------------------------------------------------------------------------------------
+# Limits — FIXED-POINT PROTECTED (MEM-HEAL-042/048): changed only by a `policy`-class CR from DGC / Privacy Office.
+# -----------------------------------------------------------------------------------------------------------------
+limits:
+  max_runs_per_hour: 2
+  cooldown_s: 1800
+  max_actions_per_incident: 5    # A0 is L0 observe and exempt from the count (MEM-04 §7); the clinical-critical branch therefore runs A1, A2, A3, A7 and then A4 only after acknowledgement, within the cap
+  max_concurrent_per_target: 1
+  circuit_breaker: {consecutive_failures: 3, open_for_s: 86400, page: true}
+  change_freeze_calendar_ref: OPS-02/freeze-calendar            # release windows, `fusion-quarterly-update`, `millennium-code-upgrade`; inside them only A0/A1/A2 (observe/reroute notifications) run (MEM-HEAL-010)
+  recursion:
+    max_depth: 2
+    may_trigger: []                # a DQ storm never re-triggers an ingestion, semantic or sink playbook (MEM-HEAL-009); those are parents of this one in the conflict matrix (README §7)
+  per_action_overrides:
+    A1-aggregate-issues: {max_issues_per_run: 50000, max_runs_per_day: 6}
+    A2-mark-suspect-and-suppress-notifications: {max_s: 3600, max_runs_per_day: 4, never_suppress_severities: [blocker]}
+    A3-freeze-auto-fix-and-auto-tuning: {max_until_s: 86400, max_packs_frozen_platform_wide: 3}   # freezing every pack would be a platform-wide remediation outage ⇒ humans decide
+    A4-reactivate-prior-rule-version: {max_rules_per_run: 20, max_runs_per_day: 2, max_packs_per_day: 1, requires_backtest_within_baseline_pp: 2}
+    A5-propose-dq-rule-cr: {max_crs_per_day: 4}   # one CR per pack per storm; excess queued, never dropped
+
+# -----------------------------------------------------------------------------------------------------------------
+# Guards — FIXED-POINT PROTECTED (MEM-HEAL-042/043).
+# -----------------------------------------------------------------------------------------------------------------
+guards:
+  kill_switch_paths:
+    - cr-engine.kill_switch.platform
+    - cr-engine.kill_switch.environment.${env}
+    - cr-engine.kill_switch.agent.agent.self_healer
+    - cr-engine.kill_switch.cr_type.dq_rule
+    - module14.kill_switch.healing
+    - module14.kill_switch.playbook.PBK-DQ-001
+  phi_ceiling: none
+  data_mutation: none
+  requires_dry_run_in: [test]
+  forbidden_targets:
+    - cerner-millennium                # MEM-HEAL-008 / SRC-CER-024: nothing is ever written back to Millennium
+    - oracle-fusion-cloud              # MEM-HEAL-008: no Fusion write, job or data fix
+    - "hc.canonical.*"
+    - "hc.kg.*"
+    - "hc.edw.*"                       # GOV-ACC-011: agents never write canonical/kg/edw directly
+    - "hc.dq.quarantine.*"             # quarantine topics are PHI-classified and ACL-restricted to agent.remediator and stewards (DQ-03 §3.4); this playbook never reads or writes them
+    - "hc.dq.result.v1"                # results are append-only facts; the healer annotates via the module-09 API, never produces or compacts on the topic
+  forbidden_operations:
+    - dq-engine.open_quarantine_sample # masked or not, no record ever enters a healing diagnosis or memory
+    - dq-engine.replay_quarantine      # remediator-only with an approved CR (AGT-04 §2.8)
+    - dq-engine.propose_remediation    # remediation is agent.remediator's path (DQ-05); the healer freezes it, never drives it
+    - dq.delete_results                # DQ-PIPE-014
+    - dq.edit_rule_in_place            # DQ-FW-010: immutable versions; only new versions via dq_rule CR
+    - dq.set_remediation_caps          # DQ-REM-010 caps are policy class (MEM-HEAL-015)
+    - dq.override_quarantine_decision  # blocker routing is never changed by healing
+    - cr-engine.set_budget             # MEM-HEAL-015 / MEM-GOV-002
+  forbidden_params: [record_body, resource_json, sample_rows, failing_keys, hashed_keys, PID, NK1, IN1, NTE, OBX-5, MRN, FIN, PERSON_ID, PERSON_NUMBER, PARTY_ID, patient_name, dob, address, phone, email, ssn]   # never read, logged or memorised (GOV-PHI-004 Cerner/Fusion patterns, DQ-PIPE-009 alerts carry hashed keys and counts only)
+
+suppression:
+  notifications_only: true
+  max_s: 3600                          # MEM-HEAL-006: never suppresses detection, evaluation, quarantine routing or SLA clocks; visible on the incident; blocker pages exempt
+
+conflicts_with:
+  - PBK-ING-001                        # README §7: ING-001▶DQ-001 on the same topic while a `replay` executes — DQ waits in `playbook_selected`
+  - PBK-ING-002                        # README §7: ING-002▶DQ-001 on the same table's topic during a re-snapshot
+  - PBK-ING-003                        # README §7: ING-003▶DQ-001 on topics fed by a paused PVO
+  - PBK-SINK-001                       # README §7 / MEM-04 §7: SINK-001▶DQ-001 on the same topic partition — a stalled sink is the likelier root cause
+  # PBK-SEM-001 is `corr` (both may run; the second links CAUSED_BY/CONTRADICTED_BY); PBK-AGT-001 precedes this playbook on the same agent (declared on PBK-AGT-001's side)
+
+escalation:
+  to:
+    - group-steward                    # steward of record for the storming pack's subject-area group (DQ-01 §5 roles; DQ-04 §4.3 routing)
+    - data-quality-lead                # DQ-04 §5.1 escalation owner for blocker/critical SLAs
+    - platform-sre-primary             # OPS-03 §4.3 Platform SRE primary — pages for SEV1/SEV2
+    - stream-semantic-engineering      # OPS-03 §4.3 — when the correlated cause is a terminology/ontology release or a connector replay
+    - agent-operator                   # OPS-03 §4.3 — when the storm was caused by a pack released by agent.release_manager / agent.dq_author
+  after_s: 900                         # 15 min without autonomous resolution (SEV2 default, MEM-04 §11)
+  sla_minutes: {S1: 15, S2: 30, S3: 240, S4: 1440}   # OPS-00 §7 severities, aligned with DQ-SCORE-006 (blocker ack ≤ 15 min, critical ≤ 30 min)
+  ticket_template: |
+    [HEALIX self-healer] DQ rule storm — ${env} — topic ${trigger.labels.topic} — pack ${trigger.labels.rule_pack}
+    Incident: ${incident.id}  Fault class: ${incident.fault_class}  Severity: ${incident.severity}  Hypothesis: ${decision.branch}
+    Rules breaching: ${breach_set.rules | length} of ${activation_history.active_count} active  Failures: ${breach_set.total_fail}  Errors: ${breach_set.total_error}  Facilities: ${breach_set.facility_count} (${facility_distribution.concentration})
+    Top rules (id@version, fail rate vs 7-d baseline): ${breach_set.rules | top(5) | summarise_rates}
+    Pack release in window: ${pack_release.released_within_window} (${pack_release.current.pack_version} ← ${pack_release.previous.pack_version}; CR ${pack_release.cr_id})
+    Semantic releases (24 h): ${semantic_releases[].version_iri}  Terminology releases: ${terminology_release[].release_id}
+    Upstream healing incidents on topic: ${upstream_incidents[].incident_id}  Volume vs baseline: ${volume_profile.max_ratio}×  Clock skew p99: ${clock_skew.p99_s}s (TEMPORAL_SKEW DLQ 1 h: ${clock_skew.temporal_skew_dlq_1h})
+    Backtest of prior versions (masked, 7 d): within baseline = ${backtest.prior_within_baseline}; run ${backtest.run_id}
+    Remediator auto-fix last hour: ${remediator_activity.count} (cap utilisation ${remediator_activity.cap_utilisation}); now: ${A3.mode}
+    Actions attempted: ${run.actions_summary}  Verification: ${run.verification_summary}
+    Parent issue: ${A1.parent_issue_id}  Re-activated rules: ${A4.changes | length}  CR: ${A5.cr_id}
+    Required from steward / DQ Lead: confirm root cause (rule vs release vs source), disposition the dq_rule CR, or raise a source fix with the facility's owner; for clock skew hand the offending interface-engine host list to hospital IT.
+    This ticket contains rule ids, versions, pack/release identifiers, facility codes and counts only; no record keys, patient, worker, supplier or financial content (hc-phi-class: non-phi).
+  page: true                           # SEV1/SEV2 page within 60 s of `escalated` (MEM-HEAL-032); the clinical-critical branch pages immediately via A7
+  on_failure: page
+
+learning:
+  memory_classes_written: [incident, root_cause, observation, drift_signature, evaluation_lesson, playbook_step]
+  lesson_template: >-
+    On ${env} topic ${trigger.labels.topic} pack ${trigger.labels.rule_pack} a ${incident.fault_class} storm of
+    ${breach_set.rules | length} rules (${breach_set.total_fail} failures, ${breach_set.facility_count} facilities,
+    concentration ${facility_distribution.concentration}) was ${incident.outcome} by ${run.successful_action_id} in
+    ${run.duration_s}s; hypothesis ${decision.branch}; pack release in window ${pack_release.released_within_window}
+    (${pack_release.cr_id}); semantic releases ${semantic_releases | length}; prior-version backtest within baseline
+    ${backtest.prior_within_baseline}; rules re-activated ${A4.changes | length}; dq_rule CR ${A5.cr_id} reached
+    ${cr.final_state}; steward confirmed root cause ${postmortem.root_cause_confirmed}.
+  record_episode: true                 # Graphiti JSON episode: Topic -EXHIBITED_SYMPTOM-> Symptom, Incident -CAUSED_BY-> {ChangeRequest|Incident|SchemaVersion}, DQRule -SUPERSEDES-> DQRule (activation), Incident -RESOLVED_BY-> Action -PRODUCED_OUTCOME-> Outcome, Lesson -LEARNED_FROM-> Incident (MEM-02 §4)
+  emit_reflexion: true                 # masked (GOV-LIN-015), trust T1, untrusted_text: true; never promotes without a CR (MEM-GRA-033)
+  candidate_for_tuning:                # MEM-HEAL-050: thresholds/windows/timeouts only — never limits/guards/blast_radius
+    - triggers[dq.rules_breaching_count].threshold
+    - triggers[dq.rules_breaching_ratio].threshold
+    - triggers[dq.fail_rate_jump_multi_facility].threshold
+    - triggers[dq.issue_rate].threshold
+    - triggers[dq.false_positive_surge].threshold
+    - triggers[dq.false_positive_surge].for_s
+    - correlation_window_s
+    - diagnosis[prior_version_backtest].params.window
+    - diagnosis[prior_version_backtest].timeout_s
+    - actions[A4-reactivate-prior-rule-version].verify.within_s
+    - actions[A5-propose-dq-rule-cr].params.risk_class            # the ≤ 5 % relative-delta cut-off between low and medium
+    - verification.duration_s
+  learned_from:
+    description: >-
+      Seed authored from the DQ framework (DQ-01 §3 severities/routing, DQ-04 §4.2 breach detection and §4.3 alert
+      routing, DQ-05 §6/§7 remediator policy and feedback loop, DQ-03 §2/§3.3 hot-reload from hc.ops.dq.rulepack.v1)
+      and typical Fortune-100 estates: rule packs released against an ontology version that a steward then changed,
+      LOINC/RxNorm releases that invalidate value-set rules overnight, a Cerner replay or CDC re-snapshot that
+      re-evaluates a week of records in ten minutes, a multi-domain Millennium estate where one domain's interface
+      engine drifts off NTP, and new hospitals on-boarded with a different documentation pattern that turns a
+      completeness threshold into a false-positive generator. No production incidents yet; `compiled_from_incidents`
+      fills as the curator mines Graphiti incident communities (MEM-04 §9).
+    signatures_to_learn:
+      - "which pack releases storm (changed_rule_ids × dimension) vs which are absorbed — predicts when to request DQ-PIPE-013 backfill with `suspect` pre-flagged"
+      - "storm-to-release lag per release kind (ontology re-derivation vs terminology vs mapping deploy) for tighter correlation windows"
+      - "fail-rate jump shapes that are replays/re-snapshots (volume ratio > 3× with unchanged distribution) vs genuine source changes"
+      - "facility codes whose documentation pattern repeatedly trips completeness rules after on-boarding (FLT-DQ-002 candidates for scope exceptions)"
+      - "clock-skew signatures per Millennium domain / interface engine host (hour-of-day, DST transitions)"
+      - "steward dispositions of A5 CRs (revert vs retune vs re-derive) per dimension — calibrates the low/medium risk cut-off"
+  graduation: {shadow_matches_required: 10, min_agreement: 0.9, harmful_recommendations_allowed: 0}
+
+references:
+  requirements:
+    - DQ-FW-005       # severity per rule {blocker, critical, major, minor}; blocker quarantines
+    - DQ-FW-007       # non-blocker failures forwarded with `hc-dq-status` headers — the `suspect` flag rides the same mechanism
+    - DQ-FW-010       # rule versions immutable once active; change ⇒ new version — re-activation of the prior version only
+    - DQ-FW-011       # rules re-derive automatically on ontology change (a storm source)
+    - DQ-REM-001      # remediation creates a new temporal version; no overwrite/deletion
+    - DQ-REM-002      # remediator applies only policy fix classes — frozen to propose_only during a storm
+    - DQ-REM-005      # never alter clinical/financial values
+    - DQ-REM-009      # workflow transitions persisted bitemporally in fact_dq_issue
+    - DQ-REM-010      # auto-fix caps 5 %/rule/day and 1,000/issue — never raised by this playbook
+    - DQ-PIPE-008     # results conform to hc.dq.result.v1 with versions and provenance
+    - DQ-PIPE-009     # alerts carry hashed keys and aggregate counts only
+    - DQ-PIPE-011     # daily CDE profiling and drift issues (FLT-DQ-002 signal)
+    - DQ-PIPE-013     # pack release backfill flagged `backfill` — `suspect` is treated the same way by scorecards
+    - DQ-PIPE-014     # results persisted to fact_dq_result and KG within 15 min — never deleted
+    - DQ-SCORE-006    # issue SLAs tracked per issue — aggregation keeps child clocks running
+    - DQ-SCORE-007    # scorecards reproducible per pack version — activation changes are versioned, not edits
+    - SRC-CER-024     # no write-back to Cerner Millennium
+    - GOV-ACC-011     # no direct writes to canonical/kg/edw
+    - GOV-LIN-015     # masked agent transcripts
+    - GOV-PHI-004     # identifier patterns in the scanner (ticket/memory phi_scan)
+    - OPS-02          # release windows and change-freeze calendar
+    - MEM-HEAL-001
+    - MEM-HEAL-002
+    - MEM-HEAL-003
+    - MEM-HEAL-006
+    - MEM-HEAL-008
+    - MEM-HEAL-009
+    - MEM-HEAL-010
+    - MEM-HEAL-011
+    - MEM-HEAL-012
+    - MEM-HEAL-014
+    - MEM-HEAL-015
+    - MEM-HEAL-020
+    - MEM-HEAL-022
+    - MEM-HEAL-032
+    - MEM-HEAL-033
+    - MEM-HEAL-036
+    - MEM-HEAL-037
+    - MEM-HEAL-038
+    - MEM-HEAL-041
+    - MEM-HEAL-042
+    - MEM-HEAL-043
+    - MEM-HEAL-045
+    - MEM-HEAL-046
+    - MEM-HEAL-047
+    - MEM-HEAL-050
+  runbooks:
+    - DQ-04 §4.2 breach detection and §4.3 alert routing
+    - DQ-05 §3 issue states, §6 remediator policy, §7 feedback loop
+    - DQ-03 §2 rule compilation / §3.3 hot-reload from hc.ops.dq.rulepack.v1
+    - OPS-02 freeze calendar — release windows, Fusion quarterly update, Millennium code upgrade
+    - MEM-04 §3 legacy outliers — clock skew > 5 s (FLT-ING-016, manual)
+  slo_ids: [S7, S8, S6]
+  topics:
+    - hc.dq.result.v1
+    - hc.dq.issue.v1
+    - hc.dq.rule-activation.v1
+    - hc.ops.dq.rulepack.v1
+    - hc.dq.scorecard.v1
+    - hc.kg.dlq.v1                          # TEMPORAL_SKEW reason (TKG-TIME-012) in the clock-skew diagnosis
+    - hc.ops.schema.change.v1
+    - hc.ops.agent.changerequest.v1
+    - hc.ops.agent.policy.release.v1        # existing STR-02 release topic; `hc.ops.agent.policy.v1` is the module-14 request (README §6)
+    - hc.ops.healing.incident.event.v1
+    - hc.ops.healing.playbookrun.event.v1
+    - hc.ops.audit.v1
+  connector_manifest: null                  # DQ storms are not bound to one connector; upstream connector playbooks hold the manifests
+
+chaos_tests:                           # MEM-HEAL-013/041: ≥ 1 per trigger; run in `test` against the DQ simulator (synthetic canonical records, disposable rule pack `g9-chaos`, synthetic facility codes)
+  - id: CT1-threshold-flipped-to-zero
+    trigger: dq.rules_breaching_count
+    injection: "Release pack g2-clinical v1.4.0 with 24 completeness/validity rules whose threshold.min is set to 1.0 (effectively 0 tolerance) via the simulator's rulepack publisher; synthetic ADT/ORU records at baseline volume"
+    expected_mttd_s: 600
+    expected_mttr_s: 1800
+    blast_radius_assert: "exactly 1 parent issue created and ≥ 95 % of child issues linked (0 closed); results flagged suspect with result_count unchanged; agent.remediator mode propose_only for g2-clinical only; 24 rules re-activated to v1.3.x and v1.4.0 suspended (0 rule bodies changed, 0 results deleted); 1 dq_rule CR medium to agent.dq_author; fail rate back ≤ baseline + 5 pp within 1,800 s"
+  - id: CT2-small-pack-ratio
+    trigger: dq.rules_breaching_ratio
+    injection: "Pack g4-supply has 12 active rules; simulator breaks 4 (33 %) by releasing a mapping that moves `Supplier.identifier` to a different FHIR path"
+    expected_mttd_s: 600
+    expected_mttr_s: 1800
+    blast_radius_assert: "ratio trigger fires although count trigger (20) does not; branch = semantic release; prior version backtest within baseline ⇒ 4 rules re-activated; CR carries the mapping release IRI as evidence; 0 actions on g1/g2/g3/g5 packs"
+  - id: CT3-multi-facility-jump-after-terminology-release
+    trigger: dq.fail_rate_jump_multi_facility
+    injection: "Simulated LOINC release retires 60 lab codes used by DQR-VALIDITY-OBSERVATION-* value sets; synthetic ORU for facility codes F01, F02, F03, F04 all jump from 2 % to 70 % fail"
+    expected_mttd_s: 600
+    expected_mttr_s: 1800
+    blast_radius_assert: "4 facilities counted (≥ 3); branch = semantic/terminology release; PBK-SEM-001 runs `corr` on the same code system (both incidents present, linked CAUSED_BY, neither suppressed); re-activation limited to ≤ 20 rules; no C3 purge performed by this playbook (PBK-SEM-001 owns it)"
+  - id: CT4-issue-flood-from-replay
+    trigger: dq.issue_rate
+    injection: "PBK-ING-001 chaos fixture replays 40,000 synthetic HL7 messages into hc.raw.cerner.adt.hl7v2.v1 (3.5× baseline volume) producing 1,600 issues/h on hc.canonical.clinical.encounter.fhir.v1"
+    expected_mttd_s: 600
+    expected_mttr_s: 0                 # expected outcome: contain and link — ING-001▶DQ-001, no rule action
+    blast_radius_assert: "incident waits in playbook_selected while PBK-ING-001 is executing (MEM-HEAL-020), then runs A0/A1/A2 only; 0 activation changes; 0 freezes; Incident -CAUSED_BY-> PBK-ING-001 incident recorded; suppression released ≤ 3,600 s"
+  - id: CT5-false-positive-surge-new-hospital
+    trigger: dq.false_positive_surge
+    injection: "Synthetic facility F09 on-boarded with a documentation pattern that never populates Encounter.hospitalization.dischargeDisposition at admit; stewards dismiss 42 % of DQR-COMPLETENESS-ENCOUNTER-011 issues over 7 d in the fixture's fact_dq_issue"
+    expected_mttd_s: 3600
+    expected_mttr_s: 86400
+    blast_radius_assert: "severity S3; no suppression, no re-activation; A3 freezes auto-tuning for g2-clinical only; exactly 1 dq_rule CR low (relative delta ≤ 5 %) or medium (scope exception) with dismiss evidence; steward disposition recorded as evaluation_lesson"
+  - id: CT6-clinical-critical-blocker-storm
+    trigger: dq.rules_breaching_count
+    injection: "Pack g2-clinical release breaks 22 rules including DQR-VALIDITY-MEDICATION-003 (blocker, RxNorm binding) and DQR-COMPLETENESS-ALLERGY-001 (critical)"
+    expected_mttd_s: 600
+    expected_mttr_s: 1800
+    blast_radius_assert: "severity S1; G2 steward on-call and SRE paged ≤ 60 s with phi_scan clean; blocker quarantine pages NOT suppressed; A4 does not execute before acknowledgement (ack_gates); after ack, re-activation proceeds and quarantined records remain quarantined (0 replay_quarantine calls); page never cancelled on rollback"
+  - id: CT7-clock-skew-millennium-domain
+    trigger: dq.fail_rate_jump_multi_facility
+    injection: "Simulator shifts hc-source-time by +420 s on messages from interface-engine host IE-DOM2 serving facility codes F05, F06, F07; timeliness/temporal rules DQR-TIMELINESS-* storm; TEMPORAL_SKEW DLQ grows"
+    expected_mttd_s: 600
+    expected_mttr_s: 0                 # expected outcome: contain + ticket to hospital IT (FLT-ING-016 is manual)
+    blast_radius_assert: "branch = clock_skew; 0 activation changes; results flagged suspect; ticket to hospital-it-interfaces with host id and skew seconds only (no message content, phi_scan clean); no timestamp shifted anywhere (DQ-REM-005)"
+  - id: CT8-storm-inside-freeze-window
+    trigger: dq.rules_breaching_count
+    injection: "Threshold-flip storm (as CT1) while the millennium-code-upgrade freeze window is active in the calendar fixture"
+    expected_mttd_s: 600
+    expected_mttr_s: 0
+    blast_radius_assert: "only A0/A1/A2 run (observe/reroute notifications); 0 activation changes; 0 freezes; incident recorded with reason freeze (MEM-HEAL-010); ticket to group steward; suppression ≤ 3,600 s"
+  - id: CT9-oscillation-guard
+    trigger: dq.rules_breaching_count
+    injection: "Fixture alternates pack g3-finance between v2.0.0 and v2.1.0 every 20 min, each version storming a different rule subset"
+    expected_mttd_s: 600
+    expected_mttr_s: 1800
+    blast_radius_assert: "first run re-activates once; second run within the hour fails precondition pack_not_oscillating and escalates (MEM-HEAL-011); no third activation change; circuit breaker not tripped (escalation is not a failure); ticket to agent-operator naming the release CRs"
+  - id: CT10-never-raise-caps-honeytoken
+    trigger: dq.issue_rate
+    injection: "Flood with 1,500 issues/h whose synthetic issue descriptions embed 50 honeytoken MRN/PERSON_ID strings; remediator cap utilisation fixture at 100 %"
+    expected_mttd_s: 600
+    expected_mttr_s: 1800
+    blast_radius_assert: "DQ-REM-010 caps unchanged (set_remediation_caps never called — gateway denial count 0 because never attempted); ticket, CR, incident annotations and memory records contain 0 of the 50 honeytokens (MEM-ARCH-025 probe); write-gate rejections logged with PHI_DETECTED == 0 because no record text was ever read"
+
+phi: none
+
+change_request:
+  type: playbook
+  risk_class: medium                   # no ladder-L2 action (MEM-04 §8); approvers Platform SRE + Agent Operator, privacy_guardian review; Data Quality Lead consulted
+
+provenance:
+  created_by: agent.self_healer        # drafted from the MEM-04 fault taxonomy and the DQ-01/03/04/05 contracts; reviewed by DQ engineering, Group Data Stewards, Platform SRE and the Privacy & Security Office
+  compiled_from_incidents: []
+  approved_cr_id: null                 # required before status may leave `shadow` (MEM-HEAL-044)
+  created_at: "2026-10-17T00:00:00Z"
+  schema_ref: healing-playbooks/playbook.schema.json
